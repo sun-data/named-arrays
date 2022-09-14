@@ -209,7 +209,7 @@ class AbstractArray(
         pass
 
     @abc.abstractmethod
-    def ndarray_aligned(self: AbstractArrayT, shape: dict[str, int]) -> NDArrayT:
+    def ndarray_aligned(self: AbstractArrayT, shape: dict[str, int]) -> QuantityLike:
         pass
 
     def _interp_linear_recursive(
