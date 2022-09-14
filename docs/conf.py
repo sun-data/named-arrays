@@ -12,11 +12,6 @@
 #
 import os
 import sys
-import matplotlib.pyplot as plt
-import matplotlib.axes
-import astropy.units
-import astropy.time
-import pandas
 
 package_path = os.path.abspath('../')
 sys.path.insert(0, package_path)
@@ -24,9 +19,9 @@ os.environ['PYTHONPATH'] = ';'.join((package_path, os.environ.get('PYTHONPATH', 
 
 # -- Project information -----------------------------------------------------
 
-project = 'kgpy'
-copyright = '2020, Roy T. Smart, Charles C. Kankelborg, Jacob D. Parker, Nelson C. Goldsworth'
-author = 'Roy T. Smart, Charles C. Kankelborg, Jacob D. Parker, Nelson C. Goldsworth'
+project = 'named_arrays'
+copyright = '2022, Roy T. Smart'
+author = 'Roy T. Smart'
 
 # -- General configuration ---------------------------------------------------
 
@@ -95,7 +90,6 @@ intersphinx_mapping = {
     'scipy': ('https://docs.scipy.org/doc/scipy/', None),
     'matplotlib': ('https://matplotlib.org/stable', None),
     'astropy': ('https://docs.astropy.org/en/stable/', None),
-    'pandas': ('https://pandas.pydata.org/pandas-docs/stable/', None),
     'xarray': ('https://xarray.pydata.org/en/stable/', None),
 }
 
