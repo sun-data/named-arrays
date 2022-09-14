@@ -101,6 +101,36 @@ class AbstractArray(
 
     @property
     @abc.abstractmethod
+    def ndarray(self: AbstractArrayT) -> npt.ArrayLike:
+        pass
+
+    @property
+    @abc.abstractmethod
+    def axes(self: AbstractArrayT):
+        pass
+
+    @property
+    @abc.abstractmethod
+    def shape(self: AbstractArrayT) -> dict[str, int]:
+        pass
+
+    @property
+    @abc.abstractmethod
+    def ndim(self: AbstractArrayT) -> int:
+        pass
+
+    @property
+    @abc.abstractmethod
+    def dtype(self: AbstractArrayT) -> npt.DTypeLike:
+        pass
+
+    @property
+    @abc.abstractmethod
+    def unit(self) -> float | u.Unit:
+        pass
+
+    @property
+    @abc.abstractmethod
     def array(self: AbstractArrayT) -> ArrayBase:
         pass
 
@@ -128,30 +158,6 @@ class AbstractArray(
     @abc.abstractmethod
     def centers(self: AbstractArrayT) -> AbstractArray:
         pass
-
-    @property
-    def ndarray(self: AbstractArrayT) -> npt.ArrayLike:
-        return self.array.ndarray
-
-    @property
-    def axes(self: AbstractArrayT):
-        return self.array.axes
-
-    @property
-    def shape(self: AbstractArrayT) -> dict[str, int]:
-        return self.array.shape
-
-    @property
-    def ndim(self: AbstractArrayT) -> int:
-        return self.array.ndim
-
-    @property
-    def dtype(self: AbstractArrayT) -> npt.DTypeLike:
-        return self.array.dtype
-
-    @property
-    def unit(self) -> float | u.Unit:
-        return self.array.unit
 
     @abc.abstractmethod
     def astype(
