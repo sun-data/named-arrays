@@ -30,3 +30,15 @@ def test_shape_broadcasted():
 
     shape_broadcasted = na.shape_broadcasted(array_1, array_2, array_3)
     assert shape_broadcasted == dict(x=num_x, y=num_y, z=num_z)
+
+
+def test_ndindex():
+
+    shape = dict(x=2, y=2)
+    ndindex = list(na.ndindex(shape))
+    assert ndindex == [
+        dict(x=0, y=0),
+        dict(x=0, y=1),
+        dict(x=1, y=0),
+        dict(x=1, y=1),
+    ]
