@@ -49,8 +49,8 @@ autosummary_generate = True  # Turn on sphinx.ext.autosummary
 
 # typehints_fully_qualified = True
 
-graphviz_output_format = 'svg'
-inheritance_graph_attrs = dict(rankdir='TB', target='_top')
+graphviz_output_format = 'png'
+inheritance_graph_attrs = dict(rankdir='TB')
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -68,7 +68,7 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 html_theme = 'bootstrap-astropy'
 html_theme_options = {
     'logotext1': 'named_arrays',  # white,  semi-bold
-    # 'logotext2': 'py',  # blue, light
+    'logotext2': '',  # blue, light
     'logotext3': ':docs',  # white,  light
     'astropy_project_menubar': False
 }
