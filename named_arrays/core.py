@@ -22,7 +22,7 @@ __all__ = [
     'ndindex',
     'indices',
     'AbstractArray',
-    'Array',
+    'ArrayBase',
     'AbstractRange',
 ]
 
@@ -30,7 +30,7 @@ NDArrayMethodsMixinT = TypeVar('NDArrayMethodsMixinT', bound='NDArrayMethodsMixi
 DType = TypeVar('DType', bound=npt.DTypeLike)
 # NDArrayT = TypeVar('NDArrayT', bound=npt.ArrayLike)
 AbstractArrayT = TypeVar('AbstractArrayT', bound='AbstractArray')
-ArrayT = TypeVar('ArrayT', bound='Array')
+ArrayBaseT = TypeVar('ArrayBaseT', bound='ArrayBase')
 AbstractRangeMixinT = TypeVar('AbstractRangeMixinT', bound='RangeMixin')
 AbstractRangeT = TypeVar('AbstractRangeT', bound='AbstractRange')
 AbstractSpaceMixinT = TypeVar('AbstractSpaceMixinT', bound='AbstractSpaceMixin')
@@ -101,7 +101,7 @@ class AbstractArray(
 
     @property
     @abc.abstractmethod
-    def array(self: AbstractArrayT) -> ArrayT:
+    def array(self: AbstractArrayT) -> ArrayBase:
         pass
 
     @property
@@ -325,25 +325,25 @@ ArrayLike = Union[QuantityLike, AbstractArray]
 
 
 @dataclasses.dataclass(eq=False)
-class Array(
+class ArrayBase(
     AbstractArray,
 ):
     @property
     @abc.abstractmethod
-    def ndarray(self: ArrayT) -> npt.ArrayLike:
+    def ndarray(self: ArrayBaseT) -> npt.ArrayLike:
         pass
 
     @property
     @abc.abstractmethod
-    def axes(self: ArrayT) -> list[str]:
+    def axes(self: ArrayBaseT) -> list[str]:
         pass
 
     @property
-    def ndim(self: ArrayT) -> int:
+    def ndim(self: ArrayBaseT) -> int:
         return np.ndim(self.ndarray)
 
     @property
-    def shape(self: ArrayT) -> dict[str, int]:
+    def shape(self: ArrayBaseT) -> dict[str, int]:
         ndarray = self.ndarray
         axes = self.axes
         result = dict()
@@ -352,11 +352,11 @@ class Array(
         return result
 
     @property
-    def dtype(self: ArrayT) -> npt.DTypeLike:
+    def dtype(self: ArrayBaseT) -> npt.DTypeLike:
         return np.dtype(self.ndarray)
 
     @property
-    def unit(self: ArrayT) -> float | u.Unit:
+    def unit(self: ArrayBaseT) -> float | u.Unit:
         if isinstance(self.ndarray, (u.Quantity, AbstractArray)):
             return self.ndarray.unit
         else:
@@ -423,7 +423,7 @@ class AbstractLinearSpace(
 ):
 
     @property
-    def step(self: AbstractLinearSpaceT) -> ArrayT:
+    def step(self: AbstractLinearSpaceT) -> ArrayBaseT:
         if self.endpoint:
             return self.range / (self.num - 1)
         else:

@@ -4,7 +4,7 @@ from .core import ndindex
 from .core import indices
 from .core import QuantityLike
 from .core import AbstractArray
-from .core import Array
+from .core import ArrayBase
 from .scalars import AbstractScalar
 from .scalars import ScalarLike
 from .scalars import ScalarArray

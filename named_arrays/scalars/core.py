@@ -797,8 +797,8 @@ ScalarLike = Union[na.QuantityLike, AbstractScalar]
 
 @dataclasses.dataclass(eq=False)
 class ScalarArray(
-    AbstractScalar,
-    na.Array,
+    AbstractScalarArray,
+    na.ArrayBase,
     Generic[NDArrayT],
 ):
     ndarray: NDArrayT = 0 * u.dimensionless_unscaled
