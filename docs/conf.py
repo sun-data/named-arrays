@@ -47,10 +47,10 @@ autosummary_generate = True  # Turn on sphinx.ext.autosummary
 #     'kgpy.optics.Surface': 'kgpy.optics.Surface_cls',
 # }
 
-typehints_fully_qualified = True
+# typehints_fully_qualified = True
 
-graphviz_output_format = 'png'
-inheritance_graph_attrs = dict(rankdir='TB')
+graphviz_output_format = 'svg'
+inheritance_graph_attrs = dict(rankdir='TB', target='_top')
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
