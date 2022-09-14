@@ -32,7 +32,7 @@ extensions = [
     'sphinx.ext.napoleon',
     'sphinx.ext.autodoc',
     # "sphinx.ext.autodoc.typehints",
-    'sphinx_autodoc_typehints',
+    # 'sphinx_autodoc_typehints',
     'sphinx.ext.autosummary',
     'sphinx.ext.intersphinx',
     'sphinx.ext.inheritance_diagram',
@@ -41,7 +41,7 @@ extensions = [
 autosummary_generate = True  # Turn on sphinx.ext.autosummary
 # autosummary_imported_members = True
 # autoclass_content = 'both'
-autodoc_typehints = "description"
+# autodoc_typehints = "description"
 
 # autosummary_filename_map = {
 #     'kgpy.optics.Surface': 'kgpy.optics.Surface_cls',
@@ -49,7 +49,7 @@ autodoc_typehints = "description"
 
 typehints_fully_qualified = True
 
-graphviz_output_format = 'svg'
+graphviz_output_format = 'png'
 inheritance_graph_attrs = dict(rankdir='TB')
 
 # Add any paths that contain templates here, relative to this directory.
@@ -67,8 +67,8 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
 html_theme = 'bootstrap-astropy'
 html_theme_options = {
-    'logotext1': 'kg',  # white,  semi-bold
-    'logotext2': 'py',  # blue, light
+    'logotext1': 'named_arrays',  # white,  semi-bold
+    # 'logotext2': 'py',  # blue, light
     'logotext3': ':docs',  # white,  light
     'astropy_project_menubar': False
 }
