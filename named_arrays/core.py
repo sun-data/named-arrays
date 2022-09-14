@@ -95,6 +95,9 @@ class AbstractArray(
     np.lib.mixins.NDArrayOperatorsMixin,
     abc.ABC,
 ):
+    """
+    The ultimate parent class for all array types defined in this package.0
+    """
 
     @property
     @abc.abstractmethod
