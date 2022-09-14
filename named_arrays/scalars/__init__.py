@@ -1,4 +1,5 @@
 from .core import AbstractScalar
+from .core import AbstractScalarArray
 from .core import ScalarLike
 from .core import ScalarArray
 from .core import ScalarRange

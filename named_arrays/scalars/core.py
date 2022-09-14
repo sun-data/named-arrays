@@ -12,6 +12,7 @@ import named_arrays.core as na
 
 __all__ = [
     'AbstractScalar',
+    'AbstractScalarArray',
     'ScalarLike',
     'ScalarArray',
     'ScalarRange',
@@ -22,6 +23,7 @@ __all__ = [
 DType = TypeVar('DType', bound=npt.DTypeLike)
 NDArrayT = TypeVar('NDArrayT', bound=npt.ArrayLike)
 AbstractScalarT = TypeVar('AbstractScalarT', bound='AbstractScalar')
+AbstractScalarArrayT = TypeVar('AbstractScalarArrayT', bound='AbstractScalarArray')
 ScalarArrayT = TypeVar('ScalarArrayT', bound='ScalarArray')
 StartT = TypeVar('StartT', bound='ScalarLike')
 StopT = TypeVar('StopT', bound='ScalarLike')
@@ -37,13 +39,7 @@ ScalarNormalRandomSpaceT = TypeVar('ScalarNormalRandomSpaceT', bound='ScalarNorm
 @dataclasses.dataclass(eq=False)
 class AbstractScalar(
     na.AbstractArray,
-    Generic[NDArrayT],
 ):
-
-    type_array_primary: ClassVar[Type] = np.ndarray
-    type_array_auxiliary: ClassVar[tuple[Type, ...]] = (str, bool, int, float, complex, np.generic)
-    type_array: ClassVar[tuple[Type, ...]] = type_array_auxiliary + (type_array_primary, )
-
     @property
     def scalar(self: AbstractScalarT) -> AbstractScalarT:
         return self
@@ -52,8 +48,22 @@ class AbstractScalar(
     def components(self: AbstractScalarT) -> dict[str, AbstractScalarT]:
         return {'': self}
 
+    def shape_broadcasted(self: AbstractScalarArrayT, *arrays: na.AbstractArray) -> dict[str, int]:
+        return na.shape_broadcasted(self, *arrays)
+
+
+@dataclasses.dataclass(eq=False)
+class AbstractScalarArray(
+    AbstractScalar,
+    Generic[NDArrayT],
+):
+
+    type_array_primary: ClassVar[Type] = np.ndarray
+    type_array_auxiliary: ClassVar[tuple[Type, ...]] = (str, bool, int, float, complex, np.generic)
+    type_array: ClassVar[tuple[Type, ...]] = type_array_auxiliary + (type_array_primary, )
+
     def astype(
-            self: AbstractScalarT,
+            self: AbstractScalarArrayT,
             dtype: npt.DTypeLike,
             order: str = 'K',
             casting='unsafe',
@@ -71,7 +81,7 @@ class AbstractScalar(
             axes=self.axes,
         )
 
-    def to(self: AbstractScalarT, unit: u.Unit) -> ScalarArray:
+    def to(self: AbstractScalarArrayT, unit: u.Unit) -> ScalarArray:
         ndarray = self.ndarray
         if not isinstance(ndarray, u.Quantity):
             ndarray = ndarray << u.dimensionless_unscaled
@@ -97,10 +107,7 @@ class AbstractScalar(
     #                     shape[k] = a_shape[k]
     #     return shape
 
-    def shape_broadcasted(self: AbstractScalarT, *arrays: na.AbstractArray) -> dict[str, int]:
-        return na.shape_broadcasted(self, *arrays)
-
-    def ndarray_aligned(self: AbstractScalarT, shape: dict[str, int]) -> NDArrayT:
+    def ndarray_aligned(self: AbstractScalarArrayT, shape: dict[str, int]) -> NDArrayT:
         ndarray = self.ndarray
         ndim_missing = len(shape) - np.ndim(ndarray)
         value = np.expand_dims(ndarray, tuple(~np.arange(ndim_missing)))
@@ -112,10 +119,10 @@ class AbstractScalar(
         value = np.moveaxis(value, source=source, destination=destination)
         return value
 
-    def aligned(self: AbstractScalarT, shape: dict[str, int]) -> ScalarArray:
+    def aligned(self: AbstractScalarArrayT, shape: dict[str, int]) -> ScalarArray:
         return ScalarArray(ndarray=self.ndarray_aligned(shape), axes=list(shape.keys()))
 
-    def add_axes(self: AbstractScalarT, axes: list[str]) -> ScalarArray:
+    def add_axes(self: AbstractScalarArrayT, axes: list[str]) -> ScalarArray:
         shape_new = {axis: 1 for axis in axes}
         shape = {**self.shape, **shape_new}
         return ScalarArray(
@@ -123,7 +130,7 @@ class AbstractScalar(
             axes=list(shape.keys()),
         )
 
-    def change_axis_index(self: AbstractScalarT, axis: str, index: int) -> ScalarArray:
+    def change_axis_index(self: AbstractScalarArrayT, axis: str, index: int) -> ScalarArray:
         shape = self.shape
         size_axis = shape.pop(axis)
         keys = list(shape.keys())
@@ -138,7 +145,7 @@ class AbstractScalar(
         )
 
     def combine_axes(
-            self: AbstractScalarT,
+            self: AbstractScalarArrayT,
             axes: Sequence[str],
             axis_new: None | str = None,
     ) -> ScalarArray:
@@ -170,7 +177,7 @@ class AbstractScalar(
         )
 
     def matrix_multiply(
-            self: AbstractScalarT,
+            self: AbstractScalarArrayT,
             other: AbstractScalar,
             axis_rows: str,
             axis_columns: str,
@@ -190,7 +197,7 @@ class AbstractScalar(
         )
 
     def matrix_determinant(
-            self: AbstractScalarT,
+            self: AbstractScalarArrayT,
             axis_rows: str,
             axis_columns: str
     ) -> ScalarArray:
@@ -234,7 +241,7 @@ class AbstractScalar(
             )
 
     def matrix_inverse(
-            self: AbstractScalarT,
+            self: AbstractScalarArrayT,
             axis_rows: str,
             axis_columns: str,
     ) -> ScalarArray:
@@ -299,7 +306,7 @@ class AbstractScalar(
                 axes=axes_new,
             )
 
-    def __mul__(self: AbstractScalarT, other: ArrayLike | u.Unit) -> ScalarArray:
+    def __mul__(self: AbstractScalarArrayT, other: na.ArrayLike | u.Unit) -> ScalarArray:
         if isinstance(other, u.UnitBase):
             return ScalarArray(
                 ndarray=self.ndarray * other,
@@ -308,7 +315,7 @@ class AbstractScalar(
         else:
             return super().__mul__(other)
 
-    def __lshift__(self: AbstractScalarT, other: u.UnitBase) -> ScalarArray:
+    def __lshift__(self: AbstractScalarArrayT, other: u.UnitBase) -> ScalarArray:
         axes = self.axes
         if axes is not None:
             axes = axes.copy()
@@ -353,7 +360,7 @@ class AbstractScalar(
         return NotImplemented
 
     def __array_function__(
-            self: AbstractScalarT,
+            self: AbstractScalarArrayT,
             func: Callable,
             types: Collection,
             args: tuple,
@@ -690,7 +697,7 @@ class AbstractScalar(
         else:
             raise ValueError(f'{func} not supported')
 
-    def __bool__(self: AbstractScalarT) -> bool:
+    def __bool__(self: AbstractScalarArrayT) -> bool:
         return self.ndarray.__bool__()
 
     # @typ.overload
@@ -706,7 +713,7 @@ class AbstractScalar(
     # def __getitem__(self: AbstractArrayT, item: 'AbstractArray') -> 'Array': ...
 
     def __getitem__(
-            self: AbstractScalarT,
+            self: AbstractScalarArrayT,
             item: dict[str, int | slice | AbstractScalar] | AbstractScalar,
     ) -> ScalarArray:
 
@@ -767,7 +774,7 @@ class AbstractScalar(
         #     raise ValueError('Invalid index type')
 
     def filter_median(
-            self: AbstractScalarT,
+            self: AbstractScalarArrayT,
             shape_kernel: dict[str, int],
             mode: str = 'reflect',
     ):
@@ -918,7 +925,7 @@ class ScalarRangeMixin(
 @dataclasses.dataclass(eq=False)
 class ScalarRange(
     ScalarRangeMixin[StartT, StopT],
-    AbstractScalar,
+    AbstractScalarArray,
     na.AbstractRange,
 ):
     step: int = 1
@@ -1012,7 +1019,7 @@ class ScalarSpaceMixin(
 class ScalarLinearSpace(
     ScalarSpaceMixin,
     ScalarRangeMixin[StartT, StopT],
-    AbstractScalar,
+    AbstractScalarArray,
     na.AbstractLinearSpace,
 ):
 
@@ -1076,7 +1083,7 @@ class ScalarLinearSpace(
 
     def interp_linear(
             self: ScalarLinearSpaceT,
-            item: dict[str, AbstractScalarT],
+            item: dict[str, AbstractScalarArrayT],
     ) -> AbstractScalar:
 
         item = item.copy()

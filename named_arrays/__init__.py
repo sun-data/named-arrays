@@ -6,6 +6,7 @@ from .core import QuantityLike
 from .core import AbstractArray
 from .core import ArrayBase
 from .scalars import AbstractScalar
+from .scalars import AbstractScalarArray
 from .scalars import ScalarLike
 from .scalars import ScalarArray
 from .scalars import ScalarRange

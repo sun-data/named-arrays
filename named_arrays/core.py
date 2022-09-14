@@ -106,7 +106,7 @@ class AbstractArray(
 
     @property
     @abc.abstractmethod
-    def scalar(self: AbstractArrayT) -> named_arrays.scalars.AbstractArray:
+    def scalar(self: AbstractArrayT) -> named_arrays.scalars.AbstractScalar:
         pass
 
     @property

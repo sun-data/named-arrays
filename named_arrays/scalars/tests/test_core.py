@@ -142,7 +142,7 @@ class TestScalarArray:
             (na.ScalarLinearSpace(0, 1, num=11, axis='x') * na.ScalarLinearSpace(0, 1, num=11, axis='y'), 1),
         ],
     )
-    def test__array_function__roll(self, a: na.AbstractScalar, shift: int):
+    def test__array_function__roll(self, a: na.AbstractScalarArray, shift: int):
         b = np.roll(a, shift, axis='x')
         assert np.all(b.ndarray == np.roll(a.ndarray, shift, axis=0))
 
