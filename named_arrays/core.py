@@ -83,9 +83,9 @@ def ndindex(
         yield dict(zip(shape.keys(), index))
 
 
-def indices(shape: dict[str, int]) -> dict[str, named_arrays.scalars.Range]:
+def indices(shape: dict[str, int]) -> dict[str, named_arrays.scalars.ScalarRange]:
     import named_arrays.scalars
-    return {axis: named_arrays.scalars.Range(0, shape[axis], axis=axis) for axis in shape}
+    return {axis: named_arrays.scalars.ScalarRange(0, shape[axis], axis=axis) for axis in shape}
 
 
 @dataclasses.dataclass(eq=False)
