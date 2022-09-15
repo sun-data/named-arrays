@@ -39,7 +39,7 @@ extensions = [
     'jupyter_sphinx',
 ]
 autosummary_generate = True  # Turn on sphinx.ext.autosummary
-# autosummary_imported_members = True
+autosummary_imported_members = True
 # autoclass_content = 'both'
 # autodoc_typehints = "description"
 
