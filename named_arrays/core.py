@@ -39,7 +39,7 @@ AbstractRandomMixinT = TypeVar('AbstractRandomMixinT', bound='AbstractRandomMixi
 RandomMixinT = TypeVar('RandomMixinT', bound='RandomMixin')
 AbstractWorldCoordinateSpaceT = TypeVar('AbstractWorldCoordinateSpaceT', bound='AbstractWorldCoordinateSpace')
 
-QuantityLike = Union[int, float, np.ndarray, u.Quantity]
+QuantityLike = Union[int, float, complex, np.ndarray, u.Quantity]
 
 
 def broadcast_shapes(*shapes: dict[str, int]) -> dict[str, int]:
