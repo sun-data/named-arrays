@@ -70,6 +70,8 @@ def ndindex(
         axis_ignored: None | str | Sequence[str] = None,
 ) -> Iterator[dict[str, int]]:
 
+    shape = shape.copy()
+
     if axis_ignored is None:
         axis_ignored = []
     elif isinstance(axis_ignored, str):
