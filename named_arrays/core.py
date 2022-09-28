@@ -435,17 +435,18 @@ class AbstractRangeMixin(
     def range(self: AbstractRangeT) -> AbstractArray:
         return self.stop - self.stop
 
+    @property
+    @abc.abstractmethod
+    def step(self: AbstractRangeT) -> int | AbstractArray:
+        pass
+
 
 @dataclasses.dataclass(eq=False)
 class AbstractRange(
     AbstractRangeMixin,
     AbstractParameterizedArray,
 ):
-
-    @property
-    @abc.abstractmethod
-    def step(self: AbstractRangeT) -> int | AbstractArray:
-        pass
+    pass
 
 
 @dataclasses.dataclass(eq=False)
