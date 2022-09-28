@@ -181,8 +181,9 @@ class AbstractArray(
         return self.broadcast_to(self.shape)
 
     @property
-    def length(self: AbstractArrayT) -> AbstractArrayT:
-        return np.abs(self)
+    @abc.abstractmethod
+    def length(self: AbstractArrayT) -> named_arrays.scalars.AbstractScalar:
+        pass
 
     @abc.abstractmethod
     def __getitem__(

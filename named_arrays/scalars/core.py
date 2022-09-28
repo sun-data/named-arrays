@@ -48,8 +48,9 @@ class AbstractScalar(
     def components(self: AbstractScalarT) -> dict[str, AbstractScalarT]:
         return {'': self}
 
-    def shape_broadcasted(self: AbstractScalarArrayT, *arrays: na.AbstractArray) -> dict[str, int]:
-        return na.shape_broadcasted(self, *arrays)
+    @property
+    def length(self) -> AbstractScalar:
+        return np.abs(self)
 
 
 @dataclasses.dataclass(eq=False)
