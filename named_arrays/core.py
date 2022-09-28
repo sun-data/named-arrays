@@ -23,6 +23,7 @@ __all__ = [
     'indices',
     'AbstractArray',
     'ArrayBase',
+    'AbstractParameterizedArray',
     'AbstractRange',
 ]
 
@@ -372,6 +373,35 @@ class ArrayBase(
             return 1
 
 
+@dataclasses.dataclass
+class AbstractParameterizedArray(
+    AbstractArray,
+):
+    @property
+    def axes(self) -> list[str]:
+        return self.array.axes
+
+    @property
+    def dtype(self) -> npt.DTypeLike:
+        return self.array.dtype
+
+    @property
+    def ndarray(self) -> QuantityLike:
+        return self.array.ndarray
+
+    @property
+    def ndim(self) -> int:
+        return self.array.ndim
+
+    @property
+    def shape(self) -> dict[str, int]:
+        return self.array.shape
+
+    @property
+    def unit(self) -> float | u.Unit:
+        return self.array.unit
+
+
 @dataclasses.dataclass(eq=False)
 class AbstractRangeMixin(
     abc.ABC,
@@ -400,7 +430,7 @@ class AbstractRangeMixin(
 @dataclasses.dataclass(eq=False)
 class AbstractRange(
     AbstractRangeMixin,
-    AbstractArray,
+    AbstractParameterizedArray,
 ):
 
     @property
@@ -428,7 +458,7 @@ class AbstractSpaceMixin(
 class AbstractLinearSpace(
     AbstractSpaceMixin,
     AbstractRangeMixin,
-    AbstractArray,
+    AbstractParameterizedArray,
 ):
 
     @property
@@ -471,7 +501,7 @@ class AbstractUniformRandomSpace(
     AbstractRandomMixin,
     AbstractSpaceMixin,
     AbstractRangeMixin,
-    AbstractArray,
+    AbstractParameterizedArray,
 ):
     pass
 
@@ -504,7 +534,7 @@ class AbstractNormalRandomSpace(
     AbstractRandomMixin,
     AbstractSpaceMixin,
     AbstractSymmetricMixin,
-    AbstractArray,
+    AbstractParameterizedArray,
 ):
     pass
 

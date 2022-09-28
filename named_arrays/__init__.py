@@ -5,6 +5,7 @@ from .core import indices
 from .core import QuantityLike
 from .core import AbstractArray
 from .core import ArrayBase
+from .core import AbstractParameterizedArray
 from .scalars import AbstractScalar
 from .scalars import AbstractScalarArray
 from .scalars import ScalarLike
