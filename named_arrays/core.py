@@ -458,11 +458,6 @@ class AbstractSpaceMixin(
     def num(self: AbstractSpaceMixinT) -> int | AbstractArray:
         pass
 
-    @property
-    @abc.abstractmethod
-    def endpoint(self: AbstractSpaceMixinT) -> bool:
-        pass
-
 
 @dataclasses.dataclass(eq=False)
 class AbstractLinearSpace(
@@ -477,6 +472,11 @@ class AbstractLinearSpace(
             return self.range / (self.num - 1)
         else:
             return self.range / self.num
+
+    @property
+    @abc.abstractmethod
+    def endpoint(self: AbstractSpaceMixinT) -> bool:
+        pass
 
 
 @dataclasses.dataclass(eq=False)
