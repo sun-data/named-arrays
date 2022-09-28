@@ -24,7 +24,16 @@ __all__ = [
     'AbstractArray',
     'ArrayBase',
     'AbstractParameterizedArray',
+    'AbstractRangeMixin',
     'AbstractRange',
+    'AbstractSpaceMixin',
+    'AbstractLinearSpace',
+    'AbstractRandomMixin',
+    'RandomMixin',
+    'AbstractUniformRandomSpace',
+    'AbstractStratifiedRandomSpace',
+    'AbstractSymmetricMixin',
+    'AbstractNormalRandomSpace',
 ]
 
 NDArrayMethodsMixinT = TypeVar('NDArrayMethodsMixinT', bound='NDArrayMethodsMixin')
