@@ -362,7 +362,7 @@ class ArrayBase(
 
     @property
     def dtype(self: ArrayBaseT) -> npt.DTypeLike:
-        return np.dtype(self.ndarray)
+        return np.min_scalar_type(self.ndarray)
 
     @property
     def unit(self: ArrayBaseT) -> float | u.Unit:
