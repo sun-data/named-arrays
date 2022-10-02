@@ -427,11 +427,6 @@ class AbstractRangeMixin(
         pass
 
     @property
-    @abc.abstractmethod
-    def axis(self: AbstractRangeT) -> str | AbstractArray:
-        pass
-
-    @property
     def range(self: AbstractRangeT) -> AbstractArray:
         return self.stop - self.stop
 
@@ -453,6 +448,12 @@ class AbstractRange(
 class AbstractSpaceMixin(
     abc.ABC,
 ):
+
+    @property
+    @abc.abstractmethod
+    def axis(self: AbstractRangeT) -> str | AbstractArray:
+        pass
+
     @property
     @abc.abstractmethod
     def num(self: AbstractSpaceMixinT) -> int | AbstractArray:
