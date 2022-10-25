@@ -24,16 +24,19 @@ __all__ = [
     'AbstractArray',
     'ArrayBase',
     'AbstractParameterizedArray',
-    'AbstractRangeMixin',
-    'AbstractRange',
-    'AbstractSpaceMixin',
-    'AbstractLinearSpace',
     'AbstractRandomMixin',
     'RandomMixin',
-    'AbstractUniformRandomSpace',
+    'AbstractRange',
+    'AbstractSymmetricRange',
+    'AbstractLinearParameterizedArrayMixin',
+    'AbstractArrayRange',
+    'AbstractSpace',
+    'AbstractLinearSpace',
     'AbstractStratifiedRandomSpace',
-    'AbstractSymmetricMixin',
-    'AbstractNormalRandomSpace',
+    'AbstractLogarithmicSpace',
+    'AbstractGeometricSpace',
+    'AbstractUniformRandomSample',
+    'AbstractNormalRandomSample',
 ]
 
 NDArrayMethodsMixinT = TypeVar('NDArrayMethodsMixinT', bound='NDArrayMethodsMixin')
@@ -41,12 +44,17 @@ DType = TypeVar('DType', bound=npt.DTypeLike)
 # NDArrayT = TypeVar('NDArrayT', bound=npt.ArrayLike)
 AbstractArrayT = TypeVar('AbstractArrayT', bound='AbstractArray')
 ArrayBaseT = TypeVar('ArrayBaseT', bound='ArrayBase')
-AbstractRangeMixinT = TypeVar('AbstractRangeMixinT', bound='RangeMixin')
-AbstractRangeT = TypeVar('AbstractRangeT', bound='AbstractRange')
-AbstractSpaceMixinT = TypeVar('AbstractSpaceMixinT', bound='AbstractSpaceMixin')
-AbstractLinearSpaceT = TypeVar('AbstractLinearSpaceT', bound='AbstractLinearSpace')
+AbstractParameterizedArrayT = TypeVar('AbstractParameterizedArrayT', bound='AbstractParameterizedArray')
 AbstractRandomMixinT = TypeVar('AbstractRandomMixinT', bound='AbstractRandomMixin')
 RandomMixinT = TypeVar('RandomMixinT', bound='RandomMixin')
+AbstractRangeT = TypeVar('AbstractRangeT', bound='AbstractRange')
+AbstractSymmetricRangeT = TypeVar('AbstractSymmetricRangeT', bound='AbstractSymmetricRange')
+AbstractLinearParameterizedArrayMixinT = TypeVar('AbstractLinearParameterizedArrayMixinT', bound='AbstractLinearParameterizedArrayMixin')
+AbstractArrayRangeT = TypeVar('AbstractArrayRangeT', bound='AbstractArrayRange')
+AbstractSpaceT = TypeVar('AbstractSpaceT', bound='AbstractSpace')
+AbstractLinearSpaceT = TypeVar('AbstractLinearSpaceT', bound='AbstractLinearSpace')
+AbstractLogarithmicSpaceT = TypeVar('AbstractLogarithmicSpaceT', bound='AbstractLogarithmicSpace')
+AbstractGeometricSpaceT = TypeVar('AbstractGeometricSpaceT', bound='AbstractGeometricSpace')
 AbstractWorldCoordinateSpaceT = TypeVar('AbstractWorldCoordinateSpaceT', bound='AbstractWorldCoordinateSpace')
 
 QuantityLike = Union[int, float, complex, np.ndarray, u.Quantity]
@@ -95,9 +103,9 @@ def ndindex(
         yield dict(zip(shape.keys(), index))
 
 
-def indices(shape: dict[str, int]) -> dict[str, named_arrays.scalars.ScalarRange]:
+def indices(shape: dict[str, int]) -> dict[str, named_arrays.scalars.ScalarArrayRange]:
     import named_arrays.scalars
-    return {axis: named_arrays.scalars.ScalarRange(0, shape[axis], axis=axis) for axis in shape}
+    return {axis: named_arrays.scalars.ScalarArrayRange(0, shape[axis], axis=axis) for axis in shape}
 
 
 @dataclasses.dataclass(eq=False)
@@ -115,6 +123,13 @@ class AbstractArray(
     @abc.abstractmethod
     def ndarray(self: AbstractArrayT) -> npt.ArrayLike:
         pass
+
+    @property
+    def ndarray_normalized(self: AbstractArrayT) -> np.ndarray:
+        ndarray = self.ndarray
+        if not isinstance(ndarray, np.ndarray):
+            ndarray = np.array(ndarray)
+        return ndarray
 
     @property
     @abc.abstractmethod
@@ -204,13 +219,13 @@ class AbstractArray(
 
     @property
     def indices(self: AbstractArrayT) -> dict[str, AbstractArrayT]:
-        return named_arrays.core.indices(self.shape)
+        return indices(self.shape)
 
     def ndindex(
             self: AbstractArrayT,
             axis_ignored: None | str | Sequence[str] = None,
     ) -> Iterator[dict[str, int]]:
-        return named_arrays.core.ndindex(
+        return ndindex(
             shape=self.shape,
             axis_ignored=axis_ignored,
         )
@@ -372,7 +387,7 @@ class ArrayBase(
 
     @property
     def dtype(self: ArrayBaseT) -> npt.DTypeLike:
-        return np.min_scalar_type(self.ndarray)
+        return self.ndarray_normalized.dtype
 
     @property
     def unit(self: ArrayBaseT) -> float | u.Unit:
@@ -387,96 +402,37 @@ class AbstractParameterizedArray(
     AbstractArray,
 ):
     @property
-    def axes(self) -> list[str]:
+    def axes(self: AbstractParameterizedArrayT) -> list[str]:
         return self.array.axes
 
     @property
-    def dtype(self) -> npt.DTypeLike:
+    def dtype(self: AbstractParameterizedArrayT) -> npt.DTypeLike:
         return self.array.dtype
 
     @property
-    def ndarray(self) -> QuantityLike:
+    def ndarray(self: AbstractParameterizedArrayT) -> QuantityLike:
         return self.array.ndarray
 
     @property
-    def ndim(self) -> int:
+    def ndim(self: AbstractParameterizedArrayT) -> int:
         return self.array.ndim
 
     @property
-    def shape(self) -> dict[str, int]:
+    def shape(self: AbstractParameterizedArrayT) -> dict[str, int]:
         return self.array.shape
 
     @property
-    def unit(self) -> float | u.Unit:
+    def unit(self: AbstractParameterizedArrayT) -> float | u.Unit:
         return self.array.unit
 
-
-@dataclasses.dataclass(eq=False)
-class AbstractRangeMixin(
-    abc.ABC,
-):
-
     @property
     @abc.abstractmethod
-    def start(self: AbstractRangeT) -> int | AbstractArray:
+    def axis(self: AbstractParameterizedArrayT) -> str | AbstractArray:
         pass
 
     @property
     @abc.abstractmethod
-    def stop(self: AbstractRangeT) -> int | AbstractArray:
-        pass
-
-    @property
-    def range(self: AbstractRangeT) -> AbstractArray:
-        return self.stop - self.stop
-
-    @property
-    @abc.abstractmethod
-    def step(self: AbstractRangeT) -> int | AbstractArray:
-        pass
-
-
-@dataclasses.dataclass(eq=False)
-class AbstractRange(
-    AbstractRangeMixin,
-    AbstractParameterizedArray,
-):
-    pass
-
-
-@dataclasses.dataclass(eq=False)
-class AbstractSpaceMixin(
-    abc.ABC,
-):
-
-    @property
-    @abc.abstractmethod
-    def axis(self: AbstractRangeT) -> str | AbstractArray:
-        pass
-
-    @property
-    @abc.abstractmethod
-    def num(self: AbstractSpaceMixinT) -> int | AbstractArray:
-        pass
-
-
-@dataclasses.dataclass(eq=False)
-class AbstractLinearSpace(
-    AbstractSpaceMixin,
-    AbstractRangeMixin,
-    AbstractParameterizedArray,
-):
-
-    @property
-    def step(self: AbstractLinearSpaceT) -> ArrayBaseT:
-        if self.endpoint:
-            return self.range / (self.num - 1)
-        else:
-            return self.range / self.num
-
-    @property
-    @abc.abstractmethod
-    def endpoint(self: AbstractSpaceMixinT) -> bool:
+    def num(self: AbstractParameterizedArrayT) -> int | AbstractArray:
         pass
 
 
@@ -491,6 +447,10 @@ class AbstractRandomMixin(
         pass
 
     @property
+    def _seed_normalized(self):
+        return
+
+    @property
     def _rng(self: AbstractRandomMixinT) -> np.random.Generator:
         return np.random.default_rng(seed=self.seed)
 
@@ -500,21 +460,110 @@ class RandomMixin(
     AbstractRandomMixin
 ):
 
-    seed: None | int = None
-
     def __post_init__(self):
         if self.seed is None:
             self.seed = random.randint(0, 10 ** 12)
 
 
 @dataclasses.dataclass(eq=False)
-class AbstractUniformRandomSpace(
-    AbstractRandomMixin,
-    AbstractSpaceMixin,
-    AbstractRangeMixin,
+class AbstractRange(
     AbstractParameterizedArray,
 ):
+
+    @property
+    @abc.abstractmethod
+    def start(self: AbstractRangeT) -> int | AbstractArray:
+        pass
+
+    @property
+    @abc.abstractmethod
+    def stop(self: AbstractRangeT) -> int | AbstractArray:
+        pass
+
+    @property
+    def range(self: AbstractRangeT) -> AbstractArray:
+        return self.stop - self.start
+
+
+@dataclasses.dataclass(eq=False)
+class AbstractSymmetricRange(
+    AbstractRange
+):
+    @property
+    @abc.abstractmethod
+    def center(self: AbstractSymmetricRangeT) -> ArrayLike:
+        pass
+
+    @property
+    @abc.abstractmethod
+    def width(self: AbstractSymmetricRangeT) -> ArrayLike:
+        pass
+
+    @property
+    def start(self: AbstractSymmetricRangeT) -> ArrayLike:
+        return self.center - self.width
+
+    @property
+    def stop(self: AbstractSymmetricRangeT) -> ArrayLike:
+        return self.center + self.width
+
+
+@dataclasses.dataclass(eq=False)
+class AbstractUniformRandomSample(
+    AbstractRandomMixin,
+    AbstractRange,
+):
     pass
+
+
+@dataclasses.dataclass
+class AbstractNormalRandomSample(
+    AbstractRandomMixin,
+    AbstractSymmetricRange,
+):
+    pass
+
+
+@dataclasses.dataclass(eq=False)
+class AbstractLinearParameterizedArrayMixin(
+    abc.ABC
+):
+    @property
+    @abc.abstractmethod
+    def step(self: AbstractLinearParameterizedArrayMixinT) -> int | AbstractArray:
+        pass
+
+
+@dataclasses.dataclass(eq=False)
+class AbstractArrayRange(
+    AbstractLinearParameterizedArrayMixin,
+    AbstractRange,
+):
+    pass
+
+
+@dataclasses.dataclass
+class AbstractSpace(
+    AbstractRange,
+):
+    @property
+    @abc.abstractmethod
+    def endpoint(self: AbstractSpaceT) -> bool:
+        pass
+
+
+@dataclasses.dataclass(eq=False)
+class AbstractLinearSpace(
+    AbstractLinearParameterizedArrayMixin,
+    AbstractSpace
+):
+
+    @property
+    def step(self: AbstractLinearSpaceT) -> AbstractArray:
+        if self.endpoint:
+            return self.range / (self.num - 1)
+        else:
+            return self.range / self.num
 
 
 @dataclasses.dataclass(eq=False)
@@ -526,50 +575,36 @@ class AbstractStratifiedRandomSpace(
 
 
 @dataclasses.dataclass(eq=False)
-class AbstractSymmetricMixin(
-    abc.ABC,
+class AbstractLogarithmicSpace(
+    AbstractSpace
 ):
+
     @property
     @abc.abstractmethod
-    def center(self) -> AbstractArray:
+    def start_exponent(self: AbstractLogarithmicSpaceT) -> ArrayLike:
         pass
 
     @property
     @abc.abstractmethod
-    def width(self) -> AbstractArray:
+    def stop_exponent(self: AbstractLogarithmicSpaceT) -> ArrayLike:
         pass
 
+    @property
+    @abc.abstractmethod
+    def base(self: AbstractLogarithmicSpaceT) -> ArrayLike:
+        pass
 
-@dataclasses.dataclass
-class AbstractNormalRandomSpace(
-    AbstractRandomMixin,
-    AbstractSpaceMixin,
-    AbstractSymmetricMixin,
-    AbstractParameterizedArray,
-):
-    pass
+    @property
+    def start(self: AbstractLogarithmicSpaceT) -> ArrayLike:
+        return self.base ** self.start_exponent
+
+    @property
+    def stop(self: AbstractLogarithmicSpaceT) -> ArrayLike:
+        return self.base ** self.stop_exponent
 
 
 @dataclasses.dataclass(eq=False)
-class AbstractWorldCoordinateSpace(
-    AbstractArray,
+class AbstractGeometricSpace(
+    AbstractSpace
 ):
-    @property
-    @abc.abstractmethod
-    def crval(self: AbstractWorldCoordinateSpaceT) -> AbstractArray:
-        pass
-
-    @property
-    @abc.abstractmethod
-    def crpix(self: AbstractWorldCoordinateSpaceT) -> named_arrays.vectors.CartesianND:
-        pass
-
-    @property
-    @abc.abstractmethod
-    def cdelt(self: AbstractWorldCoordinateSpaceT) -> AbstractArray:
-        pass
-
-    @property
-    @abc.abstractmethod
-    def pc(self: AbstractWorldCoordinateSpaceT) -> named_arrays.matrices.CartesianND:
-        pass
+    pass

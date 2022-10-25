@@ -15,9 +15,17 @@ __all__ = [
     'AbstractScalarArray',
     'ScalarLike',
     'ScalarArray',
-    'ScalarRange',
+    'AbstractScalarParameterizedArray',
+    'AbstractScalarRange',
+    'AbstractScalarSymmetricRange',
+    'ScalarUniformRandomSample',
+    'ScalarNormalRandomSample',
+    'ScalarArrayRange',
+    'AbstractScalarSpace',
     'ScalarLinearSpace',
-    'ScalarUniformRandomSpace',
+    'ScalarStratifiedRandomSpace',
+    'ScalarLogarithmicSpace',
+    'ScalarGeometricSpace',
 ]
 
 DType = TypeVar('DType', bound=npt.DTypeLike)
@@ -34,6 +42,11 @@ ScalarStratifiedRandomSpaceT = TypeVar('ScalarStratifiedRandomSpaceT', bound='Sc
 CenterT = TypeVar('CenterT', bound='ScalarLike')
 WidthT = TypeVar('WidthT', bound='ScalarLike')
 ScalarNormalRandomSpaceT = TypeVar('ScalarNormalRandomSpaceT', bound='ScalarNormalRandomSpace')
+StartExponentT = TypeVar('StartExponentT', bound='ScalarLike')
+StopExponentT = TypeVar('StopExponentT', bound='ScalarLike')
+BaseT = TypeVar('BaseT', bound='ScalarLike')
+ScalarLogarithmicSpaceT = TypeVar('ScalarLogarithmicSpaceT', bound='ScalarLogarithmicSpace')
+ScalarGeometricSpaceT = TypeVar('ScalarGeometricSpaceT', bound='ScalarGeometricSpace')
 
 
 @dataclasses.dataclass(eq=False)
@@ -63,6 +76,14 @@ class AbstractScalarArray(
     type_array_auxiliary: ClassVar[tuple[Type, ...]] = (str, bool, int, float, complex, np.generic)
     type_array: ClassVar[tuple[Type, ...]] = type_array_auxiliary + (type_array_primary, )
 
+    @property
+    def nominal(self: AbstractScalarArrayT) -> AbstractScalarArrayT:
+        return self
+
+    @property
+    def distribution(self: AbstractScalarArrayT) -> None:
+        return None
+
     def astype(
             self: AbstractScalarArrayT,
             dtype: npt.DTypeLike,
@@ -72,7 +93,7 @@ class AbstractScalarArray(
             copy: bool = True,
     ) -> ScalarArray:
         return ScalarArray(
-            ndarray=self.ndarray.astype(
+            ndarray=self.ndarray_normalized.astype(
                 dtype=dtype,
                 order=order,
                 casting=casting,
@@ -120,10 +141,9 @@ class AbstractScalarArray(
         value = np.moveaxis(value, source=source, destination=destination)
         return value
 
-    def aligned(self: AbstractScalarArrayT, shape: dict[str, int]) -> ScalarArray:
-        return ScalarArray(ndarray=self.ndarray_aligned(shape), axes=list(shape.keys()))
-
-    def add_axes(self: AbstractScalarArrayT, axes: list[str]) -> ScalarArray:
+    def add_axes(self: AbstractScalarArrayT, axes: str | Sequence[str]) -> ScalarArray:
+        if isinstance(axes, str):
+            axes = [axes]
         shape_new = {axis: 1 for axis in axes}
         shape = {**self.shape, **shape_new}
         return ScalarArray(
@@ -306,6 +326,9 @@ class AbstractScalarArray(
                 ndarray=np.linalg.inv(value),
                 axes=axes_new,
             )
+
+    def __bool__(self: AbstractScalarArrayT) -> bool:
+        return self.ndarray.__bool__()
 
     def __mul__(self: AbstractScalarArrayT, other: na.ArrayLike | u.Unit) -> ScalarArray:
         if isinstance(other, u.UnitBase):
@@ -698,9 +721,6 @@ class AbstractScalarArray(
         else:
             raise ValueError(f'{func} not supported')
 
-    def __bool__(self: AbstractScalarArrayT) -> bool:
-        return self.ndarray.__bool__()
-
     # @typ.overload
     # def __getitem__(self: AbstractArrayT, item: typ.Dict[str, int]) -> 'Array': ...
     #
@@ -761,8 +781,6 @@ class AbstractScalarArray(
                 item_axis = item_casted[axis_name]
                 if isinstance(item_axis, AbstractScalar):
                     item_axis = item_axis.ndarray_aligned(shape_advanced)
-                if axis_name not in axes:
-                    continue
                 index[axes.index(axis_name)] = item_axis
                 if not isinstance(item_axis, slice):
                     axes_new.remove(axis_name)
@@ -846,14 +864,6 @@ class ScalarArray(
         return self
 
     @property
-    def nominal(self: ScalarArrayT) -> ScalarArrayT:
-        return self
-
-    @property
-    def distribution(self: ScalarArrayT) -> None:
-        return None
-
-    @property
     def centers(self: ScalarArrayT) -> ScalarArrayT:
         return self
 
@@ -914,22 +924,133 @@ class ScalarArray(
 
 
 @dataclasses.dataclass(eq=False)
-class ScalarRangeMixin(
-    na.AbstractRangeMixin,
-    Generic[StartT, StopT],
+class AbstractScalarParameterizedArray(
+    AbstractScalarArray,
+    na.AbstractParameterizedArray,
 ):
-    start: StartT = 0
-    stop: StopT = 1
-    axis: None | str = None
+    pass
 
 
 @dataclasses.dataclass(eq=False)
-class ScalarRange(
-    ScalarRangeMixin[StartT, StopT],
-    AbstractScalarArray,
+class AbstractScalarRange(
+    AbstractScalarParameterizedArray,
     na.AbstractRange,
 ):
+    pass
+
+
+@dataclasses.dataclass(eq=False)
+class AbstractScalarSymmetricRange(
+    AbstractScalarRange,
+    na.AbstractSymmetricRange,
+):
+    pass
+
+
+@dataclasses.dataclass(eq=False)
+class ScalarUniformRandomSample(
+    na.RandomMixin,
+    AbstractScalarRange,
+    na.AbstractUniformRandomSample,
+    Generic[StartT, StopT],
+):
+    start: StartT
+    stop: StopT
+    axis: str
+    num: int = 11
+    seed: None | int = None
+
+    @property
+    def array(self: ScalarUniformRandomSpaceT) -> ScalarArray:
+        start = self.start
+        if not isinstance(start, na.AbstractArray):
+            start = ScalarArray(start)
+
+        stop = self.stop
+        if not isinstance(stop, na.AbstractArray):
+            stop = ScalarArray(stop)
+
+        shape = na.shape_broadcasted(start, stop)
+        shape[self.axis] = self.num
+
+        start = start.ndarray_aligned(shape)
+        stop = stop.ndarray_aligned(shape)
+
+        unit = None
+        if isinstance(start, u.Quantity):
+            unit = start.unit
+            start = start.value
+            stop = stop.to(unit).value
+
+        value = self._rng.uniform(
+            low=start,
+            high=stop,
+        )
+
+        if unit is not None:
+            value = value << unit
+
+        return ScalarArray(
+            ndarray=value,
+            axes=list(shape.keys())
+        )
+
+
+@dataclasses.dataclass(eq=False)
+class ScalarNormalRandomSample(
+    na.RandomMixin,
+    AbstractScalarSymmetricRange,
+    na.AbstractNormalRandomSample,
+    Generic[CenterT, WidthT],
+):
+
+    @property
+    def array(self: ScalarUniformRandomSpaceT) -> ScalarArray:
+        center = self.center
+        if not isinstance(center, na.AbstractArray):
+            center = ScalarArray(center)
+
+        width = self.width
+        if not isinstance(width, na.AbstractArray):
+            width = ScalarArray(width)
+
+        shape = na.shape_broadcasted(center, width)
+        shape[self.axis] = self.num
+
+        center = center.ndarray_aligned(shape)
+        width = width.ndarray_aligned(shape)
+
+        unit = None
+        if isinstance(center, u.Quantity):
+            unit = center.unit
+            center = center.value
+            width = width.to(unit).value
+
+        value = self._rng.normal(
+            loc=center,
+            scale=width,
+        )
+
+        if unit is not None:
+            value = value << unit
+
+        return ScalarArray(
+            ndarray=value,
+            axes=list(shape.keys())
+        )
+
+
+@dataclasses.dataclass(eq=False)
+class ScalarArrayRange(
+    AbstractScalarRange,
+    na.AbstractArrayRange,
+    Generic[StartT, StopT],
+):
+    start: StartT = None
+    stop: StopT = None
+    axis: str = None
     step: int = 1
+    seed: None | int = None
 
     @property
     def array(self: ScalarRangeT) -> ScalarArray:
@@ -943,93 +1064,33 @@ class ScalarRange(
         )
 
     @property
-    def nominal(self: ScalarRangeT) -> ScalarRangeT:
-        return self
-
-    @property
-    def distribution(self: ScalarRangeT) -> None:
-        return None
-
-    @property
     def centers(self: ScalarRangeT) -> ScalarRangeT:
         return self
 
-
-# @dataclasses.dataclass(eq=False)
-# class _SpaceMixin(
-#     AbstractScalar[kgpy.units.QuantityLike],
-# ):
-#     num: int = None
-#     endpoint: bool = True
-#     axis: str = None
-#
-#     @property
-#     def shape(self: _SpaceMixinT) -> typ.Dict[str, int]:
-#         shape = super().shape
-#         shape[self.axis] = self.num
-#         return shape
-#
-#     @property
-#     def axes(self: _SpaceMixinT) -> typ.List[str]:
-#         return list(self.shape.keys())
-#
-#
-# @dataclasses.dataclass(eq=False)
-# class _RangeMixin(
-#     AbstractScalar[kgpy.units.QuantityLike],
-#     typ.Generic[StartArrayT, StopArrayT],
-# ):
-#     start: StartArrayT = None
-#     stop: StopArrayT = None
-#
-#     @property
-#     def normalized(self: _RangeMixinT) -> _RangeMixinT:
-#         other = super().normalized
-#         if not isinstance(other.start, ArrayInterface):
-#             other.start = ScalarArray(other.start)
-#         if not isinstance(other.stop, ArrayInterface):
-#             other.stop = ScalarArray(other.stop)
-#         return other
-#
-#     @property
-#     def unit(self) -> typ.Union[float, u.Unit]:
-#         unit = super().unit
-#         if hasattr(self.start, 'unit'):
-#             unit = self.start.unit
-#         return unit
-#
-#     @property
-#     def range(self: _RangeMixinT) -> ScalarArray:
-#         return self.stop - self.start
-#
-#     @property
-#     def shape(self: _RangeMixinT) -> typ.Dict[str, int]:
-#         norm = self.normalized
-#         return dict(**super().shape, **self.broadcast_shapes(norm.start, norm.stop))
+    @property
+    def num(self: ScalarArrayRangeT):
+        return
 
 
 @dataclasses.dataclass(eq=False)
-class ScalarSpaceMixin(
-    na.AbstractSpaceMixin,
+class AbstractScalarSpace(
+    AbstractScalarRange,
+    na.AbstractSpace,
 ):
-    num: int = 11
-    endpoint: bool = True
+    pass
 
 
 @dataclasses.dataclass(eq=False)
 class ScalarLinearSpace(
-    ScalarSpaceMixin,
-    ScalarRangeMixin[StartT, StopT],
-    AbstractScalarArray,
+    AbstractScalarSpace,
     na.AbstractLinearSpace,
+    Generic[StartT, StopT],
 ):
-
-    # @property
-    # def step(self: LinearSpaceT) -> typ.Union[StartArrayT, StopArrayT]:
-    #     if self.endpoint:
-    #         return self.range / (self.num - 1)
-    #     else:
-    #         return self.range / self.num
+    start: StartT
+    stop: StopT
+    axis: str
+    num: int = 11
+    endpoint: bool = False
 
     @property
     def array(self: ScalarLinearSpaceT) -> ScalarArray:
@@ -1050,14 +1111,6 @@ class ScalarLinearSpace(
             ),
             axes=list(shape.keys()) + [self.axis]
         )
-
-    @property
-    def nominal(self: ScalarLinearSpaceT) -> ScalarLinearSpaceT:
-        return self
-
-    @property
-    def distribution(self: ScalarLinearSpaceT) -> None:
-        return None
 
     @property
     def centers(self: ScalarLinearSpaceT) -> ScalarLinearSpaceT:
@@ -1125,94 +1178,26 @@ class ScalarLinearSpace(
 
 
 @dataclasses.dataclass(eq=False)
-class ScalarUniformRandomSpace(
-    na.RandomMixin,
-    ScalarLinearSpace[StartT, StopT],
-    na.AbstractUniformRandomSpace,
-):
-
-    @property
-    def array(self: ScalarUniformRandomSpaceT) -> ScalarArray:
-        start = self.start
-        if not isinstance(start, na.AbstractArray):
-            start = ScalarArray(start)
-
-        stop = self.stop
-        if not isinstance(stop, na.AbstractArray):
-            stop = ScalarArray(stop)
-
-        shape = na.shape_broadcasted(start, stop)
-        shape[self.axis] = self.num
-
-        start = start.ndarray_aligned(shape)
-        stop = stop.ndarray_aligned(shape)
-
-        unit = None
-        if isinstance(start, u.Quantity):
-            unit = start.unit
-            start = start.value
-            stop = stop.to(unit).value
-
-        value = self._rng.uniform(
-            low=start,
-            high=stop,
-        )
-
-        if unit is not None:
-            value = value << unit
-
-        return ScalarArray(
-            ndarray=value,
-            axes=list(shape.keys())
-        )
-
-
-@dataclasses.dataclass(eq=False)
 class ScalarStratifiedRandomSpace(
     na.RandomMixin,
     ScalarLinearSpace[StartT, StopT],
     na.AbstractStratifiedRandomSpace,
 ):
-    # shape_extra: typ.Dict[str, int] = dataclasses.field(default_factory=dict)
-    #
-    # @property
-    # def shape(self: StratifiedRandomSpaceT) -> typ.Dict[str, int]:
-    #     return {**self.shape_extra, **super().shape}
+    seed: None | int = None
 
     @property
     def array(self: ScalarStratifiedRandomSpaceT) -> ScalarArray:
-        result = super().array
+        result = self.centers
 
         step_size = self.step
 
-        delta = ScalarUniformRandomSpace(
+        delta = ScalarUniformRandomSample(
             start=-step_size / 2,
             stop=step_size / 2,
             axis=self.axis,
             num=self.num,
             seed=self.seed,
         )
-
-        # norm = self.normalized
-        # shape = norm.shape
-        # shape[norm.axis] = norm.num
-        # shape = {**shape, **self.shape_extra}
-        # step_size = norm.step
-        # step_size = step_size.broadcast_to(shape).array
-        #
-        # if isinstance(step_size, u.Quantity):
-        #     unit = step_size.unit
-        #     step_size = step_size.value
-        # else:
-        #     unit = None
-        #
-        # delta = self._rng.uniform(
-        #     low=-step_size / 2,
-        #     high=step_size / 2,
-        # )
-        #
-        # if unit is not None:
-        #     delta = delta << unit
 
         return result + delta
 
@@ -1228,177 +1213,79 @@ class ScalarStratifiedRandomSpace(
 
 
 @dataclasses.dataclass(eq=False)
-class SymmetricMixin(
-    # AbstractScalar[kgpy.units.QuantityLike],
-    # typ.Generic[CenterT, WidthT]
-    na.AbstractSymmetricMixin,
-    Generic[CenterT, WidthT],
+class ScalarLogarithmicSpace(
+    AbstractScalarSpace,
+    na.AbstractLogarithmicSpace,
+    Generic[StartExponentT, StopExponentT, BaseT]
 ):
+    start_exponent: StartExponentT
+    stop_exponent: StopExponentT
+    base: BaseT
+    axis: None | str
+    num: int = 11
+    endpoint: bool = False
 
-    center: CenterT = 0
-    width: WidthT = 0
+    @property
+    def array(self: ScalarLogarithmicSpaceT) -> ScalarArray:
+        start_exponent = self.start_exponent
+        if not isinstance(start_exponent, AbstractScalar):
+            start_exponent = ScalarArray(start_exponent)
+        stop_exponent = self.stop_exponent
+        if not isinstance(stop_exponent, AbstractScalar):
+            stop_exponent = ScalarArray(stop_exponent)
+        base = self.base
+        if not isinstance(base, AbstractScalar):
+            base = ScalarArray(base)
+        shape = na.shape_broadcasted(start_exponent, stop_exponent, base)
+        return ScalarArray(
+            ndarray=np.logspace(
+                start=start_exponent.ndarray_aligned(shape),
+                stop=stop_exponent.ndarray_aligned(shape),
+                num=self.num,
+                endpoint=self.endpoint,
+                base=base.ndarray_aligned(shape),
+                axis=~0,
+            ),
+            axes=list(shape.keys()) + [self.axis]
+        )
 
-    # @property
-    # def normalized(self: _SymmetricMixinT) -> _SymmetricMixinT:
-    #     other = super().normalized
-    #     if not isinstance(other.center, ArrayInterface):
-    #         other.center = ScalarArray(other.center)
-    #     if not isinstance(other.width, ArrayInterface):
-    #         other.width = ScalarArray(other.width)
-    #     return other
-    #
-    # @property
-    # def unit(self) -> typ.Optional[u.Unit]:
-    #     unit = super().unit
-    #     if hasattr(self.center, 'unit'):
-    #         unit = self.center.unit
-    #     return unit
-    #
-    # @property
-    # def shape(self: _SymmetricMixinT) -> typ.Dict[str, int]:
-    #     norm = self.normalized
-    #     return dict(**super().shape, **self.broadcast_shapes(norm.width, norm.center))
+    @property
+    def centers(self: ScalarLogarithmicSpaceT) -> ScalarLogarithmicSpaceT:
+        return self
 
 
 @dataclasses.dataclass(eq=False)
-class ScalarNormalRandomSpace(
-    na.RandomMixin,
-    ScalarSpaceMixin,
-    SymmetricMixin[CenterT, WidthT],
-    na.AbstractNormalRandomSpace,
+class ScalarGeometricSpace(
+    AbstractScalarSpace,
+    na.AbstractGeometricSpace,
+    Generic[StartT, StopT],
 ):
+    start: StartT
+    stop: StopT
+    axis: None | str
+    num: int = 11
+    endpoint: bool = False
 
     @property
-    def array(self: ScalarUniformRandomSpaceT) -> ScalarArray:
-        center = self.center
-        if not isinstance(center, na.AbstractArray):
-            center = ScalarArray(center)
-
-        width = self.width
-        if not isinstance(width, na.AbstractArray):
-            width = ScalarArray(width)
-
-        shape = na.shape_broadcasted(center, width)
-        shape[self.axis] = self.num
-
-        center = center.ndarray_aligned(shape)
-        width = width.ndarray_aligned(shape)
-
-        unit = None
-        if isinstance(center, u.Quantity):
-            unit = center.unit
-            center = center.value
-            width = width.to(unit).value
-
-        value = self._rng.normal(
-            loc=center,
-            scale=width,
-        )
-
-        if unit is not None:
-            value = value << unit
-
+    def array(self: ScalarGeometricSpaceT) -> ScalarArray:
+        start = self.start
+        if not isinstance(start, AbstractScalar):
+            start = ScalarArray(start)
+        stop = self.stop
+        if not isinstance(stop, AbstractScalar):
+            stop = ScalarArray(stop)
+        shape = na.shape_broadcasted(start, stop)
         return ScalarArray(
-            ndarray=value,
-            axes=list(shape.keys())
+            ndarray=np.geomspace(
+                start=start.ndarray_aligned(shape),
+                stop=stop.ndarray_aligned(shape),
+                num=self.num,
+                endpoint=self.endpoint,
+                axis=~0,
+            ),
+            axes=list(shape.keys()) + [self.axis]
         )
 
-
-
-    # @property
-    # def array(self: ScalarNormalRandomSpaceT) -> ScalarArray:
-    #
-    #     shape = self.shape
-    #
-    #     norm = self.normalized
-    #     center = norm.center.broadcast_to(shape).array
-    #     width = norm.width.broadcast_to(shape).array
-    #
-    #     unit = None
-    #     if isinstance(center, u.Quantity):
-    #         unit = center.unit
-    #         center = center.value
-    #         width = width.to(unit).value
-    #
-    #     value = self._rng.normal(
-    #         loc=center,
-    #         scale=width,
-    #     )
-    #
-    #     if unit is not None:
-    #         value = value << unit
-    #
-    #     return value
-
-
-# ReferencePixelT = typ.TypeVar('ReferencePixelT', bound='kgpy.vectors.Cartesian')
-#
-#
-# @dataclasses.dataclass(eq=False)
-# class WorldCoordinateSpace(
-#     AbstractScalar,
-# ):
-#
-#     crval: ScalarArray
-#     crpix: kgpy.vectors.CartesianND
-#     cdelt: ScalarArray
-#     pc_row: kgpy.vectors.CartesianND
-#     shape_wcs: typ.Dict[str, int]
-#
-#     @property
-#     def unit(self: WorldCoordinateSpaceT) -> u.UnitBase:
-#         return self.cdelt.unit
-#
-#     @property
-#     def normalized(self: WorldCoordinateSpaceT) -> WorldCoordinateSpaceT:
-#         return self
-#
-#     def __call__(self: WorldCoordinateSpaceT, item: typ.Dict[str, AbstractScalarT]) -> ScalarArrayT:
-#         import kgpy.vectors
-#         coordinates_pix = kgpy.vectors.CartesianND(item) * u.pix
-#         coordinates_pix = coordinates_pix - self.crpix
-#         coordinates_world = 0 * u.pix
-#         for component in coordinates_pix.coordinates:
-#             pc_component = self.pc_row.coordinates[component]
-#             if np.any(pc_component != 0):
-#                 coordinates_world = coordinates_world + pc_component * coordinates_pix.coordinates[component]
-#         coordinates_world = self.cdelt * coordinates_world + self.crval
-#         return coordinates_world
-#
-#     def interp_linear(
-#             self: WorldCoordinateSpaceT,
-#             item: typ.Dict[str, AbstractScalarT],
-#     ) -> ScalarArrayT:
-#         return self(item)
-#
-#     @property
-#     def array_labeled(self: WorldCoordinateSpaceT) -> ScalarArrayT:
-#         return self(indices(self.shape_wcs))
-#
-#     @property
-#     def array(self: WorldCoordinateSpaceT) -> ArrT:
-#         return self.array_labeled.array
-#
-#     @property
-#     def axes(self: WorldCoordinateSpaceT) -> typ.Optional[typ.List[str]]:
-#         # return self.array_labeled.axes
-#         return list(self.shape.keys())
-#
-#     @property
-#     def shape(self: WorldCoordinateSpaceT) -> typ.Dict[str, int]:
-#         shape = self(indices({axis: 1 for axis in self.shape_wcs})).shape
-#         # shape_base = self.broadcast_shapes(self.crpix, self.crval, self.cdelt, self.pc_row)
-#         shape = {axis: self.shape_wcs[axis] if axis in self.shape_wcs else shape[axis] for axis in shape}
-#         # shape = {**shape_base, **self.shape_wcs}
-#         return shape
-#
-#     def broadcast_to(
-#             self: WorldCoordinateSpaceT,
-#             shape: typ.Dict[str, int],
-#     ) -> typ.Union[WorldCoordinateSpaceT, AbstractScalarT]:
-#
-#         if self.shape == shape:
-#             if all(self.shape[axis_self] == shape[axis] for axis_self, axis in zip(self.shape, shape)):
-#                 return self
-#
-#         return super().broadcast_to(shape)
+    @property
+    def centers(self: ScalarGeometricSpaceT) -> ScalarGeometricSpaceT:
+        return self
