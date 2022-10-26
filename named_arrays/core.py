@@ -424,24 +424,23 @@ class AbstractRandomMixin(
     abc.ABC,
 ):
 
+    def __post_init__(self):
+        if self.seed is None:
+            self.seed = random.randint(0, 10 ** 12)
+
     @property
     @abc.abstractmethod
     def seed(self: Self) -> int:
         pass
 
+    @seed.setter
+    @abc.abstractmethod
+    def seed(self: Self, value: int) -> None:
+        pass
+
     @property
     def _rng(self: Self) -> np.random.Generator:
         return np.random.default_rng(seed=self.seed)
-
-
-@dataclasses.dataclass(eq=False)
-class RandomMixin(
-    AbstractRandomMixin
-):
-
-    def __post_init__(self):
-        if self.seed is None:
-            self.seed = random.randint(0, 10 ** 12)
 
 
 @dataclasses.dataclass(eq=False)

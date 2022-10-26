@@ -939,7 +939,6 @@ class AbstractScalarSymmetricRange(
 
 @dataclasses.dataclass(eq=False)
 class ScalarUniformRandomSample(
-    na.RandomMixin,
     AbstractScalarRange,
     na.AbstractUniformRandomSample,
     Generic[StartT, StopT],
@@ -988,7 +987,6 @@ class ScalarUniformRandomSample(
 
 @dataclasses.dataclass(eq=False)
 class ScalarNormalRandomSample(
-    na.RandomMixin,
     AbstractScalarSymmetricRange,
     na.AbstractNormalRandomSample,
     Generic[CenterT, WidthT],
@@ -1169,7 +1167,6 @@ class ScalarLinearSpace(
 
 @dataclasses.dataclass(eq=False)
 class ScalarStratifiedRandomSpace(
-    na.RandomMixin,
     ScalarLinearSpace[StartT, StopT],
     na.AbstractStratifiedRandomSpace,
 ):
