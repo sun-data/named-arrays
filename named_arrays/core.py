@@ -26,7 +26,6 @@ __all__ = [
     'ArrayBase',
     'AbstractParameterizedArray',
     'AbstractRandomMixin',
-    'RandomMixin',
     'AbstractRange',
     'AbstractSymmetricRange',
     'AbstractLinearParameterizedArrayMixin',
