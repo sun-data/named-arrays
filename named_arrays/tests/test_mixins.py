@@ -3,6 +3,7 @@ import dataclasses
 import numpy as np
 import named_arrays.mixins
 
+
 class AbstractTestCopyable(
     abc.ABC
 ):
