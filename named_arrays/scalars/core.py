@@ -1,5 +1,6 @@
 from __future__ import annotations
 from typing import TypeVar, Generic, ClassVar, Type, Sequence, Callable, Collection, Any, Union, cast, Dict
+from typing_extensions import Self
 
 import abc
 import dataclasses
@@ -28,25 +29,14 @@ __all__ = [
     'ScalarGeometricSpace',
 ]
 
-DType = TypeVar('DType', bound=npt.DTypeLike)
 NDArrayT = TypeVar('NDArrayT', bound=npt.ArrayLike)
-AbstractScalarT = TypeVar('AbstractScalarT', bound='AbstractScalar')
-AbstractScalarArrayT = TypeVar('AbstractScalarArrayT', bound='AbstractScalarArray')
-ScalarArrayT = TypeVar('ScalarArrayT', bound='ScalarArray')
 StartT = TypeVar('StartT', bound='ScalarLike')
 StopT = TypeVar('StopT', bound='ScalarLike')
-ScalarRangeT = TypeVar('ScalarRangeT', bound='ScalarRange')
-ScalarLinearSpaceT = TypeVar('ScalarLinearSpaceT', bound='ScalarLinearSpace')
-ScalarUniformRandomSpaceT = TypeVar('ScalarUniformRandomSpaceT', bound='ScalarUniformRandomSpace')
-ScalarStratifiedRandomSpaceT = TypeVar('ScalarStratifiedRandomSpaceT', bound='ScalarStratifiedRandomSpace')
 CenterT = TypeVar('CenterT', bound='ScalarLike')
 WidthT = TypeVar('WidthT', bound='ScalarLike')
-ScalarNormalRandomSpaceT = TypeVar('ScalarNormalRandomSpaceT', bound='ScalarNormalRandomSpace')
 StartExponentT = TypeVar('StartExponentT', bound='ScalarLike')
 StopExponentT = TypeVar('StopExponentT', bound='ScalarLike')
 BaseT = TypeVar('BaseT', bound='ScalarLike')
-ScalarLogarithmicSpaceT = TypeVar('ScalarLogarithmicSpaceT', bound='ScalarLogarithmicSpace')
-ScalarGeometricSpaceT = TypeVar('ScalarGeometricSpaceT', bound='ScalarGeometricSpace')
 
 
 @dataclasses.dataclass(eq=False)
@@ -54,11 +44,11 @@ class AbstractScalar(
     na.AbstractArray,
 ):
     @property
-    def scalar(self: AbstractScalarT) -> AbstractScalarT:
+    def scalar(self: Self) -> Self:
         return self
 
     @property
-    def components(self: AbstractScalarT) -> dict[str, AbstractScalarT]:
+    def components(self: Self) -> dict[str, Self]:
         return {'': self}
 
     @property
@@ -77,15 +67,15 @@ class AbstractScalarArray(
     type_array: ClassVar[tuple[Type, ...]] = type_array_auxiliary + (type_array_primary, )
 
     @property
-    def nominal(self: AbstractScalarArrayT) -> AbstractScalarArrayT:
+    def nominal(self: Self) -> Self:
         return self
 
     @property
-    def distribution(self: AbstractScalarArrayT) -> None:
+    def distribution(self: Self) -> None:
         return None
 
     def astype(
-            self: AbstractScalarArrayT,
+            self: Self,
             dtype: npt.DTypeLike,
             order: str = 'K',
             casting='unsafe',
@@ -103,7 +93,7 @@ class AbstractScalarArray(
             axes=self.axes,
         )
 
-    def to(self: AbstractScalarArrayT, unit: u.Unit) -> ScalarArray:
+    def to(self: Self, unit: u.Unit) -> ScalarArray:
         ndarray = self.ndarray
         if not isinstance(ndarray, u.Quantity):
             ndarray = ndarray << u.dimensionless_unscaled
@@ -129,7 +119,7 @@ class AbstractScalarArray(
     #                     shape[k] = a_shape[k]
     #     return shape
 
-    def ndarray_aligned(self: AbstractScalarArrayT, shape: dict[str, int]) -> NDArrayT:
+    def ndarray_aligned(self: Self, shape: dict[str, int]) -> np.ndarray:
         ndarray = self.ndarray
         ndim_missing = len(shape) - np.ndim(ndarray)
         value = np.expand_dims(ndarray, tuple(~np.arange(ndim_missing)))
@@ -141,7 +131,7 @@ class AbstractScalarArray(
         value = np.moveaxis(value, source=source, destination=destination)
         return value
 
-    def add_axes(self: AbstractScalarArrayT, axes: str | Sequence[str]) -> ScalarArray:
+    def add_axes(self: Self, axes: str | Sequence[str]) -> ScalarArray:
         if isinstance(axes, str):
             axes = [axes]
         shape_new = {axis: 1 for axis in axes}
@@ -151,7 +141,7 @@ class AbstractScalarArray(
             axes=list(shape.keys()),
         )
 
-    def change_axis_index(self: AbstractScalarArrayT, axis: str, index: int) -> ScalarArray:
+    def change_axis_index(self: Self, axis: str, index: int) -> ScalarArray:
         shape = self.shape
         size_axis = shape.pop(axis)
         keys = list(shape.keys())
@@ -166,7 +156,7 @@ class AbstractScalarArray(
         )
 
     def combine_axes(
-            self: AbstractScalarArrayT,
+            self: Self,
             axes: Sequence[str],
             axis_new: None | str = None,
     ) -> ScalarArray:
@@ -198,7 +188,7 @@ class AbstractScalarArray(
         )
 
     def matrix_multiply(
-            self: AbstractScalarArrayT,
+            self: Self,
             other: AbstractScalar,
             axis_rows: str,
             axis_columns: str,
@@ -218,7 +208,7 @@ class AbstractScalarArray(
         )
 
     def matrix_determinant(
-            self: AbstractScalarArrayT,
+            self: Self,
             axis_rows: str,
             axis_columns: str
     ) -> ScalarArray:
@@ -262,7 +252,7 @@ class AbstractScalarArray(
             )
 
     def matrix_inverse(
-            self: AbstractScalarArrayT,
+            self: Self,
             axis_rows: str,
             axis_columns: str,
     ) -> ScalarArray:
@@ -327,10 +317,10 @@ class AbstractScalarArray(
                 axes=axes_new,
             )
 
-    def __bool__(self: AbstractScalarArrayT) -> bool:
+    def __bool__(self: Self) -> bool:
         return self.ndarray.__bool__()
 
-    def __mul__(self: AbstractScalarArrayT, other: na.ArrayLike | u.Unit) -> ScalarArray:
+    def __mul__(self: Self, other: na.ArrayLike | u.Unit) -> ScalarArray:
         if isinstance(other, u.UnitBase):
             return ScalarArray(
                 ndarray=self.ndarray * other,
@@ -339,7 +329,7 @@ class AbstractScalarArray(
         else:
             return super().__mul__(other)
 
-    def __lshift__(self: AbstractScalarArrayT, other: u.UnitBase) -> ScalarArray:
+    def __lshift__(self: Self, other: u.UnitBase) -> ScalarArray:
         axes = self.axes
         if axes is not None:
             axes = axes.copy()
@@ -384,7 +374,7 @@ class AbstractScalarArray(
         return NotImplemented
 
     def __array_function__(
-            self: AbstractScalarArrayT,
+            self: Self,
             func: Callable,
             types: Collection,
             args: tuple,
@@ -734,7 +724,7 @@ class AbstractScalarArray(
     # def __getitem__(self: AbstractArrayT, item: 'AbstractArray') -> 'Array': ...
 
     def __getitem__(
-            self: AbstractScalarArrayT,
+            self: Self,
             item: dict[str, int | slice | AbstractScalar] | AbstractScalar,
     ) -> ScalarArray:
 
@@ -793,7 +783,7 @@ class AbstractScalarArray(
         #     raise ValueError('Invalid index type')
 
     def filter_median(
-            self: AbstractScalarArrayT,
+            self: Self,
             shape_kernel: dict[str, int],
             mode: str = 'reflect',
     ):
@@ -830,7 +820,7 @@ class ScalarArray(
     ndarray: NDArrayT = 0 * u.dimensionless_unscaled
     axes: None | list[str] = None
 
-    def __post_init__(self: ScalarArrayT):
+    def __post_init__(self: Self):
         if self.axes is None:
             self.axes = []
         if getattr(self.ndarray, 'ndim', 0) != len(self.axes):
@@ -839,32 +829,32 @@ class ScalarArray(
             raise ValueError(f'Each axis name must be unique, got {self.axes}.')
 
     @classmethod
-    def empty(cls: Type[ScalarArrayT], shape: dict[str, int], dtype: npt.DTypeLike = float) -> ScalarArrayT:
+    def empty(cls: Type[Self], shape: dict[str, int], dtype: npt.DTypeLike = float) -> Self:
         return cls(
             ndarray=np.empty(shape=tuple(shape.values()), dtype=dtype),
             axes=list(shape.keys()),
         )
 
     @classmethod
-    def zeros(cls: Type[ScalarArrayT], shape: dict[str, int], dtype: npt.DTypeLike = float) -> ScalarArrayT:
+    def zeros(cls: Type[Self], shape: dict[str, int], dtype: npt.DTypeLike = float) -> Self:
         return cls(
             ndarray=np.zeros(shape=tuple(shape.values()), dtype=dtype),
             axes=list(shape.keys()),
         )
 
     @classmethod
-    def ones(cls: Type[ScalarArrayT], shape: dict[str, int], dtype: npt.DTypeLike = float) -> ScalarArrayT:
+    def ones(cls: Type[Self], shape: dict[str, int], dtype: npt.DTypeLike = float) -> Self:
         return cls(
             ndarray=np.ones(shape=tuple(shape.values()), dtype=dtype),
             axes=list(shape.keys()),
         )
 
     @property
-    def array(self: ScalarArrayT) -> ScalarArrayT:
+    def array(self: Self) -> Self:
         return self
 
     @property
-    def centers(self: ScalarArrayT) -> ScalarArrayT:
+    def centers(self: Self) -> Self:
         return self
 
     # @property
@@ -891,7 +881,7 @@ class ScalarArray(
     #     return shape
 
     def __setitem__(
-            self: ScalarArrayT,
+            self: Self,
             key: dict[str, int | slice | AbstractScalar] | AbstractScalar,
             value: int | float | u.Quantity | AbstractScalar,
     ) -> None:
@@ -961,7 +951,7 @@ class ScalarUniformRandomSample(
     seed: None | int = None
 
     @property
-    def array(self: ScalarUniformRandomSpaceT) -> ScalarArray:
+    def array(self: Self) -> ScalarArray:
         start = self.start
         if not isinstance(start, na.AbstractArray):
             start = ScalarArray(start)
@@ -1005,7 +995,7 @@ class ScalarNormalRandomSample(
 ):
 
     @property
-    def array(self: ScalarUniformRandomSpaceT) -> ScalarArray:
+    def array(self: Self) -> ScalarArray:
         center = self.center
         if not isinstance(center, na.AbstractArray):
             center = ScalarArray(center)
@@ -1053,7 +1043,7 @@ class ScalarArrayRange(
     seed: None | int = None
 
     @property
-    def array(self: ScalarRangeT) -> ScalarArray:
+    def array(self: Self) -> ScalarArray:
         return ScalarArray(
             ndarray=np.arange(
                 start=self.start,
@@ -1064,11 +1054,11 @@ class ScalarArrayRange(
         )
 
     @property
-    def centers(self: ScalarRangeT) -> ScalarRangeT:
+    def centers(self: Self) -> Self:
         return self
 
     @property
-    def num(self: ScalarArrayRangeT):
+    def num(self: Self):
         return
 
 
@@ -1093,7 +1083,7 @@ class ScalarLinearSpace(
     endpoint: bool = False
 
     @property
-    def array(self: ScalarLinearSpaceT) -> ScalarArray:
+    def array(self: Self) -> ScalarArray:
         start = self.start
         if not isinstance(start, AbstractScalar):
             start = ScalarArray(start)
@@ -1113,7 +1103,7 @@ class ScalarLinearSpace(
         )
 
     @property
-    def centers(self: ScalarLinearSpaceT) -> ScalarLinearSpaceT:
+    def centers(self: Self) -> Self:
         return self
 
     # def index(
@@ -1136,8 +1126,8 @@ class ScalarLinearSpace(
     #     return {self.axis: (value - self.start) // self.step}
 
     def interp_linear(
-            self: ScalarLinearSpaceT,
-            item: dict[str, AbstractScalarArrayT],
+            self: Self,
+            item: dict[str, Self],
     ) -> AbstractScalar:
 
         item = item.copy()
@@ -1186,7 +1176,7 @@ class ScalarStratifiedRandomSpace(
     seed: None | int = None
 
     @property
-    def array(self: ScalarStratifiedRandomSpaceT) -> ScalarArray:
+    def array(self: Self) -> ScalarArray:
         result = self.centers
 
         step_size = self.step
@@ -1202,7 +1192,7 @@ class ScalarStratifiedRandomSpace(
         return result + delta
 
     @property
-    def centers(self: ScalarStratifiedRandomSpaceT) -> ScalarLinearSpace:
+    def centers(self: Self) -> ScalarLinearSpace:
         return ScalarLinearSpace(
             start=self.start,
             stop=self.stop,
@@ -1226,7 +1216,7 @@ class ScalarLogarithmicSpace(
     endpoint: bool = False
 
     @property
-    def array(self: ScalarLogarithmicSpaceT) -> ScalarArray:
+    def array(self: Self) -> ScalarArray:
         start_exponent = self.start_exponent
         if not isinstance(start_exponent, AbstractScalar):
             start_exponent = ScalarArray(start_exponent)
@@ -1250,7 +1240,7 @@ class ScalarLogarithmicSpace(
         )
 
     @property
-    def centers(self: ScalarLogarithmicSpaceT) -> ScalarLogarithmicSpaceT:
+    def centers(self: Self) -> Self:
         return self
 
 
@@ -1267,7 +1257,7 @@ class ScalarGeometricSpace(
     endpoint: bool = False
 
     @property
-    def array(self: ScalarGeometricSpaceT) -> ScalarArray:
+    def array(self: Self) -> ScalarArray:
         start = self.start
         if not isinstance(start, AbstractScalar):
             start = ScalarArray(start)
@@ -1287,5 +1277,5 @@ class ScalarGeometricSpace(
         )
 
     @property
-    def centers(self: ScalarGeometricSpaceT) -> ScalarGeometricSpaceT:
+    def centers(self: Self) -> Self:
         return self

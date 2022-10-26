@@ -1,5 +1,5 @@
-from __future__ import annotations
-from typing import TypeVar, Sequence
+from typing import Sequence
+from typing_extensions import Self
 
 import abc
 import dataclasses
@@ -12,23 +12,20 @@ __all__ = [
     'NDArrayMethodsMixin'
 ]
 
-CopyableT = TypeVar('CopyableT', bound='Copyable')
-NDArrayMethodsMixinT = TypeVar('NDArrayMethodsMixinT', bound='NDArrayMethodsMixin')
-
 
 class CopyableMixin(abc.ABC):
 
-    def copy_shallow(self: CopyableT) -> CopyableT:
+    def copy_shallow(self: Self) -> Self:
         return copy.copy(self)
 
-    def copy(self: CopyableT) -> CopyableT:
+    def copy(self: Self) -> Self:
         return copy.deepcopy(self)
 
-    def __copy__(self: CopyableT) -> CopyableT:
+    def __copy__(self: Self) -> Self:
         fields = {field.name: getattr(self, field.name) for field in dataclasses.fields(self)}
         return type(self)(**fields)
 
-    def __deepcopy__(self: CopyableT, memodict={}) -> CopyableT:
+    def __deepcopy__(self: Self, memodict={}) -> Self:
         fields = {field.name: copy.deepcopy(getattr(self, field.name)) for field in dataclasses.fields(self)}
         return type(self)(**fields)
 
@@ -37,77 +34,77 @@ class CopyableMixin(abc.ABC):
 class NDArrayMethodsMixin:
 
     def broadcast_to(
-            self: NDArrayMethodsMixinT,
+            self: Self,
             shape: dict[str, int],
-    ) -> NDArrayMethodsMixinT:
+    ) -> Self:
         return np.broadcast_to(self, shape=shape)
 
     def reshape(
-            self: NDArrayMethodsMixinT,
+            self: Self,
             shape: dict[str, int],
-    ) -> NDArrayMethodsMixinT:
+    ) -> Self:
         return np.reshape(self, newshape=shape)
 
     def min(
-            self: NDArrayMethodsMixinT,
+            self: Self,
             axis: None | str | Sequence[str] = None,
             initial: npt.ArrayLike = None,
-            where: NDArrayMethodsMixinT = np._NoValue,
-    ) -> NDArrayMethodsMixinT:
+            where: Self = np._NoValue,
+    ) -> Self:
         return np.min(self, axis=axis, initial=initial, where=where)
 
     def max(
-            self: NDArrayMethodsMixinT,
+            self: Self,
             axis: None | str | Sequence[str] = None,
             initial: npt.ArrayLike = None,
-            where: NDArrayMethodsMixinT = np._NoValue,
-    ) -> NDArrayMethodsMixinT:
+            where: Self = np._NoValue,
+    ) -> Self:
         return np.max(self, axis=axis, initial=initial, where=where)
 
     def sum(
-            self: NDArrayMethodsMixinT,
+            self: Self,
             axis: None | str | Sequence[str] = None,
-            where: NDArrayMethodsMixinT = np._NoValue,
-    ) -> NDArrayMethodsMixinT:
+            where: Self = np._NoValue,
+    ) -> Self:
         return np.sum(self, axis=axis, where=where)
 
     def ptp(
-            self: NDArrayMethodsMixinT,
+            self: Self,
             axis: None | str | Sequence[str] = None,
-    ) -> NDArrayMethodsMixinT:
+    ) -> Self:
         return np.ptp(self, axis=axis)
 
     def mean(
-            self: NDArrayMethodsMixinT,
+            self: Self,
             axis: None | str | Sequence[str] = None,
-            where: NDArrayMethodsMixinT = np._NoValue,
-    ) -> NDArrayMethodsMixinT:
+            where: Self = np._NoValue,
+    ) -> Self:
         return np.mean(self, axis=axis, where=where)
 
     def std(
-            self: NDArrayMethodsMixinT,
+            self: Self,
             axis: None | str | Sequence[str] = None,
-            where: NDArrayMethodsMixinT = np._NoValue,
-    ) -> NDArrayMethodsMixinT:
+            where: Self = np._NoValue,
+    ) -> Self:
         return np.std(self, axis=axis, where=where)
 
     def all(
-            self: NDArrayMethodsMixinT,
+            self: Self,
             axis: None | str | Sequence[str] = None,
-            where: NDArrayMethodsMixinT = np._NoValue,
-    ) -> NDArrayMethodsMixinT:
+            where: Self = np._NoValue,
+    ) -> Self:
         return np.all(self, axis=axis, where=where)
 
     def any(
-            self: NDArrayMethodsMixinT,
+            self: Self,
             axis: None | str | Sequence[str] = None,
-            where: NDArrayMethodsMixinT = np._NoValue,
-    ) -> NDArrayMethodsMixinT:
+            where: Self = np._NoValue,
+    ) -> Self:
         return np.any(self, axis=axis, where=where)
 
     def rms(
-            self: NDArrayMethodsMixinT,
+            self: Self,
             axis: None | str | Sequence[str] = None,
-            where: NDArrayMethodsMixinT = np._NoValue,
-    ) -> NDArrayMethodsMixinT:
+            where: Self = np._NoValue,
+    ) -> Self:
         return np.sqrt(np.mean(np.square(self), axis=axis, where=where))

@@ -1,5 +1,6 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING, TypeVar, Generic, Sequence, Iterator, Union
+from typing_extensions import Self
 if TYPE_CHECKING:
     import named_arrays.scalars
     import named_arrays.vectors
@@ -38,24 +39,6 @@ __all__ = [
     'AbstractUniformRandomSample',
     'AbstractNormalRandomSample',
 ]
-
-NDArrayMethodsMixinT = TypeVar('NDArrayMethodsMixinT', bound='NDArrayMethodsMixin')
-DType = TypeVar('DType', bound=npt.DTypeLike)
-# NDArrayT = TypeVar('NDArrayT', bound=npt.ArrayLike)
-AbstractArrayT = TypeVar('AbstractArrayT', bound='AbstractArray')
-ArrayBaseT = TypeVar('ArrayBaseT', bound='ArrayBase')
-AbstractParameterizedArrayT = TypeVar('AbstractParameterizedArrayT', bound='AbstractParameterizedArray')
-AbstractRandomMixinT = TypeVar('AbstractRandomMixinT', bound='AbstractRandomMixin')
-RandomMixinT = TypeVar('RandomMixinT', bound='RandomMixin')
-AbstractRangeT = TypeVar('AbstractRangeT', bound='AbstractRange')
-AbstractSymmetricRangeT = TypeVar('AbstractSymmetricRangeT', bound='AbstractSymmetricRange')
-AbstractLinearParameterizedArrayMixinT = TypeVar('AbstractLinearParameterizedArrayMixinT', bound='AbstractLinearParameterizedArrayMixin')
-AbstractArrayRangeT = TypeVar('AbstractArrayRangeT', bound='AbstractArrayRange')
-AbstractSpaceT = TypeVar('AbstractSpaceT', bound='AbstractSpace')
-AbstractLinearSpaceT = TypeVar('AbstractLinearSpaceT', bound='AbstractLinearSpace')
-AbstractLogarithmicSpaceT = TypeVar('AbstractLogarithmicSpaceT', bound='AbstractLogarithmicSpace')
-AbstractGeometricSpaceT = TypeVar('AbstractGeometricSpaceT', bound='AbstractGeometricSpace')
-AbstractWorldCoordinateSpaceT = TypeVar('AbstractWorldCoordinateSpaceT', bound='AbstractWorldCoordinateSpace')
 
 QuantityLike = Union[int, float, complex, np.ndarray, u.Quantity]
 
@@ -121,11 +104,11 @@ class AbstractArray(
 
     @property
     @abc.abstractmethod
-    def ndarray(self: AbstractArrayT) -> npt.ArrayLike:
+    def ndarray(self: Self) -> npt.ArrayLike:
         pass
 
     @property
-    def ndarray_normalized(self: AbstractArrayT) -> np.ndarray:
+    def ndarray_normalized(self: Self) -> np.ndarray:
         ndarray = self.ndarray
         if not isinstance(ndarray, np.ndarray):
             ndarray = np.array(ndarray)
@@ -133,96 +116,96 @@ class AbstractArray(
 
     @property
     @abc.abstractmethod
-    def axes(self: AbstractArrayT):
+    def axes(self: Self):
         pass
 
     @property
     @abc.abstractmethod
-    def shape(self: AbstractArrayT) -> dict[str, int]:
+    def shape(self: Self) -> dict[str, int]:
         pass
 
     @property
     @abc.abstractmethod
-    def ndim(self: AbstractArrayT) -> int:
+    def ndim(self: Self) -> int:
         pass
 
     @property
     @abc.abstractmethod
-    def dtype(self: AbstractArrayT) -> npt.DTypeLike:
+    def dtype(self: Self) -> npt.DTypeLike:
         pass
 
     @property
     @abc.abstractmethod
-    def unit(self) -> float | u.Unit:
+    def unit(self: Self) -> float | u.Unit:
         pass
 
     @property
     @abc.abstractmethod
-    def array(self: AbstractArrayT) -> ArrayBase:
+    def array(self: Self) -> ArrayBase:
         pass
 
     @property
     @abc.abstractmethod
-    def scalar(self: AbstractArrayT) -> named_arrays.scalars.AbstractScalar:
+    def scalar(self: Self) -> named_arrays.scalars.AbstractScalar:
         pass
 
     @property
     @abc.abstractmethod
-    def components(self: AbstractArrayT) -> dict[str, AbstractArray]:
+    def components(self: Self) -> dict[str, AbstractArray]:
         pass
 
     @property
     @abc.abstractmethod
-    def nominal(self: AbstractArrayT) -> AbstractArray:
+    def nominal(self: Self) -> AbstractArray:
         pass
 
     @property
     @abc.abstractmethod
-    def distribution(self: AbstractArrayT) -> None | AbstractArray:
+    def distribution(self: Self) -> None | AbstractArray:
         pass
 
     @property
     @abc.abstractmethod
-    def centers(self: AbstractArrayT) -> AbstractArray:
+    def centers(self: Self) -> AbstractArray:
         pass
 
     @abc.abstractmethod
     def astype(
-            self: AbstractArrayT,
+            self: Self,
             dtype: npt.DTypeLike,
             order: str = 'K',
             casting='unsafe',
             subok: bool = True,
             copy: bool = True,
-    ) -> AbstractArrayT:
+    ) -> Self:
         pass
 
     @abc.abstractmethod
-    def to(self: AbstractArrayT, unit: u.UnitBase) -> AbstractArrayT:
+    def to(self: Self, unit: u.UnitBase) -> Self:
         pass
 
     @property
-    def broadcasted(self: AbstractArrayT) -> AbstractArrayT:
+    def broadcasted(self: Self) -> Self:
         return self.broadcast_to(self.shape)
 
     @property
     @abc.abstractmethod
-    def length(self: AbstractArrayT) -> named_arrays.scalars.AbstractScalar:
+    def length(self: Self) -> named_arrays.scalars.AbstractScalar:
         pass
 
     @abc.abstractmethod
     def __getitem__(
-            self: AbstractArrayT,
-            item: dict[str, int | slice | AbstractArrayT] | AbstractArrayT,
-    ) -> AbstractArray:
+            self: Self,
+            item: dict[str, int | slice | AbstractArray] | AbstractArray,
+    ) -> Self:
         pass
 
     @property
-    def indices(self: AbstractArrayT) -> dict[str, AbstractArrayT]:
+    def indices(self: Self) -> dict[str, named_arrays.scalars.ScalarArrayRange]:
         return indices(self.shape)
 
     def ndindex(
-            self: AbstractArrayT,
+            self: Self,
             axis_ignored: None | str | Sequence[str] = None,
     ) -> Iterator[dict[str, int]]:
         return ndindex(
@@ -231,25 +214,25 @@ class AbstractArray(
         )
 
     @abc.abstractmethod
-    def add_axes(self: AbstractArrayT, axes: str | Sequence[str]) -> AbstractArrayT:
+    def add_axes(self: Self, axes: str | Sequence[str]) -> Self:
         pass
 
     @abc.abstractmethod
     def combine_axes(
-            self: AbstractArrayT,
+            self: Self,
             axes: Sequence[str],
             axis_new: str,
-    ) -> AbstractArrayT:
+    ) -> Self:
         pass
 
     @abc.abstractmethod
-    def ndarray_aligned(self: AbstractArrayT, shape: dict[str, int]) -> QuantityLike:
+    def ndarray_aligned(self: Self, shape: dict[str, int]) -> QuantityLike:
         pass
 
     def _interp_linear_recursive(
-            self: AbstractArrayT,
-            item: dict[str, AbstractArrayT],
-            item_base: dict[str, AbstractArrayT],
+            self: Self,
+            item: dict[str, Self],
+            item_base: dict[str, Self],
     ):
         item = item.copy()
 
@@ -291,22 +274,22 @@ class AbstractArray(
         return result
 
     def interp_linear(
-            self: AbstractArrayT,
-            item: dict[str, AbstractArrayT],
-    ) -> AbstractArrayT:
+            self: Self,
+            item: dict[str, Self],
+    ) -> Self:
         return self._interp_linear_recursive(
             item=item,
             item_base=self[{ax: 0 for ax in item}].indices,
         )
 
-    def __call__(self: AbstractArrayT, item: dict[str, AbstractArrayT]) -> AbstractArrayT:
+    def __call__(self: Self, item: dict[str, Self]) -> Self:
         return self.interp_linear(item=item)
 
     def index_secant(
-            self: AbstractArrayT,
-            value: AbstractArrayT,
+            self: Self,
+            value: Self,
             axis: None | str | Sequence[str] = None,
-    ) -> dict[str, AbstractArrayT]:
+    ) -> dict[str, Self]:
 
         import named_arrays.scalars
         import named_arrays.vectors
@@ -348,10 +331,10 @@ class AbstractArray(
         return indices_factory(result)
 
     def index(
-            self: AbstractArrayT,
-            value: AbstractArrayT,
+            self: Self,
+            value: Self,
             axis: None | str | Sequence[str] = None,
-    ) -> dict[str, AbstractArrayT]:
+    ) -> dict[str, Self]:
         return self.index_secant(value=value, axis=axis)
 
 
@@ -364,20 +347,20 @@ class ArrayBase(
 ):
     @property
     @abc.abstractmethod
-    def ndarray(self: ArrayBaseT) -> npt.ArrayLike:
+    def ndarray(self: Self) -> npt.ArrayLike:
         pass
 
     @property
     @abc.abstractmethod
-    def axes(self: ArrayBaseT) -> list[str]:
+    def axes(self: Self) -> list[str]:
         pass
 
     @property
-    def ndim(self: ArrayBaseT) -> int:
+    def ndim(self: Self) -> int:
         return np.ndim(self.ndarray)
 
     @property
-    def shape(self: ArrayBaseT) -> dict[str, int]:
+    def shape(self: Self) -> dict[str, int]:
         ndarray = self.ndarray
         axes = self.axes
         result = dict()
@@ -386,11 +369,11 @@ class ArrayBase(
         return result
 
     @property
-    def dtype(self: ArrayBaseT) -> npt.DTypeLike:
+    def dtype(self: Self) -> npt.DTypeLike:
         return self.ndarray_normalized.dtype
 
     @property
-    def unit(self: ArrayBaseT) -> float | u.Unit:
+    def unit(self: Self) -> float | u.Unit:
         if isinstance(self.ndarray, (u.Quantity, AbstractArray)):
             return self.ndarray.unit
         else:
@@ -402,37 +385,37 @@ class AbstractParameterizedArray(
     AbstractArray,
 ):
     @property
-    def axes(self: AbstractParameterizedArrayT) -> list[str]:
+    def axes(self: Self) -> list[str]:
         return self.array.axes
 
     @property
-    def dtype(self: AbstractParameterizedArrayT) -> npt.DTypeLike:
+    def dtype(self: Self) -> npt.DTypeLike:
         return self.array.dtype
 
     @property
-    def ndarray(self: AbstractParameterizedArrayT) -> QuantityLike:
+    def ndarray(self: Self) -> QuantityLike:
         return self.array.ndarray
 
     @property
-    def ndim(self: AbstractParameterizedArrayT) -> int:
+    def ndim(self: Self) -> int:
         return self.array.ndim
 
     @property
-    def shape(self: AbstractParameterizedArrayT) -> dict[str, int]:
+    def shape(self: Self) -> dict[str, int]:
         return self.array.shape
 
     @property
-    def unit(self: AbstractParameterizedArrayT) -> float | u.Unit:
+    def unit(self: Self) -> float | u.Unit:
         return self.array.unit
 
     @property
     @abc.abstractmethod
-    def axis(self: AbstractParameterizedArrayT) -> str | AbstractArray:
+    def axis(self: Self) -> str | AbstractArray:
         pass
 
     @property
     @abc.abstractmethod
-    def num(self: AbstractParameterizedArrayT) -> int | AbstractArray:
+    def num(self: Self) -> int | AbstractArray:
         pass
 
 
@@ -443,7 +426,7 @@ class AbstractRandomMixin(
 
     @property
     @abc.abstractmethod
-    def seed(self: AbstractRandomMixinT) -> int:
+    def seed(self: Self) -> int:
         pass
 
     @property
@@ -451,7 +434,7 @@ class AbstractRandomMixin(
         return
 
     @property
-    def _rng(self: AbstractRandomMixinT) -> np.random.Generator:
+    def _rng(self: Self) -> np.random.Generator:
         return np.random.default_rng(seed=self.seed)
 
 
@@ -472,16 +455,16 @@ class AbstractRange(
 
     @property
     @abc.abstractmethod
-    def start(self: AbstractRangeT) -> int | AbstractArray:
+    def start(self: Self) -> int | AbstractArray:
         pass
 
     @property
     @abc.abstractmethod
-    def stop(self: AbstractRangeT) -> int | AbstractArray:
+    def stop(self: Self) -> int | AbstractArray:
         pass
 
     @property
-    def range(self: AbstractRangeT) -> AbstractArray:
+    def range(self: Self) -> AbstractArray:
         return self.stop - self.start
 
 
@@ -491,20 +474,20 @@ class AbstractSymmetricRange(
 ):
     @property
     @abc.abstractmethod
-    def center(self: AbstractSymmetricRangeT) -> ArrayLike:
+    def center(self: Self) -> ArrayLike:
         pass
 
     @property
     @abc.abstractmethod
-    def width(self: AbstractSymmetricRangeT) -> ArrayLike:
+    def width(self: Self) -> ArrayLike:
         pass
 
     @property
-    def start(self: AbstractSymmetricRangeT) -> ArrayLike:
+    def start(self: Self) -> ArrayLike:
         return self.center - self.width
 
     @property
-    def stop(self: AbstractSymmetricRangeT) -> ArrayLike:
+    def stop(self: Self) -> ArrayLike:
         return self.center + self.width
 
 
@@ -530,7 +513,7 @@ class AbstractLinearParameterizedArrayMixin(
 ):
     @property
     @abc.abstractmethod
-    def step(self: AbstractLinearParameterizedArrayMixinT) -> int | AbstractArray:
+    def step(self: Self) -> int | AbstractArray:
         pass
 
 
@@ -548,7 +531,7 @@ class AbstractSpace(
 ):
     @property
     @abc.abstractmethod
-    def endpoint(self: AbstractSpaceT) -> bool:
+    def endpoint(self: Self) -> bool:
         pass
 
 
@@ -559,7 +542,7 @@ class AbstractLinearSpace(
 ):
 
     @property
-    def step(self: AbstractLinearSpaceT) -> AbstractArray:
+    def step(self: Self) -> AbstractArray:
         if self.endpoint:
             return self.range / (self.num - 1)
         else:
@@ -581,25 +564,25 @@ class AbstractLogarithmicSpace(
 
     @property
     @abc.abstractmethod
-    def start_exponent(self: AbstractLogarithmicSpaceT) -> ArrayLike:
+    def start_exponent(self: Self) -> ArrayLike:
         pass
 
     @property
     @abc.abstractmethod
-    def stop_exponent(self: AbstractLogarithmicSpaceT) -> ArrayLike:
+    def stop_exponent(self: Self) -> ArrayLike:
         pass
 
     @property
     @abc.abstractmethod
-    def base(self: AbstractLogarithmicSpaceT) -> ArrayLike:
+    def base(self: Self) -> ArrayLike:
         pass
 
     @property
-    def start(self: AbstractLogarithmicSpaceT) -> ArrayLike:
+    def start(self: Self) -> ArrayLike:
         return self.base ** self.start_exponent
 
     @property
-    def stop(self: AbstractLogarithmicSpaceT) -> ArrayLike:
+    def stop(self: Self) -> ArrayLike:
         return self.base ** self.stop_exponent
 
 
