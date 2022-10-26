@@ -430,10 +430,6 @@ class AbstractRandomMixin(
         pass
 
     @property
-    def _seed_normalized(self):
-        return
-
-    @property
     def _rng(self: Self) -> np.random.Generator:
         return np.random.default_rng(seed=self.seed)
 
