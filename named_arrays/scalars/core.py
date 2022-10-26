@@ -811,13 +811,13 @@ class AbstractScalarArray(
 ScalarLike = Union[na.QuantityLike, AbstractScalar]
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, slots=True)
 class ScalarArray(
     AbstractScalarArray,
     na.ArrayBase,
     Generic[NDArrayT],
 ):
-    ndarray: NDArrayT = 0 * u.dimensionless_unscaled
+    ndarray: NDArrayT
     axes: None | list[str] = None
 
     def __post_init__(self: Self):
@@ -937,7 +937,7 @@ class AbstractScalarSymmetricRange(
     pass
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, slots=True)
 class ScalarUniformRandomSample(
     AbstractScalarRange,
     na.AbstractUniformRandomSample,
@@ -989,7 +989,7 @@ class ScalarUniformRandomSample(
         return self
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, slots=True)
 class ScalarNormalRandomSample(
     AbstractScalarSymmetricRange,
     na.AbstractNormalRandomSample,
@@ -1037,15 +1037,15 @@ class ScalarNormalRandomSample(
         )
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, slots=True)
 class ScalarArrayRange(
     AbstractScalarRange,
     na.AbstractArrayRange,
     Generic[StartT, StopT],
 ):
-    start: StartT = None
-    stop: StopT = None
-    axis: str = None
+    start: StartT
+    stop: StopT
+    axis: str
     step: int = 1
     seed: None | int = None
 
@@ -1077,7 +1077,7 @@ class AbstractScalarSpace(
     pass
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, slots=True)
 class ScalarLinearSpace(
     AbstractScalarSpace,
     na.AbstractLinearSpace,
@@ -1174,7 +1174,7 @@ class ScalarLinearSpace(
 #         return np.random.default_rng(seed=self.seed)
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, slots=True)
 class ScalarStratifiedRandomSpace(
     ScalarLinearSpace[StartT, StopT],
     na.AbstractStratifiedRandomSpace,
@@ -1208,7 +1208,7 @@ class ScalarStratifiedRandomSpace(
         )
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, slots=True)
 class ScalarLogarithmicSpace(
     AbstractScalarSpace,
     na.AbstractLogarithmicSpace,
@@ -1217,7 +1217,7 @@ class ScalarLogarithmicSpace(
     start_exponent: StartExponentT
     stop_exponent: StopExponentT
     base: BaseT
-    axis: None | str
+    axis: str
     num: int = 11
     endpoint: bool = False
 
@@ -1250,7 +1250,7 @@ class ScalarLogarithmicSpace(
         return self
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, slots=True)
 class ScalarGeometricSpace(
     AbstractScalarSpace,
     na.AbstractGeometricSpace,
@@ -1258,7 +1258,7 @@ class ScalarGeometricSpace(
 ):
     start: StartT
     stop: StopT
-    axis: None | str
+    axis: str
     num: int = 11
     endpoint: bool = False
 
