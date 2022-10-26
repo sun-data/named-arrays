@@ -984,6 +984,10 @@ class ScalarUniformRandomSample(
             axes=list(shape.keys())
         )
 
+    @property
+    def centers(self: Self) -> Self:
+        return self
+
 
 @dataclasses.dataclass(eq=False)
 class ScalarNormalRandomSample(
