@@ -53,7 +53,10 @@ class AbstractScalar(
 
     @property
     def length(self) -> AbstractScalar:
-        return np.abs(self)
+        if np.issubdtype(self.dtype, np.number):
+            return np.abs(self)
+        else:
+            raise ValueError('Can only compute length of numeric arrays')
 
 
 @dataclasses.dataclass(eq=False)
