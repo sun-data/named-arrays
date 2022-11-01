@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, TypeVar, Generic, Sequence, Iterator, Union
+from typing import TYPE_CHECKING, TypeVar, Generic, Sequence, Iterator, Union, Type
 from typing_extensions import Self
 if TYPE_CHECKING:
     import named_arrays.scalars
@@ -18,6 +18,8 @@ import named_arrays.mixins
 
 __all__ = [
     'QuantityLike',
+    'get_dtype',
+    'get_unit',
     'broadcast_shapes',
     'shape_broadcasted',
     'ndindex',
@@ -40,6 +42,24 @@ __all__ = [
 ]
 
 QuantityLike = Union[int, float, complex, np.ndarray, u.Quantity]
+
+
+def get_dtype(
+        value: bool | int | float | complex | str | np.ndarray | AbstractArray,
+) -> Type:
+    if isinstance(value, (np.ndarray, AbstractArray)):
+        return value.dtype
+    else:
+        return type(value)
+
+
+def get_unit(
+        value: bool | int | float | complex | str | np.ndarray | u.Quantity | AbstractArray
+) -> None | u.UnitBase:
+    if isinstance(value, (u.Quantity, AbstractArray)):
+        return value.unit
+    else:
+        return None
 
 
 def broadcast_shapes(*shapes: dict[str, int]) -> dict[str, int]:
