@@ -186,7 +186,9 @@ class AbstractTestAbstractArray(
 
     @abc.abstractmethod
     def test_unit(self, array: na.AbstractArray):
-        assert isinstance(array.unit, (int, u.UnitBase))
+        unit = array.unit
+        if unit is not None:
+            assert isinstance(array.unit, u.UnitBase)
 
     @abc.abstractmethod
     def test_array(self, array: na.AbstractArray):

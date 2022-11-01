@@ -372,11 +372,11 @@ class ArrayBase(
         return self.ndarray_normalized.dtype
 
     @property
-    def unit(self: Self) -> float | u.Unit:
+    def unit(self: Self) -> None | u.Unit:
         if isinstance(self.ndarray, (u.Quantity, AbstractArray)):
             return self.ndarray.unit
         else:
-            return 1
+            return None
 
 
 @dataclasses.dataclass
