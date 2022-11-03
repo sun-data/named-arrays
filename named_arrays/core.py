@@ -369,10 +369,6 @@ ArrayLike = Union[QuantityLike, AbstractArray]
 class ArrayBase(
     AbstractArray,
 ):
-    @property
-    @abc.abstractmethod
-    def ndarray(self: Self) -> npt.ArrayLike:
-        pass
 
     @property
     @abc.abstractmethod
