@@ -194,7 +194,9 @@ class AbstractTestAbstractArray(
     def test_array(self, array: na.AbstractArray):
         assert isinstance(array.array, na.ArrayBase)
 
-    @abc.abstractmethod
+    def test_type_array(self, array: na.AbstractArray):
+        assert issubclass(array.type_array, na.ArrayBase)
+
     def test_scalar(self, array: na.AbstractArray):
         assert isinstance(array.scalar, na.AbstractScalar)
 

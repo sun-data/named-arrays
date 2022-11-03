@@ -165,6 +165,11 @@ class AbstractArray(
 
     @property
     @abc.abstractmethod
+    def type_array(self: Self) -> Type[ArrayBase]:
+        pass
+
+    @property
+    @abc.abstractmethod
     def scalar(self: Self) -> named_arrays.scalars.AbstractScalar:
         pass
 
