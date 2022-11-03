@@ -65,9 +65,9 @@ class AbstractScalarArray(
     Generic[NDArrayT],
 ):
 
-    type_array_primary: ClassVar[Type] = np.ndarray
-    type_array_auxiliary: ClassVar[tuple[Type, ...]] = (str, bool, int, float, complex, np.generic)
-    type_array: ClassVar[tuple[Type, ...]] = type_array_auxiliary + (type_array_primary, )
+    type_ndarray_primary: ClassVar[Type] = np.ndarray
+    type_ndarray_auxiliary: ClassVar[tuple[Type, ...]] = (str, bool, int, float, complex, np.generic)
+    type_ndarray: ClassVar[tuple[Type, ...]] = type_ndarray_auxiliary + (type_ndarray_primary, )
 
     @property
     def nominal(self: Self) -> Self:
@@ -352,7 +352,7 @@ class AbstractScalarArray(
         inputs_normalized = []
 
         for inp in inputs:
-            if isinstance(inp, self.type_array):
+            if isinstance(inp, self.type_ndarray):
                 inp = ScalarArray(inp)
             elif isinstance(inp, AbstractScalar):
                 pass
