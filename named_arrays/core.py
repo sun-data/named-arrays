@@ -371,11 +371,6 @@ class ArrayBase(
 ):
 
     @property
-    @abc.abstractmethod
-    def axes(self: Self) -> list[str]:
-        pass
-
-    @property
     def ndim(self: Self) -> int:
         return np.ndim(self.ndarray)
 
