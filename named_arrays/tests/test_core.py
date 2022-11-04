@@ -382,6 +382,12 @@ class AbstractTestArrayBaseCreation(abc.ABC):
         assert result.shape == shape
         assert result.dtype == dtype
 
+    def test_zeros(self, shape: dict[str, int], dtype: Type):
+        result = self.type_array.zeros(shape, dtype=dtype)
+        assert result.shape == shape
+        assert result.dtype == dtype
+        assert np.all(result == 0)
+
 
 class AbstractTestAbstractParameterizedArray(
     AbstractTestAbstractArray,
