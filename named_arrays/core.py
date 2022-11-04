@@ -371,17 +371,17 @@ class ArrayBase(
 ):
     @classmethod
     @abc.abstractmethod
-    def empty(cls: Type[Self], shape: dict[str, int], dtype: Type) -> Self:
+    def empty(cls: Type[Self], shape: dict[str, int], dtype: Type = float) -> Self:
         pass
 
     @classmethod
     @abc.abstractmethod
-    def zeros(cls: Type[Self], shape: dict[str, int], dtype: Type) -> Self:
+    def zeros(cls: Type[Self], shape: dict[str, int], dtype: Type = float) -> Self:
         pass
 
     @classmethod
     @abc.abstractmethod
-    def ones(cls: Type[Self], shape: dict[str, int], dtype: Type) -> Self:
+    def ones(cls: Type[Self], shape: dict[str, int], dtype: Type = float) -> Self:
         pass
 
     @property
