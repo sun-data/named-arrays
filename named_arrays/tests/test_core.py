@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Sequence
+from typing import Sequence, Type
 import pytest
 import abc
 import numpy as np
@@ -10,6 +10,7 @@ from . import test_mixins
 num_x = 1
 num_y = 2
 num_z = 3
+
 
 def _normalize_shape(shape: dict[str, None | int]) -> dict[str, int]:
     return {axis: shape[axis] for axis in shape if shape[axis] is not None}
@@ -54,6 +55,25 @@ class TestBroadcastingFunctions:
         shape_broadcasted = na.shape_broadcasted(array_1, array_2)
 
         assert shape_broadcasted == self._shape_expected(shape_1_x, shape_1_y, shape_2_x, shape_2_y)
+
+
+def are_units_equivalent(
+        array_1: bool | int | float | complex | str | np.ndarray | na.AbstractArray,
+        array_2: bool | int | float | complex | str | np.ndarray | na.AbstractArray,
+):
+    unit_1 = na.get_unit(array_1)
+    unit_2 = na.get_unit(array_2)
+
+    if unit_1 is None:
+        if unit_2 is None:
+            return True
+        else:
+            return False
+    else:
+        if unit_2 is None:
+            return False
+        else:
+            return unit_1.is_equivalent(unit_2)
 
 
 @pytest.mark.parametrize('shape_x', [None, num_x])
@@ -124,7 +144,6 @@ class TestIndexingFunctions:
 class AbstractTestAbstractArray(
     test_mixins.AbstractTestCopyable,
 ):
-    @abc.abstractmethod
     def test__neg__(self, array: na.AbstractArray):
         if np.issubdtype(array.dtype, np.number):
             assert np.all((-array).ndarray == -(array.ndarray))
@@ -132,7 +151,6 @@ class AbstractTestAbstractArray(
             with pytest.raises(TypeError):
                 -array
 
-    @abc.abstractmethod
     def test__pos__(self, array: na.AbstractArray):
         if np.issubdtype(array.dtype, np.number):
             assert np.all((+array).ndarray == +(array.ndarray))
@@ -140,15 +158,13 @@ class AbstractTestAbstractArray(
             with pytest.raises(TypeError):
                 +array
 
-    @abc.abstractmethod
     def test__abs__(self, array: na.AbstractArray):
-        if np.issubdtype(array.dtype, np.number):
+        if np.issubdtype(array.dtype, np.number) or np.issubdtype(array.dtype, bool):
             assert np.all(abs(array).ndarray == abs(array.ndarray))
         else:
             with pytest.raises(TypeError):
                 abs(array)
 
-    @abc.abstractmethod
     def test__invert__(self, array: na.AbstractArray):
         if np.issubdtype(array.dtype, bool) or np.issubdtype(array.dtype, np.int):
             assert np.all((~array).ndarray == ~(array.ndarray))
@@ -156,11 +172,9 @@ class AbstractTestAbstractArray(
             with pytest.raises(TypeError):
                 ~array
 
-    @abc.abstractmethod
     def test_ndarray(self, array: na.AbstractArray):
         assert isinstance(array.ndarray, (int, float, complex, str, np.ndarray))
 
-    @abc.abstractmethod
     def test_axes(self, array: na.AbstractArray):
         axes = array.axes
         assert isinstance(axes, list)
@@ -168,7 +182,6 @@ class AbstractTestAbstractArray(
         for axis in axes:
             assert isinstance(axis, str)
 
-    @abc.abstractmethod
     def test_shape(self, array: na.AbstractArray):
         shape = array.shape
         assert isinstance(shape, dict)
@@ -176,21 +189,17 @@ class AbstractTestAbstractArray(
             assert isinstance(axis, str)
             assert isinstance(shape[axis], int)
 
-    @abc.abstractmethod
     def test_ndim(self, array: na.AbstractArray):
         assert isinstance(array.ndim, int)
 
-    @abc.abstractmethod
     def test_dtype(self, array: na.AbstractArray):
         assert array.dtype is not None
 
-    @abc.abstractmethod
     def test_unit(self, array: na.AbstractArray):
         unit = array.unit
         if unit is not None:
             assert isinstance(array.unit, u.UnitBase)
 
-    @abc.abstractmethod
     def test_array(self, array: na.AbstractArray):
         assert isinstance(array.array, na.ArrayBase)
 
@@ -200,7 +209,6 @@ class AbstractTestAbstractArray(
     def test_scalar(self, array: na.AbstractArray):
         assert isinstance(array.scalar, na.AbstractScalar)
 
-    @abc.abstractmethod
     def test_components(self, array: na.AbstractArray):
         components = array.components
         assert isinstance(components, dict)
@@ -208,33 +216,36 @@ class AbstractTestAbstractArray(
             assert isinstance(component, str)
             assert isinstance(components[component], (int, float, complex, np.ndarray, na.AbstractArray))
 
-    @abc.abstractmethod
     def test_nominal(self, array: na.AbstractArray):
         assert isinstance(array.nominal, na.AbstractArray)
 
-    @abc.abstractmethod
     def test_distribution(self, array: na.AbstractArray):
         assert isinstance(array.distribution, na.AbstractArray) or array.distribution is None
 
-    @abc.abstractmethod
     def test_centers(self, array: na.AbstractArray):
         assert isinstance(array.centers, na.AbstractArray)
 
-    @abc.abstractmethod
+    @pytest.mark.parametrize('dtype', [int, float])
     def test_astype(self, array: na.AbstractArray, dtype: type):
-        array_new = array.astype(dtype)
-        assert array_new.dtype == dtype
+        if np.issubdtype(array.dtype, np.number) or np.issubdtype(array.dtype, bool):
+            array_new = array.astype(dtype)
+            assert array_new.dtype == dtype
+        else:
+            with pytest.raises(ValueError):
+                array.astype(dtype)
 
-    @abc.abstractmethod
+    @pytest.mark.parametrize('unit', [u.m, u.s])
     def test_to(self, array: na.AbstractArray, unit: None | u.UnitBase):
         if isinstance(array.unit, u.UnitBase) and array.unit.is_equivalent(unit):
             array_new = array.to(unit)
             assert array_new.unit == unit
+        elif np.issubdtype(array.dtype, str):
+            with pytest.raises(TypeError):
+                array.to(unit)
         else:
             with pytest.raises(u.UnitConversionError):
                 array.to(unit)
 
-    @abc.abstractmethod
     def test_broadcasted(self, array: na.AbstractArray):
         array_broadcasted = array.broadcasted
         shape = array.shape
@@ -242,21 +253,28 @@ class AbstractTestAbstractArray(
         for component in components:
             assert components[component].shape == shape
 
-    @abc.abstractmethod
     def test_length(self, array: na.AbstractArray):
-        assert isinstance(array.length, na.AbstractScalar)
-        assert np.all(array.length >= 0)
+        if np.issubdtype(array.dtype, np.number):
+            assert isinstance(array.length, na.AbstractScalar)
+            assert np.all(array.length >= 0)
+        else:
+            with pytest.raises(ValueError):
+                array.length
 
-    @abc.abstractmethod
-    def test__getitem__(self, array: na.AbstractArray, item: dict[str, int | slice | na.AbstractArray] | na.AbstractArray):
+    def test__getitem__(
+            self,
+            array: na.AbstractArray,
+            item: dict[str, int | slice | na.AbstractArray] | na.AbstractArray
+    ):
         if array.shape:
             array_item = array[item]
             assert isinstance(array_item, na.AbstractArray)
+            if np.issubdtype(array.dtype, np.number):
+                assert np.all(array_item > 0)
         else:
             with pytest.raises(ValueError):
                 array[item]
 
-    @abc.abstractmethod
     def test_indices(self, array: na.AbstractArray):
 
         indices = array.indices
@@ -265,11 +283,10 @@ class AbstractTestAbstractArray(
         for axis in indices_expected:
             assert np.all(indices[axis] == indices_expected[axis])
 
-    @abc.abstractmethod
     def test_ndindex(self, array: na.AbstractArray):
         assert list(array.ndindex()) == list(na.ndindex(array.shape))
 
-    @abc.abstractmethod
+    @pytest.mark.parametrize('axes', ['x0', ('x0', 'y0')])
     def test_add_axes(self, array: na.AbstractArray, axes: str | Sequence[str]):
         array_new = array.add_axes(axes)
 
@@ -280,10 +297,10 @@ class AbstractTestAbstractArray(
             assert axis in array_new.axes
             assert array_new.shape[axis] == 1
 
-    @abc.abstractmethod
+    @pytest.mark.parametrize('axes', [('x', 'y'), ('x', 'y', 'z')])
     def test_combine_axes(self, array: na.AbstractArray, axes: Sequence[str]):
         axis_new = 'new_test_axis'
-        if array.ndim >= len(axes):
+        if set(axes).issubset(array.axes):
             array_new = array.combine_axes(axes=axes, axis_new=axis_new)
             assert axis_new in array_new.axes
             assert array_new.shape[axis_new] == np.array([array.shape[axis] for axis in axes]).prod()
@@ -292,6 +309,57 @@ class AbstractTestAbstractArray(
         else:
             with pytest.raises(ValueError):
                 array.combine_axes(axes=axes, axis_new=axis_new)
+
+    class TestBinaryOperators(
+        abc.ABC,
+    ):
+
+        @classmethod
+        def _to_ndarray(
+                cls,
+                array,
+                shape,
+        ):
+            if isinstance(array, na.AbstractArray):
+                result = array.broadcast_to(shape).ndarray
+            else:
+                result = array
+            return result
+
+        def test__lt__(
+                self,
+                array: bool | int | float | complex | u.Quantity | na.AbstractArray,
+                array_2: bool | int | float | complex | u.Quantity | na.AbstractArray,
+        ):
+            array_dtype = na.get_dtype(array)
+            array_2_dtype = na.get_dtype(array_2)
+
+            is_array_numeric_or_bool = np.issubdtype(array_dtype, np.number) or np.issubdtype(array_dtype, bool)
+            is_array_2_numeric_or_bool = np.issubdtype(array_2_dtype, np.number) or np.issubdtype(array_2_dtype, bool)
+            units_are_equivalent = are_units_equivalent(array, array_2)
+
+            if is_array_numeric_or_bool and is_array_2_numeric_or_bool and units_are_equivalent:
+                shape = na.shape_broadcasted(array, array_2)
+
+                ndarray_1 = self._to_ndarray(array, shape)
+                ndarray_2 = self._to_ndarray(array_2, shape)
+
+                result = array < array_2
+                ndarray_expected = ndarray_1 < ndarray_2
+
+                assert np.all(result.ndarray == ndarray_expected)
+                assert result.shape == shape
+
+            else:
+                with pytest.raises((TypeError, u.UnitConversionError)):
+                    array < array_2
+
+        def test__lt__reversed(
+                self,
+                array: bool | int | float | complex | u.Quantity | na.AbstractArray,
+                array_2: bool | int | float | complex | u.Quantity | na.AbstractArray,
+        ):
+            self.test__lt__(array_2, array)
 
 
 class AbstractTestArrayBase(
@@ -303,11 +371,10 @@ class AbstractTestArrayBase(
 class AbstractTestAbstractParameterizedArray(
     AbstractTestAbstractArray,
 ):
-    @abc.abstractmethod
+
     def test_axis(self, array: na.AbstractParameterizedArray):
         assert isinstance(array.axis, (str, na.AbstractArray))
 
-    @abc.abstractmethod
     def test_num(self, array: na.AbstractParameterizedArray):
         assert isinstance(array.num, (int, na.AbstractArray))
 
@@ -316,7 +383,6 @@ class AbstractTestAbstractRandomMixin(
     abc.ABC,
 ):
 
-    @abc.abstractmethod
     def test_seed(self, array: na.AbstractRandomMixin):
         assert isinstance(array.seed, int)
 
@@ -331,15 +397,12 @@ class AbstractTestAbstractRange(
     AbstractTestAbstractParameterizedArray,
 ):
 
-    @abc.abstractmethod
     def test_start(self, array: na.AbstractRange):
         assert isinstance(array.start, (int, float, complex, u.Quantity, na.AbstractArray))
 
-    @abc.abstractmethod
     def test_stop(self, array: na.AbstractRange):
         assert isinstance(array.stop, (int, float, complex, u.Quantity, na.AbstractArray))
 
-    @abc.abstractmethod
     def test_range(self, array: na.AbstractRange):
         assert np.abs(array.range) > 0
 
@@ -347,11 +410,9 @@ class AbstractTestAbstractRange(
 class AbstractTestAbstractSymmetricRange(
     AbstractTestAbstractRange,
 ):
-    @abc.abstractmethod
     def test_center(self, array: na.AbstractSymmetricRange):
         assert isinstance(array.center, (int, float, complex, u.Quantity, na.AbstractArray))
 
-    @abc.abstractmethod
     def test_width(self, array: na.AbstractSymmetricRange):
         assert isinstance(array.width, (int, float, complex, u.Quantity, na.AbstractArray))
         assert np.all(array.width > 0)
@@ -359,7 +420,6 @@ class AbstractTestAbstractSymmetricRange(
 
 class AbstractTestAbstractLinearParametrizedArrayMixin:
 
-    @abc.abstractmethod
     def test_step(self, array: na.AbstractLinearParameterizedArrayMixin):
         assert isinstance(array.step, (int, float, complex, u.Quantity, na.AbstractArray))
         assert np.all(np.abs(array.step) > 0)
@@ -376,7 +436,6 @@ class AbstractTestAbstractSpace(
     AbstractTestAbstractRange,
 ):
 
-    @abc.abstractmethod
     def test_endpoint(self, array: na.AbstractSpace):
         assert isinstance(array.endpoint, bool)
 
@@ -399,15 +458,12 @@ class AbstractTestAbstractLogarithmicSpace(
     AbstractTestAbstractSpace,
 ):
 
-    @abc.abstractmethod
     def test_start_exponent(self, array: na.AbstractLogarithmicSpace):
         assert isinstance(array.start_exponent, (int, float, complex, u.Quantity, na.AbstractArray))
 
-    @abc.abstractmethod
     def test_stop_exponent(self, array: na.AbstractLogarithmicSpace):
         assert isinstance(array.stop_exponent, (int, float, complex, u.Quantity, na.AbstractArray))
 
-    @abc.abstractmethod
     def test_base(self, array: na.AbstractLogarithmicSpace):
         assert isinstance(array.base, (int, float, complex, u.Quantity, na.AbstractArray))
 

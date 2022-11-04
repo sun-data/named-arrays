@@ -9,9 +9,48 @@ from ... import tests
 __all__ = [
     'AbstractTestAbstractScalar',
     'AbstractTestAbstractScalarArray',
-    'AbstractTestScalarArray',
-    'TestNumericScalarArray',
+    'TestScalarArray',
 ]
+
+_num_x = 11
+_num_y = 13
+
+
+def _scalar_arrays():
+    arrays_numeric = [
+        na.ScalarArray(4),
+        na.ScalarArray(5.),
+        na.ScalarArray(np.linspace(1, 2, num=_num_y), axes=['y']),
+        na.ScalarArray(np.random.random((_num_x, _num_y)), axes=['x', 'y']),
+    ]
+    units = [1, u.mm]
+    arrays_numeric = [na.ScalarArray(array.ndarray * unit, array.axes) for array in arrays_numeric for unit in units]
+    arrays_bool = [
+        na.ScalarArray(np.random.choice([True, False], size=_num_y), axes=['y']),
+        na.ScalarArray(np.random.choice([True, False], size=(_num_x, _num_y)), axes=['x', 'y'])
+    ]
+    arrays_str = [
+        na.ScalarArray('foo'),
+        na.ScalarArray(np.random.choice(['foo', 'bar', 'baz'], size=_num_y), axes=['y']),
+    ]
+    return arrays_bool + arrays_numeric + arrays_str
+
+
+def _scalar_arrays_2():
+    arrays_numeric = [
+        6,
+        na.ScalarArray(8),
+        na.ScalarArray(np.random.random(_num_y), axes=['y']),
+        na.ScalarArray(np.random.random((_num_x, _num_y)), axes=['x', 'y']),
+    ]
+    units = [1, u.mm, u.m]
+    arrays_numeric = [array * unit for array in arrays_numeric for unit in units]
+    arrays_bool = [
+        na.ScalarArray(np.random.choice([True, False], size=_num_y), axes=['y']),
+        na.ScalarArray(np.random.choice([True, False], size=(_num_x, _num_y)), axes=['x', 'y'])
+    ]
+    return arrays_bool + arrays_numeric
+
 
 
 class AbstractTestAbstractScalar(
@@ -23,171 +62,35 @@ class AbstractTestAbstractScalar(
 class AbstractTestAbstractScalarArray(
     AbstractTestAbstractScalar,
 ):
-    pass
-
-
-class AbstractTestScalarArray(
-    AbstractTestAbstractScalarArray,
-):
-
-    def _array(self, ndarray: int | float | complex | np.ndarray, axes: list[str], unit: None | u.UnitBase):
-        if unit is not None:
-            ndarray = ndarray << unit
-        return na.ScalarArray(ndarray=ndarray, axes=axes)
-
-    def test_copy(self, ndarray: int | float | complex | np.ndarray, axes: list[str], unit: None | u.UnitBase):
-        super().test_copy(self._array(ndarray, axes, unit))
-
-    def test_copy_shallow(self, ndarray: int | float | complex | np.ndarray, axes: list[str], unit: None | u.UnitBase):
-        super().test_copy_shallow(self._array(ndarray, axes, unit))
-
-    def test__neg__(self, ndarray: int | float | complex | np.ndarray, axes: list[str], unit: None | u.UnitBase):
-        array = self._array(ndarray, axes, unit)
-        super().test__neg__(array)
-
-    def test__pos__(self, ndarray: int | float | complex | np.ndarray, axes: list[str], unit: None | u.UnitBase):
-        array = self._array(ndarray, axes, unit)
-        super().test__pos__(array)
-
-    def test__abs__(self, ndarray: int | float | complex | np.ndarray, axes: list[str], unit: None | u.UnitBase):
-        array = self._array(ndarray, axes, unit)
-        super().test__abs__(array)
-
-    def test__invert__(self, ndarray: int | float | complex | np.ndarray, axes: list[str], unit: None | u.UnitBase):
-        array = self._array(ndarray, axes, unit)
-        super().test__invert__(array)
-
-    def test_ndarray(self, ndarray: int | float | complex | np.ndarray, axes: list[str], unit: None | u.UnitBase):
-        array = self._array(ndarray, axes, unit)
-        super().test_ndarray(array)
-        if unit is not None:
-            ndarray = ndarray << unit
-        assert np.all(array.ndarray == ndarray)
-
-    def test_axes(self, ndarray: int | float | complex | np.ndarray, axes: list[str], unit: None | u.UnitBase):
-        array = self._array(ndarray, axes, unit)
-        super().test_axes(array)
-        assert array.axes == axes
-
-    def test_shape(self, ndarray: int | float | complex | np.ndarray, axes: list[str], unit: None | u.UnitBase):
-        array = self._array(ndarray, axes, unit)
-        super().test_shape(array)
-        assert array.shape == {axis: shape_axis for axis, shape_axis in zip(axes, np.shape(ndarray))}
-
-    def test_ndim(self, ndarray: int | float | complex | np.ndarray, axes: list[str], unit: None | u.UnitBase):
-        array = self._array(ndarray, axes, unit)
-        super().test_ndim(array)
-        assert array.ndim == np.ndim(ndarray)
-
-    def test_dtype(self, ndarray: int | float | complex | np.ndarray, axes: list[str], unit: None | u.UnitBase):
-        super().test_dtype(self._array(ndarray, axes, unit))
-
-    def test_unit(self, ndarray: int | float | complex | np.ndarray, axes: list[str], unit: None | u.UnitBase):
-        array = self._array(ndarray, axes, unit)
-        super().test_unit(array)
-        if unit is None:
-            unit = 1
-        assert array.unit == unit
-
-    def test_array(self, ndarray: int | float | complex | np.ndarray, axes: list[str], unit: None | u.UnitBase):
-        array = self._array(ndarray, axes, unit)
-        super().test_array(array)
-        assert np.all(array.array == array)
-
-    def test_scalar(self, ndarray: int | float | complex | np.ndarray, axes: list[str], unit: None | u.UnitBase):
-        array = self._array(ndarray, axes, unit)
-        super().test_scalar(array)
-
-    def test_components(self, ndarray: int | float | complex | np.ndarray, axes: list[str], unit: None | u.UnitBase):
-        super().test_components(self._array(ndarray, axes, unit))
-
-    def test_nominal(self, ndarray: int | float | complex | np.ndarray, axes: list[str], unit: None | u.UnitBase):
-        super().test_nominal(self._array(ndarray, axes, unit))
-
-    def test_distribution(self, ndarray: int | float | complex | np.ndarray, axes: list[str], unit: None | u.UnitBase):
-        super().test_distribution(self._array(ndarray, axes, unit))
-
-    def test_centers(self, ndarray: int | float | complex | np.ndarray, axes: list[str], unit: None | u.UnitBase):
-        super().test_centers(self._array(ndarray, axes, unit))
-
-    @pytest.mark.parametrize('dtype', [int, float])
-    def test_astype(
-            self,
-            ndarray: int | float | complex | np.ndarray,
-            axes: list[str],
-            unit: None | u.UnitBase,
-            dtype: Type,
-    ):
-        super().test_astype(self._array(ndarray, axes, unit), dtype)
-
-    def test_to(self, ndarray: int | float | complex | np.ndarray, axes: list[str], unit: None | u.UnitBase):
-        unit_new = u.m
-        super().test_to(self._array(ndarray, axes, unit), unit_new)
-
-    def test_broadcasted(self, ndarray: int | float | complex | np.ndarray, axes: list[str], unit: None | u.UnitBase):
-        super().test_broadcasted(self._array(ndarray, axes, unit))
-
-    def test_length(self, ndarray: int | float | complex | np.ndarray, axes: list[str], unit: None | u.UnitBase):
-        super().test_length(self._array(ndarray, axes, unit))
 
     @pytest.mark.parametrize(
         argnames='item',
         argvalues=[
-            dict(x=0),
-            dict(x=slice(0,1)),
-            dict(x=na.ScalarArray(np.array([0, 1]), axes=['x'])),
-        ],
+            dict(y=0),
+            dict(y=slice(0,1)),
+            dict(y=na.ScalarArray(np.array([0, 1]), axes=['y'])),
+            na.ScalarLinearSpace(0, 1, axis='y', num=_num_y) > 0.5,
+        ]
     )
     def test__getitem__(
             self,
-            ndarray: int | float | complex | np.ndarray,
-            axes: list[str],
-            unit: None | u.UnitBase,
-            item: dict[str, int | slice | na.AbstractArray] | na.AbstractArray,
+            array: na.AbstractArray,
+            item: dict[str, int | slice | na.AbstractArray] | na.AbstractArray
     ):
-        super().test__getitem__(self._array(ndarray, axes, unit), item)
-
-    def test_indices(self, ndarray: int | float | complex | np.ndarray, axes: list[str], unit: None | u.UnitBase):
-        super().test_indices(self._array(ndarray, axes, unit))
-
-    def test_ndindex(self, ndarray: int | float | complex | np.ndarray, axes: list[str], unit: None | u.UnitBase):
-        super().test_ndindex(self._array(ndarray, axes, unit))
-
-    @pytest.mark.parametrize('axes_new', ['x0', ('x0', 'y0')])
-    def test_add_axes(
-            self,
-            ndarray: int | float | complex | np.ndarray,
-            axes: list[str],
-            unit: None | u.UnitBase,
-            axes_new: str | Sequence[str],
-    ):
-        super().test_add_axes(self._array(ndarray, axes, unit), axes_new)
-
-    def test_combine_axes(self, ndarray: int | float | complex | np.ndarray, axes: list[str], unit: None | u.UnitBase):
-        axes_old = ['x', 'y']
-        super().test_combine_axes(self._array(ndarray, axes, unit), axes=axes_old)
+        super().test__getitem__(array, item)
 
 
-@pytest.mark.parametrize(
-    argnames=['ndarray', 'axes'],
-    argvalues=[
-        (4, []),
-        (5., []),
-        (np.linspace(0, 1, num=11), ['x']),
-        (np.random.random((11, 13)), ['x', 'y']),
-    ]
-)
-@pytest.mark.parametrize(
-    argnames='unit',
-    argvalues=[
-        None,
-        u.mm,
-    ]
-)
-class TestNumericScalarArray(
-    AbstractTestScalarArray,
+@pytest.mark.parametrize('array', _scalar_arrays())
+class TestScalarArray(
+    AbstractTestAbstractScalarArray,
+    tests.test_core.AbstractTestArrayBase,
 ):
-    pass
+
+    @pytest.mark.parametrize('array_2', _scalar_arrays_2())
+    class TestBinaryOperators(
+        AbstractTestAbstractScalarArray.TestBinaryOperators,
+    ):
+        pass
 
 # class OldTestScalarArray:
 #     def test__post_init__(self):
