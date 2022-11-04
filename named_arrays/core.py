@@ -379,6 +379,11 @@ class ArrayBase(
     def zeros(cls: Type[Self], shape: dict[str, int], dtype: Type) -> Self:
         pass
 
+    @classmethod
+    @abc.abstractmethod
+    def ones(cls: Type[Self], shape: dict[str, int], dtype: Type) -> Self:
+        pass
+
     @property
     def ndim(self: Self) -> int:
         return np.ndim(self.ndarray)

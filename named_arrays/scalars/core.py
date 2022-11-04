@@ -850,7 +850,7 @@ class ScalarArray(
         )
 
     @classmethod
-    def ones(cls: Type[Self], shape: dict[str, int], dtype: npt.DTypeLike = float) -> Self:
+    def ones(cls: Type[Self], shape: dict[str, int], dtype: Type = float) -> Self:
         return cls(
             ndarray=np.ones(shape=tuple(shape.values()), dtype=dtype),
             axes=list(shape.keys()),

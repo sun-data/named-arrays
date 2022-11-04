@@ -388,6 +388,12 @@ class AbstractTestArrayBaseCreation(abc.ABC):
         assert result.dtype == dtype
         assert np.all(result == 0)
 
+    def test_ones(self, shape: dict[str, int], dtype: Type):
+        result = self.type_array.ones(shape, dtype=dtype)
+        assert result.shape == shape
+        assert result.dtype == dtype
+        assert np.all(result == 1)
+
 
 class AbstractTestAbstractParameterizedArray(
     AbstractTestAbstractArray,
