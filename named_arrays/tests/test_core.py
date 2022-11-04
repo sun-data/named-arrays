@@ -368,6 +368,21 @@ class AbstractTestArrayBase(
     pass
 
 
+@pytest.mark.parametrize('shape', [dict(x=3), dict(x=4, y=5)])
+@pytest.mark.parametrize('dtype', [int, float, complex])
+class AbstractTestArrayBaseCreation(abc.ABC):
+
+    @property
+    @abc.abstractmethod
+    def type_array(self) -> Type[na.ArrayBase]:
+        pass
+
+    def test_empty(self, shape: dict[str, int], dtype: Type):
+        result = self.type_array.empty(shape, dtype)
+        assert result.shape == shape
+        assert result.dtype == dtype
+
+
 class AbstractTestAbstractParameterizedArray(
     AbstractTestAbstractArray,
 ):

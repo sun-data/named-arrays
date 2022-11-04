@@ -92,6 +92,16 @@ class TestScalarArray(
     ):
         pass
 
+
+class TestScalarArrayCreation(
+    tests.test_core.AbstractTestArrayBaseCreation
+):
+
+    @property
+    def type_array(self) -> Type[na.ScalarArray]:
+        return na.ScalarArray
+
+
 # class OldTestScalarArray:
 #     def test__post_init__(self):
 #         with pytest.raises(ValueError):

@@ -369,6 +369,10 @@ ArrayLike = Union[QuantityLike, AbstractArray]
 class ArrayBase(
     AbstractArray,
 ):
+    @classmethod
+    @abc.abstractmethod
+    def empty(cls: Type[Self], shape: dict[str, int], dtype: Type) -> Self:
+        pass
 
     @property
     def ndim(self: Self) -> int:
