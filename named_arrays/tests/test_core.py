@@ -378,7 +378,7 @@ class AbstractTestArrayBaseCreation(abc.ABC):
         pass
 
     def test_empty(self, shape: dict[str, int], dtype: Type):
-        result = self.type_array.empty(shape, dtype)
+        result = self.type_array.empty(shape, dtype=dtype)
         assert result.shape == shape
         assert result.dtype == dtype
 
