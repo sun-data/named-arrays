@@ -347,11 +347,11 @@ class AbstractScalarArray(
 
     def __array_ufunc__(
             self,
-            function,
-            method,
+            function: np.ufunc,
+            method: str,
             *inputs,
             **kwargs,
-    ) -> None | ScalarArray:
+    ) -> None | ScalarArray | tuple[ScalarArray, ...]:
 
         inputs_normalized = []
 
@@ -373,10 +373,11 @@ class AbstractScalarArray(
         for inp in inputs:
             result = inp.__array_ufunc__(function, method, *inputs, **kwargs)
             if result is not NotImplemented:
-                return ScalarArray(
-                    ndarray=result,
-                    axes=list(shape.keys()),
-                )
+                axes=list(shape.keys())
+                if function.nout > 1:
+                    return tuple(self.type_array(r, axes=axes) for r in result)
+                else:
+                    return ScalarArray(result, axes=axes)
 
         return NotImplemented
 
