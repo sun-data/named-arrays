@@ -4,6 +4,7 @@ import pytest
 import abc
 import numpy as np
 import astropy.units as u
+import astropy.units.quantity_helper.helpers as quantity_helpers
 import named_arrays as na
 from . import test_mixins
 
@@ -309,6 +310,122 @@ class AbstractTestAbstractArray(
         else:
             with pytest.raises(ValueError):
                 array.combine_axes(axes=axes, axis_new=axis_new)
+
+    @pytest.mark.parametrize(
+        argnames='ufunc',
+        argvalues=[
+            np.negative,
+            np.positive,
+            np.absolute,
+            np.fabs,
+            np.rint,
+            np.sign,
+            np.conj,
+            np.conjugate,
+            np.exp,
+            np.exp2,
+            np.log,
+            np.log2,
+            np.log10,
+            np.expm1,
+            np.log1p,
+            np.sqrt,
+            np.square,
+            np.cbrt,
+            np.reciprocal,
+            np.sin,
+            np.cos,
+            np.tan,
+            np.arcsin,
+            np.arccos,
+            np.arctan,
+            np.sinh,
+            np.cosh,
+            np.tanh,
+            np.arcsinh,
+            np.arccosh,
+            np.arctanh,
+            np.degrees,
+            np.radians,
+            np.deg2rad,
+            np.rad2deg,
+            np.invert,
+            np.logical_not,
+            np.isfinite,
+            np.isinf,
+            np.isnan,
+            np.isnat,
+            np.signbit,
+            np.spacing,
+            np.modf,
+            np.frexp,
+            np.floor,
+            np.ceil,
+            np.trunc,
+        ]
+    )
+    @pytest.mark.parametrize('out', [False, True])
+    def test_ufunc_unary(
+            self,
+            ufunc: np.ufunc,
+            array: na.AbstractArray,
+            out: bool,
+    ):
+        dtypes = dict()
+        for types in ufunc.types:
+            dtype_inputs, dtype_outputs = types.split('->')
+            if len(dtype_inputs) != 1:
+                raise ValueError('This test is only valid for unary ufuncs')
+            dtype_inputs = np.dtype(dtype_inputs)
+            dtype_outputs = tuple(np.dtype(c) for c in dtype_outputs)
+            dtypes[dtype_inputs] = dtype_outputs
+
+        if array.dtype not in dtypes:
+            with pytest.raises(TypeError):
+                ufunc(array, casting ='no')
+            return
+
+        if out:
+            type_array = array.type_array
+            out = tuple(type_array.empty(array.shape, dtype=dtypes[array.dtype][i]) for i in range(ufunc.nout))
+            out_ndarray = tuple(type_array.empty(array.shape, dtype=dtypes[array.dtype][i]).ndarray for i in range(ufunc.nout))
+            if array.unit is not None and ufunc not in quantity_helpers.onearg_test_ufuncs:
+                out = tuple(o << array.unit for o in out)
+                out_ndarray = tuple(o << array.unit for o in out_ndarray)
+        else:
+            out = (None,) * ufunc.nout
+            out_ndarray = (None,) * ufunc.nout
+        out = out[0] if len(out) == 1 else out
+        out_ndarray = out_ndarray[0] if len(out_ndarray) == 1 else out_ndarray
+
+        ignored_ufuncs = tuple()
+        ignored_ufuncs = ignored_ufuncs + quantity_helpers.dimensionless_to_dimensionless_ufuncs
+        ignored_ufuncs = ignored_ufuncs + quantity_helpers.radian_to_dimensionless_ufuncs
+        ignored_ufuncs = ignored_ufuncs + quantity_helpers.dimensionless_to_radian_ufuncs
+        ignored_ufuncs = ignored_ufuncs + quantity_helpers.degree_to_radian_ufuncs
+        ignored_ufuncs = ignored_ufuncs + quantity_helpers.radian_to_degree_ufuncs
+        ignored_ufuncs = ignored_ufuncs + tuple(quantity_helpers.UNSUPPORTED_UFUNCS)
+        ignored_ufuncs = ignored_ufuncs + (np.modf, np.frexp)
+
+        if array.unit is not None and ufunc in ignored_ufuncs:
+            with pytest.raises(TypeError):
+                ufunc(array, out=out, casting='no')
+            return
+
+        result = ufunc(array, out=out)
+        result_ndarray = ufunc(
+            array.ndarray,
+            out=out_ndarray,
+            casting='no',
+        )
+
+        if ufunc.nout == 1:
+            result = (result, )
+            result_ndarray = (result_ndarray, )
+
+        for i in range(ufunc.nout):
+            assert np.all(result[i].ndarray == result_ndarray[i], where=np.isfinite(result[i].ndarray))
+
 
     class TestBinaryOperators(
         abc.ABC,
