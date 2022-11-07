@@ -353,6 +353,9 @@ class AbstractScalarArray(
             **kwargs,
     ) -> None | ScalarArray | tuple[ScalarArray, ...]:
 
+        if function is np.matmul:
+            raise ValueError('np.matmul not supported, please use named_arrays.AbstractScalarArray.matrix_inverse()')
+
         inputs_normalized = []
         for inp in inputs:
             if isinstance(inp, self.type_ndarray):
