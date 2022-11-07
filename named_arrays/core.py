@@ -65,7 +65,7 @@ def get_unit(
 def broadcast_shapes(*shapes: dict[str, int]) -> dict[str, int]:
     result = dict()
     for shape in shapes:
-        for axis in shape:
+        for axis in reversed(shape):
             if axis in result:
                 if result[axis] == shape[axis]:
                     pass
@@ -77,6 +77,7 @@ def broadcast_shapes(*shapes: dict[str, int]) -> dict[str, int]:
                     raise ValueError(f'shapes {shapes} are not compatible')
             else:
                 result[axis] = shape[axis]
+    result = {axis: result[axis] for axis in reversed(result)}
     return result
 
 
