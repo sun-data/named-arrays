@@ -354,7 +354,6 @@ class AbstractScalarArray(
     ) -> None | ScalarArray | tuple[ScalarArray, ...]:
 
         inputs_normalized = []
-
         for inp in inputs:
             if isinstance(inp, self.type_ndarray):
                 inp = ScalarArray(inp)
