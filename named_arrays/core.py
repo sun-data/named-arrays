@@ -20,6 +20,7 @@ __all__ = [
     'QuantityLike',
     'get_dtype',
     'unit',
+    'type_array',
     'broadcast_shapes',
     'shape_broadcasted',
     'ndindex',
@@ -60,6 +61,21 @@ def unit(
         return value.unit
     else:
         return None
+
+
+def type_array(
+        *values: bool | int | float | complex | str | np.ndarray | u.Quantity | AbstractArray,
+) -> Type[ArrayBase]:
+    cls = None
+    priority_max = 0
+    for value in values:
+        if isinstance(value, AbstractArray):
+            cls_tmp = value.type_array
+            priority_tmp = cls_tmp.__named_array_priority__
+            if priority_tmp > priority_max:
+                priority_max = priority_tmp
+                cls = cls_tmp
+    return cls
 
 
 def broadcast_shapes(*shapes: dict[str, int]) -> dict[str, int]:
