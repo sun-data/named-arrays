@@ -50,7 +50,7 @@ def get_dtype(
     if isinstance(value, (np.ndarray, AbstractArray)):
         return value.dtype
     else:
-        return type(value)
+        return np.array(value).dtype
 
 
 def unit(
