@@ -19,7 +19,7 @@ import named_arrays.mixins
 __all__ = [
     'QuantityLike',
     'get_dtype',
-    'get_unit',
+    'unit',
     'broadcast_shapes',
     'shape_broadcasted',
     'ndindex',
@@ -53,7 +53,7 @@ def get_dtype(
         return type(value)
 
 
-def get_unit(
+def unit(
         value: bool | int | float | complex | str | np.ndarray | u.Quantity | AbstractArray
 ) -> None | u.UnitBase:
     if isinstance(value, (u.Quantity, AbstractArray)):
