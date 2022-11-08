@@ -410,6 +410,9 @@ class AbstractScalarArray(
                 axes=list(shape.keys()),
             )
 
+        elif func is np.shape:
+            return self.shape
+
         elif func in (np.transpose, ):
             args = list(args)
             if args:
