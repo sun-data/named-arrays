@@ -69,6 +69,8 @@ class AbstractScalarArray(
     type_ndarray_auxiliary: ClassVar[tuple[Type, ...]] = (str, bool, int, float, complex, np.generic)
     type_ndarray: ClassVar[tuple[Type, ...]] = type_ndarray_auxiliary + (type_ndarray_primary, )
 
+    __named_array_priority__: ClassVar[int] = 1
+
     @property
     def type_array(self: Self) -> Type[ScalarArray]:
         return ScalarArray

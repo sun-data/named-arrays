@@ -124,6 +124,11 @@ class AbstractArray(
 
     @property
     @abc.abstractmethod
+    def __named_array_priority__(self: Self) -> float:
+        pass
+
+    @property
+    @abc.abstractmethod
     def ndarray(self: Self) -> npt.ArrayLike:
         pass
 
