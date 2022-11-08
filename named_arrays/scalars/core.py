@@ -410,6 +410,23 @@ class AbstractScalarArray(
                 axes=list(shape.keys()),
             )
 
+        elif func in (np.transpose, ):
+            args = list(args)
+            if args:
+                a = args.pop(0)
+            else:
+                a = kwargs.pop('a')
+
+            if args:
+                axes = args.pop(0)
+            else:
+                axes = kwargs.pop('axes', None)
+
+            axes_ndarray = tuple(self.axes.index(axis) for axis in axes) if axes is not None else axes
+            ndarray_new = np.transpose(self.ndarray, axes=axes_ndarray)
+
+            return self.type_array(ndarray_new, axes=axes if axes is not None else list(reversed(self.axes)))
+
         elif func is np.moveaxis:
 
             args = list(args)
