@@ -85,6 +85,15 @@ class TestScalarArray(
     AbstractTestAbstractScalarArray,
     tests.test_core.AbstractTestArrayBase,
 ):
+    @pytest.mark.parametrize('index', [1, ~0])
+    def test_change_axis_index(self, array: na.ScalarArray, index: int):
+        axis = 'x'
+        if axis in array.axes:
+            result = array.change_axis_index(axis, index)
+            assert result.axes.index(axis) == (index % array.ndim)
+        else:
+            with pytest.raises(KeyError):
+                array.change_axis_index(axis, index)
 
     @pytest.mark.parametrize('array_2', _scalar_arrays_2())
     class TestBinaryOperators(
