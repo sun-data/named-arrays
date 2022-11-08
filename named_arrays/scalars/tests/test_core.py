@@ -33,7 +33,7 @@ def _scalar_arrays():
         na.ScalarArray('foo'),
         na.ScalarArray(np.random.choice(['foo', 'bar', 'baz'], size=_num_y), axes=['y']),
     ]
-    return arrays_bool + arrays_numeric + arrays_str
+    return arrays_numeric + arrays_bool + arrays_str
 
 
 def _scalar_arrays_2():
@@ -41,16 +41,15 @@ def _scalar_arrays_2():
         6,
         na.ScalarArray(8),
         na.ScalarArray(np.random.random(_num_y), axes=['y']),
-        na.ScalarArray(np.random.random((_num_x, _num_y)), axes=['x', 'y']),
+        na.ScalarArray(np.random.random((_num_y, _num_x)), axes=['y', 'x']),
     ]
-    units = [1, u.mm, u.m]
+    units = [1, u.m]
     arrays_numeric = [array * unit for array in arrays_numeric for unit in units]
     arrays_bool = [
         na.ScalarArray(np.random.choice([True, False], size=_num_y), axes=['y']),
-        na.ScalarArray(np.random.choice([True, False], size=(_num_x, _num_y)), axes=['x', 'y'])
+        na.ScalarArray(np.random.choice([True, False], size=(_num_y, _num_x)), axes=['y', 'x'])
     ]
-    return arrays_bool + arrays_numeric
-
+    return arrays_numeric + arrays_bool
 
 
 class AbstractTestAbstractScalar(
@@ -96,8 +95,8 @@ class TestScalarArray(
                 array.change_axis_index(axis, index)
 
     @pytest.mark.parametrize('array_2', _scalar_arrays_2())
-    class TestBinaryOperators(
-        AbstractTestAbstractScalarArray.TestBinaryOperators,
+    class TestUfuncBinary(
+        AbstractTestAbstractScalarArray.TestUfuncBinary,
     ):
         pass
 
