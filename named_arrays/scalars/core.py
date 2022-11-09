@@ -1034,7 +1034,7 @@ class ScalarNormalRandomSample(
     center: CenterT
     width: WidthT
     axis: str
-    step: int = 1
+    num: int = 11
     seed: None | int = None
 
     @property
