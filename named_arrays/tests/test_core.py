@@ -655,7 +655,7 @@ class AbstractTestAbstractRange(
         assert isinstance(array.stop, (int, float, complex, u.Quantity, na.AbstractArray))
 
     def test_range(self, array: na.AbstractRange):
-        assert np.abs(array.range) > 0
+        assert np.all(np.abs(array.range) > 0)
 
 
 class AbstractTestAbstractSymmetricRange(
