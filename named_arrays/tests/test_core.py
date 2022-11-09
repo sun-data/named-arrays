@@ -249,10 +249,25 @@ class AbstractTestAbstractArray(
             item: dict[str, int | slice | na.AbstractArray] | na.AbstractArray
     ):
         if array.shape:
-            array_item = array[item]
-            assert isinstance(array_item, na.AbstractArray)
-            if np.issubdtype(array.dtype, np.number):
-                assert np.all(array_item > 0)
+            result = array[item]
+            assert isinstance(result, na.AbstractArray)
+
+            if isinstance(item, dict):
+                item_expected = [Ellipsis]
+                for axis in item:
+                    if isinstance(item[axis], na.AbstractArray):
+                        item_expected.append(item[axis].ndarray)
+                    else:
+                        item_expected.append(item[axis])
+                item_expected = tuple(item_expected)
+            else:
+                item_expected = (Ellipsis, item.ndarray)
+
+            result_expected = array.ndarray[item_expected]
+            if 'y' in result.axes:
+                result = result.change_axis_index('y', ~0)
+            assert np.all(result.ndarray == result_expected)
+
         else:
             with pytest.raises(ValueError):
                 array[item]
