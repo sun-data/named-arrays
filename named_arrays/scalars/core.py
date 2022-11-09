@@ -1062,6 +1062,7 @@ class ScalarNormalRandomSample(
         value = self._rng.normal(
             loc=center,
             scale=width,
+            size=tuple(shape.values()),
         )
 
         if unit is not None:
