@@ -1072,6 +1072,10 @@ class ScalarNormalRandomSample(
             axes=list(shape.keys())
         )
 
+    @property
+    def centers(self: Self) -> Self:
+        return self
+
 
 @dataclasses.dataclass(eq=False, slots=True)
 class ScalarArrayRange(
