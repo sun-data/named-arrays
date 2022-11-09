@@ -585,8 +585,10 @@ class AbstractTestAbstractArray(
                 result_ndarray = (result_ndarray,)
 
             for i in range(ufunc.nout):
+                result_i = result[i].broadcast_to(shape)
                 assert np.all(
-                    result[i].broadcast_to(shape).ndarray == result_ndarray[i],
+                    result_i.ndarray == result_ndarray[i],
+                    where=np.isfinite(result_i.ndarray),
                 )
 
         def test_ufunc_binary_reversed(

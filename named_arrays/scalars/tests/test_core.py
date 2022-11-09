@@ -154,6 +154,28 @@ class TestScalarUniformRandomSample(
     pass
 
 
+def _scalar_normal_random_samples() -> list[na.ScalarNormalRandomSample]:
+    centers = [
+        0,
+        na.ScalarArray(np.random.random(_num_x), axes=['x']),
+    ]
+    widths = [
+        10,
+        na.ScalarArray(10 * np.random.random(_num_x) + 1, axes=['x']),
+    ]
+    units = [1, u.mm]
+    centers = [start * unit for start in centers for unit in units]
+    widths = [stop * unit for stop in widths for unit in units]
+    return [na.ScalarNormalRandomSample(start, stop, axis='y', num=_num_y) for start, stop in zip(centers, widths)]
+
+
+@pytest.mark.parametrize('array', _scalar_normal_random_samples())
+class TestScalarNormalRandomSample(
+    AbstractTestAbstractScalarRange,
+    tests.test_core.AbstractTestAbstractNormalRandomSample,
+):
+    pass
+
 # class OldTestScalarArray:
 #     def test__post_init__(self):
 #         with pytest.raises(ValueError):
