@@ -1009,6 +1009,7 @@ class ScalarUniformRandomSample(
         value = self._rng.uniform(
             low=start,
             high=stop,
+            size=tuple(shape.values()),
         )
 
         if unit is not None:
