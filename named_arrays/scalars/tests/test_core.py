@@ -78,6 +78,12 @@ class AbstractTestAbstractScalarArray(
     ):
         super().test__getitem__(array, item)
 
+    @pytest.mark.parametrize('array_2', _scalar_arrays_2())
+    class TestUfuncBinary(
+        AbstractTestAbstractScalar.TestUfuncBinary,
+    ):
+        pass
+
 
 @pytest.mark.parametrize('array', _scalar_arrays())
 class TestScalarArray(
@@ -94,12 +100,6 @@ class TestScalarArray(
             with pytest.raises(KeyError):
                 array.change_axis_index(axis, index)
 
-    @pytest.mark.parametrize('array_2', _scalar_arrays_2())
-    class TestUfuncBinary(
-        AbstractTestAbstractScalarArray.TestUfuncBinary,
-    ):
-        pass
-
 
 class TestScalarArrayCreation(
     tests.test_core.AbstractTestArrayBaseCreation
@@ -108,6 +108,50 @@ class TestScalarArrayCreation(
     @property
     def type_array(self) -> Type[na.ScalarArray]:
         return na.ScalarArray
+
+
+class AbstractTestAbstractScalarParameterizedArray(
+    AbstractTestAbstractScalarArray,
+    tests.test_core.AbstractTestAbstractParameterizedArray,
+):
+    pass
+
+
+class AbstractTestAbstractScalarRange(
+    AbstractTestAbstractScalarParameterizedArray,
+    tests.test_core.AbstractTestAbstractRange,
+):
+    pass
+
+
+class AbstractTestAbstractScalarSymmetricRange(
+    AbstractTestAbstractScalarParameterizedArray,
+    tests.test_core.AbstractTestAbstractSymmetricRange,
+):
+    pass
+
+
+def _scalar_uniform_random_samples() -> list[na.ScalarUniformRandomSample]:
+    starts = [
+        0,
+        na.ScalarArray(np.random.random(_num_x), axes=['x']),
+    ]
+    stops = [
+        10,
+        na.ScalarArray(10 * np.random.random(_num_x) + 1, axes=['x']),
+    ]
+    units = [1, u.mm]
+    starts = [start * unit for start in starts for unit in units]
+    stops = [stop * unit for stop in stops for unit in units]
+    return [na.ScalarUniformRandomSample(start, stop, axis='y', num=_num_y) for start, stop in zip(starts, stops)]
+
+
+@pytest.mark.parametrize('array', _scalar_uniform_random_samples())
+class TestScalarUniformRandomSample(
+    AbstractTestAbstractScalarRange,
+    tests.test_core.AbstractTestAbstractUniformRandomSample,
+):
+    pass
 
 
 # class OldTestScalarArray:
