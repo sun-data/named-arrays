@@ -377,6 +377,10 @@ class AbstractScalarArray(
         if 'out' in kwargs:
             kwargs['out'] = tuple(o.ndarray_aligned(shape) for o in kwargs['out'])
 
+        if 'where' in kwargs:
+            if isinstance(kwargs['where'], na.AbstractArray):
+                kwargs['where'] = kwargs['where'].ndarray_aligned(shape)
+
         for inp in inputs:
             result = inp.__array_ufunc__(function, method, *inputs, **kwargs)
             if result is not NotImplemented:
