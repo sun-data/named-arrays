@@ -20,8 +20,8 @@ def _scalar_arrays():
     arrays_numeric = [
         na.ScalarArray(4),
         na.ScalarArray(5.),
-        na.ScalarArray(np.linspace(1, 2, num=_num_y), axes=['y']),
-        na.ScalarArray(np.random.random((_num_x, _num_y)), axes=['x', 'y']),
+        na.ScalarArray(10 * (np.random.random((_num_y, )) - 0.5), axes=['y']),
+        na.ScalarArray(10 * (np.random.random((_num_x, _num_y)) - 0.5), axes=['x', 'y']),
     ]
     units = [1, u.mm]
     arrays_numeric = [na.ScalarArray(array.ndarray * unit, array.axes) for array in arrays_numeric for unit in units]
@@ -40,8 +40,8 @@ def _scalar_arrays_2():
     arrays_numeric = [
         6,
         na.ScalarArray(8),
-        na.ScalarArray(np.random.random(_num_y), axes=['y']),
-        na.ScalarArray(np.random.random((_num_y, _num_x)), axes=['y', 'x']),
+        na.ScalarArray(10 * (np.random.random((_num_y,)) - 0.5), axes = ['y']),
+        na.ScalarArray(10 * (np.random.random((_num_y, _num_x)) - 0.5), axes=['y', 'x']),
     ]
     units = [1, u.m]
     arrays_numeric = [array * unit for array in arrays_numeric for unit in units]
