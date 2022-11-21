@@ -408,11 +408,23 @@ class AbstractTestAbstractArray(
                 ufunc(array, out=out, casting='no')
             return
 
-        result = ufunc(array, out=out)
+        if ufunc in [np.log, np.log2, np.log10, np.sqrt]:
+            where = array >= 0
+        elif ufunc in [np.log1p]:
+            where = array >= -1
+        elif ufunc in [np.arcsin, np.arccos, np.arctanh]:
+            where = (-1 <= array) & (array <= 1)
+        elif ufunc in [np.arccosh]:
+            where = array >= 1
+        else:
+            where = na.ScalarArray(True)
+
+        result = ufunc(array, out=out, where=where)
         result_ndarray = ufunc(
             array.ndarray,
             out=out_ndarray,
             casting='no',
+            where=where.ndarray,
         )
 
         if ufunc.nout == 1:
@@ -420,7 +432,7 @@ class AbstractTestAbstractArray(
             result_ndarray = (result_ndarray, )
 
         for i in range(ufunc.nout):
-            assert np.all(result[i].ndarray == result_ndarray[i], where=np.isfinite(result[i].ndarray))
+            assert np.all(result[i].ndarray == result_ndarray[i], where=where.ndarray)
 
     @pytest.mark.parametrize(
         argnames='ufunc',
