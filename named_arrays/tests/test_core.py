@@ -584,12 +584,19 @@ class AbstractTestAbstractArray(
                             ufunc(array, array_2, out=out, casting='no')
                     return
 
-            result = ufunc(array, array_2, out=out)
+            if ufunc in [np.power, np.float_power]:
+                where = (array_2 >= 1) & (array >= 0)
+            else:
+                where = na.ScalarArray(True)
+            where = where.broadcast_to(shape)
+
+            result = ufunc(array, array_2, out=out, where=where)
             result_ndarray = ufunc(
                 array.ndarray if isinstance(array, na.AbstractArray) else array,
                 np.transpose(array_2.ndarray) if isinstance(array_2, na.AbstractArray) else np.transpose(array_2),
                 out=out_ndarray,
                 casting='no',
+                where=where.ndarray
             )
 
             if ufunc.nout == 1:
@@ -600,7 +607,7 @@ class AbstractTestAbstractArray(
                 result_i = result[i].broadcast_to(shape)
                 assert np.all(
                     result_i.ndarray == result_ndarray[i],
-                    where=np.isfinite(result_i.ndarray),
+                    where=where.ndarray,
                 )
 
         def test_ufunc_binary_reversed(
@@ -613,6 +620,9 @@ class AbstractTestAbstractArray(
             array = np.transpose(array)
             array_2 = np.transpose(array_2)
             self.test_ufunc_binary(ufunc, array_2, array, out=out)
+
+
+
 
 
 class AbstractTestArrayBase(
