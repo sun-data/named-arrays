@@ -126,33 +126,6 @@ class TestIndexingFunctions:
 class AbstractTestAbstractArray(
     test_mixins.AbstractTestCopyable,
 ):
-    def test__neg__(self, array: na.AbstractArray):
-        if np.issubdtype(array.dtype, np.number):
-            assert np.all((-array).ndarray == -(array.ndarray))
-        else:
-            with pytest.raises(TypeError):
-                -array
-
-    def test__pos__(self, array: na.AbstractArray):
-        if np.issubdtype(array.dtype, np.number):
-            assert np.all((+array).ndarray == +(array.ndarray))
-        else:
-            with pytest.raises(TypeError):
-                +array
-
-    def test__abs__(self, array: na.AbstractArray):
-        if np.issubdtype(array.dtype, np.number) or np.issubdtype(array.dtype, bool):
-            assert np.all(abs(array).ndarray == abs(array.ndarray))
-        else:
-            with pytest.raises(TypeError):
-                abs(array)
-
-    def test__invert__(self, array: na.AbstractArray):
-        if np.issubdtype(array.dtype, bool) or np.issubdtype(array.dtype, np.int):
-            assert np.all((~array).ndarray == ~(array.ndarray))
-        else:
-            with pytest.raises(TypeError):
-                ~array
 
     def test_ndarray(self, array: na.AbstractArray):
         assert isinstance(array.ndarray, (int, float, complex, str, np.ndarray))
