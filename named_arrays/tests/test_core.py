@@ -132,7 +132,7 @@ class AbstractTestAbstractArray(
 
     def test_axes(self, array: na.AbstractArray):
         axes = array.axes
-        assert isinstance(axes, list)
+        assert isinstance(axes, tuple)
         assert len(axes) == np.ndim(array.ndarray)
         for axis in axes:
             assert isinstance(axis, str)

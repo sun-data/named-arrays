@@ -157,7 +157,7 @@ class AbstractArray(
 
     @property
     @abc.abstractmethod
-    def axes(self: Self):
+    def axes(self: Self) -> tuple[str, ...]:
         pass
 
     @property
@@ -436,7 +436,7 @@ class AbstractParameterizedArray(
     AbstractArray,
 ):
     @property
-    def axes(self: Self) -> list[str]:
+    def axes(self: Self) -> tuple[str, ...]:
         return self.array.axes
 
     @property

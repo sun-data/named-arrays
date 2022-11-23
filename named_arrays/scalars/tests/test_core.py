@@ -20,18 +20,18 @@ def _scalar_arrays():
     arrays_numeric = [
         na.ScalarArray(4),
         na.ScalarArray(5.),
-        na.ScalarArray(10 * (np.random.random((_num_y, )) - 0.5), axes=['y']),
-        na.ScalarArray(10 * (np.random.random((_num_x, _num_y)) - 0.5), axes=['x', 'y']),
+        na.ScalarArray(10 * (np.random.random((_num_y, )) - 0.5), axes=('y', )),
+        na.ScalarArray(10 * (np.random.random((_num_x, _num_y)) - 0.5), axes=('x', 'y')),
     ]
     units = [1, u.mm]
     arrays_numeric = [na.ScalarArray(array.ndarray * unit, array.axes) for array in arrays_numeric for unit in units]
     arrays_bool = [
-        na.ScalarArray(np.random.choice([True, False], size=_num_y), axes=['y']),
-        na.ScalarArray(np.random.choice([True, False], size=(_num_x, _num_y)), axes=['x', 'y'])
+        na.ScalarArray(np.random.choice([True, False], size=_num_y), axes=('y', )),
+        na.ScalarArray(np.random.choice([True, False], size=(_num_x, _num_y)), axes=('x', 'y'))
     ]
     arrays_str = [
         na.ScalarArray('foo'),
-        na.ScalarArray(np.random.choice(['foo', 'bar', 'baz'], size=_num_y), axes=['y']),
+        na.ScalarArray(np.random.choice(['foo', 'bar', 'baz'], size=_num_y), axes=('y', )),
     ]
     return arrays_numeric + arrays_bool + arrays_str
 
@@ -40,14 +40,14 @@ def _scalar_arrays_2():
     arrays_numeric = [
         6,
         na.ScalarArray(8),
-        na.ScalarArray(10 * (np.random.random((_num_y,)) - 0.5), axes = ['y']),
-        na.ScalarArray(10 * (np.random.random((_num_y, _num_x)) - 0.5), axes=['y', 'x']),
+        na.ScalarArray(10 * (np.random.random((_num_y,)) - 0.5), axes = ('y', )),
+        na.ScalarArray(10 * (np.random.random((_num_y, _num_x)) - 0.5), axes=('y', 'x')),
     ]
     units = [1, u.m]
     arrays_numeric = [array * unit for array in arrays_numeric for unit in units]
     arrays_bool = [
-        na.ScalarArray(np.random.choice([True, False], size=_num_y), axes=['y']),
-        na.ScalarArray(np.random.choice([True, False], size=(_num_y, _num_x)), axes=['y', 'x'])
+        na.ScalarArray(np.random.choice([True, False], size=_num_y), axes=('y', )),
+        na.ScalarArray(np.random.choice([True, False], size=(_num_y, _num_x)), axes=('y', 'x'))
     ]
     return arrays_numeric + arrays_bool
 
@@ -67,7 +67,7 @@ class AbstractTestAbstractScalarArray(
         argvalues=[
             dict(y=0),
             dict(y=slice(0,1)),
-            dict(y=na.ScalarArray(np.array([0, 1]), axes=['y'])),
+            dict(y=na.ScalarArray(np.array([0, 1]), axes=('y', ))),
             na.ScalarLinearSpace(0, 1, axis='y', num=_num_y) > 0.5,
         ]
     )
@@ -134,11 +134,11 @@ class AbstractTestAbstractScalarSymmetricRange(
 def _scalar_uniform_random_samples() -> list[na.ScalarUniformRandomSample]:
     starts = [
         0,
-        na.ScalarArray(np.random.random(_num_x), axes=['x']),
+        na.ScalarArray(np.random.random(_num_x), axes=('x', )),
     ]
     stops = [
         10,
-        na.ScalarArray(10 * np.random.random(_num_x) + 1, axes=['x']),
+        na.ScalarArray(10 * np.random.random(_num_x) + 1, axes=('x', )),
     ]
     units = [1, u.mm]
     starts = [start * unit for start in starts for unit in units]
@@ -157,11 +157,11 @@ class TestScalarUniformRandomSample(
 def _scalar_normal_random_samples() -> list[na.ScalarNormalRandomSample]:
     centers = [
         0,
-        na.ScalarArray(np.random.random(_num_x), axes=['x']),
+        na.ScalarArray(np.random.random(_num_x), axes=('x', )),
     ]
     widths = [
         10,
-        na.ScalarArray(10 * np.random.random(_num_x) + 1, axes=['x']),
+        na.ScalarArray(10 * np.random.random(_num_x) + 1, axes=('x', )),
     ]
     units = [1, u.mm]
     centers = [start * unit for start in centers for unit in units]
