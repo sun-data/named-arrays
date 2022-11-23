@@ -145,7 +145,7 @@ class AbstractArray(
 
     @property
     @abc.abstractmethod
-    def ndarray(self: Self) -> npt.ArrayLike:
+    def ndarray(self: Self) -> bool | int | float | complex | str | np.ndarray | u.Quantity:
         pass
 
     @property
