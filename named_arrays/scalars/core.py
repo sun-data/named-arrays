@@ -38,6 +38,8 @@ StartExponentT = TypeVar('StartExponentT', bound='ScalarLike')
 StopExponentT = TypeVar('StopExponentT', bound='ScalarLike')
 BaseT = TypeVar('BaseT', bound='ScalarLike')
 
+HANDLED_FUNCTIONS = {}
+
 
 @dataclasses.dataclass(eq=False)
 class AbstractScalar(
@@ -388,6 +390,21 @@ class AbstractScalarArray(
                     return ScalarArray(result, axes=axes)
 
         return NotImplemented
+
+    def __array_function__replacement(
+            self: Self,
+            func: Callable,
+            types: Collection,
+            args: tuple,
+            kwargs: dict[str, Any],
+    ):
+        if func not in HANDLED_FUNCTIONS:
+            return NotImplemented
+        # Note: this allows subclasses that don't override
+        # __array_function__ to handle MyArray objects
+        if not all(issubclass(t, na.AbstractArray) for t in types):
+            return NotImplemented
+        return HANDLED_FUNCTIONS[func](*args, **kwargs)
 
     def __array_function__(
             self: Self,
@@ -845,6 +862,56 @@ class AbstractScalarArray(
             result = result << self.unit
 
         return result
+
+
+def implements(numpy_function: Callable):
+    """Register an __array_function__ implementation for AbstractScalarArray objects."""
+    def decorator(func):
+        HANDLED_FUNCTIONS[numpy_function] = func
+        return func
+    return decorator
+
+
+def _axis_normalized(
+        a: AbstractScalarArray,
+        axis: None | str | Sequence[str],
+) -> tuple[str]:
+    if axis is None:
+        result = a.axes
+    elif isinstance(axis, str):
+        result = axis,
+    else:
+        result = tuple(axis)
+    return result
+
+
+def _calc_axes_new(
+        a: AbstractScalarArray,
+        axis: None | str | Sequence[str],
+        *,
+        keepdims: bool = False,
+) -> tuple[str, ...]:
+    if keepdims:
+        return a.axes
+    else:
+        axis = _axis_normalized(a, axis)
+        return tuple(ax for ax in a.axes if ax not in axis)
+
+
+def count_nonzero(
+        a: AbstractScalarArray,
+        axis: None | str | Sequence[str] = None,
+        *,
+        keepdims: bool = False,
+) -> ScalarArray:
+    return ScalarArray(
+        ndarray=np.count_nonzero(
+            a=a.ndarray,
+            axis=tuple(a.axes.index(ax) for ax in _axis_normalized(a, axis=axis)),
+            keepdims=keepdims,
+        ),
+        axes=_calc_axes_new(a, axis=axis, keepdims=keepdims)
+    )
 
 
 ScalarLike = Union[na.QuantityLike, AbstractScalar]
