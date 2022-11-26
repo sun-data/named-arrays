@@ -136,6 +136,10 @@ class AbstractScalarArray(
         destination = []
         for axis_index, axis_name in enumerate(self.axes):
             source.append(axis_index)
+            if axis_name not in shape:
+                raise ValueError(
+                    f"'shape' is missing dimensions. 'shape' is {shape} but 'self.shape' is {self.shape}"
+                )
             destination.append(list(shape.keys()).index(axis_name))
         value = np.moveaxis(value, source=source, destination=destination)
         return value
