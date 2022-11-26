@@ -20,6 +20,8 @@ DEFAULT_FUNCTIONS = [
     np.nanmax,
     np.sum,
     np.nansum,
+    np.prod,
+    np.nanprod,
     np.mean,
     np.nanmean,
     np.std,
