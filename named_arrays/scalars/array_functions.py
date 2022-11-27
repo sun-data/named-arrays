@@ -83,7 +83,7 @@ def array_function_default(
     kwargs = dict()
 
     if axis is not None:
-        kwargs['axis'] = tuple(a.axes.index(ax) for ax in _axis_normalized(a, axis=axis))
+        kwargs['axis'] = tuple(a.axes.index(ax) for ax in _axis_normalized(a, axis=axis) if ax in a.axes)
     if dtype is not None:
         kwargs['dtype'] = dtype
     if out is not None:
