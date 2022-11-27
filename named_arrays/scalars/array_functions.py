@@ -149,3 +149,16 @@ def transpose(
         axes=axes,
     )
 
+
+@implements(np.array_equal)
+def array_equal(
+        a1: scalars.AbstractScalarArray,
+        a2: scalars.AbstractScalarArray,
+        equal_nan: bool = False,
+) -> bool:
+    return np.array_equal(
+        a1=a1.ndarray,
+        a2=a2.ndarray_aligned(a1.shape),
+        equal_nan=equal_nan,
+    )
+
