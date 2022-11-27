@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Type, Sequence
+from typing import Type
 import pytest
 import numpy as np
 import astropy.units as u
@@ -81,6 +81,12 @@ class AbstractTestAbstractScalarArray(
     @pytest.mark.parametrize('array_2', _scalar_arrays_2())
     class TestUfuncBinary(
         AbstractTestAbstractScalar.TestUfuncBinary,
+    ):
+        pass
+
+    @pytest.mark.parametrize('axis', [None, 'y', ('x', 'y')])
+    class TestReductionFunctions(
+        AbstractTestAbstractScalar.TestReductionFunctions
     ):
         pass
 
