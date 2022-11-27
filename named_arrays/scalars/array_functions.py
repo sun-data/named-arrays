@@ -2,6 +2,7 @@ from typing import Sequence, Callable, Type
 import numpy as np
 import astropy.units as u
 
+from named_arrays.core import broadcast_shapes
 from . import core as scalars
 
 __all__ = [
@@ -80,6 +81,13 @@ def array_function_default(
         initial: None | bool | int | float | complex | u.Quantity = None,
         where: None | scalars.AbstractScalarArray = None,
 ):
+
+    if out is not None:
+        shape = broadcast_shapes(out.shape, a.shape)
+        a = a.broadcast_to(shape)
+    else:
+        shape = a.shape
+
     kwargs = dict()
 
     if axis is not None:
@@ -87,13 +95,13 @@ def array_function_default(
     if dtype is not None:
         kwargs['dtype'] = dtype
     if out is not None:
-        kwargs['out'] = out
+        kwargs['out'] = out.ndarray
     if keepdims is not None:
         kwargs['keepdims'] = keepdims
     if initial is not None:
         kwargs['initial'] = initial
     if where is not None:
-        kwargs['where'] = where
+        kwargs['where'] = where.ndarray_aligned(shape)
 
     return scalars.ScalarArray(
         ndarray=func(a.ndarray, **kwargs),
