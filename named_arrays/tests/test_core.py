@@ -561,6 +561,9 @@ class AbstractTestAbstractArray(
 
             if ufunc in [np.power, np.float_power]:
                 where = (array_2 >= 1) & (array >= 0)
+            elif ufunc in [np.divide, np.floor_divide, np.remainder, np.fmod, np.divmod]:
+                where = array_2 != 0
+                where = na.ScalarArray(where) if not isinstance(where, na.AbstractArray) else where
             else:
                 where = na.ScalarArray(True)
             where = where.broadcast_to(shape)
@@ -735,6 +738,7 @@ class AbstractTestAbstractParameterizedArray(
 
     def test_num(self, array: na.AbstractParameterizedArray):
         assert isinstance(array.num, (int, na.AbstractArray))
+        assert array.num == array.shape[array.axis]
 
 
 class AbstractTestAbstractRandomMixin(
