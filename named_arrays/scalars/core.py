@@ -1135,8 +1135,8 @@ class ScalarArrayRange(
         return self
 
     @property
-    def num(self: Self):
-        return
+    def num(self: Self) -> int:
+        return int(np.ceil((self.stop - self.start) / self.step))
 
 
 @dataclasses.dataclass(eq=False)
