@@ -774,6 +774,20 @@ class AbstractTestAbstractSymmetricRange(
         assert np.all(array.width > 0)
 
 
+class AbstractTestAbstractUniformRandomSample(
+    AbstractTestAbstractRandomMixin,
+    AbstractTestAbstractRange,
+):
+    pass
+
+
+class AbstractTestAbstractNormalRandomSample(
+    AbstractTestAbstractRandomMixin,
+    AbstractTestAbstractSymmetricRange,
+):
+    pass
+
+
 class AbstractTestAbstractLinearParametrizedArrayMixin:
 
     def test_step(self, array: na.AbstractLinearParameterizedArrayMixin):
@@ -826,19 +840,5 @@ class AbstractTestAbstractLogarithmicSpace(
 
 class AbstractTestAbstractGeometricSpace(
     AbstractTestAbstractSpace,
-):
-    pass
-
-
-class AbstractTestAbstractUniformRandomSample(
-    AbstractTestAbstractRandomMixin,
-    AbstractTestAbstractRange,
-):
-    pass
-
-
-class AbstractTestAbstractNormalRandomSample(
-    AbstractTestAbstractRandomMixin,
-    AbstractTestAbstractSymmetricRange,
 ):
     pass
