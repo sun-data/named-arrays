@@ -174,10 +174,15 @@ def _scalar_normal_random_samples() -> list[na.ScalarNormalRandomSample]:
         10,
         na.ScalarArray(10 * np.random.random(_num_x) + 1, axes=('x', )),
     ]
-    units = [1, u.mm]
-    centers = [start * unit for start in centers for unit in units]
-    widths = [stop * unit for stop in widths for unit in units]
-    return [na.ScalarNormalRandomSample(start, stop, axis='y', num=_num_y) for start, stop in zip(centers, widths)]
+    units = [None, u.mm]
+    return [
+        na.ScalarNormalRandomSample(
+            center=center << unit if unit is not None else center,
+            width=width << unit if unit is not None else width,
+            axis='y',
+            num=_num_y
+        ) for center in centers for width in widths for unit in units
+    ]
 
 
 @pytest.mark.parametrize('array', _scalar_normal_random_samples())
