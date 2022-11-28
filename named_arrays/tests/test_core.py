@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Sequence, Type
+from typing import Sequence, Type, Callable
 import pytest
 import abc
 import numpy as np
@@ -126,40 +126,13 @@ class TestIndexingFunctions:
 class AbstractTestAbstractArray(
     test_mixins.AbstractTestCopyable,
 ):
-    def test__neg__(self, array: na.AbstractArray):
-        if np.issubdtype(array.dtype, np.number):
-            assert np.all((-array).ndarray == -(array.ndarray))
-        else:
-            with pytest.raises(TypeError):
-                -array
-
-    def test__pos__(self, array: na.AbstractArray):
-        if np.issubdtype(array.dtype, np.number):
-            assert np.all((+array).ndarray == +(array.ndarray))
-        else:
-            with pytest.raises(TypeError):
-                +array
-
-    def test__abs__(self, array: na.AbstractArray):
-        if np.issubdtype(array.dtype, np.number) or np.issubdtype(array.dtype, bool):
-            assert np.all(abs(array).ndarray == abs(array.ndarray))
-        else:
-            with pytest.raises(TypeError):
-                abs(array)
-
-    def test__invert__(self, array: na.AbstractArray):
-        if np.issubdtype(array.dtype, bool) or np.issubdtype(array.dtype, np.int):
-            assert np.all((~array).ndarray == ~(array.ndarray))
-        else:
-            with pytest.raises(TypeError):
-                ~array
 
     def test_ndarray(self, array: na.AbstractArray):
         assert isinstance(array.ndarray, (int, float, complex, str, np.ndarray))
 
     def test_axes(self, array: na.AbstractArray):
         axes = array.axes
-        assert isinstance(axes, list)
+        assert isinstance(axes, tuple)
         assert len(axes) == np.ndim(array.ndarray)
         for axis in axes:
             assert isinstance(axis, str)
@@ -408,11 +381,25 @@ class AbstractTestAbstractArray(
                 ufunc(array, out=out, casting='no')
             return
 
-        result = ufunc(array, out=out)
+        if ufunc in [np.log, np.log2, np.log10, np.sqrt]:
+            where = array > 0
+        elif ufunc in [np.log1p]:
+            where = array >= -1
+        elif ufunc in [np.arcsin, np.arccos, np.arctanh]:
+            where = (-1 <= array) & (array <= 1)
+        elif ufunc in [np.arccosh]:
+            where = array >= 1
+        elif ufunc in [np.reciprocal]:
+            where = array != 0
+        else:
+            where = na.ScalarArray(True)
+
+        result = ufunc(array, out=out, where=where)
         result_ndarray = ufunc(
             array.ndarray,
             out=out_ndarray,
             casting='no',
+            where=where.ndarray,
         )
 
         if ufunc.nout == 1:
@@ -420,7 +407,7 @@ class AbstractTestAbstractArray(
             result_ndarray = (result_ndarray, )
 
         for i in range(ufunc.nout):
-            assert np.all(result[i].ndarray == result_ndarray[i], where=np.isfinite(result[i].ndarray))
+            assert np.all(result[i].ndarray == result_ndarray[i], where=where.ndarray)
 
     @pytest.mark.parametrize(
         argnames='ufunc',
@@ -464,7 +451,7 @@ class AbstractTestAbstractArray(
             np.fmin,
             np.copysign,
             np.nextafter,
-            np.ldexp,
+            # np.ldexp,
             np.fmod,
         ]
     )
@@ -572,12 +559,22 @@ class AbstractTestAbstractArray(
                             ufunc(array, array_2, out=out, casting='no')
                     return
 
-            result = ufunc(array, array_2, out=out)
+            if ufunc in [np.power, np.float_power]:
+                where = (array_2 >= 1) & (array >= 0)
+            elif ufunc in [np.divide, np.floor_divide, np.remainder, np.fmod, np.divmod]:
+                where = array_2 != 0
+                where = na.ScalarArray(where) if not isinstance(where, na.AbstractArray) else where
+            else:
+                where = na.ScalarArray(True)
+            where = where.broadcast_to(shape)
+
+            result = ufunc(array, array_2, out=out, where=where)
             result_ndarray = ufunc(
                 array.ndarray if isinstance(array, na.AbstractArray) else array,
                 np.transpose(array_2.ndarray) if isinstance(array_2, na.AbstractArray) else np.transpose(array_2),
                 out=out_ndarray,
                 casting='no',
+                where=where.ndarray
             )
 
             if ufunc.nout == 1:
@@ -588,7 +585,7 @@ class AbstractTestAbstractArray(
                 result_i = result[i].broadcast_to(shape)
                 assert np.all(
                     result_i.ndarray == result_ndarray[i],
-                    where=np.isfinite(result_i.ndarray),
+                    where=where.ndarray,
                 )
 
         def test_ufunc_binary_reversed(
@@ -601,6 +598,102 @@ class AbstractTestAbstractArray(
             array = np.transpose(array)
             array_2 = np.transpose(array_2)
             self.test_ufunc_binary(ufunc, array_2, array, out=out)
+
+    @pytest.mark.parametrize(
+        argnames='func',
+        argvalues=[
+            np.all,
+            np.any,
+            np.max,
+            np.nanmax,
+            np.min,
+            np.nanmin,
+            np.sum,
+            np.nansum,
+            np.prod,
+            np.nanprod,
+            np.mean,
+            np.nanmean,
+        ]
+    )
+    @pytest.mark.parametrize('out', [False, True])
+    @pytest.mark.parametrize('keepdims', [False, True])
+    @pytest.mark.parametrize('where', [False, True])
+    class TestReductionFunctions:
+        def test_reduction_functions(
+                self,
+                func: Callable,
+                array: na.AbstractArray,
+                axis: None | str,
+                out: bool,
+                keepdims: bool,
+                where: bool,
+        ):
+            kwargs = dict()
+            kwargs_ndarray = dict()
+
+            axis_normalized = axis if axis is not None else array.axes
+            axis_normalized = (axis_normalized, ) if isinstance(axis_normalized, str) else axis_normalized
+            shape_result = {ax: 1 if ax in axis_normalized else array.shape[ax] for ax in array.shape}
+
+            if keepdims:
+                kwargs['keepdims'] = keepdims
+                kwargs_ndarray['keepdims'] = keepdims
+            else:
+                for ax in axis_normalized:
+                    if ax in shape_result:
+                        shape_result.pop(ax)
+
+            if out:
+                kwargs['out'] = array.type_array.empty(shape_result)
+                kwargs_ndarray['out'] = array.type_array.empty(shape_result).ndarray
+                if array.unit is not None:
+                    kwargs['out'] = kwargs['out'] << array.unit
+                    kwargs_ndarray['out'] = kwargs_ndarray['out'] << array.unit
+
+            if where:
+                if array.shape:
+                    kwargs['where'] = na.ScalarArray(
+                        ndarray=np.random.choice([False, True], size=np.shape(array.ndarray)),
+                        axes=array.axes,
+                    )
+                    kwargs['where'][{ax: 0 for ax in axis_normalized if ax in kwargs['where'].axes}] = True
+                else:
+                    kwargs['where'] = na.ScalarArray(True)
+                kwargs_ndarray['where'] = kwargs['where'].ndarray
+                if func in [np.min, np.nanmin, np.max, np.nanmax]:
+                    kwargs['initial'] = 0
+                    kwargs_ndarray['initial'] = kwargs['initial']
+
+            if array.unit is not None:
+                if func in [np.all, np.any]:
+                    if 'where' in kwargs:
+                        kwargs.pop('where')
+                    with pytest.raises(
+                            expected_exception=TypeError,
+                            match=r"(no implementation found for *)|(cannot evaluate truth value of quantities. *)"
+                    ):
+                        func(array, axis=axis, **kwargs, )
+                    return
+
+                if func in [np.prod, np.nanprod]:
+                    with pytest.raises(u.UnitsError):
+                        func(array, axis=axis, **kwargs, )
+                    return
+
+            if np.issubdtype(array.dtype, str):
+                with pytest.raises(TypeError, match=r"ufunc .* did not contain a loop with signature matching types .*"):
+                    func(array, axis=axis, **kwargs, )
+                return
+
+            result = func(array, axis=axis, **kwargs, )
+            result_ndarray = func(
+                array.ndarray,
+                axis=tuple(array.axes.index(ax) for ax in axis_normalized if ax in array.axes),
+                **kwargs_ndarray,
+            )
+
+            assert np.array_equal(result.ndarray, result_ndarray)
 
 
 class AbstractTestArrayBase(
@@ -645,6 +738,7 @@ class AbstractTestAbstractParameterizedArray(
 
     def test_num(self, array: na.AbstractParameterizedArray):
         assert isinstance(array.num, (int, na.AbstractArray))
+        assert array.num == array.shape[array.axis]
 
 
 class AbstractTestAbstractRandomMixin(
@@ -684,6 +778,20 @@ class AbstractTestAbstractSymmetricRange(
     def test_width(self, array: na.AbstractSymmetricRange):
         assert isinstance(array.width, (int, float, complex, u.Quantity, na.AbstractArray))
         assert np.all(array.width > 0)
+
+
+class AbstractTestAbstractUniformRandomSample(
+    AbstractTestAbstractRandomMixin,
+    AbstractTestAbstractRange,
+):
+    pass
+
+
+class AbstractTestAbstractNormalRandomSample(
+    AbstractTestAbstractRandomMixin,
+    AbstractTestAbstractSymmetricRange,
+):
+    pass
 
 
 class AbstractTestAbstractLinearParametrizedArrayMixin:
@@ -738,19 +846,5 @@ class AbstractTestAbstractLogarithmicSpace(
 
 class AbstractTestAbstractGeometricSpace(
     AbstractTestAbstractSpace,
-):
-    pass
-
-
-class AbstractTestAbstractUniformRandomSample(
-    AbstractTestAbstractRandomMixin,
-    AbstractTestAbstractRange,
-):
-    pass
-
-
-class AbstractTestAbstractNormalRandomSample(
-    AbstractTestAbstractRandomMixin,
-    AbstractTestAbstractSymmetricRange,
 ):
     pass

@@ -108,7 +108,7 @@ class AbstractScalarArray(
             ndarray = ndarray << u.dimensionless_unscaled
         return ScalarArray(
             ndarray=ndarray.to(unit),
-            axes=self.axes.copy(),
+            axes=self.axes,
         )
 
     # @property
@@ -136,6 +136,10 @@ class AbstractScalarArray(
         destination = []
         for axis_index, axis_name in enumerate(self.axes):
             source.append(axis_index)
+            if axis_name not in shape:
+                raise ValueError(
+                    f"'shape' is missing dimensions. 'shape' is {shape} but 'self.shape' is {self.shape}"
+                )
             destination.append(list(shape.keys()).index(axis_name))
         value = np.moveaxis(value, source=source, destination=destination)
         return value
@@ -147,7 +151,7 @@ class AbstractScalarArray(
         shape = {**self.shape, **shape_new}
         return ScalarArray(
             ndarray=self.ndarray_aligned(shape),
-            axes=list(shape.keys()),
+            axes=tuple(shape.keys()),
         )
 
     def change_axis_index(self: Self, axis: str, index: int) -> ScalarArray:
@@ -161,7 +165,7 @@ class AbstractScalarArray(
         shape_new = {k: v for k, v in zip(keys, values)}
         return ScalarArray(
             ndarray=self.ndarray_aligned(shape_new),
-            axes=keys,
+            axes=tuple(keys),
         )
 
     def combine_axes(
@@ -173,7 +177,7 @@ class AbstractScalarArray(
         if axis_new is None:
             axis_new = ''.join(axes)
 
-        axes_new = self.axes.copy()
+        axes_new = list(self.axes)
         shape_new = self.shape
         for axis in axes:
             axes_new.append(axes_new.pop(axes_new.index(axis)))
@@ -193,7 +197,7 @@ class AbstractScalarArray(
 
         return ScalarArray(
             ndarray=np.moveaxis(self.ndarray, source=source, destination=destination).reshape(tuple(shape_new.values())),
-            axes=axes_new,
+            axes=tuple(axes_new),
         )
 
     def matrix_multiply(
@@ -251,13 +255,13 @@ class AbstractScalarArray(
                 destination=[~1, ~0],
             )
 
-            axes_new = self.axes.copy()
+            axes_new = list(self.axes)
             axes_new.remove(axis_rows)
             axes_new.remove(axis_columns)
 
             return ScalarArray(
                 ndarray=np.linalg.det(value),
-                axes=axes_new,
+                axes=tuple(axes_new),
             )
 
     def matrix_inverse(
@@ -315,7 +319,7 @@ class AbstractScalarArray(
                 destination=[~1, ~0],
             )
 
-            axes_new = self.axes.copy()
+            axes_new = list(self.axes)
             axes_new.remove(axis_rows)
             axes_new.remove(axis_columns)
             axes_new.append(axis_rows_inverse)
@@ -323,7 +327,7 @@ class AbstractScalarArray(
 
             return ScalarArray(
                 ndarray=np.linalg.inv(value),
-                axes=axes_new,
+                axes=tuple(axes_new),
             )
 
     def __bool__(self: Self) -> bool:
@@ -333,18 +337,15 @@ class AbstractScalarArray(
         if isinstance(other, u.UnitBase):
             return ScalarArray(
                 ndarray=self.ndarray * other,
-                axes=self.axes.copy(),
+                axes=self.axes,
             )
         else:
             return super().__mul__(other)
 
     def __lshift__(self: Self, other: u.UnitBase) -> ScalarArray:
-        axes = self.axes
-        if axes is not None:
-            axes = axes.copy()
         return ScalarArray(
             ndarray=self.ndarray << other,
-            axes=axes
+            axes=self.axes
         )
 
     def __array_ufunc__(
@@ -377,10 +378,14 @@ class AbstractScalarArray(
         if 'out' in kwargs:
             kwargs['out'] = tuple(o.ndarray_aligned(shape) for o in kwargs['out'])
 
+        if 'where' in kwargs:
+            if isinstance(kwargs['where'], na.AbstractArray):
+                kwargs['where'] = kwargs['where'].ndarray_aligned(shape)
+
         for inp in inputs:
             result = inp.__array_ufunc__(function, method, *inputs, **kwargs)
             if result is not NotImplemented:
-                axes=list(shape.keys())
+                axes=tuple(shape.keys())
                 if function.nout > 1:
                     return tuple(self.type_array(r, axes=axes) for r in result)
                 else:
@@ -389,6 +394,27 @@ class AbstractScalarArray(
         return NotImplemented
 
     def __array_function__(
+            self: Self,
+            func: Callable,
+            types: Collection,
+            args: tuple,
+            kwargs: dict[str, Any],
+    ):
+        from . import array_functions
+
+        if not all(issubclass(t, na.AbstractArray) for t in types):
+            return NotImplemented
+
+        if func in array_functions.DEFAULT_FUNCTIONS:
+            return array_functions.array_function_default(func, *args, **kwargs)
+
+        if func in array_functions.HANDLED_FUNCTIONS:
+            return array_functions.HANDLED_FUNCTIONS[func](*args, **kwargs)
+
+        return NotImplemented
+
+
+    def __array_function__old(
             self: Self,
             func: Callable,
             types: Collection,
@@ -409,7 +435,7 @@ class AbstractScalarArray(
 
             return ScalarArray(
                 ndarray=np.broadcast_to(array.ndarray_aligned(shape), tuple(shape.values()), subok=True),
-                axes=list(shape.keys()),
+                axes=tuple(shape.keys()),
             )
 
         elif func is np.shape:
@@ -430,7 +456,7 @@ class AbstractScalarArray(
             axes_ndarray = tuple(self.axes.index(axis) for axis in axes) if axes is not None else axes
             ndarray_new = np.transpose(self.ndarray, axes=axes_ndarray)
 
-            return self.type_array(ndarray_new, axes=axes if axes is not None else list(reversed(self.axes)))
+            return self.type_array(ndarray_new, axes=axes if axes is not None else tuple(reversed(self.axes)))
 
         elif func is np.moveaxis:
 
@@ -440,7 +466,7 @@ class AbstractScalarArray(
                 a = args.pop(0)
             else:
                 a = kwargs.pop('a')
-            a = ScalarArray(ndarray=a.ndarray, axes=a.axes.copy())
+            axes = list(a.axes)
 
             if args:
                 source = args.pop(0)
@@ -459,10 +485,13 @@ class AbstractScalarArray(
                 destination = (destination, )
 
             for src, dest in zip(source, destination):
-                if src in a.axes:
-                    a.axes[a.axes.index(src)] = dest
+                if src in axes:
+                    axes[axes.index(src)] = dest
 
-            return a
+            return ScalarArray(
+                ndarray=a.ndarray,
+                axes=tuple(axes)
+            )
 
         elif func is np.reshape:
             args = list(args)
@@ -478,7 +507,7 @@ class AbstractScalarArray(
 
             return ScalarArray(
                 ndarray=np.reshape(array.ndarray, tuple(shape.values())),
-                axes=list(shape.keys()),
+                axes=tuple(shape.keys()),
             )
 
         elif func is np.result_type:
@@ -501,7 +530,7 @@ class AbstractScalarArray(
             for axis, array in zip(shape, result_value):
                 result[axis] = ScalarArray(
                     ndarray=array,
-                    axes=self.axes.copy(),
+                    axes=self.axes,
                 )
             return result
 
@@ -535,7 +564,7 @@ class AbstractScalarArray(
 
             return ScalarArray(
                 ndarray=np.stack(arrays, axis=0, **kwargs),
-                axes=[axis] + list(shape.keys()),
+                axes=(axis, ) + tuple(shape.keys()),
             )
 
         elif func is np.concatenate:
@@ -558,7 +587,7 @@ class AbstractScalarArray(
             shape = self.broadcast_shapes(*arrays)
             arrays = [arr.broadcast_to(shape).ndarray for arr in arrays]
 
-            axes = list(shape.keys())
+            axes = tuple(shape.keys())
             return ScalarArray(
                 ndarray=func(arrays, axis=axes.index(axis)),
                 axes=axes,
@@ -588,7 +617,7 @@ class AbstractScalarArray(
                 a = kwargs.pop('a')
             result = func(a.ndarray, *args, **kwargs)
 
-            return {a.axes[r]: ScalarArray(result[r], axes=['nonzero']) for r, _ in enumerate(result)}
+            return {a.axes[r]: ScalarArray(result[r], axes=('nonzero', )) for r, _ in enumerate(result)}
 
         elif func is np.histogram2d:
             args = list(args)
@@ -661,7 +690,7 @@ class AbstractScalarArray(
 
             return ScalarArray(
                 ndarray=func(a.ndarray, *args, **kwargs),
-                axes=self.axes.copy(),
+                axes=self.axes,
             )
 
         elif func in [
@@ -741,7 +770,7 @@ class AbstractScalarArray(
             else:
                 return ScalarArray(
                     ndarray=ndarray,
-                    axes=axes_new,
+                    axes=tuple(axes_new),
                 )
         else:
             raise ValueError(f'{func} not supported')
@@ -772,7 +801,7 @@ class AbstractScalarArray(
 
             return ScalarArray(
                 ndarray=np.moveaxis(value[item.ndarray], 0, ~0),
-                axes=[axis for axis in self.axes if axis not in item.axes] + ['boolean']
+                axes=tuple(axis for axis in self.axes if axis not in item.axes) + ('boolean', )
             )
 
         else:
@@ -795,7 +824,7 @@ class AbstractScalarArray(
                 destination=list(range(len(axes_indices_advanced))),
             )
 
-            axes = self.axes.copy()
+            axes = list(self.axes)
             for a, axis in enumerate(axes_advanced):
                 axes.remove(axis)
                 axes.insert(a, axis)
@@ -812,7 +841,7 @@ class AbstractScalarArray(
 
             return ScalarArray(
                 ndarray=value[tuple(index)],
-                axes=list(shape_advanced.keys()) + axes_new,
+                axes=tuple(shape_advanced.keys()) + tuple(axes_new),
             )
         # else:
         #     raise ValueError('Invalid index type')
@@ -835,7 +864,7 @@ class AbstractScalarArray(
                 size=tuple(shape_kernel_final.values()),
                 mode=mode,
             ),
-            axes=self.axes.copy(),
+            axes=self.axes,
         )
         if isinstance(self.ndarray, u.Quantity):
             result = result << self.unit
@@ -853,11 +882,11 @@ class ScalarArray(
     Generic[NDArrayT],
 ):
     ndarray: NDArrayT
-    axes: None | list[str] = None
+    axes: None | tuple[str, ...] = None
 
     def __post_init__(self: Self):
         if self.axes is None:
-            self.axes = []
+            self.axes = tuple()
         if getattr(self.ndarray, 'ndim', 0) != len(self.axes):
             raise ValueError('The number of axis names must match the number of dimensions.')
         if len(self.axes) != len(set(self.axes)):
@@ -867,21 +896,21 @@ class ScalarArray(
     def empty(cls: Type[Self], shape: dict[str, int], dtype: Type = float) -> Self:
         return cls(
             ndarray=np.empty(shape=tuple(shape.values()), dtype=dtype),
-            axes=list(shape.keys()),
+            axes=tuple(shape.keys()),
         )
 
     @classmethod
     def zeros(cls: Type[Self], shape: dict[str, int], dtype: Type = float) -> Self:
         return cls(
             ndarray=np.zeros(shape=tuple(shape.values()), dtype=dtype),
-            axes=list(shape.keys()),
+            axes=tuple(shape.keys()),
         )
 
     @classmethod
     def ones(cls: Type[Self], shape: dict[str, int], dtype: Type = float) -> Self:
         return cls(
             ndarray=np.ones(shape=tuple(shape.values()), dtype=dtype),
-            axes=list(shape.keys()),
+            axes=tuple(shape.keys()),
         )
 
     @property
@@ -931,7 +960,7 @@ class ScalarArray(
         else:
             key_casted = cast(dict[str, Union[int, slice, AbstractScalar]], key)
             index = [slice(None)] * self.ndim   # type: list[Union[int, slice, AbstractScalar]]
-            axes = self.axes.copy()
+            axes = list(self.axes)
             for axis in key_casted:
                 item_axis = key_casted[axis]
                 if isinstance(item_axis, int):
@@ -1017,7 +1046,7 @@ class ScalarUniformRandomSample(
 
         return ScalarArray(
             ndarray=value,
-            axes=list(shape.keys())
+            axes=tuple(shape.keys())
         )
 
     @property
@@ -1070,7 +1099,7 @@ class ScalarNormalRandomSample(
 
         return ScalarArray(
             ndarray=value,
-            axes=list(shape.keys())
+            axes=tuple(shape.keys())
         )
 
     @property
@@ -1098,7 +1127,7 @@ class ScalarArrayRange(
                 stop=self.stop,
                 step=self.step,
             ),
-            axes=[self.axis],
+            axes=(self.axis, ),
         )
 
     @property
@@ -1106,8 +1135,8 @@ class ScalarArrayRange(
         return self
 
     @property
-    def num(self: Self):
-        return
+    def num(self: Self) -> int:
+        return int(np.ceil((self.stop - self.start) / self.step))
 
 
 @dataclasses.dataclass(eq=False)
@@ -1147,7 +1176,7 @@ class ScalarLinearSpace(
                 endpoint=self.endpoint,
                 axis=~0,
             ),
-            axes=list(shape.keys()) + [self.axis]
+            axes=tuple(shape.keys()) + (self.axis, )
         )
 
     @property
@@ -1283,7 +1312,7 @@ class ScalarLogarithmicSpace(
                 base=base.ndarray_aligned(shape),
                 axis=~0,
             ),
-            axes=list(shape.keys()) + [self.axis]
+            axes=tuple(shape.keys()) + (self.axis, )
         )
 
     @property
@@ -1320,7 +1349,7 @@ class ScalarGeometricSpace(
                 endpoint=self.endpoint,
                 axis=~0,
             ),
-            axes=list(shape.keys()) + [self.axis]
+            axes=tuple(shape.keys()) + (self.axis, )
         )
 
     @property

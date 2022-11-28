@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Type, Sequence
+from typing import Type
 import pytest
 import numpy as np
 import astropy.units as u
@@ -20,18 +20,18 @@ def _scalar_arrays():
     arrays_numeric = [
         na.ScalarArray(4),
         na.ScalarArray(5.),
-        na.ScalarArray(np.linspace(1, 2, num=_num_y), axes=['y']),
-        na.ScalarArray(np.random.random((_num_x, _num_y)), axes=['x', 'y']),
+        na.ScalarArray(10 * (np.random.random((_num_y, )) - 0.5), axes=('y', )),
+        na.ScalarArray(10 * (np.random.random((_num_x, _num_y)) - 0.5), axes=('x', 'y')),
     ]
     units = [1, u.mm]
     arrays_numeric = [na.ScalarArray(array.ndarray * unit, array.axes) for array in arrays_numeric for unit in units]
     arrays_bool = [
-        na.ScalarArray(np.random.choice([True, False], size=_num_y), axes=['y']),
-        na.ScalarArray(np.random.choice([True, False], size=(_num_x, _num_y)), axes=['x', 'y'])
+        na.ScalarArray(np.random.choice([True, False], size=_num_y), axes=('y', )),
+        na.ScalarArray(np.random.choice([True, False], size=(_num_x, _num_y)), axes=('x', 'y'))
     ]
     arrays_str = [
         na.ScalarArray('foo'),
-        na.ScalarArray(np.random.choice(['foo', 'bar', 'baz'], size=_num_y), axes=['y']),
+        na.ScalarArray(np.random.choice(['foo', 'bar', 'baz'], size=_num_y), axes=('y', )),
     ]
     return arrays_numeric + arrays_bool + arrays_str
 
@@ -40,14 +40,14 @@ def _scalar_arrays_2():
     arrays_numeric = [
         6,
         na.ScalarArray(8),
-        na.ScalarArray(np.random.random(_num_y), axes=['y']),
-        na.ScalarArray(np.random.random((_num_y, _num_x)), axes=['y', 'x']),
+        na.ScalarArray(10 * (np.random.random((_num_y,)) - 0.5), axes = ('y', )),
+        na.ScalarArray(10 * (np.random.random((_num_y, _num_x)) - 0.5), axes=('y', 'x')),
     ]
     units = [1, u.m]
     arrays_numeric = [array * unit for array in arrays_numeric for unit in units]
     arrays_bool = [
-        na.ScalarArray(np.random.choice([True, False], size=_num_y), axes=['y']),
-        na.ScalarArray(np.random.choice([True, False], size=(_num_y, _num_x)), axes=['y', 'x'])
+        na.ScalarArray(np.random.choice([True, False], size=_num_y), axes=('y', )),
+        na.ScalarArray(np.random.choice([True, False], size=(_num_y, _num_x)), axes=('y', 'x'))
     ]
     return arrays_numeric + arrays_bool
 
@@ -67,7 +67,7 @@ class AbstractTestAbstractScalarArray(
         argvalues=[
             dict(y=0),
             dict(y=slice(0,1)),
-            dict(y=na.ScalarArray(np.array([0, 1]), axes=['y'])),
+            dict(y=na.ScalarArray(np.array([0, 1]), axes=('y', ))),
             na.ScalarLinearSpace(0, 1, axis='y', num=_num_y) > 0.5,
         ]
     )
@@ -81,6 +81,12 @@ class AbstractTestAbstractScalarArray(
     @pytest.mark.parametrize('array_2', _scalar_arrays_2())
     class TestUfuncBinary(
         AbstractTestAbstractScalar.TestUfuncBinary,
+    ):
+        pass
+
+    @pytest.mark.parametrize('axis', [None, 'y', ('x', 'y')])
+    class TestReductionFunctions(
+        AbstractTestAbstractScalar.TestReductionFunctions
     ):
         pass
 
@@ -134,16 +140,21 @@ class AbstractTestAbstractScalarSymmetricRange(
 def _scalar_uniform_random_samples() -> list[na.ScalarUniformRandomSample]:
     starts = [
         0,
-        na.ScalarArray(np.random.random(_num_x), axes=['x']),
+        na.ScalarArray(np.random.random(_num_x), axes=('x', )),
     ]
     stops = [
         10,
-        na.ScalarArray(10 * np.random.random(_num_x) + 1, axes=['x']),
+        na.ScalarArray(10 * np.random.random(_num_x) + 1, axes=('x', )),
     ]
-    units = [1, u.mm]
-    starts = [start * unit for start in starts for unit in units]
-    stops = [stop * unit for stop in stops for unit in units]
-    return [na.ScalarUniformRandomSample(start, stop, axis='y', num=_num_y) for start, stop in zip(starts, stops)]
+    units = [None, u.mm]
+    return [
+        na.ScalarUniformRandomSample(
+            start=start << unit if unit is not None else start,
+            stop=stop << unit if unit is not None else stop,
+            axis='y',
+            num=_num_y
+        ) for start in starts for stop in stops for unit in units
+    ]
 
 
 @pytest.mark.parametrize('array', _scalar_uniform_random_samples())
@@ -157,22 +168,48 @@ class TestScalarUniformRandomSample(
 def _scalar_normal_random_samples() -> list[na.ScalarNormalRandomSample]:
     centers = [
         0,
-        na.ScalarArray(np.random.random(_num_x), axes=['x']),
+        na.ScalarArray(np.random.random(_num_x), axes=('x', )),
     ]
     widths = [
         10,
-        na.ScalarArray(10 * np.random.random(_num_x) + 1, axes=['x']),
+        na.ScalarArray(10 * np.random.random(_num_x) + 1, axes=('x', )),
     ]
-    units = [1, u.mm]
-    centers = [start * unit for start in centers for unit in units]
-    widths = [stop * unit for stop in widths for unit in units]
-    return [na.ScalarNormalRandomSample(start, stop, axis='y', num=_num_y) for start, stop in zip(centers, widths)]
+    units = [None, u.mm]
+    return [
+        na.ScalarNormalRandomSample(
+            center=center << unit if unit is not None else center,
+            width=width << unit if unit is not None else width,
+            axis='y',
+            num=_num_y
+        ) for center in centers for width in widths for unit in units
+    ]
 
 
 @pytest.mark.parametrize('array', _scalar_normal_random_samples())
 class TestScalarNormalRandomSample(
     AbstractTestAbstractScalarRange,
     tests.test_core.AbstractTestAbstractNormalRandomSample,
+):
+    pass
+
+
+def _scalar_array_ranges() -> list[na.ScalarArrayRange]:
+    starts = [0, ]
+    steps = [1, 2.5, ]
+    return [
+        na.ScalarArrayRange(
+            start=start,
+            stop=start + step * _num_y,
+            axis='y',
+            step=step,
+        ) for start in starts for step in steps
+    ]
+
+
+@pytest.mark.parametrize('array', _scalar_array_ranges())
+class TestScalarArrayRange(
+    AbstractTestAbstractScalarRange,
+    tests.test_core.AbstractTestAbstractArrayRange,
 ):
     pass
 
