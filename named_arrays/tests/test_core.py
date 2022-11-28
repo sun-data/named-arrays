@@ -652,7 +652,7 @@ class AbstractTestAbstractArray(
                         ndarray=np.random.choice([False, True], size=np.shape(array.ndarray)),
                         axes=array.axes,
                     )
-                    kwargs['where'].ndarray.flat[0] = True
+                    kwargs['where'][{ax: 0 for ax in axis_normalized if ax in kwargs['where'].axes}] = True
                 else:
                     kwargs['where'] = na.ScalarArray(True)
                 kwargs_ndarray['where'] = kwargs['where'].ndarray
