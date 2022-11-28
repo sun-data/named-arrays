@@ -389,6 +389,8 @@ class AbstractTestAbstractArray(
             where = (-1 <= array) & (array <= 1)
         elif ufunc in [np.arccosh]:
             where = array >= 1
+        elif ufunc in [np.reciprocal]:
+            where = array != 0
         else:
             where = na.ScalarArray(True)
 
