@@ -192,6 +192,27 @@ class TestScalarNormalRandomSample(
 ):
     pass
 
+
+def _scalar_array_ranges() -> list[na.ScalarArrayRange]:
+    starts = [0, ]
+    steps = [1, 2.5, ]
+    return [
+        na.ScalarArrayRange(
+            start=start,
+            stop=start + step * _num_y,
+            axis='y',
+            step=step,
+        ) for start in starts for step in steps
+    ]
+
+
+@pytest.mark.parametrize('array', _scalar_array_ranges())
+class TestScalarArrayRange(
+    AbstractTestAbstractScalarRange,
+    tests.test_core.AbstractTestAbstractArrayRange,
+):
+    pass
+
 # class OldTestScalarArray:
 #     def test__post_init__(self):
 #         with pytest.raises(ValueError):
