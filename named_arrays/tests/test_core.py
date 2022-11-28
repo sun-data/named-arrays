@@ -382,7 +382,7 @@ class AbstractTestAbstractArray(
             return
 
         if ufunc in [np.log, np.log2, np.log10, np.sqrt]:
-            where = array >= 0
+            where = array > 0
         elif ufunc in [np.log1p]:
             where = array >= -1
         elif ufunc in [np.arcsin, np.arccos, np.arctanh]:
