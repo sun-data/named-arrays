@@ -146,10 +146,15 @@ def _scalar_uniform_random_samples() -> list[na.ScalarUniformRandomSample]:
         10,
         na.ScalarArray(10 * np.random.random(_num_x) + 1, axes=('x', )),
     ]
-    units = [1, u.mm]
-    starts = [start * unit for start in starts for unit in units]
-    stops = [stop * unit for stop in stops for unit in units]
-    return [na.ScalarUniformRandomSample(start, stop, axis='y', num=_num_y) for start, stop in zip(starts, stops)]
+    units = [None, u.mm]
+    return [
+        na.ScalarUniformRandomSample(
+            start=start << unit if unit is not None else start,
+            stop=stop << unit if unit is not None else stop,
+            axis='y',
+            num=_num_y
+        ) for start in starts for stop in stops for unit in units
+    ]
 
 
 @pytest.mark.parametrize('array', _scalar_uniform_random_samples())
