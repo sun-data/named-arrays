@@ -599,100 +599,102 @@ class AbstractTestAbstractArray(
             array_2 = np.transpose(array_2)
             self.test_ufunc_binary(ufunc, array_2, array, out=out)
 
-    @pytest.mark.parametrize(
-        argnames='func',
-        argvalues=[
-            np.all,
-            np.any,
-            np.max,
-            np.nanmax,
-            np.min,
-            np.nanmin,
-            np.sum,
-            np.nansum,
-            np.prod,
-            np.nanprod,
-            np.mean,
-            np.nanmean,
-        ]
-    )
-    @pytest.mark.parametrize('out', [False, True])
-    @pytest.mark.parametrize('keepdims', [False, True])
-    @pytest.mark.parametrize('where', [False, True])
-    class TestReductionFunctions:
-        def test_reduction_functions(
-                self,
-                func: Callable,
-                array: na.AbstractArray,
-                axis: None | str,
-                out: bool,
-                keepdims: bool,
-                where: bool,
-        ):
-            kwargs = dict()
-            kwargs_ndarray = dict()
+    class TestArrayFunctions:
 
-            axis_normalized = axis if axis is not None else array.axes
-            axis_normalized = (axis_normalized, ) if isinstance(axis_normalized, str) else axis_normalized
-            shape_result = {ax: 1 if ax in axis_normalized else array.shape[ax] for ax in reversed(array.shape)}
+        @pytest.mark.parametrize(
+            argnames='func',
+            argvalues=[
+                np.all,
+                np.any,
+                np.max,
+                np.nanmax,
+                np.min,
+                np.nanmin,
+                np.sum,
+                np.nansum,
+                np.prod,
+                np.nanprod,
+                np.mean,
+                np.nanmean,
+            ]
+        )
+        @pytest.mark.parametrize('out', [False, True])
+        @pytest.mark.parametrize('keepdims', [False, True])
+        @pytest.mark.parametrize('where', [False, True])
+        class TestReductionFunctions:
+            def test_reduction_functions(
+                    self,
+                    func: Callable,
+                    array: na.AbstractArray,
+                    axis: None | str,
+                    out: bool,
+                    keepdims: bool,
+                    where: bool,
+            ):
+                kwargs = dict()
+                kwargs_ndarray = dict()
 
-            if keepdims:
-                kwargs['keepdims'] = keepdims
-                kwargs_ndarray['keepdims'] = keepdims
-            else:
-                for ax in axis_normalized:
-                    if ax in shape_result:
-                        shape_result.pop(ax)
+                axis_normalized = axis if axis is not None else array.axes
+                axis_normalized = (axis_normalized, ) if isinstance(axis_normalized, str) else axis_normalized
+                shape_result = {ax: 1 if ax in axis_normalized else array.shape[ax] for ax in reversed(array.shape)}
 
-            if out:
-                kwargs['out'] = array.type_array.empty(shape_result)
-                kwargs_ndarray['out'] = array.type_array.empty(shape_result).ndarray.transpose()
-                if array.unit is not None:
-                    kwargs['out'] = kwargs['out'] << array.unit
-                    kwargs_ndarray['out'] = kwargs_ndarray['out'] << array.unit
-
-            if where:
-                if array.shape:
-                    kwargs['where'] = na.ScalarArray(
-                        ndarray=np.random.choice([False, True], size=np.shape(array.ndarray)),
-                        axes=array.axes,
-                    )
-                    kwargs['where'][{ax: 0 for ax in axis_normalized if ax in kwargs['where'].axes}] = True
+                if keepdims:
+                    kwargs['keepdims'] = keepdims
+                    kwargs_ndarray['keepdims'] = keepdims
                 else:
-                    kwargs['where'] = na.ScalarArray(True)
-                kwargs_ndarray['where'] = kwargs['where'].ndarray
-                if func in [np.min, np.nanmin, np.max, np.nanmax]:
-                    kwargs['initial'] = 0
-                    kwargs_ndarray['initial'] = kwargs['initial']
+                    for ax in axis_normalized:
+                        if ax in shape_result:
+                            shape_result.pop(ax)
 
-            if array.unit is not None:
-                if func in [np.all, np.any]:
-                    if 'where' in kwargs:
-                        kwargs.pop('where')
-                    with pytest.raises(
-                            expected_exception=TypeError,
-                            match=r"(no implementation found for *)|(cannot evaluate truth value of quantities. *)"
-                    ):
+                if out:
+                    kwargs['out'] = array.type_array.empty(shape_result)
+                    kwargs_ndarray['out'] = array.type_array.empty(shape_result).ndarray.transpose()
+                    if array.unit is not None:
+                        kwargs['out'] = kwargs['out'] << array.unit
+                        kwargs_ndarray['out'] = kwargs_ndarray['out'] << array.unit
+
+                if where:
+                    if array.shape:
+                        kwargs['where'] = na.ScalarArray(
+                            ndarray=np.random.choice([False, True], size=np.shape(array.ndarray)),
+                            axes=array.axes,
+                        )
+                        kwargs['where'][{ax: 0 for ax in axis_normalized if ax in kwargs['where'].axes}] = True
+                    else:
+                        kwargs['where'] = na.ScalarArray(True)
+                    kwargs_ndarray['where'] = kwargs['where'].ndarray
+                    if func in [np.min, np.nanmin, np.max, np.nanmax]:
+                        kwargs['initial'] = 0
+                        kwargs_ndarray['initial'] = kwargs['initial']
+
+                if array.unit is not None:
+                    if func in [np.all, np.any]:
+                        if 'where' in kwargs:
+                            kwargs.pop('where')
+                        with pytest.raises(
+                                expected_exception=TypeError,
+                                match=r"(no implementation found for *)|(cannot evaluate truth value of quantities. *)"
+                        ):
+                            func(array, axis=axis, **kwargs, )
+                        return
+
+                    if func in [np.prod, np.nanprod]:
+                        with pytest.raises(u.UnitsError):
+                            func(array, axis=axis, **kwargs, )
+                        return
+
+                if np.issubdtype(array.dtype, str):
+                    with pytest.raises(TypeError, match=r"ufunc .* did not contain a loop with signature matching types .*"):
                         func(array, axis=axis, **kwargs, )
                     return
 
-                if func in [np.prod, np.nanprod]:
-                    with pytest.raises(u.UnitsError):
-                        func(array, axis=axis, **kwargs, )
-                    return
-
-            if np.issubdtype(array.dtype, str):
-                with pytest.raises(TypeError, match=r"ufunc .* did not contain a loop with signature matching types .*"):
-                    func(array, axis=axis, **kwargs, )
-                return
-
-            result = func(array, axis=axis, **kwargs, )
-            result_ndarray = func(
-                array.ndarray,
-                axis=tuple(array.axes.index(ax) for ax in axis_normalized if ax in array.axes),
-                **kwargs_ndarray,
-            )
-            assert np.all(result.ndarray == result_ndarray)
+                result = func(array, axis=axis, **kwargs, )
+                result_ndarray = func(
+                    array.ndarray,
+                    axis=tuple(array.axes.index(ax) for ax in axis_normalized if ax in array.axes),
+                    **kwargs_ndarray,
+                )
+                assert np.all(result.ndarray == result_ndarray)
 
 
 class AbstractTestArrayBase(
