@@ -634,7 +634,7 @@ class AbstractTestAbstractArray(
 
             axis_normalized = axis if axis is not None else array.axes
             axis_normalized = (axis_normalized, ) if isinstance(axis_normalized, str) else axis_normalized
-            shape_result = {ax: 1 if ax in axis_normalized else array.shape[ax] for ax in array.shape}
+            shape_result = {ax: 1 if ax in axis_normalized else array.shape[ax] for ax in reversed(array.shape)}
 
             if keepdims:
                 kwargs['keepdims'] = keepdims
@@ -646,7 +646,7 @@ class AbstractTestAbstractArray(
 
             if out:
                 kwargs['out'] = array.type_array.empty(shape_result)
-                kwargs_ndarray['out'] = array.type_array.empty(shape_result).ndarray
+                kwargs_ndarray['out'] = array.type_array.empty(shape_result).ndarray.transpose()
                 if array.unit is not None:
                     kwargs['out'] = kwargs['out'] << array.unit
                     kwargs_ndarray['out'] = kwargs_ndarray['out'] << array.unit
@@ -692,8 +692,7 @@ class AbstractTestAbstractArray(
                 axis=tuple(array.axes.index(ax) for ax in axis_normalized if ax in array.axes),
                 **kwargs_ndarray,
             )
-
-            assert np.array_equal(result.ndarray, result_ndarray)
+            assert np.all(result.ndarray == result_ndarray)
 
 
 class AbstractTestArrayBase(
