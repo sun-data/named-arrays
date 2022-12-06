@@ -887,6 +887,8 @@ class ScalarArray(
     def __post_init__(self: Self):
         if self.axes is None:
             self.axes = tuple()
+        if type(self.axes) is str:
+            self.axes = (self.axes,)
         if getattr(self.ndarray, 'ndim', 0) != len(self.axes):
             raise ValueError('The number of axis names must match the number of dimensions.')
         if len(self.axes) != len(set(self.axes)):
