@@ -605,6 +605,9 @@ class AbstractTestAbstractArray(
             result = np.broadcast_to(array, shape=shape)
             assert result.shape == shape
 
+        def test_shape(self, array: na.AbstractArray):
+            assert np.shape(array) == array.shape
+
         @pytest.mark.parametrize(
             argnames='func',
             argvalues=[
