@@ -7,7 +7,7 @@ setup(
     install_requires=[
         'typing-extensions',
         'pytest',
-        'numpy',
+        'numpy @ git+https://github.com/byrdie/numpy.git@bugfix/median-keepdims-out#egg=numpy',
         'matplotlib',
         'scipy',
         'astropy @ git+https://github.com/byrdie/astropy.git@bug/quantity-ufunc-not-implemented#egg=astropy',
