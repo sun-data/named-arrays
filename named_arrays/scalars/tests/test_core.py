@@ -97,6 +97,17 @@ class AbstractTestAbstractScalarArray(
         def test_broadcast_to(self, array: na.AbstractArray, shape: dict[str, int]):
             super().test_broadcast_to(array=array, shape=shape)
 
+        @pytest.mark.parametrize(
+            argnames='axes',
+            argvalues=[
+                None,
+                ['x', 'y'],
+                ['y', 'x'],
+            ],
+        )
+        def test_transpose(self, array: na.AbstractArray, axes: None | Sequence[str]):
+            super().test_transpose(array=array, axes=axes)
+
         @pytest.mark.parametrize('axis', [None, 'y', 'x', ('x', 'y')])
         class TestReductionFunctions(
             AbstractTestAbstractScalar.TestArrayFunctions.TestReductionFunctions
