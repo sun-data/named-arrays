@@ -17,10 +17,10 @@ def _normalize_shape(shape: dict[str, None | int]) -> dict[str, int]:
     return {axis: shape[axis] for axis in shape if shape[axis] is not None}
 
 
-@pytest.mark.parametrize(argnames='shape_1_x', argvalues=[None, num_x], )
-@pytest.mark.parametrize(argnames='shape_1_y', argvalues=[None, num_y], )
-@pytest.mark.parametrize(argnames='shape_2_x', argvalues=[None, num_x], )
-@pytest.mark.parametrize(argnames='shape_2_y', argvalues=[None, num_y], )
+@pytest.mark.parametrize(argnames='shape_1_x', argvalues=[num_x], )
+@pytest.mark.parametrize(argnames='shape_1_y', argvalues=[num_y], )
+@pytest.mark.parametrize(argnames='shape_2_x', argvalues=[None, 1, num_x], )
+@pytest.mark.parametrize(argnames='shape_2_y', argvalues=[None, 1, num_y], )
 class TestBroadcastingFunctions:
 
     def _shapes(self, shape_1_x: int, shape_1_y: int, shape_2_x: int, shape_2_y: int) -> tuple[dict[str, int], dict[str, int]]:
