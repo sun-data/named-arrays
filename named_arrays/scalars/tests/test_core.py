@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Type
+from typing import Type, Sequence
 import pytest
 import numpy as np
 import astropy.units as u
