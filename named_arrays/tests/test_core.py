@@ -734,8 +734,6 @@ class AbstractTestAbstractArray(
                 if func in [np.median, np.nanmedian]:
                     if out and keepdims and np.ndim(array) != 0 and (set(axis_normalized) & set(array.axes)):
                         shape_result_2 = {ax: shape_result[ax] for ax in shape_result if ax not in axis_normalized}
-                        print('shape_result', shape_result)
-                        print('shape_result_2', shape_result_2)
                         try:
                             np.empty(tuple(shape_result.values())).T[...] = np.empty(tuple(shape_result_2.values())).T
                             broadcastable = True
