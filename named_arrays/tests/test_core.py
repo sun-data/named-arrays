@@ -46,6 +46,12 @@ class TestBroadcastingFunctions:
 
         assert shape_broadcasted == self._shape_expected(shape_1_x, shape_1_y, shape_2_x, shape_2_y)
 
+    def test_broadcast_shapes_invalid(self, shape_1_x: int, shape_1_y: int, shape_2_x: int, shape_2_y: int):
+        shape_1, shape_2 = self._shapes(shape_1_x, shape_1_y, shape_2_x, shape_2_y)
+        shape_3 = dict(x=num_x + 1, y=num_y + 1)
+        with pytest.raises(ValueError, match="shapes .* are not compatible"):
+            na.broadcast_shapes(shape_1, shape_2, shape_3)
+
     def test_shape_broadcasted(self, shape_1_x: int, shape_1_y: int, shape_2_x: int, shape_2_y: int):
 
         shape_1, shape_2 = self._shapes(shape_1_x, shape_1_y, shape_2_x, shape_2_y)
