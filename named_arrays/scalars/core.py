@@ -148,7 +148,7 @@ class AbstractScalarArray(
         if isinstance(axes, str):
             axes = [axes]
         shape_new = {axis: 1 for axis in axes}
-        shape = {**self.shape, **shape_new}
+        shape = shape_new | self.shape
         return ScalarArray(
             ndarray=self.ndarray_aligned(shape),
             axes=tuple(shape.keys()),
