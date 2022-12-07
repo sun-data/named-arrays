@@ -172,6 +172,11 @@ class AbstractArray(
 
     @property
     @abc.abstractmethod
+    def size(self: Self) -> int:
+        pass
+
+    @property
+    @abc.abstractmethod
     def dtype(self: Self) -> npt.DTypeLike:
         pass
 
@@ -411,6 +416,10 @@ class ArrayBase(
         return np.ndim(self.ndarray)
 
     @property
+    def size(self: Self) -> int:
+        return np.size(self.ndarray)
+
+    @property
     def shape(self: Self) -> dict[str, int]:
         ndarray = self.ndarray
         axes = self.axes
@@ -450,6 +459,10 @@ class AbstractParameterizedArray(
     @property
     def ndim(self: Self) -> int:
         return self.array.ndim
+
+    @property
+    def size(self: Self) -> int:
+        return self.array.size
 
     @property
     def shape(self: Self) -> dict[str, int]:
