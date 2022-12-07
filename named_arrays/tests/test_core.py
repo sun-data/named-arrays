@@ -628,6 +628,12 @@ class AbstractTestAbstractArray(
                 np.nanprod,
                 np.mean,
                 np.nanmean,
+                np.std,
+                np.nanstd,
+                np.var,
+                np.nanvar,
+                np.median,
+                np.nanmedian,
             ]
         )
         @pytest.mark.parametrize('out', [False, True])
@@ -695,10 +701,42 @@ class AbstractTestAbstractArray(
                             func(array, axis=axis, **kwargs, )
                         return
 
+                if func in [np.median, np.nanmedian]:
+                    if where:
+                        with pytest.raises(TypeError, match=r".* got an unexpected keyword argument \'where\'"):
+                            func(array, axis=axis, **kwargs, )
+                        return
+
                 if np.issubdtype(array.dtype, str):
-                    with pytest.raises(TypeError, match=r"ufunc .* did not contain a loop with signature matching types .*"):
+                    with pytest.raises(
+                            expected_exception=TypeError,
+                            match=r"(ufunc .* did not contain a loop with signature matching types .*)|"
+                                  r"(ufunc .* not supported for the input types, *)"
+                    ):
                         func(array, axis=axis, **kwargs, )
                     return
+
+                if func in [np.median, np.nanmedian]:
+                    if out and keepdims and np.ndim(array) != 0 and (set(axis_normalized) & set(array.axes)):
+                        shape_result_2 = {ax: shape_result[ax] for ax in shape_result if ax not in axis_normalized}
+                        print('shape_result', shape_result)
+                        print('shape_result_2', shape_result_2)
+                        try:
+                            np.empty(tuple(shape_result.values())).T[...] = np.empty(tuple(shape_result_2.values())).T
+                            broadcastable = True
+                        except ValueError:
+                            broadcastable = False
+
+                        if func in [np.nanmedian] and broadcastable:
+                            pass
+                        else:
+                            with pytest.raises(
+                                    expected_exception=ValueError,
+                                    match=r"(output parameter for reduction operation add has the wrong number of *)|"
+                                          r"(could not broadcast input array from shape .* into shape .*)"
+                            ):
+                                func(array, axis=axis, **kwargs, )
+                            return
 
                 result = func(array, axis=axis, **kwargs, )
                 result_ndarray = func(
