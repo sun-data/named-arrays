@@ -138,6 +138,8 @@ def transpose(
         a: scalars.AbstractScalarArray,
         axes: None | Sequence[str] = None,
 ):
+    if axes is not None:
+        a = a.add_axes(axes)
     axes = tuple(reversed(a.axes)) if axes is None else axes
     return scalars.ScalarArray(
         ndarray=np.transpose(
