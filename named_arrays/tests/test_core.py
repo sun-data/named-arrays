@@ -651,6 +651,7 @@ class AbstractTestAbstractArray(
                 np.nanmedian,
             ]
         )
+        @pytest.mark.parametrize('dtype', [None, float])
         @pytest.mark.parametrize('out', [False, True])
         @pytest.mark.parametrize('keepdims', [False, True])
         @pytest.mark.parametrize('where', [False, True])
@@ -660,6 +661,7 @@ class AbstractTestAbstractArray(
                     func: Callable,
                     array: na.AbstractArray,
                     axis: None | str,
+                    dtype: Type,
                     out: bool,
                     keepdims: bool,
                     where: bool,
@@ -670,6 +672,10 @@ class AbstractTestAbstractArray(
                 axis_normalized = axis if axis is not None else array.axes
                 axis_normalized = (axis_normalized, ) if isinstance(axis_normalized, str) else axis_normalized
                 shape_result = {ax: 1 if ax in axis_normalized else array.shape[ax] for ax in reversed(array.shape)}
+
+                if dtype is not None:
+                    kwargs['dtype'] = dtype
+                    kwargs_ndarray['dtype'] = dtype
 
                 if keepdims:
                     kwargs['keepdims'] = keepdims
@@ -700,6 +706,15 @@ class AbstractTestAbstractArray(
                         kwargs['initial'] = 0
                         kwargs_ndarray['initial'] = kwargs['initial']
 
+                if dtype is not None:
+                    if func in [np.all, np.any, np.max, np.nanmax, np.min, np.nanmin, np.median, np.nanmedian]:
+                        with pytest.raises(
+                                expected_exception=TypeError,
+                                match=r".* got an unexpected keyword argument .*"
+                        ):
+                            func(array, axis=axis, **kwargs, )
+                        return
+
                 if array.unit is not None:
                     if func in [np.all, np.any]:
                         if 'where' in kwargs:
@@ -723,13 +738,22 @@ class AbstractTestAbstractArray(
                         return
 
                 if np.issubdtype(array.dtype, str):
-                    with pytest.raises(
-                            expected_exception=TypeError,
-                            match=r"(ufunc .* did not contain a loop with signature matching types .*)|"
-                                  r"(ufunc .* not supported for the input types, *)"
-                    ):
-                        func(array, axis=axis, **kwargs, )
-                    return
+                    if dtype is None:
+                        with pytest.raises(
+                                expected_exception=TypeError,
+                                match=r"(ufunc .* did not contain a loop with signature matching types .*)|"
+                                      r"(ufunc .* not supported for the input types, *)"
+                        ):
+                            func(array, axis=axis, **kwargs, )
+                        return
+
+                    else:
+                        with pytest.raises(
+                            expected_exception=ValueError,
+                            match=r"could not convert string to .*"
+                        ):
+                            func(array, axis=axis, **kwargs)
+                        return
 
                 if func in [np.median, np.nanmedian]:
                     if out and keepdims and np.ndim(array) != 0 and (set(axis_normalized) & set(array.axes)):
