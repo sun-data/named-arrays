@@ -804,7 +804,7 @@ class AbstractScalarArray(
                 axes=tuple(axis for axis in self.axes if axis not in item.axes) + ('boolean', )
             )
 
-        else:
+        elif isinstance(item, dict):
             item_casted = cast(Dict[str, Union[int, slice, AbstractScalar]], item)
             axes_advanced = []
             axes_indices_advanced = []
@@ -843,8 +843,9 @@ class AbstractScalarArray(
                 ndarray=value[tuple(index)],
                 axes=tuple(shape_advanced.keys()) + tuple(axes_new),
             )
-        # else:
-        #     raise ValueError('Invalid index type')
+
+        else:
+            raise ValueError('Invalid index type')
 
     def filter_median(
             self: Self,
