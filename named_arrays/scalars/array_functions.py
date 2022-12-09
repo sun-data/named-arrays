@@ -11,12 +11,8 @@ __all__ = [
 
 DEFAULT_FUNCTIONS = [
     np.ndim,
-    np.argmin,
-    np.nanargmin,
     np.min,
     np.nanmin,
-    np.argmax,
-    np.nanargmax,
     np.max,
     np.nanmax,
     np.sum,
@@ -39,6 +35,12 @@ DEFAULT_FUNCTIONS = [
     np.any,
     np.ptp,
     np.count_nonzero,
+]
+ARG_REDUCE_FUNCTIONS = [
+    np.argmin,
+    np.nanargmin,
+    np.argmax,
+    np.nanargmax,
 ]
 HANDLED_FUNCTIONS = dict()
 
@@ -105,6 +107,46 @@ def array_function_default(
         ndarray=func(a.ndarray, **kwargs),
         axes=_calc_axes_new(a, axis=axis, keepdims=keepdims),
     )
+
+
+def array_function_arg_reduce(
+        func: Callable,
+        a: scalars.AbstractScalarArray,
+        axis: None | str = None,
+        out: None | dict[str, scalars.ScalarArray] = None,
+        keepdims: None | bool = None,
+) -> dict[str, scalars.ScalarArray]:
+
+    if axis is not None:
+        if axis not in a.axes:
+            raise ValueError(f"Reduction axis '{axis}' not in array with axes {a.axes}")
+
+    axis_normalized = a.axes_flattened if axis is None else axis
+
+    if keepdims:
+        axis_out = a.axes
+    else:
+        if axis is not None:
+            axis_out = tuple(ax for ax in a.axes if not ax == axis)
+        else:
+            axis_out = tuple()
+
+    if out is not None:
+        out[axis_normalized] = out[axis_normalized].transpose(axis_out)
+
+    kwargs = dict()
+
+    if axis is not None:
+        kwargs['axis'] = a.axes.index(axis) if axis is not None else axis
+    if out is not None:
+        kwargs['out'] = out[axis_normalized].ndarray
+    if keepdims is not None:
+        kwargs['keepdims'] = keepdims
+
+    return {axis_normalized: scalars.ScalarArray(
+        ndarray=func(a.ndarray, **kwargs),
+        axes=axis_out,
+    )}
 
 
 def implements(numpy_function: Callable):

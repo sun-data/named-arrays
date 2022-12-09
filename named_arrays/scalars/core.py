@@ -408,6 +408,9 @@ class AbstractScalarArray(
         if func in array_functions.DEFAULT_FUNCTIONS:
             return array_functions.array_function_default(func, *args, **kwargs)
 
+        if func in array_functions.ARG_REDUCE_FUNCTIONS:
+            return array_functions.array_function_arg_reduce(func, *args, **kwargs)
+
         if func in array_functions.HANDLED_FUNCTIONS:
             return array_functions.HANDLED_FUNCTIONS[func](*args, **kwargs)
 
