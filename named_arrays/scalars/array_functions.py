@@ -200,7 +200,6 @@ def array_equal(
 ) -> bool:
     return np.array_equal(
         a1=a1.ndarray,
-        a2=a2.ndarray_aligned(a1.shape),
+        a2=a2.ndarray,
         equal_nan=equal_nan,
     )
-
