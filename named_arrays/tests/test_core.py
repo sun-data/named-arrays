@@ -660,7 +660,7 @@ class AbstractTestAbstractArray(
                     self,
                     func: Callable,
                     array: na.AbstractArray,
-                    axis: None | str,
+                    axis: None | str | Sequence[str],
                     dtype: Type,
                     out: bool,
                     keepdims: bool,
