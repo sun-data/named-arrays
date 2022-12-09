@@ -143,6 +143,12 @@ class AbstractTestAbstractArray(
         for axis in axes:
             assert isinstance(axis, str)
 
+    def test_axes_flattened(self, array: na.AbstractArray):
+        axes = array.axes_flattened
+        assert isinstance(axes, str)
+        for ax in array.axes:
+            assert ax in axes
+
     def test_shape(self, array: na.AbstractArray):
         shape = array.shape
         assert isinstance(shape, dict)

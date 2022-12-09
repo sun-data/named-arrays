@@ -161,6 +161,10 @@ class AbstractArray(
         pass
 
     @property
+    def axes_flattened(self: Self) -> str:
+        return '*'.join(self.axes)
+
+    @property
     @abc.abstractmethod
     def shape(self: Self) -> dict[str, int]:
         pass
