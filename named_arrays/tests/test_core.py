@@ -42,9 +42,8 @@ class TestBroadcastingFunctions:
 
         shape_1, shape_2 = self._shapes(shape_1_x, shape_1_y, shape_2_x, shape_2_y)
 
-        shape_broadcasted = na.broadcast_shapes(shape_1, shape_2)
-
-        assert shape_broadcasted == self._shape_expected(shape_1_x, shape_1_y, shape_2_x, shape_2_y)
+        assert na.broadcast_shapes(shape_1, shape_2) == self._shape_expected(shape_1_x, shape_1_y, shape_2_x, shape_2_y)
+        assert na.broadcast_shapes(shape_2, shape_1) == self._shape_expected(shape_1_x, shape_1_y, shape_2_x, shape_2_y)
 
     def test_broadcast_shapes_invalid(self, shape_1_x: int, shape_1_y: int, shape_2_x: int, shape_2_y: int):
         shape_1, shape_2 = self._shapes(shape_1_x, shape_1_y, shape_2_x, shape_2_y)
