@@ -190,6 +190,13 @@ class AbstractArray(
         pass
 
     @property
+    def unit_normalized(self: Self) -> u.Unit:
+        result = self.unit
+        if result is None:
+            result = u.dimensionless_unscaled
+        return result
+
+    @property
     @abc.abstractmethod
     def array(self: Self) -> ArrayBase:
         pass

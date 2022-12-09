@@ -172,6 +172,12 @@ class AbstractTestAbstractArray(
         if unit is not None:
             assert isinstance(array.unit, u.UnitBase)
 
+    def test_unit_normalized(self, array: na.AbstractArray):
+        if array.unit is None:
+            assert array.unit_normalized == u.dimensionless_unscaled
+        else:
+            assert array.unit_normalized == array.unit
+
     def test_array(self, array: na.AbstractArray):
         assert isinstance(array.array, na.ArrayBase)
 
