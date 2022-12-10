@@ -48,6 +48,22 @@ QuantityLike = Union[int, float, complex, np.ndarray, u.Quantity]
 def get_dtype(
         value: bool | int | float | complex | str | np.ndarray | AbstractArray,
 ) -> Type:
+    """
+    Get the equivalent :attr:`numpy.ndarray.dtype` of the argument.
+
+    If the argument is an instance of :class:`numpy.ndarray`, this function simply returns :attr:`numpy.ndarray.dtype`.
+    Otherwise, this function wraps the argument in an :func:`numpy.array()` call and then evaluates the ``dtype``.
+
+    Parameters
+    ----------
+    value
+        Object to find the ``dtype`` of
+
+    Returns
+    -------
+    ``dtype`` of the argument
+
+    """
     if isinstance(value, (np.ndarray, AbstractArray)):
         return value.dtype
     else:
