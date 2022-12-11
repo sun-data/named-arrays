@@ -228,8 +228,10 @@ class AbstractArray(
 
     @property
     @abc.abstractmethod
-    def dtype(self: Self) -> npt.DTypeLike:
-        pass
+    def dtype(self: Self) -> Type:
+        """
+        Data type of the array. Equivalent to :attr:`numpy.ndarray.dtype`
+        """
 
     @property
     @abc.abstractmethod
