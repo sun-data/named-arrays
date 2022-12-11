@@ -222,7 +222,9 @@ class AbstractArray(
     @property
     @abc.abstractmethod
     def size(self: Self) -> int:
-        pass
+        """
+        Total number of elements in the array. Equivalent to :attr:`numpy.ndarray.size`
+        """
 
     @property
     @abc.abstractmethod
