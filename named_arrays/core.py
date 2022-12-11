@@ -189,7 +189,11 @@ class AbstractArray(
     @property
     @abc.abstractmethod
     def axes(self: Self) -> tuple[str, ...]:
-        pass
+        """
+        A :class:`tuple` of :class:`str` representing the names of each dimension of :attr:`ndarray`.
+
+        Must have the same length as the number of dimensions of :attr:`ndarray`.
+        """
 
     @property
     def axes_flattened(self: Self) -> str:
