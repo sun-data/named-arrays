@@ -197,6 +197,11 @@ class AbstractArray(
 
     @property
     def axes_flattened(self: Self) -> str:
+        """
+        Combine :attr:`axes` into a single :class:`str`.
+
+        This is useful for functions like :func:`numpy.flatten` which returns an array with only one dimension.
+        """
         return '*'.join(self.axes)
 
     @property
