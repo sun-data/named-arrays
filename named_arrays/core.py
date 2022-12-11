@@ -157,7 +157,13 @@ class AbstractArray(
     @property
     @abc.abstractmethod
     def __named_array_priority__(self: Self) -> float:
-        pass
+        """
+        Attribute used to decide what type of array to return in instances where there is more than one option.
+
+        Similar to :attr:`numpy.class.__array_priority__`
+
+        :return: :type:`int` describing this class's array priority
+        """
 
     @property
     @abc.abstractmethod
