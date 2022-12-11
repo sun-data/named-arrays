@@ -215,7 +215,9 @@ class AbstractArray(
     @property
     @abc.abstractmethod
     def ndim(self: Self) -> int:
-        pass
+        """
+        Number of dimensions of the array. Equivalent to :attr:`numpy.ndarray.ndim`.
+        """
 
     @property
     @abc.abstractmethod
