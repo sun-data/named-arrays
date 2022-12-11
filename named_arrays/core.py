@@ -207,7 +207,10 @@ class AbstractArray(
     @property
     @abc.abstractmethod
     def shape(self: Self) -> dict[str, int]:
-        pass
+        """
+        Shape of the array. Analogous to :attr:`numpy.ndarray.shape` but represented as a :class:`dict` where the keys
+        are the axis names and the values are the axis sizes.
+        """
 
     @property
     @abc.abstractmethod
