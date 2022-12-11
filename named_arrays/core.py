@@ -264,7 +264,9 @@ class AbstractArray(
     @property
     @abc.abstractmethod
     def type_array(self: Self) -> Type[ArrayBase]:
-        pass
+        """
+        The :class:`ArrayBase` type corresponding to this array
+        """
 
     @property
     @abc.abstractmethod
