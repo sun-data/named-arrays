@@ -151,7 +151,7 @@ class AbstractArray(
     abc.ABC,
 ):
     """
-    The ultimate parent class for all array types defined in this package.0
+    The ultimate parent class for all array types defined in this package.
     """
 
     @property
