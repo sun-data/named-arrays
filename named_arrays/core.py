@@ -235,8 +235,13 @@ class AbstractArray(
 
     @property
     @abc.abstractmethod
-    def unit(self: Self) -> float | u.Unit:
-        pass
+    def unit(self: Self) -> None | u.Unit:
+        """
+        Unit associated with the array.
+
+        If :attr:`ndarray` is an instance of :class:`astropy.units.Quantity`, return :attr:`astropy.units.Quantity.unit`,
+        otherwise return :class:`None`.
+        """
 
     @property
     def unit_normalized(self: Self) -> u.Unit:
