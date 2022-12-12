@@ -278,7 +278,9 @@ class AbstractArray(
     @property
     @abc.abstractmethod
     def components(self: Self) -> dict[str, AbstractArray]:
-        pass
+        """
+        The vector components of this array expressed as a :class:`dict` where the keys are the names of the component.
+        """
 
     @property
     @abc.abstractmethod
