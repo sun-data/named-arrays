@@ -573,7 +573,20 @@ class ArrayBase(
     @classmethod
     @abc.abstractmethod
     def ones(cls: Type[Self], shape: dict[str, int], dtype: Type = float) -> Self:
-        pass
+        """
+        Create a new array of ones
+
+        Parameters
+        ----------
+        shape
+            shape of the new array
+        dtype
+            data type of the new array
+
+        Returns
+        -------
+            A new array of ones with the specified shape and data type
+        """
 
     @property
     def ndim(self: Self) -> int:
