@@ -307,7 +307,7 @@ class AbstractArray(
     @abc.abstractmethod
     def astype(
             self: Self,
-            dtype: npt.DTypeLike,
+            dtype: Type,
             order: str = 'K',
             casting='unsafe',
             subok: bool = True,
