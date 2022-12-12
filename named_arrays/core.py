@@ -537,7 +537,20 @@ class ArrayBase(
     @classmethod
     @abc.abstractmethod
     def empty(cls: Type[Self], shape: dict[str, int], dtype: Type = float) -> Self:
-        pass
+        """
+        Create a new empty array
+
+        Parameters
+        ----------
+        shape
+            shape of the new array
+        dtype
+            data type of the new array
+
+        Returns
+        -------
+            A new empty array with the specified shape and data type
+        """
 
     @classmethod
     @abc.abstractmethod
