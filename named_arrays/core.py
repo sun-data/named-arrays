@@ -321,7 +321,20 @@ class AbstractArray(
 
     @abc.abstractmethod
     def to(self: Self, unit: u.UnitBase) -> Self:
-        pass
+        """
+        Convert this array to a new unit.
+
+        Equivalent to :meth:`astropy.units.Quantity.to`.
+
+        Parameters
+        ----------
+        unit
+            New unit of the returned array
+
+        Returns
+        -------
+            Array with :attr:`unit` set to the new value
+        """
 
     @property
     def broadcasted(self: Self) -> Self:
