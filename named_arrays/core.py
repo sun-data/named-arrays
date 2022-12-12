@@ -313,7 +313,11 @@ class AbstractArray(
             subok: bool = True,
             copy: bool = True,
     ) -> Self:
-        pass
+        """
+        Copy of the array cast to a specific data type.
+
+        Equivalent to :meth:`numpy.ndarray.astype`.
+        """
 
     @abc.abstractmethod
     def to(self: Self, unit: u.UnitBase) -> Self:
