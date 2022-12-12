@@ -299,7 +299,10 @@ class AbstractArray(
     @property
     @abc.abstractmethod
     def centers(self: Self) -> AbstractArray:
-        pass
+        """
+        The central value for this array. Usually returns this array unless an instance of
+        :class:`named_arrays.AbstractStratifiedRandomSpace`
+        """
 
     @abc.abstractmethod
     def astype(
