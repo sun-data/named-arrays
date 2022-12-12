@@ -652,7 +652,9 @@ class AbstractParameterizedArray(
     @property
     @abc.abstractmethod
     def axis(self: Self) -> str | AbstractArray:
-        pass
+        """
+        The axis along which the array is parameterized
+        """
 
     @property
     @abc.abstractmethod
