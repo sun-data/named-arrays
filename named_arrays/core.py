@@ -343,7 +343,9 @@ class AbstractArray(
     @property
     @abc.abstractmethod
     def length(self: Self) -> named_arrays.scalars.AbstractScalar:
-        pass
+        """
+        L2-norm of this array.
+        """
 
     @abc.abstractmethod
     def __getitem__(
