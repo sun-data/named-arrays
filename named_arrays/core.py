@@ -292,7 +292,9 @@ class AbstractArray(
     @property
     @abc.abstractmethod
     def distribution(self: Self) -> None | AbstractArray:
-        pass
+        """
+        The distribution of values of this array.
+        """
 
     @property
     @abc.abstractmethod
