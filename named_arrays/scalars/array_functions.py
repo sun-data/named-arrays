@@ -2,7 +2,6 @@ from typing import Sequence, Callable, Type
 import numpy as np
 import astropy.units as u
 
-from named_arrays.core import broadcast_shapes
 from . import core as scalars
 
 __all__ = [
