@@ -388,7 +388,20 @@ class AbstractArray(
             axes: Sequence[str],
             axis_new: str,
     ) -> Self:
-        pass
+        """
+        Combine some of the axes of the array into a single new axis.
+
+        Parameters
+        ----------
+        axes
+            The axes to combine into a new axis
+        axis_new
+            The name of the new axis
+
+        Returns
+        -------
+        Array with the specified axes combined
+        """
 
     @abc.abstractmethod
     def ndarray_aligned(self: Self, shape: dict[str, int]) -> QuantityLike:
