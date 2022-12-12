@@ -285,7 +285,9 @@ class AbstractArray(
     @property
     @abc.abstractmethod
     def nominal(self: Self) -> AbstractArray:
-        pass
+        """
+        The nominal value of this array.
+        """
 
     @property
     @abc.abstractmethod
