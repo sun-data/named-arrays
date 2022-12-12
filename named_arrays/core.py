@@ -369,7 +369,18 @@ class AbstractArray(
 
     @abc.abstractmethod
     def add_axes(self: Self, axes: str | Sequence[str]) -> Self:
-        pass
+        """
+        Add new singleton axes to this array
+
+        Parameters
+        ----------
+        axes
+            New axes to add to the array
+
+        Returns
+        -------
+        Array with new axes added
+        """
 
     @abc.abstractmethod
     def combine_axes(
