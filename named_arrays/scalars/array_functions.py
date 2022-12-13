@@ -218,7 +218,7 @@ def moveaxis(
 
 
 @implements(np.reshape)
-def reshape(a: na.AbstractScalarArray, newshape: dict[str, int]):
+def reshape(a: na.AbstractScalarArray, newshape: dict[str, int]) -> na.ScalarArray:
     return na.ScalarArray(
         ndarray=np.reshape(a.ndarray, tuple(newshape.values())),
         axes=tuple(newshape.keys()),
