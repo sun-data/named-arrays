@@ -659,7 +659,9 @@ class AbstractParameterizedArray(
     @property
     @abc.abstractmethod
     def num(self: Self) -> int | AbstractArray:
-        pass
+        """
+        Number of elements in the parameterization
+        """
 
 
 @dataclasses.dataclass(eq=False)
