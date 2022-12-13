@@ -721,7 +721,9 @@ class AbstractSymmetricRange(
     @property
     @abc.abstractmethod
     def center(self: Self) -> ArrayLike:
-        pass
+        """
+        Center value of the range.
+        """
 
     @property
     @abc.abstractmethod
