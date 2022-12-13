@@ -819,7 +819,9 @@ class AbstractLogarithmicSpace(
     @property
     @abc.abstractmethod
     def start_exponent(self: Self) -> ArrayLike:
-        pass
+        """
+        Exponent of the starting value of the sequence.
+        """
 
     @property
     @abc.abstractmethod
