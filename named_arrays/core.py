@@ -705,7 +705,9 @@ class AbstractRange(
     @property
     @abc.abstractmethod
     def stop(self: Self) -> int | AbstractArray:
-        pass
+        """
+        Ending value of the range.
+        """
 
     @property
     def range(self: Self) -> AbstractArray:
