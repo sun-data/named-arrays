@@ -178,7 +178,8 @@ def shape(
 def transpose(
         a: na.AbstractScalarArray,
         axes: None | Sequence[str] = None,
-):
+) -> na.ScalarArray:
+
     if axes is not None:
         a = a.add_axes(axes)
     axes = tuple(reversed(a.axes)) if axes is None else axes
