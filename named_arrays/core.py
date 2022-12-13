@@ -676,7 +676,9 @@ class AbstractRandomMixin(
     @property
     @abc.abstractmethod
     def seed(self: Self) -> int:
-        pass
+        """
+        Seed for the random number generator instance
+        """
 
     @seed.setter
     @abc.abstractmethod
