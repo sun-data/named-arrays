@@ -614,11 +614,12 @@ class AbstractTestAbstractArray(
                 self,
                 ufunc: np.ufunc,
                 array: na.AbstractArray,
-                array_2: bool | int | float | complex | str | na.AbstractArray,
+                array_2: None | bool | int | float | complex | str | na.AbstractArray,
                 out: bool,
         ):
             array = np.transpose(array)
-            array_2 = np.transpose(array_2)
+            if array_2 is not None:
+                array_2 = np.transpose(array_2)
             self.test_ufunc_binary(ufunc, array_2, array, out=out)
 
     class TestArrayFunctions:

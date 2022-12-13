@@ -49,7 +49,7 @@ def _scalar_arrays_2():
         na.ScalarArray(np.random.choice([True, False], size=_num_y), axes=('y', )),
         na.ScalarArray(np.random.choice([True, False], size=(_num_y, _num_x)), axes=('y', 'x'))
     ]
-    return arrays_numeric + arrays_bool
+    return [None] + arrays_numeric + arrays_bool
 
 
 class AbstractTestAbstractScalar(
