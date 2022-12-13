@@ -728,7 +728,9 @@ class AbstractSymmetricRange(
     @property
     @abc.abstractmethod
     def width(self: Self) -> ArrayLike:
-        pass
+        """
+        Width of the range.
+        """
 
     @property
     def start(self: Self) -> ArrayLike:
