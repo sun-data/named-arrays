@@ -640,6 +640,27 @@ class AbstractTestAbstractArray(
             assert result.axes == axes_normalized
             assert {ax: result.shape[ax] for ax in result.shape if ax in array.axes} == array.shape
 
+        def test_moveaxis(
+                self,
+                array: na.AbstractArray,
+                source: str | Sequence[str],
+                destination: str | Sequence[str],
+        ):
+            source_normalized = (source, ) if isinstance(source, str) else source
+            destination_normalized = (destination, ) if isinstance(destination, str) else destination
+
+            if any(ax not in array.axes for ax in source_normalized):
+                with pytest.raises(ValueError, match=r"source axis .* not in array axes .*"):
+                    np.moveaxis(a=array, source=source, destination=destination)
+                return
+
+            result = np.moveaxis(a=array, source=source, destination=destination)
+
+            assert np.all(array.ndarray == result.ndarray)
+            assert len(array.axes) == len(result.axes)
+            assert not any(ax in result.axes for ax in source_normalized)
+            assert all(ax in result.axes for ax in destination_normalized)
+
         def test_array_equal(self, array: na.AbstractArray, array_2: None | na.AbstractArray):
             if array_2 is None:
                 array_2 = array.copy()

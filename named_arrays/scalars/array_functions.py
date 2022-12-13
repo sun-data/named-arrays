@@ -191,6 +191,32 @@ def transpose(
     )
 
 
+@implements(np.moveaxis)
+def moveaxis(
+        a: na.AbstractScalarArray,
+        source: str | Sequence[str],
+        destination: str | Sequence[str],
+) -> na.ScalarArray:
+
+    axes = list(a.axes)
+
+    types_sequence = (list, tuple,)
+    if not isinstance(source, types_sequence):
+        source = (source,)
+    if not isinstance(destination, types_sequence):
+        destination = (destination,)
+
+    for src, dest in zip(source, destination):
+        if src not in axes:
+            raise ValueError(f"source axis {src} not in array axes {a.axes}")
+        axes[axes.index(src)] = dest
+
+    return na.ScalarArray(
+        ndarray=a.ndarray,
+        axes=tuple(axes)
+    )
+
+
 @implements(np.array_equal)
 def array_equal(
         a1: na.AbstractScalarArray,

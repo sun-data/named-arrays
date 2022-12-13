@@ -108,6 +108,21 @@ class AbstractTestAbstractScalarArray(
         def test_transpose(self, array: na.AbstractArray, axes: None | Sequence[str]):
             super().test_transpose(array=array, axes=axes)
 
+        @pytest.mark.parametrize(
+            argnames='source,destination',
+            argvalues=[
+                ['y', 'y2'],
+                [('x', 'y'), ('x2', 'y2')],
+            ]
+        )
+        def test_moveaxis(
+                self,
+                array: na.AbstractArray,
+                source: str | Sequence[str],
+                destination: str | Sequence[str],
+        ):
+            super().test_moveaxis(array=array, source=source, destination=destination)
+
         @pytest.mark.parametrize('array_2', [None, 100 * na.ScalarArray.ones(shape=dict(x=_num_y))])
         def test_array_equal(self, array: na.AbstractArray, array_2: None | na.AbstractArray):
             super().test_array_equal(array, array_2)
