@@ -25,6 +25,7 @@ __all__ = [
     'shape_broadcasted',
     'ndindex',
     'indices',
+    'flatten_axes',
     'AbstractArray',
     'ArrayBase',
     'AbstractParameterizedArray',
@@ -143,6 +144,10 @@ def indices(shape: dict[str, int]) -> dict[str, named_arrays.scalars.ScalarArray
     return {axis: named_arrays.scalars.ScalarArrayRange(0, shape[axis], axis=axis) for axis in shape}
 
 
+def flatten_axes(axes: Sequence[str]):
+    return '*'.join(axes)
+
+
 @dataclasses.dataclass(eq=False)
 class AbstractArray(
     named_arrays.mixins.CopyableMixin,
@@ -202,7 +207,7 @@ class AbstractArray(
 
         This is useful for functions like :func:`numpy.flatten` which returns an array with only one dimension.
         """
-        return '*'.join(self.axes)
+        return flatten_axes(self.axes)
 
     @property
     @abc.abstractmethod
