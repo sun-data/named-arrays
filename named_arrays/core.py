@@ -826,7 +826,9 @@ class AbstractLogarithmicSpace(
     @property
     @abc.abstractmethod
     def stop_exponent(self: Self) -> ArrayLike:
-        pass
+        """
+        Exponent of the ending value of the sequence.
+        """
 
     @property
     @abc.abstractmethod
