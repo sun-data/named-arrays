@@ -764,7 +764,9 @@ class AbstractLinearParameterizedArrayMixin(
     @property
     @abc.abstractmethod
     def step(self: Self) -> int | AbstractArray:
-        pass
+        """
+        Spacing between the values.
+        """
 
 
 @dataclasses.dataclass(eq=False)
