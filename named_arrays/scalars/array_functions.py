@@ -1,8 +1,8 @@
+from __future__ import annotations
 from typing import Sequence, Callable, Type
 import numpy as np
 import astropy.units as u
-
-from . import core as scalars
+import named_arrays as na
 
 __all__ = [
     'HANDLED_FUNCTIONS'
@@ -45,7 +45,7 @@ HANDLED_FUNCTIONS = dict()
 
 
 def _axis_normalized(
-        a: scalars.AbstractScalarArray,
+        a: na.AbstractScalarArray,
         axis: None | str | Sequence[str],
 ) -> tuple[str]:
     if axis is None:
@@ -58,7 +58,7 @@ def _axis_normalized(
 
 
 def _calc_axes_new(
-        a: scalars.AbstractScalarArray,
+        a: na.AbstractScalarArray,
         axis: None | str | Sequence[str],
         *,
         keepdims: None | bool = None,
@@ -74,13 +74,13 @@ def _calc_axes_new(
 
 def array_function_default(
         func: Callable,
-        a: scalars.AbstractScalarArray,
+        a: na.AbstractScalarArray,
         axis: None | str | Sequence[str] = None,
         dtype: None | Type = None,
-        out: None | scalars.ScalarArray = None,
+        out: None | na.ScalarArray = None,
         keepdims: None | bool = None,
         initial: None | bool | int | float | complex | u.Quantity = None,
-        where: None | scalars.AbstractScalarArray = None,
+        where: None | na.AbstractScalarArray = None,
 ):
     axis_normalized = _axis_normalized(a, axis=axis)
     if out is not None:
@@ -102,7 +102,7 @@ def array_function_default(
     if where is not None:
         kwargs['where'] = where.ndarray_aligned(a.shape)
 
-    return scalars.ScalarArray(
+    return na.ScalarArray(
         ndarray=func(a.ndarray, **kwargs),
         axes=_calc_axes_new(a, axis=axis, keepdims=keepdims),
     )
@@ -110,11 +110,11 @@ def array_function_default(
 
 def array_function_arg_reduce(
         func: Callable,
-        a: scalars.AbstractScalarArray,
+        a: na.AbstractScalarArray,
         axis: None | str = None,
-        out: None | dict[str, scalars.ScalarArray] = None,
+        out: None | dict[str, na.ScalarArray] = None,
         keepdims: None | bool = None,
-) -> dict[str, scalars.ScalarArray]:
+) -> dict[str, na.ScalarArray]:
 
     if axis is not None:
         if axis not in a.axes:
@@ -142,7 +142,7 @@ def array_function_arg_reduce(
     if keepdims is not None:
         kwargs['keepdims'] = keepdims
 
-    return {axis_normalized: scalars.ScalarArray(
+    return {axis_normalized: na.ScalarArray(
         ndarray=func(a.ndarray, **kwargs),
         axes=axis_out,
     )}
@@ -158,10 +158,10 @@ def implements(numpy_function: Callable):
 
 @implements(np.broadcast_to)
 def broadcast_to(
-        array: scalars.AbstractScalarArray,
+        array: na.AbstractScalarArray,
         shape: dict[str, int],
 ):
-    return scalars.ScalarArray(
+    return na.ScalarArray(
         ndarray=np.broadcast_to(array.ndarray_aligned(shape), tuple(shape.values()), subok=True),
         axes=tuple(shape.keys()),
     )
@@ -169,20 +169,20 @@ def broadcast_to(
 
 @implements(np.shape)
 def shape(
-        a: scalars.AbstractScalarArray,
+        a: na.AbstractScalarArray,
 ) -> dict[str, int]:
     return a.shape
 
 
 @implements(np.transpose)
 def transpose(
-        a: scalars.AbstractScalarArray,
+        a: na.AbstractScalarArray,
         axes: None | Sequence[str] = None,
 ):
     if axes is not None:
         a = a.add_axes(axes)
     axes = tuple(reversed(a.axes)) if axes is None else axes
-    return scalars.ScalarArray(
+    return na.ScalarArray(
         ndarray=np.transpose(
             a=a.ndarray,
             axes=tuple(a.axes.index(ax) for ax in axes),
@@ -193,8 +193,8 @@ def transpose(
 
 @implements(np.array_equal)
 def array_equal(
-        a1: scalars.AbstractScalarArray,
-        a2: scalars.AbstractScalarArray,
+        a1: na.AbstractScalarArray,
+        a2: na.AbstractScalarArray,
         equal_nan: bool = False,
 ) -> bool:
     return np.array_equal(
