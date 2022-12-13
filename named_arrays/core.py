@@ -698,7 +698,9 @@ class AbstractRange(
     @property
     @abc.abstractmethod
     def start(self: Self) -> int | AbstractArray:
-        pass
+        """
+        Starting value of the range.
+        """
 
     @property
     @abc.abstractmethod
