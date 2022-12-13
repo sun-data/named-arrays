@@ -784,7 +784,9 @@ class AbstractSpace(
     @property
     @abc.abstractmethod
     def endpoint(self: Self) -> bool:
-        pass
+        """
+        If ``True``, :attr:`stop` is the last sample, otherwise it is not included.
+        """
 
 
 @dataclasses.dataclass(eq=False)
