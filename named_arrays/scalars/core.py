@@ -1123,7 +1123,6 @@ class ScalarArrayRange(
     stop: StopT
     axis: str
     step: int = 1
-    seed: None | int = None
 
     @property
     def array(self: Self) -> ScalarArray:
