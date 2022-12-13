@@ -484,8 +484,8 @@ class AbstractTestAbstractArray(
         def test_ufunc_binary(
                 self,
                 ufunc: np.ufunc,
-                array: na.AbstractArray,
-                array_2: bool | int | float | complex | str | na.AbstractArray,
+                array: None | bool | int | float | complex | str | na.AbstractArray,
+                array_2: None | bool | int | float | complex | str | na.AbstractArray,
                 out: bool,
         ):
 
