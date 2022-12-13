@@ -833,7 +833,9 @@ class AbstractLogarithmicSpace(
     @property
     @abc.abstractmethod
     def base(self: Self) -> ArrayLike:
-        pass
+        """
+        Base which is exponentiated by :attr:`start_exponent` and :attr:`stop_exponent`.
+        """
 
     @property
     def start(self: Self) -> ArrayLike:
