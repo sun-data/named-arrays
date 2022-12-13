@@ -123,6 +123,10 @@ class AbstractTestAbstractScalarArray(
         ):
             super().test_moveaxis(array=array, source=source, destination=destination)
 
+        @pytest.mark.parametrize('newshape', [dict(r=-1)])
+        def test_reshape(self, array: na.AbstractArray, newshape: dict[str, int]):
+            super().test_reshape(array=array, newshape=newshape)
+
         @pytest.mark.parametrize('array_2', [None, 100 * na.ScalarArray.ones(shape=dict(x=_num_y))])
         def test_array_equal(self, array: na.AbstractArray, array_2: None | na.AbstractArray):
             super().test_array_equal(array, array_2)

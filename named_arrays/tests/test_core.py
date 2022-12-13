@@ -661,6 +661,13 @@ class AbstractTestAbstractArray(
             assert not any(ax in result.axes for ax in source_normalized)
             assert all(ax in result.axes for ax in destination_normalized)
 
+        def test_reshape(self, array: na.AbstractArray, newshape: dict[str, int]):
+
+            result = np.reshape(a=array, newshape=newshape)
+
+            assert result.size == array.size
+            assert result.axes == tuple(newshape.keys())
+
         def test_array_equal(self, array: na.AbstractArray, array_2: None | na.AbstractArray):
             if array_2 is None:
                 array_2 = array.copy()
