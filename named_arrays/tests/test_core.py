@@ -668,6 +668,15 @@ class AbstractTestAbstractArray(
             assert result.size == array.size
             assert result.axes == tuple(newshape.keys())
 
+        def test_unravel_index(self, array: na.AbstractArray):
+            result = np.unravel_index(
+                indices=na.ScalarArrayRange(0, array.size, axis=array.axes_flattened).reshape(array.shape),
+                shape=array.shape,
+            )
+            expected = array.indices
+            for ax in result:
+                assert np.all(result[ax] == expected[ax])
+
         def test_array_equal(self, array: na.AbstractArray, array_2: None | na.AbstractArray):
             if array_2 is None:
                 array_2 = array.copy()

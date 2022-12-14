@@ -226,6 +226,19 @@ def reshape(a: na.AbstractScalarArray, newshape: dict[str, int]) -> na.ScalarArr
     )
 
 
+@implements(np.unravel_index)
+def unravel_index(indices: na.AbstractScalarArray, shape: dict[str, int]) -> dict[str, na.ScalarArray]:
+
+    result_ndarray = np.unravel_index(indices=indices.ndarray, shape=tuple(shape.values()))
+    result = dict()  # type: dict[str, na.ScalarArray]
+    for axis, ndarray in zip(shape, result_ndarray):
+        result[axis] = na.ScalarArray(
+            ndarray=ndarray,
+            axes=indices.axes,
+        )
+    return result
+
+
 @implements(np.array_equal)
 def array_equal(
         a1: na.AbstractScalarArray,
