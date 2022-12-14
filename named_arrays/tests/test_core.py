@@ -741,21 +741,12 @@ class AbstractTestAbstractArray(
                 assert np.array_equal(array, array_2)
                 return
 
-            if not array.unit_normalized.is_equivalent(array_2.unit_normalized):
-                with pytest.raises(u.UnitConversionError):
-                    np.array_equal(array, array_2)
-                return
-
             if array.shape and np.issubdtype(array.dtype, str) and not np.issubdtype(array_2, str):
                 with pytest.raises(FutureWarning, match="elementwise comparison failed"):
                     np.array_equal(array, array_2)
+                return
 
-            else:
-                if array.unit_normalized.is_equivalent(array_2.unit_normalized):
-                    assert not np.array_equal(array, array_2)
-                else:
-                    with pytest.raises(u.UnitConversionError):
-                        np.array_equal(array, array_2)
+            assert not np.array_equal(array, array_2)
 
         @pytest.mark.parametrize(
             argnames='func',
