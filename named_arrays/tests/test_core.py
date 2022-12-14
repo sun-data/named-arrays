@@ -677,6 +677,10 @@ class AbstractTestAbstractArray(
             for ax in result:
                 assert np.all(result[ax] == expected[ax])
 
+        def test_linalg_inv(self, array: na.AbstractArray):
+            with pytest.raises(NotImplementedError):
+                np.linalg.inv(array)
+
         def test_array_equal(self, array: na.AbstractArray, array_2: None | na.AbstractArray):
             if array_2 is None:
                 array_2 = array.copy()
