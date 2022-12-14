@@ -233,6 +233,42 @@ def linalg_inv(a: na.AbstractScalarArray,):
     )
 
 
+@implements(np.stack)
+def stack(
+        arrays: Sequence[bool | int | float | complex | str | u.Quantity | na.AbstractScalarArray],
+        axis: str,
+        out: None | na.ScalarArray = None,
+):
+    arrays = [na.ScalarArray(arr) if not isinstance(arr, na.AbstractArray) else arr for arr in arrays]
+    for array in arrays:
+        if not isinstance(array, na.AbstractScalarArray):
+            return NotImplemented
+    shape = na.shape_broadcasted(*arrays)
+    if axis in shape:
+        raise ValueError(f"axis '{axis}' already in array")
+    arrays = [arr.broadcast_to(shape).ndarray for arr in arrays]
+
+    axes_new = (axis,) + tuple(shape.keys())
+    axis_ndarray = 0
+
+    if out is not None:
+        np.stack(
+            arrays=arrays,
+            axis=axis_ndarray,
+            out=out.transpose(axes_new).ndarray
+        )
+        return out
+    else:
+        return na.ScalarArray(
+            ndarray=np.stack(
+                arrays=arrays,
+                axis=axis_ndarray,
+                out=out
+            ),
+            axes=axes_new,
+        )
+
+
 @implements(np.unravel_index)
 def unravel_index(indices: na.AbstractScalarArray, shape: dict[str, int]) -> dict[str, na.ScalarArray]:
 

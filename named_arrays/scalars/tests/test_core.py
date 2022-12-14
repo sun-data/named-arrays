@@ -127,6 +127,16 @@ class AbstractTestAbstractScalarArray(
         def test_reshape(self, array: na.AbstractArray, newshape: dict[str, int]):
             super().test_reshape(array=array, newshape=newshape)
 
+        @pytest.mark.parametrize('axis', ['y', 'z'])
+        @pytest.mark.parametrize('use_out', [False, True])
+        def test_stack(
+                self,
+                array: na.AbstractArray,
+                axis: str,
+                use_out: bool,
+        ):
+            super().test_stack(array=array, axis=axis, use_out=use_out)
+
         @pytest.mark.parametrize('array_2', [None, 100 * na.ScalarArray.ones(shape=dict(x=_num_y))])
         def test_array_equal(self, array: na.AbstractArray, array_2: None | na.AbstractArray):
             super().test_array_equal(array, array_2)

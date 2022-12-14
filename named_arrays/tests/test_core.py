@@ -681,6 +681,31 @@ class AbstractTestAbstractArray(
             with pytest.raises(NotImplementedError):
                 np.linalg.inv(array)
 
+        def test_stack(
+                self,
+                array: na.AbstractArray,
+                axis: str,
+                use_out: bool,
+        ):
+            arrays = [array, array]
+
+            if axis in array.axes:
+                with pytest.raises(ValueError, match=r"axis .* already in array"):
+                    np.stack(arrays, axis=axis)
+                return
+
+            if use_out:
+                out = na.ScalarArray.empty({axis: len(arrays)} | array.shape, dtype=array.dtype)
+                if array.unit is not None:
+                    out = out << array.unit
+            else:
+                out = None
+
+            result = np.stack(arrays=arrays, axis=axis, out=out)
+
+            assert np.all(result[{axis: 0}].ndarray == array.ndarray)
+            assert np.all(result[{axis: 1}].ndarray == array.ndarray)
+
         def test_array_equal(self, array: na.AbstractArray, array_2: None | na.AbstractArray):
             if array_2 is None:
                 array_2 = array.copy()
