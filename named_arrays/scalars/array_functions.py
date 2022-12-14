@@ -238,7 +238,7 @@ def stack(
         arrays: Sequence[bool | int | float | complex | str | u.Quantity | na.AbstractScalarArray],
         axis: str,
         out: None | na.ScalarArray = None,
-):
+) -> na.ScalarArray:
     arrays = [na.ScalarArray(arr) if not isinstance(arr, na.AbstractArray) else arr for arr in arrays]
     for array in arrays:
         if not isinstance(array, na.AbstractScalarArray):
