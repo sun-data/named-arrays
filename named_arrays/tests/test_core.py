@@ -706,6 +706,35 @@ class AbstractTestAbstractArray(
             assert np.all(result[{axis: 0}].ndarray == array.ndarray)
             assert np.all(result[{axis: 1}].ndarray == array.ndarray)
 
+        def test_concatenate(
+                self,
+                array: na.AbstractArray,
+                axis: str,
+                use_out: bool,
+        ):
+            arrays = [array, array]
+
+            shape_out = array.shape
+            if axis not in shape_out:
+                shape_out[axis] = 1
+            shape_out[axis] = 2 * shape_out[axis]
+
+            if use_out:
+                out = na.ScalarArray.empty(shape_out, dtype=array.dtype)
+                if array.unit is not None:
+                    out = out << array.unit
+            else:
+                out = None
+
+            result = np.concatenate(arrays, axis=axis, out=out)
+
+            if np.issubdtype(result.dtype, str):
+                result = result.astype(object)
+
+            assert result.shape == shape_out
+            assert np.all(result[{axis: slice(None, shape_out[axis] // 2)}] == array)
+            assert np.all(result[{axis: slice(shape_out[axis] // 2, None)}] == array)
+
         def test_array_equal(self, array: na.AbstractArray, array_2: None | na.AbstractArray):
             if array_2 is None:
                 array_2 = array.copy()

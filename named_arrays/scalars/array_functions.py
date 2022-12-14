@@ -269,6 +269,62 @@ def stack(
         )
 
 
+@implements(np.concatenate)
+def concatenate(
+        arrays: Sequence[bool | int | float | complex | str | u.Quantity | na.AbstractScalarArray],
+        axis: str,
+        out: None | na.ScalarArray = None,
+        dtype: None | str | Type | np.dtype = None,
+        casting: str = "same_kind",
+) -> na.ScalarArray:
+
+    arrays = [na.ScalarArray(arr) if not isinstance(arr, na.AbstractArray) else arr for arr in arrays]
+    for array in arrays:
+        if not isinstance(array, na.AbstractScalarArray):
+            return NotImplemented
+
+    shapes = []
+    for array in arrays:
+        shape = array.shape
+        shape[axis] = 1
+        shapes.append(shape)
+
+    shape_prototype = na.broadcast_shapes(*shapes)
+
+    ndarrays = []
+    for array in arrays:
+        shape = shape_prototype.copy()
+        if axis in array.axes:
+            shape[axis] = array.shape[axis]
+        array = array.broadcast_to(shape)
+        ndarrays.append(array.ndarray)
+
+    axis_index = tuple(shape_prototype).index(axis)
+
+    if out is not None:
+        np.concatenate(
+            ndarrays,
+            axis=axis_index,
+            out=out.transpose(tuple(shape_prototype.keys())).ndarray,
+            dtype=dtype,
+            casting=casting,
+        )
+        return out
+    else:
+        return na.ScalarArray(
+            ndarray=np.concatenate(
+                ndarrays,
+                axis=axis_index,
+                out=out,
+                dtype=dtype,
+                casting=casting
+            ),
+            axes=tuple(shape_prototype.keys()),
+        )
+
+
+
+
 @implements(np.unravel_index)
 def unravel_index(indices: na.AbstractScalarArray, shape: dict[str, int]) -> dict[str, na.ScalarArray]:
 
