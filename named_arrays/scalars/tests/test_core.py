@@ -147,6 +147,14 @@ class AbstractTestAbstractScalarArray(
         ):
             super().test_concatenate(array=array, axis=axis, use_out=use_out)
 
+        @pytest.mark.parametrize('axis', [None, 'x', 'y'])
+        def test_sort(self, array: na.AbstractScalarArray, axis: None | str):
+            super().test_sort(array=array, axis=axis)
+
+        @pytest.mark.parametrize('axis', [None, 'x', 'y'])
+        def test_argsort(self, array: na.AbstractScalarArray, axis: None | str):
+            super().test_argsort(array=array, axis=axis)
+
         @pytest.mark.parametrize('array_2', [None, 100 * na.ScalarArray.ones(shape=dict(x=_num_y))])
         def test_array_equal(self, array: na.AbstractArray, array_2: None | na.AbstractArray):
             super().test_array_equal(array, array_2)

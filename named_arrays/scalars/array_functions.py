@@ -323,6 +323,68 @@ def concatenate(
         )
 
 
+@implements(np.sort)
+def sort(
+        a: na.AbstractScalarArray,
+        axis: None | str,
+        kind: None | str = None,
+        order: None | str | list[str] = None,
+) -> na.ScalarArray:
+
+    if axis is not None:
+        if axis not in a.axes:
+            raise ValueError(f"axis '{axis}' not in input array with axes {a.axes}")
+
+    return na.ScalarArray(
+        ndarray=np.sort(
+            a=a.ndarray,
+            axis=a.axes.index(axis) if axis is not None else axis,
+            kind=kind,
+            order=order
+        ),
+        axes=a.axes if axis is not None else (a.axes_flattened, )
+    )
+
+
+@implements(np.argsort)
+def argsort(
+        a: na.AbstractScalarArray,
+        axis: None | str,
+        kind: None | str = None,
+        order: None | str | list[str] = None,
+) -> dict[str, na.ScalarArray]:
+    if axis is None:
+        if not a.shape:
+            raise ValueError("sorting zero-dimensional arrays is not supported")
+
+        indices = na.ScalarArray(
+            ndarray=np.argsort(
+                a=a.ndarray,
+                axis=axis,
+                kind=kind,
+                order=order
+            ),
+            axes=(a.axes_flattened, ),
+        )
+        return {a.axes_flattened: indices}
+
+    else:
+        if axis not in a.axes:
+            raise ValueError(f"axis {axis} not in input array with axes {a.axes}")
+
+        indices = na.ScalarArray(
+            ndarray=np.argsort(
+                a=a.ndarray,
+                axis=a.axes.index(axis),
+                kind=kind,
+                order=order,
+            ),
+            axes=a.axes,
+        )
+
+        result = na.indices(a.shape)
+        result[axis] = indices
+        return result
 
 
 @implements(np.unravel_index)

@@ -735,6 +735,53 @@ class AbstractTestAbstractArray(
             assert np.all(result[{axis: slice(None, shape_out[axis] // 2)}] == array)
             assert np.all(result[{axis: slice(shape_out[axis] // 2, None)}] == array)
 
+        def test_sort(self, array: na.AbstractArray, axis: None | str):
+
+            if axis is not None and axis not in array.axes:
+                with pytest.raises(ValueError, match="axis .* not in input array with axes .*"):
+                    np.sort(a=array, axis=axis)
+                return
+
+            result = np.sort(a=array, axis=axis)
+            result_ndarray = np.sort(
+                a=array.ndarray,
+                axis=array.axes.index(axis) if axis is not None else axis,
+            )
+
+            assert np.all(result.ndarray == result_ndarray)
+
+        def test_argsort(self, array: na.AbstractArray, axis: None | str):
+
+            if axis is not None:
+                if axis not in array.axes:
+                    with pytest.raises(ValueError, match="axis .* not in input array with axes .*"):
+                        np.argsort(a=array, axis=axis)
+                    return
+            else:
+                if not array.shape:
+                    with pytest.raises(ValueError, match="sorting zero-dimensional arrays is not supported"):
+                        np.argsort(a=array, axis=axis)
+                    return
+
+            result = np.argsort(a=array, axis=axis)
+
+            assert isinstance(result, dict)
+
+            if axis is not None:
+                sorted = array[result]
+            else:
+                sorted = array.reshape({array.axes_flattened: -1})[result]
+
+            sorted_expected = np.sort(array, axis=axis)
+
+            if np.issubdtype(sorted.dtype, str):
+                sorted = sorted.astype(object)
+
+            if np.issubdtype(sorted_expected.dtype, str):
+                sorted_expected = sorted_expected.astype(object)
+
+            assert np.all(sorted == sorted_expected)
+
         def test_array_equal(self, array: na.AbstractArray, array_2: None | na.AbstractArray):
             if array_2 is None:
                 array_2 = array.copy()
