@@ -10,7 +10,7 @@ setup(
         'numpy',
         'matplotlib',
         'scipy',
-        'astropy @ git+https://github.com/byrdie/astropy.git@bugfix/array_equal-incompatible-units#egg=astropy',
+        'astropy @ git+https://github.com/astropy/astropy.git#egg=astropy',
         'sphinx-autodoc-typehints',
         'astropy-sphinx-theme',
         'jupyter-sphinx',
