@@ -119,8 +119,12 @@ def array_function_arg_reduce(
     if axis is not None:
         if axis not in a.axes:
             raise ValueError(f"Reduction axis '{axis}' not in array with axes {a.axes}")
+    else:
+        if not a.shape:
+            raise ValueError(f"Applying {func} to zero-dimensional arrays is not supported")
 
-    axis_normalized = a.axes_flattened if axis is None else axis
+    if out is not None:
+        raise NotImplementedError(f"out keyword argument is not implemented for {func}")
 
     if keepdims:
         axis_out = a.axes
@@ -130,22 +134,25 @@ def array_function_arg_reduce(
         else:
             axis_out = tuple()
 
-    if out is not None:
-        out[axis_normalized] = out[axis_normalized].transpose(axis_out)
-
     kwargs = dict()
 
     if axis is not None:
         kwargs['axis'] = a.axes.index(axis) if axis is not None else axis
-    if out is not None:
-        kwargs['out'] = out[axis_normalized].ndarray
     if keepdims is not None:
         kwargs['keepdims'] = keepdims
 
-    return {axis_normalized: na.ScalarArray(
+    indices = na.ScalarArray(
         ndarray=func(a.ndarray, **kwargs),
         axes=axis_out,
-    )}
+    )
+
+    if axis is None:
+        result = np.unravel_index(indices=indices, shape=a.shape)
+    else:
+        result = a.indices
+        result[axis] = indices
+
+    return result
 
 
 def implements(numpy_function: Callable):

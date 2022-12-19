@@ -912,12 +912,12 @@ class AbstractTestAbstractArray(
                 assert np.all(result.ndarray == result_ndarray)
 
         @pytest.mark.parametrize(
-            argnames='func',
+            argnames=('argfunc', 'func'),
             argvalues=[
-                np.argmin,
-                np.nanargmin,
-                np.argmax,
-                np.nanargmax,
+                (np.argmin, np.min),
+                (np.nanargmin, np.nanmin),
+                (np.argmax, np.max),
+                (np.nanargmax, np.nanmax),
             ]
         )
         @pytest.mark.parametrize('out', [False, True])
@@ -925,6 +925,7 @@ class AbstractTestAbstractArray(
         class TestArgReductionFunctions:
             def test_arg_reduction_functions(
                     self,
+                    argfunc: Callable,
                     func: Callable,
                     array: na.AbstractArray,
                     axis: None | str,
@@ -933,8 +934,6 @@ class AbstractTestAbstractArray(
             ):
                 kwargs = dict()
                 kwargs_ndarray = dict()
-
-                axis_normalized = array.axes_flattened if axis is None else axis
 
                 if axis is not None:
                     shape_result = {ax: 1 if ax == axis else array.shape[ax] for ax in reversed(array.shape)}
@@ -951,24 +950,37 @@ class AbstractTestAbstractArray(
                     kwargs_ndarray['keepdims'] = keepdims
 
                 if out:
-                    kwargs['out'] = {axis_normalized: array.type_array.empty(shape_result, dtype=int)}
-                    kwargs_ndarray['out'] = array.type_array.empty(shape_result, dtype=int).ndarray.transpose()
+                    if axis is not None:
+                        kwargs['out'] = array.indices
+                        kwargs['out'][axis] = array.type_array.empty(shape_result, dtype=int)
+                    else:
+                        kwargs['out'] = {ax: array.type_array.empty(shape_result, dtype=int) for ax in array.axes}
 
                 if axis is not None:
                     if axis not in array.axes:
                         with pytest.raises(ValueError, match='Reduction axis .* not in array with axes .*'):
-                            func(array, axis=axis, **kwargs)
+                            argfunc(array, axis=axis, **kwargs)
+                        return
+                else:
+                    if not array.shape:
+                        with pytest.raises(
+                                expected_exception=ValueError,
+                                match=r"Applying .* to zero-dimensional arrays is not supported"
+                        ):
+                            argfunc(array, axis=axis, **kwargs)
                         return
 
-                result = func(array, axis=axis, **kwargs)
-                result_ndarray = func(
-                    array.ndarray,
-                    axis=array.axes.index(axis) if axis is not None else axis,
-                    **kwargs_ndarray
-                )
+                if out:
+                    with pytest.raises(NotImplementedError, match=r"out keyword argument is not implemented for .*"):
+                        argfunc(array, axis=axis, **kwargs)
+                    return
 
-                assert len(result) == 1
-                assert np.all(result[axis_normalized].ndarray == result_ndarray)
+                result = argfunc(array, axis=axis, **kwargs)
+
+                array_reduced = array[result]
+                array_reduced_expected = func(array, axis=axis, keepdims=keepdims)
+
+                assert np.all(array_reduced == array_reduced_expected)
 
 
 class AbstractTestArrayBase(
