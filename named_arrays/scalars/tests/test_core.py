@@ -29,11 +29,7 @@ def _scalar_arrays():
         na.ScalarArray(np.random.choice([True, False], size=_num_y), axes=('y', )),
         na.ScalarArray(np.random.choice([True, False], size=(_num_x, _num_y)), axes=('x', 'y'))
     ]
-    arrays_str = [
-        na.ScalarArray('foo'),
-        na.ScalarArray(np.random.choice(['foo', 'bar', 'baz'], size=_num_y), axes=('y', )),
-    ]
-    return arrays_numeric + arrays_bool + arrays_str
+    return arrays_numeric + arrays_bool
 
 
 def _scalar_arrays_2():

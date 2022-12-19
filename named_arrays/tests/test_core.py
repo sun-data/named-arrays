@@ -204,21 +204,14 @@ class AbstractTestAbstractArray(
 
     @pytest.mark.parametrize('dtype', [int, float])
     def test_astype(self, array: na.AbstractArray, dtype: type):
-        if np.issubdtype(array.dtype, np.number) or np.issubdtype(array.dtype, bool):
-            array_new = array.astype(dtype)
-            assert array_new.dtype == dtype
-        else:
-            with pytest.raises(ValueError):
-                array.astype(dtype)
+        array_new = array.astype(dtype)
+        assert array_new.dtype == dtype
 
     @pytest.mark.parametrize('unit', [u.m, u.s])
     def test_to(self, array: na.AbstractArray, unit: None | u.UnitBase):
         if isinstance(array.unit, u.UnitBase) and array.unit.is_equivalent(unit):
             array_new = array.to(unit)
             assert array_new.unit == unit
-        elif np.issubdtype(array.dtype, str):
-            with pytest.raises(TypeError):
-                array.to(unit)
         else:
             with pytest.raises(u.UnitConversionError):
                 array.to(unit)
@@ -728,9 +721,6 @@ class AbstractTestAbstractArray(
 
             result = np.concatenate(arrays, axis=axis, out=out)
 
-            if np.issubdtype(result.dtype, str):
-                result = result.astype(object)
-
             assert result.shape == shape_out
             assert np.all(result[{axis: slice(None, shape_out[axis] // 2)}] == array)
             assert np.all(result[{axis: slice(shape_out[axis] // 2, None)}] == array)
@@ -774,23 +764,12 @@ class AbstractTestAbstractArray(
 
             sorted_expected = np.sort(array, axis=axis)
 
-            if np.issubdtype(sorted.dtype, str):
-                sorted = sorted.astype(object)
-
-            if np.issubdtype(sorted_expected.dtype, str):
-                sorted_expected = sorted_expected.astype(object)
-
             assert np.all(sorted == sorted_expected)
 
         def test_array_equal(self, array: na.AbstractArray, array_2: None | na.AbstractArray):
             if array_2 is None:
                 array_2 = array.copy()
                 assert np.array_equal(array, array_2)
-                return
-
-            if array.shape and np.issubdtype(array.dtype, str) and not np.issubdtype(array_2, str):
-                with pytest.raises(FutureWarning, match="elementwise comparison failed"):
-                    np.array_equal(array, array_2)
                 return
 
             assert not np.array_equal(array, array_2)
@@ -902,24 +881,6 @@ class AbstractTestAbstractArray(
                     if where:
                         with pytest.raises(TypeError, match=r".* got an unexpected keyword argument \'where\'"):
                             func(array, axis=axis, **kwargs, )
-                        return
-
-                if np.issubdtype(array.dtype, str):
-                    if dtype is None:
-                        with pytest.raises(
-                                expected_exception=TypeError,
-                                match=r"(ufunc .* did not contain a loop with signature matching types .*)|"
-                                      r"(ufunc .* not supported for the input types, *)"
-                        ):
-                            func(array, axis=axis, **kwargs, )
-                        return
-
-                    else:
-                        with pytest.raises(
-                            expected_exception=ValueError,
-                            match=r"could not convert string to .*"
-                        ):
-                            func(array, axis=axis, **kwargs)
                         return
 
                 if func in [np.median, np.nanmedian]:
