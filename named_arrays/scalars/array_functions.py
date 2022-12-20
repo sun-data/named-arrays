@@ -100,7 +100,7 @@ def array_function_default(
         kwargs['keepdims'] = keepdims
     if initial is not None:
         kwargs['initial'] = initial
-    if where is not None:
+    if where is not None and not np._NoValue:
         kwargs['where'] = where.ndarray_aligned(shape)
 
     return scalars.ScalarArray(

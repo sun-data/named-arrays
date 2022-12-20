@@ -881,6 +881,57 @@ class ScalarArray(
     na.ArrayBase,
     Generic[NDArrayT],
 ):
+    """
+    An array composed of scalars that is coordinate and unit aware.
+
+    A ScalarArray is defined by a numpy ndarray and an axis.
+
+    .. jupyter-execute::
+
+        import numpy as np
+        import named_arrays.core as na
+
+        x = np.array([1,4,9,11,17])
+        x = na.ScalarArray(x,axes='position_x')
+        print(x)
+
+    They can also be defined using a u.Quantity, or ascribed units after creation.
+
+    .. jupyter-execute::
+
+        import astropy.units as u
+
+        x = x * u.cm
+
+        print(x)
+
+    What happens when we do math with ScalarArrays?
+
+    .. jupyter-execute::
+
+        y = np.array([0,2,4,5]) * u.mm
+
+        y = na.ScalarArray(y, axes='position_y')
+        print(y**2)
+
+        radius = np.sqrt(y**2 + x**2)
+        print(radius)
+        print(radius.shape)
+
+
+    Note how when performing mathematical opperations on two ScalarArrays with different axes, the arrays are automatically
+    broadcast over every axis.
+
+    We can also use reduction operators (mean, sum, etc) on ScalarArrays, and if desired specify the axis by name without
+    knowledge of the corresponding index axes of the original array.
+
+    .. jupyter-execute::
+
+        print(radius.mean())
+        print(radius.mean(axis='position_x'))
+    """
+
+
     ndarray: NDArrayT
     axes: None | tuple[str, ...] = None
 
@@ -1115,6 +1166,42 @@ class ScalarArrayRange(
     na.AbstractArrayRange,
     Generic[StartT, StopT],
 ):
+    """
+    A ScalarArray over the range [start, stop) in integer steps. An analog to np.arrange
+
+    Scalar array range can be used to create a ScalarArray of integers w
+    .. jupyter-execute::
+
+        import named_arrays as na
+        x = na.ScalarArrayRange(1, 8 , axis = "x", step = 2)
+        print(x)
+        print(x.shape)
+
+    We need to add the array to the print call.
+
+    .. jupyter-execute::
+
+        print(x**2)
+
+    Note above that x does not include stop = 8 because of the step size of two overshoots it.
+
+    Can start be negative?
+
+    .. jupyter-execute::
+
+        x = na.ScalarArrayRange(-1, 1, axis = "x")
+        print(x.array)
+
+    How about a non integer?
+
+    .. jupyter-execute::
+
+        x = na.ScalarArrayRange(-.5,3, axis = "x")
+        print(x.array)
+
+
+
+    """
     start: StartT
     stop: StopT
     axis: str
@@ -1155,6 +1242,22 @@ class ScalarLinearSpace(
     na.AbstractLinearSpace,
     Generic[StartT, StopT],
 ):
+    """
+    An evenly spaced ScalarArray ranging from start to stop with num elements.
+
+    Most often ScalarArrays won't be formed directly from an np.array, but through more useful routines like ScalarLinearSpace,
+    a ScalarArray equivalent to np.linspace.  For example, one can quickly create an evenly spaced coordinate (or axis) array with units.
+
+    .. jupyter-execute::
+
+        import named_arrays as na
+        import astropy.units as u
+
+        Photon_Energy = na.ScalarLinearSpace(1, 25, axis="Energy", num = 25) * u.keV
+        print(Photon_Energy.shape)
+        print(Photon_Energy)
+
+    """
     start: StartT
     stop: StopT
     axis: str
