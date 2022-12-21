@@ -883,26 +883,6 @@ class AbstractTestAbstractArray(
                             func(array, axis=axis, **kwargs, )
                         return
 
-                if func in [np.median, np.nanmedian]:
-                    if out and keepdims and np.ndim(array) != 0 and (set(axis_normalized) & set(array.axes)):
-                        shape_result_2 = {ax: shape_result[ax] for ax in shape_result if ax not in axis_normalized}
-                        try:
-                            np.empty(tuple(shape_result.values())).T[...] = np.empty(tuple(shape_result_2.values())).T
-                            broadcastable = True
-                        except ValueError:
-                            broadcastable = False
-
-                        if func in [np.nanmedian] and broadcastable:
-                            pass
-                        else:
-                            with pytest.raises(
-                                    expected_exception=ValueError,
-                                    match=r"(output parameter for reduction operation add has the wrong number of *)|"
-                                          r"(could not broadcast input array from shape .* into shape .*)"
-                            ):
-                                func(array, axis=axis, **kwargs, )
-                            return
-
                 result = func(array, axis=axis, **kwargs, )
                 result_ndarray = func(
                     array.ndarray,
