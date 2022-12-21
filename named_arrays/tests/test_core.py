@@ -788,6 +788,16 @@ class AbstractTestAbstractArray(
                 assert len(result[ax].axes) == 1
                 assert result[ax].axes[0] == f"{array.axes_flattened}_nonzero"
 
+        def test_nan_to_num(self, array: na.AbstractArray, copy: bool):
+
+            result = np.nan_to_num(array, copy=copy)
+            expected = np.nan_to_num(array.ndarray, copy=copy)
+
+            if not copy:
+                assert result is array
+
+            assert np.all(result.ndarray == expected)
+
         @pytest.mark.parametrize(
             argnames='func',
             argvalues=[

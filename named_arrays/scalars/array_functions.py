@@ -424,3 +424,21 @@ def array_equal(
 def nonzero(a: na.AbstractScalarArray):
     result = np.nonzero(a.ndarray)
     return {a.axes[r]: na.ScalarArray(result[r], axes=(f'{a.axes_flattened}_nonzero',)) for r, _ in enumerate(result)}
+
+
+@implements(np.nan_to_num)
+def nan_to_num(
+        x: na.AbstractScalarArray,
+        copy: bool = True,
+        nan: float = 0.0,
+        posinf: None | float = None,
+        neginf: None | float = None,
+):
+    result_ndarray = np.nan_to_num(x.ndarray, copy=copy, nan=nan, posinf=posinf, neginf=neginf)
+    if copy:
+        return na.ScalarArray(
+            ndarray=result_ndarray,
+            axes=x.axes,
+        )
+    else:
+        return x
