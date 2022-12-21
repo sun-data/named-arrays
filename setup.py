@@ -7,10 +7,10 @@ setup(
     install_requires=[
         'typing-extensions',
         'pytest',
-        'numpy @ git+https://github.com/byrdie/numpy.git@bugfix/median-keepdims-out#egg=numpy',
+        'numpy',
         'matplotlib',
         'scipy',
-        'astropy @ git+https://github.com/byrdie/astropy.git@bug/quantity-ufunc-not-implemented#egg=astropy',
+        'astropy @ git+https://github.com/astropy/astropy.git#egg=astropy',
         'sphinx-autodoc-typehints',
         'astropy-sphinx-theme',
         'jupyter-sphinx',

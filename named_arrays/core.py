@@ -25,6 +25,7 @@ __all__ = [
     'shape_broadcasted',
     'ndindex',
     'indices',
+    'flatten_axes',
     'AbstractArray',
     'ArrayBase',
     'AbstractParameterizedArray',
@@ -48,6 +49,22 @@ QuantityLike = Union[int, float, complex, np.ndarray, u.Quantity]
 def get_dtype(
         value: bool | int | float | complex | str | np.ndarray | AbstractArray,
 ) -> Type:
+    """
+    Get the equivalent :attr:`numpy.ndarray.dtype` of the argument.
+
+    If the argument is an instance of :class:`numpy.ndarray`, this function simply returns :attr:`numpy.ndarray.dtype`.
+    Otherwise, this function wraps the argument in an :func:`numpy.array()` call and then evaluates the ``dtype``.
+
+    Parameters
+    ----------
+    value
+        Object to find the ``dtype`` of
+
+    Returns
+    -------
+    ``dtype`` of the argument
+
+    """
     if isinstance(value, (np.ndarray, AbstractArray)):
         return value.dtype
     else:
@@ -127,6 +144,10 @@ def indices(shape: dict[str, int]) -> dict[str, named_arrays.scalars.ScalarArray
     return {axis: named_arrays.scalars.ScalarArrayRange(0, shape[axis], axis=axis) for axis in shape}
 
 
+def flatten_axes(axes: Sequence[str]):
+    return '*'.join(axes)
+
+
 @dataclasses.dataclass(eq=False)
 class AbstractArray(
     named_arrays.mixins.CopyableMixin,
@@ -141,15 +162,30 @@ class AbstractArray(
     @property
     @abc.abstractmethod
     def __named_array_priority__(self: Self) -> float:
-        pass
+        """
+        Attribute used to decide what type of array to return in instances where there is more than one option.
+
+        Similar to :attr:`numpy.class.__array_priority__`
+
+        :return: :type:`int` describing this class's array priority
+        """
 
     @property
     @abc.abstractmethod
     def ndarray(self: Self) -> bool | int | float | complex | str | np.ndarray | u.Quantity:
-        pass
+        """
+        Underlying data that is wrapped by this class.
+
+        This is usually an instance of :class:`numpy.ndarray` or :class:`astropy.units.Quantity`, but it can also be a
+        built-in python type such as a :class:`int`, :class:`float`, or :class:`bool`
+        """
 
     @property
     def ndarray_normalized(self: Self) -> np.ndarray:
+        """
+        Similar to :attr:`ndarray` but guaranteed to be an instance of
+        :class:`numpy.ndarray`.
+        """
         ndarray = self.ndarray
         if not isinstance(ndarray, np.ndarray):
             ndarray = np.array(ndarray)
@@ -158,77 +194,152 @@ class AbstractArray(
     @property
     @abc.abstractmethod
     def axes(self: Self) -> tuple[str, ...]:
-        pass
+        """
+        A :class:`tuple` of :class:`str` representing the names of each dimension of :attr:`ndarray`.
+
+        Must have the same length as the number of dimensions of :attr:`ndarray`.
+        """
+
+    @property
+    def axes_flattened(self: Self) -> str:
+        """
+        Combine :attr:`axes` into a single :class:`str`.
+
+        This is useful for functions like :func:`numpy.flatten` which returns an array with only one dimension.
+        """
+        return flatten_axes(self.axes)
 
     @property
     @abc.abstractmethod
     def shape(self: Self) -> dict[str, int]:
-        pass
+        """
+        Shape of the array. Analogous to :attr:`numpy.ndarray.shape` but represented as a :class:`dict` where the keys
+        are the axis names and the values are the axis sizes.
+        """
 
     @property
     @abc.abstractmethod
     def ndim(self: Self) -> int:
-        pass
+        """
+        Number of dimensions of the array. Equivalent to :attr:`numpy.ndarray.ndim`.
+        """
 
     @property
     @abc.abstractmethod
-    def dtype(self: Self) -> npt.DTypeLike:
-        pass
+    def size(self: Self) -> int:
+        """
+        Total number of elements in the array. Equivalent to :attr:`numpy.ndarray.size`
+        """
 
     @property
     @abc.abstractmethod
-    def unit(self: Self) -> float | u.Unit:
-        pass
+    def dtype(self: Self) -> Type:
+        """
+        Data type of the array. Equivalent to :attr:`numpy.ndarray.dtype`
+        """
+
+    @property
+    @abc.abstractmethod
+    def unit(self: Self) -> None | u.Unit:
+        """
+        Unit associated with the array.
+
+        If :attr:`ndarray` is an instance of :class:`astropy.units.Quantity`, return :attr:`astropy.units.Quantity.unit`,
+        otherwise return :class:`None`.
+        """
+
+    @property
+    def unit_normalized(self: Self) -> u.Unit:
+        """
+        Similar to :attr:`unit` but returns :attr:`astropy.units.dimensionless_unscaled` if :attr:`ndarray` is not an
+        instance of :class:`astropy.units.Quantity`.
+        """
+        result = self.unit
+        if result is None:
+            result = u.dimensionless_unscaled
+        return result
 
     @property
     @abc.abstractmethod
     def array(self: Self) -> ArrayBase:
-        pass
+        """
+        Converts this array to an instance of :class:`named_arrays.ArrayBase`
+        """
 
     @property
     @abc.abstractmethod
     def type_array(self: Self) -> Type[ArrayBase]:
-        pass
+        """
+        The :class:`ArrayBase` type corresponding to this array
+        """
 
     @property
     @abc.abstractmethod
     def scalar(self: Self) -> named_arrays.scalars.AbstractScalar:
-        pass
+        """
+        Converts this array to an instance of :class:`named_arrays.AbstractScalar`
+        """
 
     @property
     @abc.abstractmethod
     def components(self: Self) -> dict[str, AbstractArray]:
-        pass
+        """
+        The vector components of this array expressed as a :class:`dict` where the keys are the names of the component.
+        """
 
     @property
     @abc.abstractmethod
     def nominal(self: Self) -> AbstractArray:
-        pass
+        """
+        The nominal value of this array.
+        """
 
     @property
     @abc.abstractmethod
     def distribution(self: Self) -> None | AbstractArray:
-        pass
+        """
+        The distribution of values of this array.
+        """
 
     @property
     @abc.abstractmethod
     def centers(self: Self) -> AbstractArray:
-        pass
+        """
+        The central value for this array. Usually returns this array unless an instance of
+        :class:`named_arrays.AbstractStratifiedRandomSpace`
+        """
 
     @abc.abstractmethod
     def astype(
             self: Self,
-            dtype: npt.DTypeLike,
+            dtype: Type,
             order: str = 'K',
             casting='unsafe',
             subok: bool = True,
             copy: bool = True,
     ) -> Self:
-        pass
+        """
+        Copy of the array cast to a specific data type.
+
+        Equivalent to :meth:`numpy.ndarray.astype`.
+        """
 
     @abc.abstractmethod
     def to(self: Self, unit: u.UnitBase) -> Self:
-        pass
+        """
+        Convert this array to a new unit.
+
+        Equivalent to :meth:`astropy.units.Quantity.to`.
+
+        Parameters
+        ----------
+        unit
+            New unit of the returned array
+
+        Returns
+        -------
+            Array with :attr:`unit` set to the new value
+        """
 
     @property
     def broadcasted(self: Self) -> Self:
@@ -237,7 +348,9 @@ class AbstractArray(
     @property
     @abc.abstractmethod
     def length(self: Self) -> named_arrays.scalars.AbstractScalar:
-        pass
+        """
+        L2-norm of this array.
+        """
 
     @abc.abstractmethod
     def __getitem__(
@@ -261,7 +374,18 @@ class AbstractArray(
 
     @abc.abstractmethod
     def add_axes(self: Self, axes: str | Sequence[str]) -> Self:
-        pass
+        """
+        Add new singleton axes to this array
+
+        Parameters
+        ----------
+        axes
+            New axes to add to the array
+
+        Returns
+        -------
+        Array with new axes added
+        """
 
     @abc.abstractmethod
     def combine_axes(
@@ -269,11 +393,35 @@ class AbstractArray(
             axes: Sequence[str],
             axis_new: str,
     ) -> Self:
-        pass
+        """
+        Combine some of the axes of the array into a single new axis.
+
+        Parameters
+        ----------
+        axes
+            The axes to combine into a new axis
+        axis_new
+            The name of the new axis
+
+        Returns
+        -------
+        Array with the specified axes combined
+        """
 
     @abc.abstractmethod
     def ndarray_aligned(self: Self, shape: dict[str, int]) -> QuantityLike:
-        pass
+        """
+        Align :attr:`ndarray` to a particular shape.
+
+        Parameters
+        ----------
+        shape
+            New shape to align :attr:`ndarray` to.
+
+        Returns
+        -------
+        An instance of :class:`numpy.ndarray` with the axes aligned.
+        """
 
     def _interp_linear_recursive(
             self: Self,
@@ -394,21 +542,64 @@ class ArrayBase(
     @classmethod
     @abc.abstractmethod
     def empty(cls: Type[Self], shape: dict[str, int], dtype: Type = float) -> Self:
-        pass
+        """
+        Create a new empty array
+
+        Parameters
+        ----------
+        shape
+            shape of the new array
+        dtype
+            data type of the new array
+
+        Returns
+        -------
+            A new empty array with the specified shape and data type
+        """
 
     @classmethod
     @abc.abstractmethod
     def zeros(cls: Type[Self], shape: dict[str, int], dtype: Type = float) -> Self:
-        pass
+        """
+        Create a new array of zeros
+
+        Parameters
+        ----------
+        shape
+            shape of the new array
+        dtype
+            data type of the new array
+
+        Returns
+        -------
+            A new array of zeros with the specified shape and data type
+        """
 
     @classmethod
     @abc.abstractmethod
     def ones(cls: Type[Self], shape: dict[str, int], dtype: Type = float) -> Self:
-        pass
+        """
+        Create a new array of ones
+
+        Parameters
+        ----------
+        shape
+            shape of the new array
+        dtype
+            data type of the new array
+
+        Returns
+        -------
+            A new array of ones with the specified shape and data type
+        """
 
     @property
     def ndim(self: Self) -> int:
         return np.ndim(self.ndarray)
+
+    @property
+    def size(self: Self) -> int:
+        return np.size(self.ndarray)
 
     @property
     def shape(self: Self) -> dict[str, int]:
@@ -452,6 +643,10 @@ class AbstractParameterizedArray(
         return self.array.ndim
 
     @property
+    def size(self: Self) -> int:
+        return self.array.size
+
+    @property
     def shape(self: Self) -> dict[str, int]:
         return self.array.shape
 
@@ -462,12 +657,16 @@ class AbstractParameterizedArray(
     @property
     @abc.abstractmethod
     def axis(self: Self) -> str | AbstractArray:
-        pass
+        """
+        The axis along which the array is parameterized
+        """
 
     @property
     @abc.abstractmethod
     def num(self: Self) -> int | AbstractArray:
-        pass
+        """
+        Number of elements in the parameterization
+        """
 
 
 @dataclasses.dataclass(eq=False)
@@ -482,7 +681,9 @@ class AbstractRandomMixin(
     @property
     @abc.abstractmethod
     def seed(self: Self) -> int:
-        pass
+        """
+        Seed for the random number generator instance
+        """
 
     @seed.setter
     @abc.abstractmethod
@@ -502,12 +703,16 @@ class AbstractRange(
     @property
     @abc.abstractmethod
     def start(self: Self) -> int | AbstractArray:
-        pass
+        """
+        Starting value of the range.
+        """
 
     @property
     @abc.abstractmethod
     def stop(self: Self) -> int | AbstractArray:
-        pass
+        """
+        Ending value of the range.
+        """
 
     @property
     def range(self: Self) -> AbstractArray:
@@ -521,12 +726,16 @@ class AbstractSymmetricRange(
     @property
     @abc.abstractmethod
     def center(self: Self) -> ArrayLike:
-        pass
+        """
+        Center value of the range.
+        """
 
     @property
     @abc.abstractmethod
     def width(self: Self) -> ArrayLike:
-        pass
+        """
+        Width of the range.
+        """
 
     @property
     def start(self: Self) -> ArrayLike:
@@ -560,7 +769,9 @@ class AbstractLinearParameterizedArrayMixin(
     @property
     @abc.abstractmethod
     def step(self: Self) -> int | AbstractArray:
-        pass
+        """
+        Spacing between the values.
+        """
 
 
 @dataclasses.dataclass(eq=False)
@@ -578,7 +789,9 @@ class AbstractSpace(
     @property
     @abc.abstractmethod
     def endpoint(self: Self) -> bool:
-        pass
+        """
+        If ``True``, :attr:`stop` is the last sample, otherwise it is not included.
+        """
 
 
 @dataclasses.dataclass(eq=False)
@@ -611,17 +824,23 @@ class AbstractLogarithmicSpace(
     @property
     @abc.abstractmethod
     def start_exponent(self: Self) -> ArrayLike:
-        pass
+        """
+        Exponent of the starting value of the sequence.
+        """
 
     @property
     @abc.abstractmethod
     def stop_exponent(self: Self) -> ArrayLike:
-        pass
+        """
+        Exponent of the ending value of the sequence.
+        """
 
     @property
     @abc.abstractmethod
     def base(self: Self) -> ArrayLike:
-        pass
+        """
+        Base which is exponentiated by :attr:`start_exponent` and :attr:`stop_exponent`.
+        """
 
     @property
     def start(self: Self) -> ArrayLike:
