@@ -1,9 +1,8 @@
+from __future__ import annotations
 from typing import Sequence, Callable, Type
 import numpy as np
 import astropy.units as u
-
-from named_arrays.core import broadcast_shapes
-from . import core as scalars
+import named_arrays as na
 
 __all__ = [
     'HANDLED_FUNCTIONS'
@@ -11,12 +10,8 @@ __all__ = [
 
 DEFAULT_FUNCTIONS = [
     np.ndim,
-    np.argmin,
-    np.nanargmin,
     np.min,
     np.nanmin,
-    np.argmax,
-    np.nanargmax,
     np.max,
     np.nanmax,
     np.sum,
@@ -40,11 +35,17 @@ DEFAULT_FUNCTIONS = [
     np.ptp,
     np.count_nonzero,
 ]
+ARG_REDUCE_FUNCTIONS = [
+    np.argmin,
+    np.nanargmin,
+    np.argmax,
+    np.nanargmax,
+]
 HANDLED_FUNCTIONS = dict()
 
 
 def _axis_normalized(
-        a: scalars.AbstractScalarArray,
+        a: na.AbstractScalarArray,
         axis: None | str | Sequence[str],
 ) -> tuple[str]:
     if axis is None:
@@ -57,7 +58,7 @@ def _axis_normalized(
 
 
 def _calc_axes_new(
-        a: scalars.AbstractScalarArray,
+        a: na.AbstractScalarArray,
         axis: None | str | Sequence[str],
         *,
         keepdims: None | bool = None,
@@ -73,13 +74,13 @@ def _calc_axes_new(
 
 def array_function_default(
         func: Callable,
-        a: scalars.AbstractScalarArray,
+        a: na.AbstractScalarArray,
         axis: None | str | Sequence[str] = None,
         dtype: None | Type = None,
-        out: None | scalars.ScalarArray = None,
+        out: None | na.ScalarArray = None,
         keepdims: None | bool = None,
         initial: None | bool | int | float | complex | u.Quantity = None,
-        where: None | scalars.AbstractScalarArray = None,
+        where: None | na.AbstractScalarArray = None,
 ):
     axis_normalized = _axis_normalized(a, axis=axis)
     if out is not None:
@@ -101,10 +102,57 @@ def array_function_default(
     if where is not None:
         kwargs['where'] = where.ndarray_aligned(a.shape)
 
-    return scalars.ScalarArray(
+    return na.ScalarArray(
         ndarray=func(a.ndarray, **kwargs),
         axes=_calc_axes_new(a, axis=axis, keepdims=keepdims),
     )
+
+
+def array_function_arg_reduce(
+        func: Callable,
+        a: na.AbstractScalarArray,
+        axis: None | str = None,
+        out: None | dict[str, na.ScalarArray] = None,
+        keepdims: None | bool = None,
+) -> dict[str, na.ScalarArray]:
+
+    if axis is not None:
+        if axis not in a.axes:
+            raise ValueError(f"Reduction axis '{axis}' not in array with axes {a.axes}")
+    else:
+        if not a.shape:
+            raise ValueError(f"Applying {func} to zero-dimensional arrays is not supported")
+
+    if out is not None:
+        raise NotImplementedError(f"out keyword argument is not implemented for {func}")
+
+    if keepdims:
+        axis_out = a.axes
+    else:
+        if axis is not None:
+            axis_out = tuple(ax for ax in a.axes if not ax == axis)
+        else:
+            axis_out = tuple()
+
+    kwargs = dict()
+
+    if axis is not None:
+        kwargs['axis'] = a.axes.index(axis) if axis is not None else axis
+    if keepdims is not None:
+        kwargs['keepdims'] = keepdims
+
+    indices = na.ScalarArray(
+        ndarray=func(a.ndarray, **kwargs),
+        axes=axis_out,
+    )
+
+    if axis is None:
+        result = np.unravel_index(indices=indices, shape=a.shape)
+    else:
+        result = a.indices
+        result[axis] = indices
+
+    return result
 
 
 def implements(numpy_function: Callable):
@@ -117,10 +165,10 @@ def implements(numpy_function: Callable):
 
 @implements(np.broadcast_to)
 def broadcast_to(
-        array: scalars.AbstractScalarArray,
+        array: na.AbstractScalarArray,
         shape: dict[str, int],
 ):
-    return scalars.ScalarArray(
+    return na.ScalarArray(
         ndarray=np.broadcast_to(array.ndarray_aligned(shape), tuple(shape.values()), subok=True),
         axes=tuple(shape.keys()),
     )
@@ -128,18 +176,21 @@ def broadcast_to(
 
 @implements(np.shape)
 def shape(
-        a: scalars.AbstractScalarArray,
+        a: na.AbstractScalarArray,
 ) -> dict[str, int]:
     return a.shape
 
 
 @implements(np.transpose)
 def transpose(
-        a: scalars.AbstractScalarArray,
+        a: na.AbstractScalarArray,
         axes: None | Sequence[str] = None,
-):
+) -> na.ScalarArray:
+
+    if axes is not None:
+        a = a.add_axes(axes)
     axes = tuple(reversed(a.axes)) if axes is None else axes
-    return scalars.ScalarArray(
+    return na.ScalarArray(
         ndarray=np.transpose(
             a=a.ndarray,
             axes=tuple(a.axes.index(ax) for ax in axes),
@@ -148,15 +199,222 @@ def transpose(
     )
 
 
+@implements(np.moveaxis)
+def moveaxis(
+        a: na.AbstractScalarArray,
+        source: str | Sequence[str],
+        destination: str | Sequence[str],
+) -> na.ScalarArray:
+
+    axes = list(a.axes)
+
+    types_sequence = (list, tuple,)
+    if not isinstance(source, types_sequence):
+        source = (source,)
+    if not isinstance(destination, types_sequence):
+        destination = (destination,)
+
+    for src, dest in zip(source, destination):
+        if src not in axes:
+            raise ValueError(f"source axis {src} not in array axes {a.axes}")
+        axes[axes.index(src)] = dest
+
+    return na.ScalarArray(
+        ndarray=a.ndarray,
+        axes=tuple(axes)
+    )
+
+
+@implements(np.reshape)
+def reshape(a: na.AbstractScalarArray, newshape: dict[str, int]) -> na.ScalarArray:
+    return na.ScalarArray(
+        ndarray=np.reshape(a.ndarray, tuple(newshape.values())),
+        axes=tuple(newshape.keys()),
+    )
+
+
+@implements(np.linalg.inv)
+def linalg_inv(a: na.AbstractScalarArray,):
+    raise NotImplementedError(
+        "np.linalg.inv not supported, use 'named_arrays.AbstractScalarArray.matrix_inverse()' instead"
+    )
+
+
+@implements(np.stack)
+def stack(
+        arrays: Sequence[bool | int | float | complex | str | u.Quantity | na.AbstractScalarArray],
+        axis: str,
+        out: None | na.ScalarArray = None,
+) -> na.ScalarArray:
+    arrays = [na.ScalarArray(arr) if not isinstance(arr, na.AbstractArray) else arr for arr in arrays]
+    for array in arrays:
+        if not isinstance(array, na.AbstractScalarArray):
+            return NotImplemented
+    shape = na.shape_broadcasted(*arrays)
+    if axis in shape:
+        raise ValueError(f"axis '{axis}' already in array")
+    arrays = [arr.broadcast_to(shape).ndarray for arr in arrays]
+
+    axes_new = (axis,) + tuple(shape.keys())
+    axis_ndarray = 0
+
+    if out is not None:
+        np.stack(
+            arrays=arrays,
+            axis=axis_ndarray,
+            out=out.transpose(axes_new).ndarray
+        )
+        return out
+    else:
+        return na.ScalarArray(
+            ndarray=np.stack(
+                arrays=arrays,
+                axis=axis_ndarray,
+                out=out
+            ),
+            axes=axes_new,
+        )
+
+
+@implements(np.concatenate)
+def concatenate(
+        arrays: Sequence[bool | int | float | complex | str | u.Quantity | na.AbstractScalarArray],
+        axis: str,
+        out: None | na.ScalarArray = None,
+        dtype: None | str | Type | np.dtype = None,
+        casting: str = "same_kind",
+) -> na.ScalarArray:
+
+    arrays = [na.ScalarArray(arr) if not isinstance(arr, na.AbstractArray) else arr for arr in arrays]
+    for array in arrays:
+        if not isinstance(array, na.AbstractScalarArray):
+            return NotImplemented
+
+    shapes = []
+    for array in arrays:
+        shape = array.shape
+        shape[axis] = 1
+        shapes.append(shape)
+
+    shape_prototype = na.broadcast_shapes(*shapes)
+
+    ndarrays = []
+    for array in arrays:
+        shape = shape_prototype.copy()
+        if axis in array.axes:
+            shape[axis] = array.shape[axis]
+        array = array.broadcast_to(shape)
+        ndarrays.append(array.ndarray)
+
+    axis_index = tuple(shape_prototype).index(axis)
+
+    if out is not None:
+        np.concatenate(
+            ndarrays,
+            axis=axis_index,
+            out=out.transpose(tuple(shape_prototype.keys())).ndarray,
+            dtype=dtype,
+            casting=casting,
+        )
+        return out
+    else:
+        return na.ScalarArray(
+            ndarray=np.concatenate(
+                ndarrays,
+                axis=axis_index,
+                out=out,
+                dtype=dtype,
+                casting=casting
+            ),
+            axes=tuple(shape_prototype.keys()),
+        )
+
+
+@implements(np.sort)
+def sort(
+        a: na.AbstractScalarArray,
+        axis: None | str,
+        kind: None | str = None,
+        order: None | str | list[str] = None,
+) -> na.ScalarArray:
+
+    if axis is not None:
+        if axis not in a.axes:
+            raise ValueError(f"axis '{axis}' not in input array with axes {a.axes}")
+
+    return na.ScalarArray(
+        ndarray=np.sort(
+            a=a.ndarray,
+            axis=a.axes.index(axis) if axis is not None else axis,
+            kind=kind,
+            order=order
+        ),
+        axes=a.axes if axis is not None else (a.axes_flattened, )
+    )
+
+
+@implements(np.argsort)
+def argsort(
+        a: na.AbstractScalarArray,
+        axis: None | str,
+        kind: None | str = None,
+        order: None | str | list[str] = None,
+) -> dict[str, na.ScalarArray]:
+    if axis is None:
+        if not a.shape:
+            raise ValueError("sorting zero-dimensional arrays is not supported")
+
+        indices = na.ScalarArray(
+            ndarray=np.argsort(
+                a=a.ndarray,
+                axis=axis,
+                kind=kind,
+                order=order
+            ),
+            axes=(a.axes_flattened, ),
+        )
+        return {a.axes_flattened: indices}
+
+    else:
+        if axis not in a.axes:
+            raise ValueError(f"axis {axis} not in input array with axes {a.axes}")
+
+        indices = na.ScalarArray(
+            ndarray=np.argsort(
+                a=a.ndarray,
+                axis=a.axes.index(axis),
+                kind=kind,
+                order=order,
+            ),
+            axes=a.axes,
+        )
+
+        result = na.indices(a.shape)
+        result[axis] = indices
+        return result
+
+
+@implements(np.unravel_index)
+def unravel_index(indices: na.AbstractScalarArray, shape: dict[str, int]) -> dict[str, na.ScalarArray]:
+
+    result_ndarray = np.unravel_index(indices=indices.ndarray, shape=tuple(shape.values()))
+    result = dict()  # type: dict[str, na.ScalarArray]
+    for axis, ndarray in zip(shape, result_ndarray):
+        result[axis] = na.ScalarArray(
+            ndarray=ndarray,
+            axes=indices.axes,
+        )
+    return result
+
+
 @implements(np.array_equal)
 def array_equal(
-        a1: scalars.AbstractScalarArray,
-        a2: scalars.AbstractScalarArray,
+        a1: na.AbstractScalarArray,
+        a2: na.AbstractScalarArray,
         equal_nan: bool = False,
 ) -> bool:
     return np.array_equal(
         a1=a1.ndarray,
-        a2=a2.ndarray_aligned(a1.shape),
+        a2=a2.ndarray,
         equal_nan=equal_nan,
     )
-

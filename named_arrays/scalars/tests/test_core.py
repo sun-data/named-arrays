@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Type
+from typing import Type, Sequence
 import pytest
 import numpy as np
 import astropy.units as u
@@ -29,11 +29,7 @@ def _scalar_arrays():
         na.ScalarArray(np.random.choice([True, False], size=_num_y), axes=('y', )),
         na.ScalarArray(np.random.choice([True, False], size=(_num_x, _num_y)), axes=('x', 'y'))
     ]
-    arrays_str = [
-        na.ScalarArray('foo'),
-        na.ScalarArray(np.random.choice(['foo', 'bar', 'baz'], size=_num_y), axes=('y', )),
-    ]
-    return arrays_numeric + arrays_bool + arrays_str
+    return arrays_numeric + arrays_bool
 
 
 def _scalar_arrays_2():
@@ -49,7 +45,7 @@ def _scalar_arrays_2():
         na.ScalarArray(np.random.choice([True, False], size=_num_y), axes=('y', )),
         na.ScalarArray(np.random.choice([True, False], size=(_num_y, _num_x)), axes=('y', 'x'))
     ]
-    return arrays_numeric + arrays_bool
+    return [None] + arrays_numeric + arrays_bool
 
 
 class AbstractTestAbstractScalar(
@@ -97,9 +93,77 @@ class AbstractTestAbstractScalarArray(
         def test_broadcast_to(self, array: na.AbstractArray, shape: dict[str, int]):
             super().test_broadcast_to(array=array, shape=shape)
 
+        @pytest.mark.parametrize(
+            argnames='axes',
+            argvalues=[
+                None,
+                ['x', 'y'],
+                ['y', 'x'],
+            ],
+        )
+        def test_transpose(self, array: na.AbstractArray, axes: None | Sequence[str]):
+            super().test_transpose(array=array, axes=axes)
+
+        @pytest.mark.parametrize(
+            argnames='source,destination',
+            argvalues=[
+                ['y', 'y2'],
+                [('x', 'y'), ('x2', 'y2')],
+            ]
+        )
+        def test_moveaxis(
+                self,
+                array: na.AbstractArray,
+                source: str | Sequence[str],
+                destination: str | Sequence[str],
+        ):
+            super().test_moveaxis(array=array, source=source, destination=destination)
+
+        @pytest.mark.parametrize('newshape', [dict(r=-1)])
+        def test_reshape(self, array: na.AbstractArray, newshape: dict[str, int]):
+            super().test_reshape(array=array, newshape=newshape)
+
+        @pytest.mark.parametrize('axis', ['y', 'z'])
+        @pytest.mark.parametrize('use_out', [False, True])
+        def test_stack(
+                self,
+                array: na.AbstractArray,
+                axis: str,
+                use_out: bool,
+        ):
+            super().test_stack(array=array, axis=axis, use_out=use_out)
+
+        @pytest.mark.parametrize('axis', ['x', 'y'])
+        @pytest.mark.parametrize('use_out', [False, True])
+        def test_concatenate(
+                self,
+                array: na.AbstractArray,
+                axis: str,
+                use_out: bool,
+        ):
+            super().test_concatenate(array=array, axis=axis, use_out=use_out)
+
+        @pytest.mark.parametrize('axis', [None, 'x', 'y'])
+        def test_sort(self, array: na.AbstractScalarArray, axis: None | str):
+            super().test_sort(array=array, axis=axis)
+
+        @pytest.mark.parametrize('axis', [None, 'x', 'y'])
+        def test_argsort(self, array: na.AbstractScalarArray, axis: None | str):
+            super().test_argsort(array=array, axis=axis)
+
+        @pytest.mark.parametrize('array_2', [None, 100 * na.ScalarArray.ones(shape=dict(x=_num_y))])
+        def test_array_equal(self, array: na.AbstractArray, array_2: None | na.AbstractArray):
+            super().test_array_equal(array, array_2)
+
         @pytest.mark.parametrize('axis', [None, 'y', 'x', ('x', 'y')])
         class TestReductionFunctions(
             AbstractTestAbstractScalar.TestArrayFunctions.TestReductionFunctions
+        ):
+            pass
+
+        @pytest.mark.parametrize('axis', [None, 'y'])
+        class TestArgReductionFunctions(
+            AbstractTestAbstractScalar.TestArrayFunctions.TestArgReductionFunctions,
         ):
             pass
 

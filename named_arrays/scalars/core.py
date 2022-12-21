@@ -148,7 +148,7 @@ class AbstractScalarArray(
         if isinstance(axes, str):
             axes = [axes]
         shape_new = {axis: 1 for axis in axes}
-        shape = {**self.shape, **shape_new}
+        shape = shape_new | self.shape
         return ScalarArray(
             ndarray=self.ndarray_aligned(shape),
             axes=tuple(shape.keys()),
@@ -407,6 +407,9 @@ class AbstractScalarArray(
 
         if func in array_functions.DEFAULT_FUNCTIONS:
             return array_functions.array_function_default(func, *args, **kwargs)
+
+        if func in array_functions.ARG_REDUCE_FUNCTIONS:
+            return array_functions.array_function_arg_reduce(func, *args, **kwargs)
 
         if func in array_functions.HANDLED_FUNCTIONS:
             return array_functions.HANDLED_FUNCTIONS[func](*args, **kwargs)
@@ -804,7 +807,7 @@ class AbstractScalarArray(
                 axes=tuple(axis for axis in self.axes if axis not in item.axes) + ('boolean', )
             )
 
-        else:
+        elif isinstance(item, dict):
             item_casted = cast(Dict[str, Union[int, slice, AbstractScalar]], item)
             axes_advanced = []
             axes_indices_advanced = []
@@ -843,8 +846,9 @@ class AbstractScalarArray(
                 ndarray=value[tuple(index)],
                 axes=tuple(shape_advanced.keys()) + tuple(axes_new),
             )
-        # else:
-        #     raise ValueError('Invalid index type')
+
+        else:
+            raise ValueError('Invalid index type')
 
     def filter_median(
             self: Self,
@@ -887,6 +891,8 @@ class ScalarArray(
     def __post_init__(self: Self):
         if self.axes is None:
             self.axes = tuple()
+        if isinstance(self.axes, str):
+            self.axes = (self.axes, )
         if getattr(self.ndarray, 'ndim', 0) != len(self.axes):
             raise ValueError('The number of axis names must match the number of dimensions.')
         if len(self.axes) != len(set(self.axes)):
@@ -1117,7 +1123,6 @@ class ScalarArrayRange(
     stop: StopT
     axis: str
     step: int = 1
-    seed: None | int = None
 
     @property
     def array(self: Self) -> ScalarArray:
