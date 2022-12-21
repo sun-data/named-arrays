@@ -418,3 +418,9 @@ def array_equal(
         a2=a2.ndarray,
         equal_nan=equal_nan,
     )
+
+
+@implements(np.nonzero)
+def nonzero(a: na.AbstractScalarArray):
+    result = np.nonzero(a.ndarray)
+    return {a.axes[r]: na.ScalarArray(result[r], axes=(f'{a.axes_flattened}_nonzero',)) for r, _ in enumerate(result)}
