@@ -84,11 +84,24 @@ class AbstractTestAbstractScalarArray(
     ):
         pass
 
-    @pytest.mark.parametrize('axis', [None, 'y', ('x', 'y')])
-    class TestReductionFunctions(
-        AbstractTestAbstractScalar.TestReductionFunctions
+    class TestArrayFunctions(
+        AbstractTestAbstractScalar.TestArrayFunctions,
     ):
-        pass
+        @pytest.mark.parametrize(
+            argnames='shape',
+            argvalues=[
+                dict(x=_num_x, y=_num_y),
+                dict(x=_num_x, y=_num_y, z=13),
+            ]
+        )
+        def test_broadcast_to(self, array: na.AbstractArray, shape: dict[str, int]):
+            super().test_broadcast_to(array=array, shape=shape)
+
+        @pytest.mark.parametrize('axis', [None, 'y', 'x', ('x', 'y')])
+        class TestReductionFunctions(
+            AbstractTestAbstractScalar.TestArrayFunctions.TestReductionFunctions
+        ):
+            pass
 
 
 @pytest.mark.parametrize('array', _scalar_arrays())
@@ -212,6 +225,47 @@ class TestScalarArrayRange(
     tests.test_core.AbstractTestAbstractArrayRange,
 ):
     pass
+
+
+class AbstractTestAbstractScalarSpace(
+    AbstractTestAbstractScalarRange,
+    tests.test_core.AbstractTestAbstractSpace,
+):
+    pass
+
+
+def _scalar_linear_spaces():
+    starts = [
+        0,
+        na.ScalarArray(np.random.random(_num_x), axes=('x', )),
+    ]
+    stops = [
+        10,
+        na.ScalarArray(10 * np.random.random(_num_x) + 1, axes=('x', )),
+    ]
+    units = [None, u.mm]
+    endpoints = [
+        False,
+        True,
+    ]
+    return [
+        na.ScalarLinearSpace(
+            start=start << unit if unit is not None else start,
+            stop=stop << unit if unit is not None else stop,
+            axis='y',
+            num=_num_y,
+            endpoint=endpoint
+        ) for start in starts for stop in stops for unit in units for endpoint in endpoints
+    ]
+
+
+@pytest.mark.parametrize('array', _scalar_linear_spaces())
+class TestScalarLinearSpace(
+    AbstractTestAbstractScalarSpace,
+    tests.test_core.AbstractTestAbstractLinearSpace,
+):
+    pass
+
 
 # class OldTestScalarArray:
 #     def test__post_init__(self):

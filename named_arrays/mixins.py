@@ -108,3 +108,9 @@ class NDArrayMethodsMixin:
             where: Self = np._NoValue,
     ) -> Self:
         return np.sqrt(np.mean(np.square(self), axis=axis, where=where))
+
+    def transpose(
+            self: Self,
+            axes: None | Sequence[str] = None,
+    ) -> Self:
+        return np.transpose(self, axes=axes)

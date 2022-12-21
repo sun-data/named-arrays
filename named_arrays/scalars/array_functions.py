@@ -81,17 +81,15 @@ def array_function_default(
         initial: None | bool | int | float | complex | u.Quantity = None,
         where: None | scalars.AbstractScalarArray = None,
 ):
-
+    axis_normalized = _axis_normalized(a, axis=axis)
     if out is not None:
-        shape = broadcast_shapes(out.shape, a.shape)
-        a = a.broadcast_to(shape)
-    else:
-        shape = a.shape
+        axis_out = tuple(ax for ax in a.axes if ax not in axis_normalized) if not keepdims else a.axes
+        out = out.transpose(axis_out)
 
     kwargs = dict()
 
     if axis is not None:
-        kwargs['axis'] = tuple(a.axes.index(ax) for ax in _axis_normalized(a, axis=axis) if ax in a.axes)
+        kwargs['axis'] = tuple(a.axes.index(ax) for ax in axis_normalized if ax in a.axes)
     if dtype is not None:
         kwargs['dtype'] = dtype
     if out is not None:
