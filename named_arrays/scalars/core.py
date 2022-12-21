@@ -778,18 +778,6 @@ class AbstractScalarArray(
         else:
             raise ValueError(f'{func} not supported')
 
-    # @typ.overload
-    # def __getitem__(self: AbstractArrayT, item: typ.Dict[str, int]) -> 'Array': ...
-    #
-    # @typ.overload
-    # def __getitem__(self: AbstractArrayT, item: typ.Dict[str, slice]) -> 'Array': ...
-    #
-    # @typ.overload
-    # def __getitem__(self: AbstractArrayT, item: typ.Dict[str, AbstractArrayT]) -> 'Array': ...
-    #
-    # @typ.overload
-    # def __getitem__(self: AbstractArrayT, item: 'AbstractArray') -> 'Array': ...
-
     def __getitem__(
             self: Self,
             item: dict[str, int | slice | AbstractScalar] | AbstractScalar,
