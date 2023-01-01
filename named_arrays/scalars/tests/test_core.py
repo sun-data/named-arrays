@@ -48,6 +48,12 @@ def _scalar_arrays_2():
     return [None] + arrays_numeric + arrays_bool
 
 
+@pytest.mark.parametrize('value', _scalar_arrays_2())
+def test_as_named_array(value: bool | int | float | complex | str | u.Quantity | na.AbstractArray):
+    result = na.as_named_array(value)
+    assert isinstance(result, na.AbstractArray)
+
+
 class AbstractTestAbstractScalar(
     tests.test_core.AbstractTestAbstractArray,
 ):
