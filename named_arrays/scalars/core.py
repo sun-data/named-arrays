@@ -1171,40 +1171,27 @@ class ScalarArrayRange(
     Generic[StartT, StopT],
 ):
     """
-    A ScalarArray over the range [start, stop) in integer steps. An analog to np.arrange
+    A ScalarArray over the range [start, stop) in incremented by step. An analog to np.arange
 
-    Scalar array range can be used to create a ScalarArray of integers w
+    Scalar array range can be used to create a ScalarArray of integers.
+
     .. jupyter-execute::
 
         import named_arrays as na
-        x = na.ScalarArrayRange(1, 8 , axis = "x", step = 2)
-        print(x)
+        x = na.ScalarArrayRange(1, 8 , axis = "x")
+        print(x.array)
         print(x.shape)
 
-    We need to add the array to the print call.
+    Note above that x does not include stop, and won't in almost all cases.  ScalarArrayRange can be used to create
+    an increasing ScalarArray of floats, even with non integer steps.
 
     .. jupyter-execute::
 
-        print(x**2)
-
-    Note above that x does not include stop = 8 because of the step size of two overshoots it.
-
-    Can start be negative?
-
-    .. jupyter-execute::
-
-        x = na.ScalarArrayRange(-1, 1, axis = "x")
+        x = na.ScalarArrayRange(-.5,3, "x", 0.25)
         print(x.array)
 
-    How about a non integer?
-
-    .. jupyter-execute::
-
-        x = na.ScalarArrayRange(-.5,3, axis = "x")
-        print(x.array)
-
-
-
+    For the above, and more complicated uses, it is recommended to use ScalarLinearSpace instead.  See numpy documentation
+    of arange for more info.  LINK HERE
     """
     start: StartT
     stop: StopT
@@ -1248,8 +1235,8 @@ class ScalarLinearSpace(
     """
     An evenly spaced ScalarArray ranging from start to stop with num elements.
 
-    Most often ScalarArrays won't be formed directly from an np.array, but through more useful routines like ScalarLinearSpace,
-    a ScalarArray equivalent to np.linspace.  For example, one can quickly create an evenly spaced coordinate (or axis) array with units.
+    Most often ScalarArrays won't be formed directly from a np.array, but through more useful routines like ScalarLinearSpace,
+    a named_arrays equivalent to np.linspace.  For example, one can quickly create an evenly spaced coordinate (or axis) array with units.
 
     .. jupyter-execute::
 
@@ -1259,6 +1246,14 @@ class ScalarLinearSpace(
         Photon_Energy = na.ScalarLinearSpace(1, 25, axis="Energy", num = 25) * u.keV
         print(Photon_Energy.shape)
         print(Photon_Energy)
+
+    Then easily convert that into a wavelength.
+
+    .. jupyter-execute::
+
+        Wavelength = 1240 * u.eV * u.nm / Photon_Energy
+        Wavelength.axes = 'lambda'
+        print(Wavelength)
 
     """
     start: StartT
@@ -1305,7 +1300,7 @@ class ScalarLinearSpace(
     #     return result
     #
     # def index_nearest(self, value: AbstractScalarT) -> typ.Dict[str, AbstractScalarT]:
-    #     return {self.axis: np.rint((value - self.start) / self.step).astype(int)}
+    #     return {self.axis: np.print((value - self.start) / self.step).astype(int)}
     #
     # def index_below(self, value: AbstractScalarT) -> typ.Dict[str, AbstractScalarT]:
     #     return {self.axis: (value - self.start) // self.step}
