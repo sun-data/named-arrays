@@ -100,7 +100,7 @@ def array_function_default(
     if initial is not None:
         kwargs['initial'] = initial
     if where is not None and not np._NoValue:
-        kwargs['where'] = where.ndarray_aligned(shape)
+        kwargs['where'] = where.ndarray_aligned(a.shape)
 
     return na.ScalarArray(
         ndarray=func(a.ndarray, **kwargs),
