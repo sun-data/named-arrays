@@ -1191,7 +1191,7 @@ class ScalarArrayRange(
         print(x.array)
 
     For the above, and more complicated uses, it is recommended to use ScalarLinearSpace instead.  See numpy documentation
-    of arange for more info.  LINK HERE
+    of arange for more info.  https://numpy.org/doc/stable/reference/generated/numpy.arange.html
     """
     start: StartT
     stop: StopT
