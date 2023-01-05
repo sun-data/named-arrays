@@ -12,6 +12,7 @@ import astropy.units as u
 import named_arrays.core as na
 
 __all__ = [
+    'as_named_array',
     'AbstractScalar',
     'AbstractScalarArray',
     'ScalarLike',
@@ -37,6 +38,13 @@ WidthT = TypeVar('WidthT', bound='ScalarLike')
 StartExponentT = TypeVar('StartExponentT', bound='ScalarLike')
 StopExponentT = TypeVar('StopExponentT', bound='ScalarLike')
 BaseT = TypeVar('BaseT', bound='ScalarLike')
+
+
+def as_named_array(value: bool | int | float | complex | str | u.Quantity | na.AbstractArray):
+    if not isinstance(value, na.AbstractArray):
+        return ScalarArray(value)
+    else:
+        return value
 
 
 @dataclasses.dataclass(eq=False)
@@ -777,18 +785,6 @@ class AbstractScalarArray(
                 )
         else:
             raise ValueError(f'{func} not supported')
-
-    # @typ.overload
-    # def __getitem__(self: AbstractArrayT, item: typ.Dict[str, int]) -> 'Array': ...
-    #
-    # @typ.overload
-    # def __getitem__(self: AbstractArrayT, item: typ.Dict[str, slice]) -> 'Array': ...
-    #
-    # @typ.overload
-    # def __getitem__(self: AbstractArrayT, item: typ.Dict[str, AbstractArrayT]) -> 'Array': ...
-    #
-    # @typ.overload
-    # def __getitem__(self: AbstractArrayT, item: 'AbstractArray') -> 'Array': ...
 
     def __getitem__(
             self: Self,

@@ -48,6 +48,12 @@ def _scalar_arrays_2():
     return [None] + arrays_numeric + arrays_bool
 
 
+@pytest.mark.parametrize('value', _scalar_arrays_2())
+def test_as_named_array(value: bool | int | float | complex | str | u.Quantity | na.AbstractArray):
+    result = na.as_named_array(value)
+    assert isinstance(result, na.AbstractArray)
+
+
 class AbstractTestAbstractScalar(
     tests.test_core.AbstractTestAbstractArray,
 ):
@@ -154,6 +160,10 @@ class AbstractTestAbstractScalarArray(
         @pytest.mark.parametrize('array_2', [None, 100 * na.ScalarArray.ones(shape=dict(x=_num_y))])
         def test_array_equal(self, array: na.AbstractArray, array_2: None | na.AbstractArray):
             super().test_array_equal(array, array_2)
+
+        @pytest.mark.parametrize('copy', [False, True])
+        def test_nan_to_num(self, array: na.AbstractArray, copy: bool):
+            super().test_nan_to_num(array=array, copy=copy)
 
         @pytest.mark.parametrize('axis', [None, 'y', 'x', ('x', 'y')])
         class TestReductionFunctions(
