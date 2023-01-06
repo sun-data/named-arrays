@@ -57,8 +57,28 @@ def test_as_named_array(value: bool | int | float | complex | str | u.Quantity |
 class AbstractTestAbstractScalar(
     tests.test_core.AbstractTestAbstractArray,
 ):
-    pass
 
+    @pytest.mark.parametrize(
+        argnames='shape',
+        argvalues=[
+            dict(x=_num_x, y=_num_y),
+            dict(x=_num_x, y=_num_y, z=13),
+        ]
+    )
+    def test_broadcast_to(
+            self,
+            array: na.AbstractArray,
+            shape: dict[str, int],
+    ):
+        super().test_broadcast_to(array=array, shape=shape)
+
+    @pytest.mark.parametrize('shape', [dict(r=-1)])
+    def test_reshape(
+            self,
+            array: na.AbstractArray,
+            shape: dict[str, int],
+    ):
+        super().test_reshape(array=array, shape=shape)
 
 class AbstractTestAbstractScalarArray(
     AbstractTestAbstractScalar,

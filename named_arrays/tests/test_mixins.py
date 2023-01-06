@@ -22,3 +22,22 @@ class AbstractTestCopyable(
         assert dataclasses.is_dataclass(array_copy)
         for field in dataclasses.fields(array_copy):
             assert np.all(getattr(array, field.name) == getattr(array_copy, field.name))
+
+
+class AbstractTestNDArrayMethodsMixin(
+    abc.ABC,
+):
+
+    def test_broadcast_to(
+            self: Self,
+            array: named_arrays.mixins.NDArrayMethodsMixin,
+            shape: dict[str, int],
+    ):
+        assert np.all(array.broadcast_to(shape) == np.broadcast_to(array, shape))
+
+    def test_reshape(
+            self,
+            array: named_arrays.mixins.NDArrayMethodsMixin,
+            shape: dict[str, int],
+    ):
+        assert np.all(array.reshape(shape) == np.reshape(array, shape))

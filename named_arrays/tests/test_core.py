@@ -130,6 +130,7 @@ class TestIndexingFunctions:
 
 class AbstractTestAbstractArray(
     test_mixins.AbstractTestCopyable,
+    test_mixins.AbstractTestNDArrayMethodsMixin,
 ):
 
     def test_ndarray(self, array: na.AbstractArray):
