@@ -108,3 +108,9 @@ class AbstractTestNDArrayMethodsMixin(
             array: named_arrays.mixins.NDArrayMethodsMixin,
     ):
         assert np.all(array.rms() == np.sqrt(np.mean(np.square(array))))
+
+    def test_transpose(
+            self: Self,
+            array: named_arrays.mixins.NDArrayMethodsMixin,
+    ):
+        assert np.all(array.transpose() == np.transpose(array))
