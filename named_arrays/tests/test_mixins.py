@@ -41,3 +41,9 @@ class AbstractTestNDArrayMethodsMixin(
             shape: dict[str, int],
     ):
         assert np.all(array.reshape(shape) == np.reshape(array, shape))
+
+    def test_min(
+            self: Self,
+            array: named_arrays.mixins.NDArrayMethodsMixin,
+    ):
+        assert np.all(array.min() == np.min(array))
