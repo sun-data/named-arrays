@@ -6,6 +6,7 @@ import dataclasses
 import copy
 import numpy as np
 import numpy.typing as npt
+import astropy.units as u
 
 __all__ = [
     'CopyableMixin',
@@ -87,6 +88,25 @@ class NDArrayMethodsMixin:
             where: Self = np._NoValue,
     ) -> Self:
         return np.std(self, axis=axis, where=where)
+
+    def percentile(
+            self: Self,
+            q: int | float | u.Quantity | Self,
+            axis: None | str | Sequence[str] = None,
+            out: None | Self = None,
+            overwrite_input: bool = False,
+            method: str = 'linear',
+            keepdims: bool = False,
+    ):
+        return np.percentile(
+            a=self,
+            q=q,
+            axis=axis,
+            out=out,
+            overwrite_input=overwrite_input,
+            method=method,
+            keepdims=keepdims,
+        )
 
     def all(
             self: Self,

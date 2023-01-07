@@ -3,6 +3,7 @@ from typing_extensions import Self
 import abc
 import dataclasses
 import numpy as np
+import astropy.units as u
 import named_arrays.mixins
 
 
@@ -82,6 +83,14 @@ class AbstractTestNDArrayMethodsMixin(
             array: named_arrays.mixins.NDArrayMethodsMixin,
     ):
         assert np.all(array.std() == np.std(array))
+
+    def test_percentile(
+            self: Self,
+            array: named_arrays.mixins.NDArrayMethodsMixin,
+    ):
+        q = 25 * u.percent
+        kwargs = dict(method='closest_observation')
+        assert np.all(array.percentile(q, **kwargs) == np.percentile(array, q, **kwargs))
 
     def test_all(
             self: Self,
