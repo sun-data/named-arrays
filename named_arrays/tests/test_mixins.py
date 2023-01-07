@@ -70,3 +70,9 @@ class AbstractTestNDArrayMethodsMixin(
         else:
             with pytest.raises(TypeError, match='numpy boolean subtract, .*'):
                 array.ptp()
+
+    def test_mean(
+            self: Self,
+            array: named_arrays.mixins.NDArrayMethodsMixin,
+    ):
+        assert np.all(array.mean() == np.mean(array))
