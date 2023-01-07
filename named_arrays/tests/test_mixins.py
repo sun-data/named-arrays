@@ -102,3 +102,9 @@ class AbstractTestNDArrayMethodsMixin(
         else:
             with pytest.raises(TypeError, match="no implementation found for .*"):
                 array.any()
+
+    def test_rms(
+            self: Self,
+            array: named_arrays.mixins.NDArrayMethodsMixin,
+    ):
+        assert np.all(array.rms() == np.sqrt(np.mean(np.square(array))))
