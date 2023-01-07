@@ -410,11 +410,11 @@ class AbstractScalarArray(
     ):
         from . import array_functions
 
-        if not all(issubclass(t, na.AbstractArray) for t in types):
-            return NotImplemented
-
         if func in array_functions.DEFAULT_FUNCTIONS:
             return array_functions.array_function_default(func, *args, **kwargs)
+
+        if func in array_functions.PERCENTILE_LIKE_FUNCTIONS:
+            return array_functions.array_function_percentile_like(func, *args, **kwargs)
 
         if func in array_functions.ARG_REDUCE_FUNCTIONS:
             return array_functions.array_function_arg_reduce(func, *args, **kwargs)

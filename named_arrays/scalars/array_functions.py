@@ -5,7 +5,8 @@ import astropy.units as u
 import named_arrays as na
 
 __all__ = [
-    'HANDLED_FUNCTIONS'
+    'HANDLED_FUNCTIONS',
+    'PERCENTILE_LIKE_FUNCTIONS',
 ]
 
 DEFAULT_FUNCTIONS = [
@@ -26,14 +27,16 @@ DEFAULT_FUNCTIONS = [
     np.nanvar,
     np.median,
     np.nanmedian,
-    np.percentile,
-    np.nanpercentile,
-    np.quantile,
-    np.nanquantile,
     np.all,
     np.any,
     np.ptp,
     np.count_nonzero,
+]
+PERCENTILE_LIKE_FUNCTIONS = [
+    np.percentile,
+    np.nanpercentile,
+    np.quantile,
+    np.nanquantile,
 ]
 ARG_REDUCE_FUNCTIONS = [
     np.argmin,
@@ -105,6 +108,47 @@ def array_function_default(
     return na.ScalarArray(
         ndarray=func(a.ndarray, **kwargs),
         axes=_calc_axes_new(a, axis=axis, keepdims=keepdims),
+    )
+
+
+def array_function_percentile_like(
+        func: Callable,
+        a: na.AbstractScalarArray,
+        q: float | u.Quantity | na.AbstractScalarArray,
+        axis: None | str | Sequence[str] = None,
+        out: None | na.ScalarArray = None,
+        overwrite_input: bool = False,
+        method: str = 'linear',
+        keepdims: bool = False,
+) -> na.ScalarArray:
+
+    if not isinstance(q, na.AbstractArray):
+        q = na.ScalarArray(q)
+
+    axis_union = set(a.axes) & set(q.axes)
+    if axis_union:
+        raise ValueError(f"'q' must not have any shared axes with 'a', but axes {axis_union} are shared")
+
+    axis_normalized = _axis_normalized(a, axis=axis)
+    if out is not None:
+        axis_out = tuple(ax for ax in a.axes if ax not in axis_normalized) if not keepdims else a.axes
+        axis_out = q.axes + axis_out
+        out = out.transpose(axis_out)
+
+    kwargs = dict()
+
+    if axis is not None:
+        kwargs['axis'] = tuple(a.axes.index(ax) for ax in axis_normalized if ax in a.axes)
+    if out is not None:
+        kwargs['out'] = out.ndarray
+    kwargs['overwrite_input'] = overwrite_input
+    kwargs['method'] = method
+    if keepdims is not None:
+        kwargs['keepdims'] = keepdims
+
+    return na.ScalarArray(
+        ndarray=func(a.ndarray, q.ndarray, **kwargs),
+        axes=q.axes + _calc_axes_new(a, axis=axis, keepdims=keepdims),
     )
 
 
