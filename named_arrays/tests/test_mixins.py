@@ -1,3 +1,4 @@
+import pytest
 from typing_extensions import Self
 import abc
 import dataclasses
@@ -59,3 +60,13 @@ class AbstractTestNDArrayMethodsMixin(
             array: named_arrays.mixins.NDArrayMethodsMixin,
     ):
         assert np.all(array.sum() == np.sum(array))
+
+    def test_ptp(
+            self: Self,
+            array: named_arrays.mixins.NDArrayMethodsMixin,
+    ):
+        if not np.issubdtype(array.dtype, bool):
+            assert np.all(array.ptp() == np.ptp(array))
+        else:
+            with pytest.raises(TypeError, match='numpy boolean subtract, .*'):
+                array.ptp()
