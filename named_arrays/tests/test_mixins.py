@@ -92,3 +92,13 @@ class AbstractTestNDArrayMethodsMixin(
         else:
             with pytest.raises(TypeError, match="no implementation found for .*"):
                 array.all()
+
+    def test_any(
+            self: Self,
+            array: named_arrays.mixins.NDArrayMethodsMixin,
+    ):
+        if getattr(array, 'unit', None) is None:
+            assert np.all(array.any() == np.any(array))
+        else:
+            with pytest.raises(TypeError, match="no implementation found for .*"):
+                array.any()
