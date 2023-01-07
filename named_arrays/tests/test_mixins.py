@@ -53,3 +53,9 @@ class AbstractTestNDArrayMethodsMixin(
             array: named_arrays.mixins.NDArrayMethodsMixin,
     ):
         assert np.all(array.max() == np.max(array))
+
+    def test_sum(
+            self: Self,
+            array: named_arrays.mixins.NDArrayMethodsMixin,
+    ):
+        assert np.all(array.sum() == np.sum(array))
