@@ -80,6 +80,7 @@ class AbstractTestAbstractScalar(
     ):
         super().test_reshape(array=array, shape=shape)
 
+
 class AbstractTestAbstractScalarArray(
     AbstractTestAbstractScalar,
 ):
