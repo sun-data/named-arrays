@@ -76,3 +76,9 @@ class AbstractTestNDArrayMethodsMixin(
             array: named_arrays.mixins.NDArrayMethodsMixin,
     ):
         assert np.all(array.mean() == np.mean(array))
+
+    def test_std(
+            self: Self,
+            array: named_arrays.mixins.NDArrayMethodsMixin,
+    ):
+        assert np.all(array.std() == np.std(array))
