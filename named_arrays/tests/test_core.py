@@ -1126,6 +1126,19 @@ class AbstractTestAbstractSymmetricRangeMixin(
         assert np.all(array.width > 0)
 
 
+class AbstractTestAbstractRandomSample(
+    AbstractTestAbstractRandomMixin,
+    AbstractTestAbstractImplicitArray,
+):
+
+    def test_shape_random(self, array: na.AbstractRandomSample):
+        shape_random = array.shape_random
+        if shape_random is not None:
+            assert all(isinstance(k, str) for k in shape_random)
+            assert all(isinstance(shape_random[k], int) for k in shape_random)
+            assert all(shape_random[k] > 0 for k in shape_random)
+
+
 class AbstractTestAbstractUniformRandomSample(
     AbstractTestAbstractRandomMixin,
     AbstractTestAbstractRangeMixin,

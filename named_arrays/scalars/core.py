@@ -987,14 +987,22 @@ class AbstractScalarImplicitArray(
 
 
 @dataclasses.dataclass(eq=False, slots=True)
+class AbstractScalarRandomSample(
+    AbstractScalarImplicitArray,
+    na.AbstractRandomSample,
+):
+    pass
+
+
+@dataclasses.dataclass(eq=False, slots=True)
 class ScalarUniformRandomSample(
+    AbstractScalarRandomSample,
     na.AbstractUniformRandomSample,
     Generic[StartT, StopT],
 ):
     start: StartT
     stop: StopT
-    axis: str
-    num: int = 11
+    shape_random: dict[str, int] = None
     seed: None | int = None
 
     @property
@@ -1007,8 +1015,8 @@ class ScalarUniformRandomSample(
         if not isinstance(stop, na.AbstractArray):
             stop = ScalarArray(stop)
 
-        shape = na.shape_broadcasted(start, stop)
-        shape[self.axis] = self.num
+        shape_random = self.shape_random if self.shape_random is not None else dict()
+        shape = na.shape_broadcasted(start, stop) | shape_random
 
         start = start.ndarray_aligned(shape)
         stop = stop.ndarray_aligned(shape)
@@ -1040,13 +1048,13 @@ class ScalarUniformRandomSample(
 
 @dataclasses.dataclass(eq=False, slots=True)
 class ScalarNormalRandomSample(
+    AbstractScalarRandomSample,
     na.AbstractNormalRandomSample,
     Generic[CenterT, WidthT],
 ):
     center: CenterT
     width: WidthT
-    axis: str
-    num: int = 11
+    shape_random: None | dict[str, int] = None
     seed: None | int = None
 
     @property
@@ -1059,8 +1067,8 @@ class ScalarNormalRandomSample(
         if not isinstance(width, na.AbstractArray):
             width = ScalarArray(width)
 
-        shape = na.shape_broadcasted(center, width)
-        shape[self.axis] = self.num
+        shape_random = self.shape_random if self.shape_random is not None else dict()
+        shape = na.shape_broadcasted(center, width) | shape_random
 
         center = center.ndarray_aligned(shape)
         width = width.ndarray_aligned(shape)

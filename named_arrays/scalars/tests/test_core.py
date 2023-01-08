@@ -246,6 +246,13 @@ class AbstractTestAbstractScalarImplicitArray(
     pass
 
 
+class AbstractTestAbstractScalarRandomSample(
+    AbstractTestAbstractScalarImplicitArray,
+    tests.test_core.AbstractTestAbstractRandomSample,
+):
+    pass
+
+
 def _scalar_uniform_random_samples() -> list[na.ScalarUniformRandomSample]:
     starts = [
         0,
@@ -256,18 +263,19 @@ def _scalar_uniform_random_samples() -> list[na.ScalarUniformRandomSample]:
         na.ScalarArray(10 * np.random.random(_num_x) + 1, axes=('x', )),
     ]
     units = [None, u.mm]
+    shapes_random = [dict(y=_num_y)]
     return [
         na.ScalarUniformRandomSample(
             start=start << unit if unit is not None else start,
             stop=stop << unit if unit is not None else stop,
-            axis='y',
-            num=_num_y
-        ) for start in starts for stop in stops for unit in units
+            shape_random=shape_random,
+        ) for start in starts for stop in stops for unit in units for shape_random in shapes_random
     ]
 
 
 @pytest.mark.parametrize('array', _scalar_uniform_random_samples())
 class TestScalarUniformRandomSample(
+    AbstractTestAbstractScalarRandomSample,
     tests.test_core.AbstractTestAbstractUniformRandomSample,
 ):
     pass
@@ -283,18 +291,19 @@ def _scalar_normal_random_samples() -> list[na.ScalarNormalRandomSample]:
         na.ScalarArray(10 * np.random.random(_num_x) + 1, axes=('x', )),
     ]
     units = [None, u.mm]
+    shapes_random = [None, dict(y=_num_y)]
     return [
         na.ScalarNormalRandomSample(
             center=center << unit if unit is not None else center,
             width=width << unit if unit is not None else width,
-            axis='y',
-            num=_num_y
-        ) for center in centers for width in widths for unit in units
+            shape_random=shape_random,
+        ) for center in centers for width in widths for unit in units for shape_random in shapes_random
     ]
 
 
 @pytest.mark.parametrize('array', _scalar_normal_random_samples())
 class TestScalarNormalRandomSample(
+    AbstractTestAbstractScalarRandomSample,
     tests.test_core.AbstractTestAbstractNormalRandomSample,
 ):
     pass

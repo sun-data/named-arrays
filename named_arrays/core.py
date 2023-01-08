@@ -32,6 +32,7 @@ __all__ = [
     'AbstractRandomMixin',
     'AbstractRangeMixin',
     'AbstractSymmetricRangeMixin',
+    'AbstractRandomSample',
     'AbstractParameterizedArray',
     'AbstractLinearParameterizedArrayMixin',
     'AbstractArrayRange',
@@ -734,19 +735,31 @@ class AbstractSymmetricRangeMixin(
 
 
 @dataclasses.dataclass(eq=False)
-class AbstractUniformRandomSample(
+class AbstractRandomSample(
     AbstractRandomMixin,
-    AbstractRangeMixin,
     AbstractImplicitArray,
+):
+
+    @property
+    @abc.abstractmethod
+    def shape_random(self: Self) -> None | dict[str, int]:
+        """
+        Dimensions along which the resulting random sample is completely uncorrelated.
+        """
+
+
+@dataclasses.dataclass(eq=False)
+class AbstractUniformRandomSample(
+    AbstractRangeMixin,
+    AbstractRandomSample,
 ):
     pass
 
 
 @dataclasses.dataclass
 class AbstractNormalRandomSample(
-    AbstractRandomMixin,
     AbstractSymmetricRangeMixin,
-    AbstractImplicitArray,
+    AbstractRandomSample,
 ):
     pass
 
