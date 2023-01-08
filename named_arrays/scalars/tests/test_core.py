@@ -230,7 +230,7 @@ class TestScalarArray(
 
 
 class TestScalarArrayCreation(
-    tests.test_core.AbstractTestArrayBaseCreation
+    tests.test_core.AbstractTestAbstractExplicitArrayCreation
 ):
 
     @property

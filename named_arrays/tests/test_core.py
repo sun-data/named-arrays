@@ -1058,7 +1058,7 @@ class AbstractTestAbstractExplicitArray(
 
 @pytest.mark.parametrize('shape', [dict(x=3), dict(x=4, y=5)])
 @pytest.mark.parametrize('dtype', [int, float, complex])
-class AbstractTestArrayBaseCreation(abc.ABC):
+class AbstractTestAbstractExplicitArrayCreation(abc.ABC):
 
     @property
     @abc.abstractmethod
