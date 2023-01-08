@@ -301,6 +301,7 @@ class TestScalarNormalRandomSample(
 
 
 class AbstractTestAbstractScalarParameterizedArray(
+    AbstractTestAbstractScalarImplicitArray,
     tests.test_core.AbstractTestAbstractParameterizedArray,
 ):
     pass
