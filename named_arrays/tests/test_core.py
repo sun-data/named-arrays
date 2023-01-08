@@ -1050,7 +1050,7 @@ class AbstractTestAbstractArray(
                 assert np.all(array_reduced == array_reduced_expected)
 
 
-class AbstractTestArrayBase(
+class AbstractTestAbstractExplicitArray(
     AbstractTestAbstractArray,
 ):
     pass

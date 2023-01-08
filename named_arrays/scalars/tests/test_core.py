@@ -216,7 +216,7 @@ class AbstractTestAbstractScalarArray(
 @pytest.mark.parametrize('array', _scalar_arrays())
 class TestScalarArray(
     AbstractTestAbstractScalarArray,
-    tests.test_core.AbstractTestArrayBase,
+    tests.test_core.AbstractTestAbstractExplicitArray,
 ):
     @pytest.mark.parametrize('index', [1, ~0])
     def test_change_axis_index(self, array: na.ScalarArray, index: int):
