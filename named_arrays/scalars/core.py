@@ -1092,6 +1092,7 @@ class ScalarNormalRandomSample(
 
 @dataclasses.dataclass(eq=False, slots=True)
 class AbstractScalarParameterizedArray(
+    AbstractScalarImplicitArray,
     na.AbstractParameterizedArray,
 ):
     pass
