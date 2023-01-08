@@ -238,22 +238,22 @@ class TestScalarArrayCreation(
         return na.ScalarArray
 
 
-class AbstractTestAbstractScalarParameterizedArray(
+class AbstractTestAbstractScalarImplicitArray(
     AbstractTestAbstractScalarArray,
-    tests.test_core.AbstractTestAbstractParameterizedArray,
+    tests.test_core.AbstractTestAbstractImplicitArray,
 ):
     pass
 
 
 class AbstractTestAbstractScalarRange(
-    AbstractTestAbstractScalarParameterizedArray,
+    AbstractTestAbstractScalarImplicitArray,
     tests.test_core.AbstractTestAbstractRange,
 ):
     pass
 
 
 class AbstractTestAbstractScalarSymmetricRange(
-    AbstractTestAbstractScalarParameterizedArray,
+    AbstractTestAbstractScalarImplicitArray,
     tests.test_core.AbstractTestAbstractSymmetricRange,
 ):
     pass

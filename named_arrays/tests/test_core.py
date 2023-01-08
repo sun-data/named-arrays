@@ -1083,7 +1083,7 @@ class AbstractTestAbstractExplicitArrayCreation(abc.ABC):
         assert np.all(result == 1)
 
 
-class AbstractTestAbstractParameterizedArray(
+class AbstractTestAbstractImplicitArray(
     AbstractTestAbstractArray,
 ):
 
@@ -1110,7 +1110,7 @@ class AbstractTestRandomMixin(
 
 
 class AbstractTestAbstractRange(
-    AbstractTestAbstractParameterizedArray,
+    AbstractTestAbstractImplicitArray,
 ):
 
     def test_start(self, array: na.AbstractRange):
