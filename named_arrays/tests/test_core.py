@@ -1086,13 +1086,7 @@ class AbstractTestAbstractExplicitArrayCreation(abc.ABC):
 class AbstractTestAbstractImplicitArray(
     AbstractTestAbstractArray,
 ):
-
-    def test_axis(self, array: na.AbstractImplicitArray):
-        assert isinstance(array.axis, (str, na.AbstractArray))
-
-    def test_num(self, array: na.AbstractImplicitArray):
-        assert isinstance(array.num, (int, na.AbstractArray))
-        assert array.num == array.shape[array.axis]
+    pass
 
 
 class AbstractTestAbstractRandomMixin(
@@ -1146,6 +1140,16 @@ class AbstractTestAbstractNormalRandomSample(
     AbstractTestAbstractSymmetricRange,
 ):
     pass
+
+
+class AbstractTestAbstractParameterizedArray:
+
+    def test_axis(self, array: na.AbstractParameterizedArray):
+        assert isinstance(array.axis, (str, na.AbstractArray))
+
+    def test_num(self, array: na.AbstractParameterizedArray):
+        assert isinstance(array.num, (int, na.AbstractArray))
+        assert array.num == array.shape[array.axis]
 
 
 class AbstractTestAbstractLinearParametrizedArrayMixin:

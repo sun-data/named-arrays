@@ -22,6 +22,7 @@ __all__ = [
     'AbstractScalarSymmetricRange',
     'ScalarUniformRandomSample',
     'ScalarNormalRandomSample',
+    'AbstractScalarParameterizedArray',
     'ScalarArrayRange',
     'AbstractScalarSpace',
     'ScalarLinearSpace',
@@ -1110,8 +1111,16 @@ class ScalarNormalRandomSample(
 
 
 @dataclasses.dataclass(eq=False, slots=True)
-class ScalarArrayRange(
+class AbstractScalarParameterizedArray(
     AbstractScalarRange,
+    na.AbstractParameterizedArray,
+):
+    pass
+
+
+@dataclasses.dataclass(eq=False, slots=True)
+class ScalarArrayRange(
+    AbstractScalarParameterizedArray,
     na.AbstractArrayRange,
     Generic[StartT, StopT],
 ):
@@ -1142,7 +1151,7 @@ class ScalarArrayRange(
 
 @dataclasses.dataclass(eq=False)
 class AbstractScalarSpace(
-    AbstractScalarRange,
+    AbstractScalarParameterizedArray,
     na.AbstractSpace,
 ):
     pass

@@ -10,6 +10,7 @@ __all__ = [
     'AbstractTestAbstractScalar',
     'AbstractTestAbstractScalarArray',
     'TestScalarArray',
+    'AbstractTestAbstractScalarParameterizedArray',
 ]
 
 _num_x = 11
@@ -315,6 +316,13 @@ class TestScalarNormalRandomSample(
     pass
 
 
+class AbstractTestAbstractScalarParameterizedArray(
+    AbstractTestAbstractScalarRange,
+    tests.test_core.AbstractTestAbstractParameterizedArray,
+):
+    pass
+
+
 def _scalar_array_ranges() -> list[na.ScalarArrayRange]:
     starts = [0, ]
     steps = [1, 2.5, ]
@@ -330,14 +338,14 @@ def _scalar_array_ranges() -> list[na.ScalarArrayRange]:
 
 @pytest.mark.parametrize('array', _scalar_array_ranges())
 class TestScalarArrayRange(
-    AbstractTestAbstractScalarRange,
+    AbstractTestAbstractScalarParameterizedArray,
     tests.test_core.AbstractTestAbstractArrayRange,
 ):
     pass
 
 
 class AbstractTestAbstractScalarSpace(
-    AbstractTestAbstractScalarRange,
+    AbstractTestAbstractScalarParameterizedArray,
     tests.test_core.AbstractTestAbstractSpace,
 ):
     pass
