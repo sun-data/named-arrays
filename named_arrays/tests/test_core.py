@@ -179,10 +179,10 @@ class AbstractTestAbstractArray(
             assert array.unit_normalized == array.unit
 
     def test_array(self, array: na.AbstractArray):
-        assert isinstance(array.array, na.ArrayBase)
+        assert isinstance(array.array, na.AbstractExplicitArray)
 
     def test_type_array(self, array: na.AbstractArray):
-        assert issubclass(array.type_array, na.ArrayBase)
+        assert issubclass(array.type_array, na.AbstractExplicitArray)
 
     def test_scalar(self, array: na.AbstractArray):
         assert isinstance(array.scalar, na.AbstractScalar)
@@ -1062,7 +1062,7 @@ class AbstractTestArrayBaseCreation(abc.ABC):
 
     @property
     @abc.abstractmethod
-    def type_array(self) -> Type[na.ArrayBase]:
+    def type_array(self) -> Type[na.AbstractExplicitArray]:
         pass
 
     def test_empty(self, shape: dict[str, int], dtype: Type):

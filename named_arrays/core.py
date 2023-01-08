@@ -27,7 +27,7 @@ __all__ = [
     'indices',
     'flatten_axes',
     'AbstractArray',
-    'ArrayBase',
+    'AbstractExplicitArray',
     'AbstractParameterizedArray',
     'AbstractRandomMixin',
     'AbstractRange',
@@ -82,7 +82,7 @@ def unit(
 
 def type_array(
         *values: bool | int | float | complex | str | np.ndarray | u.Quantity | AbstractArray,
-) -> Type[ArrayBase]:
+) -> Type[AbstractExplicitArray]:
     cls = None
     priority_max = 0
     for value in values:
@@ -261,14 +261,14 @@ class AbstractArray(
 
     @property
     @abc.abstractmethod
-    def array(self: Self) -> ArrayBase:
+    def array(self: Self) -> AbstractExplicitArray:
         """
         Converts this array to an instance of :class:`named_arrays.ArrayBase`
         """
 
     @property
     @abc.abstractmethod
-    def type_array(self: Self) -> Type[ArrayBase]:
+    def type_array(self: Self) -> Type[AbstractExplicitArray]:
         """
         The :class:`ArrayBase` type corresponding to this array
         """
@@ -536,7 +536,7 @@ ArrayLike = Union[QuantityLike, AbstractArray]
 
 
 @dataclasses.dataclass(eq=False)
-class ArrayBase(
+class AbstractExplicitArray(
     AbstractArray,
 ):
     @classmethod
