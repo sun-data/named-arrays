@@ -28,7 +28,7 @@ __all__ = [
     'flatten_axes',
     'AbstractArray',
     'AbstractExplicitArray',
-    'AbstractParameterizedArray',
+    'AbstractImplicitArray',
     'AbstractRandomMixin',
     'AbstractRange',
     'AbstractSymmetricRange',
@@ -623,7 +623,7 @@ class AbstractExplicitArray(
 
 
 @dataclasses.dataclass
-class AbstractParameterizedArray(
+class AbstractImplicitArray(
     AbstractArray,
 ):
     @property
@@ -697,7 +697,7 @@ class AbstractRandomMixin(
 
 @dataclasses.dataclass(eq=False)
 class AbstractRange(
-    AbstractParameterizedArray,
+    AbstractImplicitArray,
 ):
 
     @property

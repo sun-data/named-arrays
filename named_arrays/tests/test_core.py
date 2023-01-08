@@ -1087,10 +1087,10 @@ class AbstractTestAbstractParameterizedArray(
     AbstractTestAbstractArray,
 ):
 
-    def test_axis(self, array: na.AbstractParameterizedArray):
+    def test_axis(self, array: na.AbstractImplicitArray):
         assert isinstance(array.axis, (str, na.AbstractArray))
 
-    def test_num(self, array: na.AbstractParameterizedArray):
+    def test_num(self, array: na.AbstractImplicitArray):
         assert isinstance(array.num, (int, na.AbstractArray))
         assert array.num == array.shape[array.axis]
 

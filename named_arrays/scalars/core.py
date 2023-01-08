@@ -17,7 +17,7 @@ __all__ = [
     'AbstractScalarArray',
     'ScalarLike',
     'ScalarArray',
-    'AbstractScalarParameterizedArray',
+    'AbstractScalarImplicitArray',
     'AbstractScalarRange',
     'AbstractScalarSymmetricRange',
     'ScalarUniformRandomSample',
@@ -980,16 +980,16 @@ class ScalarArray(
 
 
 @dataclasses.dataclass(eq=False)
-class AbstractScalarParameterizedArray(
+class AbstractScalarImplicitArray(
     AbstractScalarArray,
-    na.AbstractParameterizedArray,
+    na.AbstractImplicitArray,
 ):
     pass
 
 
 @dataclasses.dataclass(eq=False)
 class AbstractScalarRange(
-    AbstractScalarParameterizedArray,
+    AbstractScalarImplicitArray,
     na.AbstractRange,
 ):
     pass
