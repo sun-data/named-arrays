@@ -246,20 +246,6 @@ class AbstractTestAbstractScalarImplicitArray(
     pass
 
 
-class AbstractTestAbstractScalarRange(
-    AbstractTestAbstractScalarImplicitArray,
-    tests.test_core.AbstractTestAbstractRange,
-):
-    pass
-
-
-class AbstractTestAbstractScalarSymmetricRange(
-    AbstractTestAbstractScalarImplicitArray,
-    tests.test_core.AbstractTestAbstractSymmetricRange,
-):
-    pass
-
-
 def _scalar_uniform_random_samples() -> list[na.ScalarUniformRandomSample]:
     starts = [
         0,
@@ -282,7 +268,6 @@ def _scalar_uniform_random_samples() -> list[na.ScalarUniformRandomSample]:
 
 @pytest.mark.parametrize('array', _scalar_uniform_random_samples())
 class TestScalarUniformRandomSample(
-    AbstractTestAbstractScalarRange,
     tests.test_core.AbstractTestAbstractUniformRandomSample,
 ):
     pass
@@ -310,14 +295,12 @@ def _scalar_normal_random_samples() -> list[na.ScalarNormalRandomSample]:
 
 @pytest.mark.parametrize('array', _scalar_normal_random_samples())
 class TestScalarNormalRandomSample(
-    AbstractTestAbstractScalarRange,
     tests.test_core.AbstractTestAbstractNormalRandomSample,
 ):
     pass
 
 
 class AbstractTestAbstractScalarParameterizedArray(
-    AbstractTestAbstractScalarRange,
     tests.test_core.AbstractTestAbstractParameterizedArray,
 ):
     pass

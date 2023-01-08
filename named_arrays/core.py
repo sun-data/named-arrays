@@ -30,8 +30,8 @@ __all__ = [
     'AbstractExplicitArray',
     'AbstractImplicitArray',
     'AbstractRandomMixin',
-    'AbstractRange',
-    'AbstractSymmetricRange',
+    'AbstractRangeMixin',
+    'AbstractSymmetricRangeMixin',
     'AbstractParameterizedArray',
     'AbstractLinearParameterizedArrayMixin',
     'AbstractArrayRange',
@@ -683,8 +683,8 @@ class AbstractRandomMixin(
 
 
 @dataclasses.dataclass(eq=False)
-class AbstractRange(
-    AbstractImplicitArray,
+class AbstractRangeMixin(
+    abc.ABC,
 ):
 
     @property
@@ -707,8 +707,8 @@ class AbstractRange(
 
 
 @dataclasses.dataclass(eq=False)
-class AbstractSymmetricRange(
-    AbstractRange
+class AbstractSymmetricRangeMixin(
+    AbstractRangeMixin,
 ):
     @property
     @abc.abstractmethod
@@ -736,7 +736,8 @@ class AbstractSymmetricRange(
 @dataclasses.dataclass(eq=False)
 class AbstractUniformRandomSample(
     AbstractRandomMixin,
-    AbstractRange,
+    AbstractRangeMixin,
+    AbstractImplicitArray,
 ):
     pass
 
@@ -744,14 +745,15 @@ class AbstractUniformRandomSample(
 @dataclasses.dataclass
 class AbstractNormalRandomSample(
     AbstractRandomMixin,
-    AbstractSymmetricRange,
+    AbstractSymmetricRangeMixin,
+    AbstractImplicitArray,
 ):
     pass
 
 
 @dataclasses.dataclass(eq=False)
 class AbstractParameterizedArray(
-    AbstractRange,
+    AbstractImplicitArray,
 ):
 
     @property
@@ -784,6 +786,7 @@ class AbstractLinearParameterizedArrayMixin(
 @dataclasses.dataclass(eq=False)
 class AbstractArrayRange(
     AbstractLinearParameterizedArrayMixin,
+    AbstractRangeMixin,
     AbstractParameterizedArray,
 ):
     pass
@@ -804,6 +807,7 @@ class AbstractSpace(
 @dataclasses.dataclass(eq=False)
 class AbstractLinearSpace(
     AbstractLinearParameterizedArrayMixin,
+    AbstractRangeMixin,
     AbstractSpace
 ):
 
@@ -825,7 +829,8 @@ class AbstractStratifiedRandomSpace(
 
 @dataclasses.dataclass(eq=False)
 class AbstractLogarithmicSpace(
-    AbstractSpace
+    AbstractRangeMixin,
+    AbstractSpace,
 ):
 
     @property
@@ -860,6 +865,7 @@ class AbstractLogarithmicSpace(
 
 @dataclasses.dataclass(eq=False)
 class AbstractGeometricSpace(
-    AbstractSpace
+    AbstractRangeMixin,
+    AbstractSpace,
 ):
     pass

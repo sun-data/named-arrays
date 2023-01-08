@@ -1103,46 +1103,48 @@ class AbstractTestRandomMixin(
     pass
 
 
-class AbstractTestAbstractRange(
-    AbstractTestAbstractImplicitArray,
-):
+class AbstractTestAbstractRangeMixin:
 
-    def test_start(self, array: na.AbstractRange):
+    def test_start(self, array: na.AbstractRangeMixin):
         assert isinstance(array.start, (int, float, complex, u.Quantity, na.AbstractArray))
 
-    def test_stop(self, array: na.AbstractRange):
+    def test_stop(self, array: na.AbstractRangeMixin):
         assert isinstance(array.stop, (int, float, complex, u.Quantity, na.AbstractArray))
 
-    def test_range(self, array: na.AbstractRange):
+    def test_range(self, array: na.AbstractRangeMixin):
         assert np.all(np.abs(array.range) > 0)
 
 
-class AbstractTestAbstractSymmetricRange(
-    AbstractTestAbstractRange,
+class AbstractTestAbstractSymmetricRangeMixin(
+    AbstractTestAbstractRangeMixin,
 ):
-    def test_center(self, array: na.AbstractSymmetricRange):
+    def test_center(self, array: na.AbstractSymmetricRangeMixin):
         assert isinstance(array.center, (int, float, complex, u.Quantity, na.AbstractArray))
 
-    def test_width(self, array: na.AbstractSymmetricRange):
+    def test_width(self, array: na.AbstractSymmetricRangeMixin):
         assert isinstance(array.width, (int, float, complex, u.Quantity, na.AbstractArray))
         assert np.all(array.width > 0)
 
 
 class AbstractTestAbstractUniformRandomSample(
     AbstractTestAbstractRandomMixin,
-    AbstractTestAbstractRange,
+    AbstractTestAbstractRangeMixin,
+    AbstractTestAbstractImplicitArray,
 ):
     pass
 
 
 class AbstractTestAbstractNormalRandomSample(
     AbstractTestAbstractRandomMixin,
-    AbstractTestAbstractSymmetricRange,
+    AbstractTestAbstractSymmetricRangeMixin,
+    AbstractTestAbstractImplicitArray,
 ):
     pass
 
 
-class AbstractTestAbstractParameterizedArray:
+class AbstractTestAbstractParameterizedArray(
+    AbstractTestAbstractImplicitArray,
+):
 
     def test_axis(self, array: na.AbstractParameterizedArray):
         assert isinstance(array.axis, (str, na.AbstractArray))
@@ -1161,13 +1163,14 @@ class AbstractTestAbstractLinearParametrizedArrayMixin:
 
 class AbstractTestAbstractArrayRange(
     AbstractTestAbstractLinearParametrizedArrayMixin,
-    AbstractTestAbstractRange,
+    AbstractTestAbstractRangeMixin,
+    AbstractTestAbstractParameterizedArray,
 ):
     pass
 
 
 class AbstractTestAbstractSpace(
-    AbstractTestAbstractRange,
+    AbstractTestAbstractParameterizedArray,
 ):
 
     def test_endpoint(self, array: na.AbstractSpace):
@@ -1176,6 +1179,7 @@ class AbstractTestAbstractSpace(
 
 class AbstractTestAbstractLinearSpace(
     AbstractTestAbstractLinearParametrizedArrayMixin,
+    AbstractTestAbstractRangeMixin,
     AbstractTestAbstractSpace,
 ):
     pass
@@ -1189,6 +1193,7 @@ class AbstractTestAbstractStratifiedRandomSpace(
 
 
 class AbstractTestAbstractLogarithmicSpace(
+    AbstractTestAbstractRangeMixin,
     AbstractTestAbstractSpace,
 ):
 
@@ -1203,6 +1208,7 @@ class AbstractTestAbstractLogarithmicSpace(
 
 
 class AbstractTestAbstractGeometricSpace(
+    AbstractTestAbstractRangeMixin,
     AbstractTestAbstractSpace,
 ):
     pass
