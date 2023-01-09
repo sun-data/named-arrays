@@ -235,7 +235,7 @@ class AbstractArray(
 
     @property
     @abc.abstractmethod
-    def dtype(self: Self) -> Type:
+    def dtype(self: Self) -> Type | dict[str, Type]:
         """
         Data type of the array. Equivalent to :attr:`numpy.ndarray.dtype`
         """
