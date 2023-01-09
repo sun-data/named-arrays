@@ -10,6 +10,7 @@ __all__ = [
     'AbstractTestAbstractScalar',
     'AbstractTestAbstractScalarArray',
     'TestScalarArray',
+    'AbstractTestAbstractScalarParameterizedArray',
 ]
 
 _num_x = 11
@@ -57,7 +58,28 @@ def test_as_named_array(value: bool | int | float | complex | str | u.Quantity |
 class AbstractTestAbstractScalar(
     tests.test_core.AbstractTestAbstractArray,
 ):
-    pass
+
+    @pytest.mark.parametrize(
+        argnames='shape',
+        argvalues=[
+            dict(x=_num_x, y=_num_y),
+            dict(x=_num_x, y=_num_y, z=13),
+        ]
+    )
+    def test_broadcast_to(
+            self,
+            array: na.AbstractArray,
+            shape: dict[str, int],
+    ):
+        super().test_broadcast_to(array=array, shape=shape)
+
+    @pytest.mark.parametrize('shape', [dict(r=-1)])
+    def test_reshape(
+            self,
+            array: na.AbstractArray,
+            shape: dict[str, int],
+    ):
+        super().test_reshape(array=array, shape=shape)
 
 
 class AbstractTestAbstractScalarArray(
@@ -171,6 +193,20 @@ class AbstractTestAbstractScalarArray(
         ):
             pass
 
+        @pytest.mark.parametrize(
+            argnames='q',
+            argvalues=[
+                .25,
+                25 * u.percent,
+                na.ScalarLinearSpace(.25, .75, axis='q', num=3, endpoint=True),
+            ]
+        )
+        @pytest.mark.parametrize('axis', [None, 'y', 'x', ('x', 'y')])
+        class TestPercentileLikeFunctions(
+            AbstractTestAbstractScalar.TestArrayFunctions.TestPercentileLikeFunctions
+        ):
+            pass
+
         @pytest.mark.parametrize('axis', [None, 'y'])
         class TestArgReductionFunctions(
             AbstractTestAbstractScalar.TestArrayFunctions.TestArgReductionFunctions,
@@ -181,7 +217,7 @@ class AbstractTestAbstractScalarArray(
 @pytest.mark.parametrize('array', _scalar_arrays())
 class TestScalarArray(
     AbstractTestAbstractScalarArray,
-    tests.test_core.AbstractTestArrayBase,
+    tests.test_core.AbstractTestAbstractExplicitArray,
 ):
     @pytest.mark.parametrize('index', [1, ~0])
     def test_change_axis_index(self, array: na.ScalarArray, index: int):
@@ -195,7 +231,7 @@ class TestScalarArray(
 
 
 class TestScalarArrayCreation(
-    tests.test_core.AbstractTestArrayBaseCreation
+    tests.test_core.AbstractTestAbstractExplicitArrayCreation
 ):
 
     @property
@@ -203,23 +239,16 @@ class TestScalarArrayCreation(
         return na.ScalarArray
 
 
-class AbstractTestAbstractScalarParameterizedArray(
+class AbstractTestAbstractScalarImplicitArray(
     AbstractTestAbstractScalarArray,
-    tests.test_core.AbstractTestAbstractParameterizedArray,
+    tests.test_core.AbstractTestAbstractImplicitArray,
 ):
     pass
 
 
-class AbstractTestAbstractScalarRange(
-    AbstractTestAbstractScalarParameterizedArray,
-    tests.test_core.AbstractTestAbstractRange,
-):
-    pass
-
-
-class AbstractTestAbstractScalarSymmetricRange(
-    AbstractTestAbstractScalarParameterizedArray,
-    tests.test_core.AbstractTestAbstractSymmetricRange,
+class AbstractTestAbstractScalarRandomSample(
+    AbstractTestAbstractScalarImplicitArray,
+    tests.test_core.AbstractTestAbstractRandomSample,
 ):
     pass
 
@@ -234,19 +263,19 @@ def _scalar_uniform_random_samples() -> list[na.ScalarUniformRandomSample]:
         na.ScalarArray(10 * np.random.random(_num_x) + 1, axes=('x', )),
     ]
     units = [None, u.mm]
+    shapes_random = [dict(y=_num_y)]
     return [
         na.ScalarUniformRandomSample(
             start=start << unit if unit is not None else start,
             stop=stop << unit if unit is not None else stop,
-            axis='y',
-            num=_num_y
-        ) for start in starts for stop in stops for unit in units
+            shape_random=shape_random,
+        ) for start in starts for stop in stops for unit in units for shape_random in shapes_random
     ]
 
 
 @pytest.mark.parametrize('array', _scalar_uniform_random_samples())
 class TestScalarUniformRandomSample(
-    AbstractTestAbstractScalarRange,
+    AbstractTestAbstractScalarRandomSample,
     tests.test_core.AbstractTestAbstractUniformRandomSample,
 ):
     pass
@@ -262,20 +291,27 @@ def _scalar_normal_random_samples() -> list[na.ScalarNormalRandomSample]:
         na.ScalarArray(10 * np.random.random(_num_x) + 1, axes=('x', )),
     ]
     units = [None, u.mm]
+    shapes_random = [dict(y=_num_y)]
     return [
         na.ScalarNormalRandomSample(
             center=center << unit if unit is not None else center,
             width=width << unit if unit is not None else width,
-            axis='y',
-            num=_num_y
-        ) for center in centers for width in widths for unit in units
+            shape_random=shape_random,
+        ) for center in centers for width in widths for unit in units for shape_random in shapes_random
     ]
 
 
 @pytest.mark.parametrize('array', _scalar_normal_random_samples())
 class TestScalarNormalRandomSample(
-    AbstractTestAbstractScalarRange,
+    AbstractTestAbstractScalarRandomSample,
     tests.test_core.AbstractTestAbstractNormalRandomSample,
+):
+    pass
+
+
+class AbstractTestAbstractScalarParameterizedArray(
+    AbstractTestAbstractScalarImplicitArray,
+    tests.test_core.AbstractTestAbstractParameterizedArray,
 ):
     pass
 
@@ -295,14 +331,14 @@ def _scalar_array_ranges() -> list[na.ScalarArrayRange]:
 
 @pytest.mark.parametrize('array', _scalar_array_ranges())
 class TestScalarArrayRange(
-    AbstractTestAbstractScalarRange,
+    AbstractTestAbstractScalarParameterizedArray,
     tests.test_core.AbstractTestAbstractArrayRange,
 ):
     pass
 
 
 class AbstractTestAbstractScalarSpace(
-    AbstractTestAbstractScalarRange,
+    AbstractTestAbstractScalarParameterizedArray,
     tests.test_core.AbstractTestAbstractSpace,
 ):
     pass
