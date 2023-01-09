@@ -882,20 +882,20 @@ class ScalarArray(
     Generic[NDArrayT],
 ):
     """
-    An array composed of scalars that is coordinate and unit aware.
+    An array representing a scalar quantity with names for each of it's N axes.
 
-    A ScalarArray is defined by a numpy ndarray and an axis.
+    A ScalarArray is defined by a :class:`numpy.ndarray` and an axis.
 
     .. jupyter-execute::
 
         import numpy as np
         import named_arrays.core as na
 
-        x = np.array([1,4,9,11,17])
+        x = np.array([1, 4, 9, 11, 17])
         x = na.ScalarArray(x,axes='position_x')
         print(x)
 
-    They can also be defined using a u.Quantity, or ascribed units after creation.
+    They can also be defined using a :class:`astropy.units.Quantity`, or ascribed units after creation.
 
     .. jupyter-execute::
 
@@ -909,7 +909,7 @@ class ScalarArray(
 
     .. jupyter-execute::
 
-        y = np.array([0,2,4,5]) * u.mm
+        y = np.array([0, 2, 4, 5]) * u.mm
 
         y = na.ScalarArray(y, axes='position_y')
         print(y**2)
@@ -919,8 +919,9 @@ class ScalarArray(
         print(radius.shape)
 
 
-    Note how when performing mathematical opperations on two ScalarArrays with different axes, the arrays are automatically
-    broadcast over every axis.
+    Note how when performing mathematical operations on two ScalarArrays with different axes, the arrays are
+    automatically broadcast over every axis. There is no need to insert extra dimensions for alignment like you would
+    normally do with instances of :class:`numpy.ndarray`.
 
     We can also use reduction operators (mean, sum, etc) on ScalarArrays, and if desired specify the axis by name without
     knowledge of the corresponding index axes of the original array.
@@ -1167,27 +1168,27 @@ class ScalarArrayRange(
     Generic[StartT, StopT],
 ):
     """
-    A ScalarArray over the range [start, stop) in incremented by step. An analog to np.arange
+    A :class:`ScalarArray` over the range [start, stop) in incremented by step. An analog to :class:`numpy.arange`.
 
-    Scalar array range can be used to create a ScalarArray of integers.
+    ScalarArrayRange can be used to create a :func:`ScalarArray` of integers.
 
     .. jupyter-execute::
 
         import named_arrays as na
-        x = na.ScalarArrayRange(1, 8 , axis = "x")
+        x = na.ScalarArrayRange(1, 8, axis = "x")
         print(x.array)
         print(x.shape)
 
-    Note above that x does not include stop, and won't in almost all cases.  ScalarArrayRange can be used to create
+    Note above that x does not include stop, and won't in almost all cases.  :class:`ScalarArrayRange` can be used to create
     an increasing ScalarArray of floats, even with non integer steps.
 
     .. jupyter-execute::
 
-        x = na.ScalarArrayRange(-.5,3, "x", 0.25)
+        x = na.ScalarArrayRange(-0.5, 3, "x", 0.25)
         print(x.array)
 
-    For the above, and more complicated uses, it is recommended to use ScalarLinearSpace instead.  See numpy documentation
-    of arange for more info.  https://numpy.org/doc/stable/reference/generated/numpy.arange.html
+    For the above, and more complicated uses, it is recommended to use :class:`ScalarLinearSpace` instead.  See numpy
+    documentation of :class:`numpy.arange` for more info.
     """
     start: StartT
     stop: StopT
@@ -1229,27 +1230,28 @@ class ScalarLinearSpace(
     Generic[StartT, StopT],
 ):
     """
-    An evenly spaced ScalarArray ranging from start to stop with num elements.
+    An evenly spaced :class:`ScalarArray` ranging from start to stop with num elements.
 
-    Most often ScalarArrays won't be formed directly from a np.array, but through more useful routines like ScalarLinearSpace,
-    a named_arrays equivalent to np.linspace.  For example, one can quickly create an evenly spaced coordinate (or axis) array with units.
+    Most often ScalarArrays won't be formed directly from a :class:`numpy.ndarray`, but through more useful routines
+    like :class:`ScalarLinearSpace`, a named_arrays equivalent to :class:`numpy.linspace`.  For example,
+    one can quickly create an evenly spaced coordinate (or axis) array with units.
 
     .. jupyter-execute::
 
         import named_arrays as na
         import astropy.units as u
 
-        Photon_Energy = na.ScalarLinearSpace(1, 25, axis="Energy", num = 25) * u.keV
-        print(Photon_Energy.shape)
-        print(Photon_Energy)
+        photon_energy = na.ScalarLinearSpace(1, 25, axis="Energy", num = 25) * u.keV
+        print(photon_energy.shape)
+        print(photon_energy)
 
     Then easily convert that into a wavelength.
 
     .. jupyter-execute::
 
-        Wavelength = 1240 * u.eV * u.nm / Photon_Energy
-        Wavelength.axes = 'lambda'
-        print(Wavelength)
+        wavelength = 1240 * u.eV * u.nm / Photon_Energy
+        wavelength.axes = 'lambda'
+        print(wavelength)
 
     """
     start: StartT
