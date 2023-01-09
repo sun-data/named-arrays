@@ -272,7 +272,7 @@ class AbstractArray(
     @abc.abstractmethod
     def type_array(self: Self) -> Type[AbstractExplicitArray]:
         """
-        The :class:`ArrayBase` type corresponding to this array
+        The :class:`AbstractExplicitArray` type corresponding to this array
         """
 
     @property
