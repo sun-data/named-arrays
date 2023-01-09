@@ -1167,7 +1167,7 @@ class ScalarArrayRange(
     """
     A :class:`ScalarArray` over the range [start, stop) in incremented by step. An analog to :class:`numpy.arange`.
 
-    ScalarArrayRange can be used to create a :func:`ScalarArray` of integers.
+    ScalarArrayRange can be used to create a :class:`ScalarArray` of integers.
 
     .. jupyter-execute::
 
@@ -1176,8 +1176,8 @@ class ScalarArrayRange(
         print(x.array)
         print(x.shape)
 
-    Note above that x does not include stop, and won't in almost all cases.  :class:`ScalarArrayRange` can be used to create
-    an increasing ScalarArray of floats, even with non integer steps.
+    Note above that x does not include stop, and won't in almost all cases.  :class:`ScalarArrayRange` can be used to
+    create an increasing ScalarArray of floats, even with non integer steps.
 
     .. jupyter-execute::
 
@@ -1238,7 +1238,7 @@ class ScalarLinearSpace(
         import named_arrays as na
         import astropy.units as u
 
-        photon_energy = na.ScalarLinearSpace(1, 25, axis="Energy", num = 25) * u.keV
+        photon_energy = na.ScalarLinearSpace(1, 25, axis="energy", num=25) * u.keV
         print(photon_energy.shape)
         print(photon_energy)
 
@@ -1246,7 +1246,7 @@ class ScalarLinearSpace(
 
     .. jupyter-execute::
 
-        wavelength = 1240 * u.eV * u.nm / Photon_Energy
+        wavelength = 1240 * u.eV * u.nm / photon_energy
         wavelength.axes = 'lambda'
         print(wavelength)
 
