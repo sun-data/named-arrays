@@ -10,7 +10,7 @@ __all__ = [
     'AbstractTestAbstractScalar',
     'AbstractTestAbstractScalarArray',
     'TestScalarArray',
-    'AbstractTestAbstractScalarParameterizedArray',
+    'AbstractTestAbstractParameterizedScalarArray',
 ]
 
 _num_x = 11
@@ -239,7 +239,7 @@ class TestScalarArrayCreation(
         return na.ScalarArray
 
 
-class AbstractTestAbstractScalarImplicitArray(
+class AbstractTestAbstractImplicitScalarArray(
     AbstractTestAbstractScalarArray,
     tests.test_core.AbstractTestAbstractImplicitArray,
 ):
@@ -247,7 +247,7 @@ class AbstractTestAbstractScalarImplicitArray(
 
 
 class AbstractTestAbstractScalarRandomSample(
-    AbstractTestAbstractScalarImplicitArray,
+    AbstractTestAbstractImplicitScalarArray,
     tests.test_core.AbstractTestAbstractRandomSample,
 ):
     pass
@@ -309,8 +309,8 @@ class TestScalarNormalRandomSample(
     pass
 
 
-class AbstractTestAbstractScalarParameterizedArray(
-    AbstractTestAbstractScalarImplicitArray,
+class AbstractTestAbstractParameterizedScalarArray(
+    AbstractTestAbstractImplicitScalarArray,
     tests.test_core.AbstractTestAbstractParameterizedArray,
 ):
     pass
@@ -331,14 +331,14 @@ def _scalar_array_ranges() -> list[na.ScalarArrayRange]:
 
 @pytest.mark.parametrize('array', _scalar_array_ranges())
 class TestScalarArrayRange(
-    AbstractTestAbstractScalarParameterizedArray,
+    AbstractTestAbstractParameterizedScalarArray,
     tests.test_core.AbstractTestAbstractArrayRange,
 ):
     pass
 
 
 class AbstractTestAbstractScalarSpace(
-    AbstractTestAbstractScalarParameterizedArray,
+    AbstractTestAbstractParameterizedScalarArray,
     tests.test_core.AbstractTestAbstractSpace,
 ):
     pass
