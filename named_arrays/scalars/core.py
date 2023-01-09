@@ -118,23 +118,6 @@ class AbstractScalarArray(
             axes=self.axes,
         )
 
-    # @property
-    # def ndim(self: AbstractArrayT) -> int:
-    #     return len(self.shape)
-    #
-    # @classmethod
-    # def broadcast_shapes(cls: Type[AbstractArrayT], *arrays: AbstractArrayT) -> dict[str, int]:
-    #     shape = dict()      # type: typ.Dict[str, int]
-    #     for a in arrs:
-    #         if hasattr(a, 'shape'):
-    #             a_shape = a.shape
-    #             for k in a_shape:
-    #                 if k in shape:
-    #                     shape[k] = max(shape[k], a_shape[k])
-    #                 else:
-    #                     shape[k] = a_shape[k]
-    #     return shape
-
     def ndarray_aligned(self: Self, shape: dict[str, int]) -> np.ndarray:
         ndarray = self.ndarray
         ndim_missing = len(shape) - np.ndim(ndarray)
