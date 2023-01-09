@@ -291,7 +291,7 @@ def _scalar_normal_random_samples() -> list[na.ScalarNormalRandomSample]:
         na.ScalarArray(10 * np.random.random(_num_x) + 1, axes=('x', )),
     ]
     units = [None, u.mm]
-    shapes_random = [None, dict(y=_num_y)]
+    shapes_random = [dict(y=_num_y)]
     return [
         na.ScalarNormalRandomSample(
             center=center << unit if unit is not None else center,
