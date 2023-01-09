@@ -265,7 +265,7 @@ class AbstractArray(
     @abc.abstractmethod
     def array(self: Self) -> AbstractExplicitArray:
         """
-        Converts this array to an instance of :class:`named_arrays.ArrayBase`
+        Converts this array to an instance of :class:`named_arrays.AbstractExplicitArray`
         """
 
     @property
