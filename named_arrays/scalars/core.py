@@ -17,11 +17,10 @@ __all__ = [
     'AbstractScalarArray',
     'ScalarLike',
     'ScalarArray',
-    'AbstractScalarParameterizedArray',
-    'AbstractScalarRange',
-    'AbstractScalarSymmetricRange',
+    'AbstractScalarImplicitArray',
     'ScalarUniformRandomSample',
     'ScalarNormalRandomSample',
+    'AbstractScalarParameterizedArray',
     'ScalarArrayRange',
     'AbstractScalarSpace',
     'ScalarLinearSpace',
@@ -410,11 +409,11 @@ class AbstractScalarArray(
     ):
         from . import array_functions
 
-        if not all(issubclass(t, na.AbstractArray) for t in types):
-            return NotImplemented
-
         if func in array_functions.DEFAULT_FUNCTIONS:
             return array_functions.array_function_default(func, *args, **kwargs)
+
+        if func in array_functions.PERCENTILE_LIKE_FUNCTIONS:
+            return array_functions.array_function_percentile_like(func, *args, **kwargs)
 
         if func in array_functions.ARG_REDUCE_FUNCTIONS:
             return array_functions.array_function_arg_reduce(func, *args, **kwargs)
@@ -878,7 +877,7 @@ ScalarLike = Union[na.QuantityLike, AbstractScalar]
 @dataclasses.dataclass(eq=False, slots=True)
 class ScalarArray(
     AbstractScalarArray,
-    na.ArrayBase,
+    na.AbstractExplicitArray,
     Generic[NDArrayT],
 ):
     ndarray: NDArrayT
@@ -980,39 +979,30 @@ class ScalarArray(
 
 
 @dataclasses.dataclass(eq=False)
-class AbstractScalarParameterizedArray(
+class AbstractScalarImplicitArray(
     AbstractScalarArray,
-    na.AbstractParameterizedArray,
+    na.AbstractImplicitArray,
 ):
     pass
 
 
-@dataclasses.dataclass(eq=False)
-class AbstractScalarRange(
-    AbstractScalarParameterizedArray,
-    na.AbstractRange,
-):
-    pass
-
-
-@dataclasses.dataclass(eq=False)
-class AbstractScalarSymmetricRange(
-    AbstractScalarRange,
-    na.AbstractSymmetricRange,
+@dataclasses.dataclass(eq=False, slots=True)
+class AbstractScalarRandomSample(
+    AbstractScalarImplicitArray,
+    na.AbstractRandomSample,
 ):
     pass
 
 
 @dataclasses.dataclass(eq=False, slots=True)
 class ScalarUniformRandomSample(
-    AbstractScalarRange,
+    AbstractScalarRandomSample,
     na.AbstractUniformRandomSample,
     Generic[StartT, StopT],
 ):
     start: StartT
     stop: StopT
-    axis: str
-    num: int = 11
+    shape_random: dict[str, int] = None
     seed: None | int = None
 
     @property
@@ -1025,8 +1015,8 @@ class ScalarUniformRandomSample(
         if not isinstance(stop, na.AbstractArray):
             stop = ScalarArray(stop)
 
-        shape = na.shape_broadcasted(start, stop)
-        shape[self.axis] = self.num
+        shape_random = self.shape_random if self.shape_random is not None else dict()
+        shape = na.shape_broadcasted(start, stop) | shape_random
 
         start = start.ndarray_aligned(shape)
         stop = stop.ndarray_aligned(shape)
@@ -1058,14 +1048,13 @@ class ScalarUniformRandomSample(
 
 @dataclasses.dataclass(eq=False, slots=True)
 class ScalarNormalRandomSample(
-    AbstractScalarSymmetricRange,
+    AbstractScalarRandomSample,
     na.AbstractNormalRandomSample,
     Generic[CenterT, WidthT],
 ):
     center: CenterT
     width: WidthT
-    axis: str
-    num: int = 11
+    shape_random: None | dict[str, int] = None
     seed: None | int = None
 
     @property
@@ -1078,8 +1067,8 @@ class ScalarNormalRandomSample(
         if not isinstance(width, na.AbstractArray):
             width = ScalarArray(width)
 
-        shape = na.shape_broadcasted(center, width)
-        shape[self.axis] = self.num
+        shape_random = self.shape_random if self.shape_random is not None else dict()
+        shape = na.shape_broadcasted(center, width) | shape_random
 
         center = center.ndarray_aligned(shape)
         width = width.ndarray_aligned(shape)
@@ -1110,8 +1099,16 @@ class ScalarNormalRandomSample(
 
 
 @dataclasses.dataclass(eq=False, slots=True)
+class AbstractScalarParameterizedArray(
+    AbstractScalarImplicitArray,
+    na.AbstractParameterizedArray,
+):
+    pass
+
+
+@dataclasses.dataclass(eq=False, slots=True)
 class ScalarArrayRange(
-    AbstractScalarRange,
+    AbstractScalarParameterizedArray,
     na.AbstractArrayRange,
     Generic[StartT, StopT],
 ):
@@ -1142,7 +1139,7 @@ class ScalarArrayRange(
 
 @dataclasses.dataclass(eq=False)
 class AbstractScalarSpace(
-    AbstractScalarRange,
+    AbstractScalarParameterizedArray,
     na.AbstractSpace,
 ):
     pass

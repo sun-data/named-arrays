@@ -130,6 +130,7 @@ class TestIndexingFunctions:
 
 class AbstractTestAbstractArray(
     test_mixins.AbstractTestCopyable,
+    test_mixins.AbstractTestNDArrayMethodsMixin,
 ):
 
     def test_ndarray(self, array: na.AbstractArray):
@@ -178,10 +179,10 @@ class AbstractTestAbstractArray(
             assert array.unit_normalized == array.unit
 
     def test_array(self, array: na.AbstractArray):
-        assert isinstance(array.array, na.ArrayBase)
+        assert isinstance(array.array, na.AbstractExplicitArray)
 
     def test_type_array(self, array: na.AbstractArray):
-        assert issubclass(array.type_array, na.ArrayBase)
+        assert issubclass(array.type_array, na.AbstractExplicitArray)
 
     def test_scalar(self, array: na.AbstractArray):
         assert isinstance(array.scalar, na.AbstractScalar)
@@ -916,6 +917,68 @@ class AbstractTestAbstractArray(
                 assert np.all(result.ndarray == result_ndarray)
 
         @pytest.mark.parametrize(
+            argnames='func',
+            argvalues=[
+                np.percentile,
+                np.nanpercentile,
+                np.quantile,
+                np.nanquantile,
+            ]
+        )
+        @pytest.mark.parametrize('out', [False, True])
+        @pytest.mark.parametrize('keepdims', [False, True])
+        class TestPercentileLikeFunctions:
+            def test_percentile_like_functions(
+                    self,
+                    func: Callable,
+                    array: na.AbstractArray,
+                    q: float | u.Quantity | na.AbstractArray,
+                    axis: None | str | Sequence[str],
+                    out: bool,
+                    keepdims: bool,
+            ):
+                kwargs = dict()
+                kwargs_ndarray = dict()
+
+                q_normalized = q if isinstance(q, na.AbstractArray) else na.ScalarArray(q)
+
+                axis_normalized = axis if axis is not None else array.axes
+                axis_normalized = (axis_normalized, ) if isinstance(axis_normalized, str) else axis_normalized
+                shape_result = q_normalized.shape
+                shape_result |= {ax: 1 if ax in axis_normalized else array.shape[ax] for ax in array.shape}
+
+                if keepdims:
+                    kwargs['keepdims'] = keepdims
+                    kwargs_ndarray['keepdims'] = keepdims
+                else:
+                    for ax in axis_normalized:
+                        if ax in shape_result:
+                            shape_result.pop(ax)
+
+                if out:
+                    out_dtype = na.get_dtype(array)
+                    kwargs['out'] = array.type_array.empty(shape_result, dtype=out_dtype)
+                    kwargs_ndarray['out'] = array.type_array.empty(shape_result, dtype=out_dtype).ndarray
+                    if array.unit is not None:
+                        kwargs['out'] = kwargs['out'] << array.unit
+                        kwargs_ndarray['out'] = kwargs_ndarray['out'] << array.unit
+                    elif q_normalized.unit is not None:
+                        kwargs['out'] = kwargs['out'] << u.dimensionless_unscaled
+                        kwargs_ndarray['out'] = kwargs_ndarray['out'] << u.dimensionless_unscaled
+
+                kwargs['method'] = 'closest_observation'
+                kwargs_ndarray['method'] = kwargs['method']
+
+                result = func(array, q, axis=axis, **kwargs, )
+                result_ndarray = func(
+                    array.ndarray,
+                    q_normalized.ndarray,
+                    axis=tuple(array.axes.index(ax) for ax in axis_normalized if ax in array.axes),
+                    **kwargs_ndarray,
+                )
+                assert np.all(result.ndarray == result_ndarray)
+
+        @pytest.mark.parametrize(
             argnames=('argfunc', 'func'),
             argvalues=[
                 (np.argmin, np.min),
@@ -987,7 +1050,7 @@ class AbstractTestAbstractArray(
                 assert np.all(array_reduced == array_reduced_expected)
 
 
-class AbstractTestArrayBase(
+class AbstractTestAbstractExplicitArray(
     AbstractTestAbstractArray,
 ):
     pass
@@ -995,11 +1058,11 @@ class AbstractTestArrayBase(
 
 @pytest.mark.parametrize('shape', [dict(x=3), dict(x=4, y=5)])
 @pytest.mark.parametrize('dtype', [int, float, complex])
-class AbstractTestArrayBaseCreation(abc.ABC):
+class AbstractTestAbstractExplicitArrayCreation(abc.ABC):
 
     @property
     @abc.abstractmethod
-    def type_array(self) -> Type[na.ArrayBase]:
+    def type_array(self) -> Type[na.AbstractExplicitArray]:
         pass
 
     def test_empty(self, shape: dict[str, int], dtype: Type):
@@ -1020,16 +1083,10 @@ class AbstractTestArrayBaseCreation(abc.ABC):
         assert np.all(result == 1)
 
 
-class AbstractTestAbstractParameterizedArray(
+class AbstractTestAbstractImplicitArray(
     AbstractTestAbstractArray,
 ):
-
-    def test_axis(self, array: na.AbstractParameterizedArray):
-        assert isinstance(array.axis, (str, na.AbstractArray))
-
-    def test_num(self, array: na.AbstractParameterizedArray):
-        assert isinstance(array.num, (int, na.AbstractArray))
-        assert array.num == array.shape[array.axis]
+    pass
 
 
 class AbstractTestAbstractRandomMixin(
@@ -1046,43 +1103,68 @@ class AbstractTestRandomMixin(
     pass
 
 
-class AbstractTestAbstractRange(
-    AbstractTestAbstractParameterizedArray,
-):
+class AbstractTestAbstractRangeMixin:
 
-    def test_start(self, array: na.AbstractRange):
+    def test_start(self, array: na.AbstractRangeMixin):
         assert isinstance(array.start, (int, float, complex, u.Quantity, na.AbstractArray))
 
-    def test_stop(self, array: na.AbstractRange):
+    def test_stop(self, array: na.AbstractRangeMixin):
         assert isinstance(array.stop, (int, float, complex, u.Quantity, na.AbstractArray))
 
-    def test_range(self, array: na.AbstractRange):
+    def test_range(self, array: na.AbstractRangeMixin):
         assert np.all(np.abs(array.range) > 0)
 
 
-class AbstractTestAbstractSymmetricRange(
-    AbstractTestAbstractRange,
+class AbstractTestAbstractSymmetricRangeMixin(
+    AbstractTestAbstractRangeMixin,
 ):
-    def test_center(self, array: na.AbstractSymmetricRange):
+    def test_center(self, array: na.AbstractSymmetricRangeMixin):
         assert isinstance(array.center, (int, float, complex, u.Quantity, na.AbstractArray))
 
-    def test_width(self, array: na.AbstractSymmetricRange):
+    def test_width(self, array: na.AbstractSymmetricRangeMixin):
         assert isinstance(array.width, (int, float, complex, u.Quantity, na.AbstractArray))
         assert np.all(array.width > 0)
 
 
+class AbstractTestAbstractRandomSample(
+    AbstractTestAbstractRandomMixin,
+    AbstractTestAbstractImplicitArray,
+):
+
+    def test_shape_random(self, array: na.AbstractRandomSample):
+        shape_random = array.shape_random
+        if shape_random is not None:
+            assert all(isinstance(k, str) for k in shape_random)
+            assert all(isinstance(shape_random[k], int) for k in shape_random)
+            assert all(shape_random[k] > 0 for k in shape_random)
+
+
 class AbstractTestAbstractUniformRandomSample(
     AbstractTestAbstractRandomMixin,
-    AbstractTestAbstractRange,
+    AbstractTestAbstractRangeMixin,
+    AbstractTestAbstractImplicitArray,
 ):
     pass
 
 
 class AbstractTestAbstractNormalRandomSample(
     AbstractTestAbstractRandomMixin,
-    AbstractTestAbstractSymmetricRange,
+    AbstractTestAbstractSymmetricRangeMixin,
+    AbstractTestAbstractImplicitArray,
 ):
     pass
+
+
+class AbstractTestAbstractParameterizedArray(
+    AbstractTestAbstractImplicitArray,
+):
+
+    def test_axis(self, array: na.AbstractParameterizedArray):
+        assert isinstance(array.axis, (str, na.AbstractArray))
+
+    def test_num(self, array: na.AbstractParameterizedArray):
+        assert isinstance(array.num, (int, na.AbstractArray))
+        assert array.num == array.shape[array.axis]
 
 
 class AbstractTestAbstractLinearParametrizedArrayMixin:
@@ -1094,13 +1176,14 @@ class AbstractTestAbstractLinearParametrizedArrayMixin:
 
 class AbstractTestAbstractArrayRange(
     AbstractTestAbstractLinearParametrizedArrayMixin,
-    AbstractTestAbstractRange,
+    AbstractTestAbstractRangeMixin,
+    AbstractTestAbstractParameterizedArray,
 ):
     pass
 
 
 class AbstractTestAbstractSpace(
-    AbstractTestAbstractRange,
+    AbstractTestAbstractParameterizedArray,
 ):
 
     def test_endpoint(self, array: na.AbstractSpace):
@@ -1109,6 +1192,7 @@ class AbstractTestAbstractSpace(
 
 class AbstractTestAbstractLinearSpace(
     AbstractTestAbstractLinearParametrizedArrayMixin,
+    AbstractTestAbstractRangeMixin,
     AbstractTestAbstractSpace,
 ):
     pass
@@ -1122,6 +1206,7 @@ class AbstractTestAbstractStratifiedRandomSpace(
 
 
 class AbstractTestAbstractLogarithmicSpace(
+    AbstractTestAbstractRangeMixin,
     AbstractTestAbstractSpace,
 ):
 
@@ -1136,6 +1221,7 @@ class AbstractTestAbstractLogarithmicSpace(
 
 
 class AbstractTestAbstractGeometricSpace(
+    AbstractTestAbstractRangeMixin,
     AbstractTestAbstractSpace,
 ):
     pass

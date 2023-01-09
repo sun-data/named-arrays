@@ -27,11 +27,13 @@ __all__ = [
     'indices',
     'flatten_axes',
     'AbstractArray',
-    'ArrayBase',
-    'AbstractParameterizedArray',
+    'AbstractExplicitArray',
+    'AbstractImplicitArray',
     'AbstractRandomMixin',
-    'AbstractRange',
-    'AbstractSymmetricRange',
+    'AbstractRangeMixin',
+    'AbstractSymmetricRangeMixin',
+    'AbstractRandomSample',
+    'AbstractParameterizedArray',
     'AbstractLinearParameterizedArrayMixin',
     'AbstractArrayRange',
     'AbstractSpace',
@@ -82,7 +84,7 @@ def unit(
 
 def type_array(
         *values: bool | int | float | complex | str | np.ndarray | u.Quantity | AbstractArray,
-) -> Type[ArrayBase]:
+) -> Type[AbstractExplicitArray]:
     cls = None
     priority_max = 0
     for value in values:
@@ -261,14 +263,14 @@ class AbstractArray(
 
     @property
     @abc.abstractmethod
-    def array(self: Self) -> ArrayBase:
+    def array(self: Self) -> AbstractExplicitArray:
         """
         Converts this array to an instance of :class:`named_arrays.ArrayBase`
         """
 
     @property
     @abc.abstractmethod
-    def type_array(self: Self) -> Type[ArrayBase]:
+    def type_array(self: Self) -> Type[AbstractExplicitArray]:
         """
         The :class:`ArrayBase` type corresponding to this array
         """
@@ -536,7 +538,7 @@ ArrayLike = Union[QuantityLike, AbstractArray]
 
 
 @dataclasses.dataclass(eq=False)
-class ArrayBase(
+class AbstractExplicitArray(
     AbstractArray,
 ):
     @classmethod
@@ -623,7 +625,7 @@ class ArrayBase(
 
 
 @dataclasses.dataclass
-class AbstractParameterizedArray(
+class AbstractImplicitArray(
     AbstractArray,
 ):
     @property
@@ -654,20 +656,6 @@ class AbstractParameterizedArray(
     def unit(self: Self) -> float | u.Unit:
         return self.array.unit
 
-    @property
-    @abc.abstractmethod
-    def axis(self: Self) -> str | AbstractArray:
-        """
-        The axis along which the array is parameterized
-        """
-
-    @property
-    @abc.abstractmethod
-    def num(self: Self) -> int | AbstractArray:
-        """
-        Number of elements in the parameterization
-        """
-
 
 @dataclasses.dataclass(eq=False)
 class AbstractRandomMixin(
@@ -696,8 +684,8 @@ class AbstractRandomMixin(
 
 
 @dataclasses.dataclass(eq=False)
-class AbstractRange(
-    AbstractParameterizedArray,
+class AbstractRangeMixin(
+    abc.ABC,
 ):
 
     @property
@@ -720,8 +708,8 @@ class AbstractRange(
 
 
 @dataclasses.dataclass(eq=False)
-class AbstractSymmetricRange(
-    AbstractRange
+class AbstractSymmetricRangeMixin(
+    AbstractRangeMixin,
 ):
     @property
     @abc.abstractmethod
@@ -747,19 +735,53 @@ class AbstractSymmetricRange(
 
 
 @dataclasses.dataclass(eq=False)
-class AbstractUniformRandomSample(
+class AbstractRandomSample(
     AbstractRandomMixin,
-    AbstractRange,
+    AbstractImplicitArray,
+):
+
+    @property
+    @abc.abstractmethod
+    def shape_random(self: Self) -> None | dict[str, int]:
+        """
+        Dimensions along which the resulting random sample is completely uncorrelated.
+        """
+
+
+@dataclasses.dataclass(eq=False)
+class AbstractUniformRandomSample(
+    AbstractRangeMixin,
+    AbstractRandomSample,
 ):
     pass
 
 
 @dataclasses.dataclass
 class AbstractNormalRandomSample(
-    AbstractRandomMixin,
-    AbstractSymmetricRange,
+    AbstractSymmetricRangeMixin,
+    AbstractRandomSample,
 ):
     pass
+
+
+@dataclasses.dataclass(eq=False)
+class AbstractParameterizedArray(
+    AbstractImplicitArray,
+):
+
+    @property
+    @abc.abstractmethod
+    def axis(self: Self) -> str | AbstractArray:
+        """
+        The axis along which the array is parameterized
+        """
+
+    @property
+    @abc.abstractmethod
+    def num(self: Self) -> int | AbstractArray:
+        """
+        Number of elements in the parameterization
+        """
 
 
 @dataclasses.dataclass(eq=False)
@@ -777,14 +799,15 @@ class AbstractLinearParameterizedArrayMixin(
 @dataclasses.dataclass(eq=False)
 class AbstractArrayRange(
     AbstractLinearParameterizedArrayMixin,
-    AbstractRange,
+    AbstractRangeMixin,
+    AbstractParameterizedArray,
 ):
     pass
 
 
 @dataclasses.dataclass
 class AbstractSpace(
-    AbstractRange,
+    AbstractParameterizedArray,
 ):
     @property
     @abc.abstractmethod
@@ -797,6 +820,7 @@ class AbstractSpace(
 @dataclasses.dataclass(eq=False)
 class AbstractLinearSpace(
     AbstractLinearParameterizedArrayMixin,
+    AbstractRangeMixin,
     AbstractSpace
 ):
 
@@ -818,7 +842,8 @@ class AbstractStratifiedRandomSpace(
 
 @dataclasses.dataclass(eq=False)
 class AbstractLogarithmicSpace(
-    AbstractSpace
+    AbstractRangeMixin,
+    AbstractSpace,
 ):
 
     @property
@@ -853,6 +878,7 @@ class AbstractLogarithmicSpace(
 
 @dataclasses.dataclass(eq=False)
 class AbstractGeometricSpace(
-    AbstractSpace
+    AbstractRangeMixin,
+    AbstractSpace,
 ):
     pass
