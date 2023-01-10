@@ -883,7 +883,7 @@ class ScalarArray(
     """
     An array representing a scalar quantity with names for each of it's N axes.
 
-    A ScalarArray is defined by a :class:`numpy.ndarray` and an axis.
+    A :class:`ScalarArray` is defined by a :class:`numpy.ndarray` and an axis.
 
     .. jupyter-execute::
 
@@ -904,7 +904,7 @@ class ScalarArray(
 
         print(x)
 
-    What happens when we do math with ScalarArrays?
+    What happens when we do math with :class:`ScalarArray`s?
 
     .. jupyter-execute::
 
@@ -918,11 +918,11 @@ class ScalarArray(
         print(radius.shape)
 
 
-    Note how when performing mathematical operations on two ScalarArrays with different axes, the arrays are
+    Note how when performing mathematical operations on two :class:`ScalarArray`s with different axes, the arrays are
     automatically broadcast over every axis. There is no need to insert extra dimensions for alignment like you would
     normally do with instances of :class:`numpy.ndarray`.
 
-    We can also use reduction operators (mean, sum, etc) on ScalarArrays, and if desired specify the axis by name without
+    We can also use reduction operators (mean, sum, etc) on :class:`ScalarArray`s, and if desired specify the axis by name without
     knowledge of the corresponding index axes of the original array.
 
     .. jupyter-execute::
@@ -1165,9 +1165,9 @@ class ScalarArrayRange(
     Generic[StartT, StopT],
 ):
     """
-    A :class:`ScalarArray` over the range [start, stop) in incremented by step. An analog to :class:`numpy.arange`.
+    A :class:`ScalarArray` over the range [:attr:`start`, :attr:`stop`) incremented by :attr:`step`. An analog to :class:`numpy.arange`.
 
-    ScalarArrayRange can be used to create a :class:`ScalarArray` of integers.
+    :class:`ScalarArrayRange` can be used to create a :class:`ScalarArray` of integers.
 
     .. jupyter-execute::
 
@@ -1176,7 +1176,7 @@ class ScalarArrayRange(
         print(x.array)
         print(x.shape)
 
-    Note above that x does not include stop, and won't in almost all cases.  :class:`ScalarArrayRange` can be used to
+    Note above that ``x`` does not include :attr:`stop`, and won't in almost all cases.  :class:`ScalarArrayRange` can be used to
     create an increasing ScalarArray of floats, even with non integer steps.
 
     .. jupyter-execute::
@@ -1229,7 +1229,7 @@ class ScalarLinearSpace(
     """
     An evenly spaced :class:`ScalarArray` ranging from start to stop with num elements.
 
-    Most often ScalarArrays won't be formed directly from a :class:`numpy.ndarray`, but through more useful routines
+    Most often :class:`ScalarArray`s won't be formed directly from a :class:`numpy.ndarray`, but through more useful routines
     like :class:`ScalarLinearSpace`, a named_arrays equivalent to :class:`numpy.linspace`.  For example,
     one can quickly create an evenly spaced coordinate (or axis) array with units.
 
