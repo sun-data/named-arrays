@@ -880,6 +880,58 @@ class ScalarArray(
     na.AbstractExplicitArray,
     Generic[NDArrayT],
 ):
+    """
+    An array representing a scalar quantity with names for each of it's N axes.
+
+    A :class:`ScalarArray` is defined by a :class:`numpy.ndarray` and an axis.
+
+    .. jupyter-execute::
+
+        import numpy as np
+        import named_arrays.core as na
+
+        x = np.array([1, 4, 9, 11, 17])
+        x = na.ScalarArray(x,axes='position_x')
+        print(x)
+
+    They can also be defined using a :class:`astropy.units.Quantity`, or ascribed units after creation.
+
+    .. jupyter-execute::
+
+        import astropy.units as u
+
+        x = x * u.cm
+
+        print(x)
+
+    What happens when we do math with :class:`ScalarArray`s?
+
+    .. jupyter-execute::
+
+        y = np.array([0, 2, 4, 5]) * u.mm
+
+        y = na.ScalarArray(y, axes='position_y')
+        print(y**2)
+
+        radius = np.sqrt(y**2 + x**2)
+        print(radius)
+        print(radius.shape)
+
+
+    Note how when performing mathematical operations on two :class:`ScalarArray`s with different axes, the arrays are
+    automatically broadcast over every axis. There is no need to insert extra dimensions for alignment like you would
+    normally do with instances of :class:`numpy.ndarray`.
+
+    We can also use reduction operators (mean, sum, etc) on :class:`ScalarArray`s, and if desired specify the axis by name without
+    knowledge of the corresponding index axes of the original array.
+
+    .. jupyter-execute::
+
+        print(radius.mean())
+        print(radius.mean(axis='position_x'))
+    """
+
+
     ndarray: NDArrayT
     axes: None | tuple[str, ...] = None
 
@@ -1112,6 +1164,29 @@ class ScalarArrayRange(
     na.AbstractArrayRange,
     Generic[StartT, StopT],
 ):
+    """
+    A :class:`ScalarArray` over the range [:attr:`start`, :attr:`stop`) incremented by :attr:`step`. An analog to :class:`numpy.arange`.
+
+    :class:`ScalarArrayRange` can be used to create a :class:`ScalarArray` of integers.
+
+    .. jupyter-execute::
+
+        import named_arrays as na
+        x = na.ScalarArrayRange(1, 8, axis = "x")
+        print(x.array)
+        print(x.shape)
+
+    Note above that ``x`` does not include :attr:`stop`, and won't in almost all cases.  :class:`ScalarArrayRange` can be used to
+    create an increasing ScalarArray of floats, even with non integer steps.
+
+    .. jupyter-execute::
+
+        x = na.ScalarArrayRange(-0.5, 3, "x", 0.25)
+        print(x.array)
+
+    For the above, and more complicated uses, it is recommended to use :class:`ScalarLinearSpace` instead.  See numpy
+    documentation of :class:`numpy.arange` for more info.
+    """
     start: StartT
     stop: StopT
     axis: str
@@ -1151,6 +1226,31 @@ class ScalarLinearSpace(
     na.AbstractLinearSpace,
     Generic[StartT, StopT],
 ):
+    """
+    An evenly spaced :class:`ScalarArray` ranging from start to stop with num elements.
+
+    Most often :class:`ScalarArray`s won't be formed directly from a :class:`numpy.ndarray`, but through more useful routines
+    like :class:`ScalarLinearSpace`, a named_arrays equivalent to :class:`numpy.linspace`.  For example,
+    one can quickly create an evenly spaced coordinate (or axis) array with units.
+
+    .. jupyter-execute::
+
+        import named_arrays as na
+        import astropy.units as u
+
+        photon_energy = na.ScalarLinearSpace(1, 25, axis="energy", num=25) * u.keV
+        print(photon_energy.shape)
+        print(photon_energy)
+
+    Then easily convert that into a wavelength.
+
+    .. jupyter-execute::
+
+        wavelength = 1240 * u.eV * u.nm / photon_energy
+        wavelength.axes = 'lambda'
+        print(wavelength)
+
+    """
     start: StartT
     stop: StopT
     axis: str
@@ -1195,7 +1295,7 @@ class ScalarLinearSpace(
     #     return result
     #
     # def index_nearest(self, value: AbstractScalarT) -> typ.Dict[str, AbstractScalarT]:
-    #     return {self.axis: np.rint((value - self.start) / self.step).astype(int)}
+    #     return {self.axis: np.print((value - self.start) / self.step).astype(int)}
     #
     # def index_below(self, value: AbstractScalarT) -> typ.Dict[str, AbstractScalarT]:
     #     return {self.axis: (value - self.start) // self.step}
