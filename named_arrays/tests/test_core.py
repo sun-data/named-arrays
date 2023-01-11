@@ -133,6 +133,17 @@ class AbstractTestAbstractArray(
     test_mixins.AbstractTestNDArrayMethodsMixin,
 ):
 
+    @pytest.mark.parametrize('axis', [None, 'x', ('x', 'y')])
+    def test_axis_normalized_function(
+            self,
+            array: na.AbstractArray,
+            axis: None | str |Sequence[str],
+    ):
+        axis_normalized = na.axis_normalized(array, axis=axis)
+        assert isinstance(axis_normalized, tuple)
+        for ax in axis_normalized:
+            assert isinstance(ax, str)
+
     def test_ndarray(self, array: na.AbstractArray):
         assert isinstance(array.ndarray, (int, float, complex, str, np.ndarray))
 

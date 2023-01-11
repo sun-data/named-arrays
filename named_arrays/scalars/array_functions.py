@@ -47,19 +47,6 @@ ARG_REDUCE_FUNCTIONS = [
 HANDLED_FUNCTIONS = dict()
 
 
-def _axis_normalized(
-        a: na.AbstractScalarArray,
-        axis: None | str | Sequence[str],
-) -> tuple[str]:
-    if axis is None:
-        result = a.axes
-    elif isinstance(axis, str):
-        result = axis,
-    else:
-        result = tuple(axis)
-    return result
-
-
 def _calc_axes_new(
         a: na.AbstractScalarArray,
         axis: None | str | Sequence[str],
@@ -71,7 +58,7 @@ def _calc_axes_new(
     if keepdims:
         return a.axes
     else:
-        axis = _axis_normalized(a, axis)
+        axis = na.axis_normalized(a, axis)
         return tuple(ax for ax in a.axes if ax not in axis)
 
 
@@ -85,7 +72,7 @@ def array_function_default(
         initial: None | bool | int | float | complex | u.Quantity = None,
         where: None | na.AbstractScalarArray = None,
 ):
-    axis_normalized = _axis_normalized(a, axis=axis)
+    axis_normalized = na.axis_normalized(a, axis=axis)
     if out is not None:
         axis_out = tuple(ax for ax in a.axes if ax not in axis_normalized) if not keepdims else a.axes
         out = out.transpose(axis_out)
@@ -129,7 +116,7 @@ def array_function_percentile_like(
     if axis_union:
         raise ValueError(f"'q' must not have any shared axes with 'a', but axes {axis_union} are shared")
 
-    axis_normalized = _axis_normalized(a, axis=axis)
+    axis_normalized = na.axis_normalized(a, axis=axis)
     if out is not None:
         axis_out = tuple(ax for ax in a.axes if ax not in axis_normalized) if not keepdims else a.axes
         axis_out = q.axes + axis_out

@@ -26,6 +26,7 @@ __all__ = [
     'ndindex',
     'indices',
     'flatten_axes',
+    'axis_normalized',
     'AbstractArray',
     'AbstractExplicitArray',
     'AbstractImplicitArray',
@@ -148,6 +149,27 @@ def indices(shape: dict[str, int]) -> dict[str, named_arrays.scalars.ScalarArray
 
 def flatten_axes(axes: Sequence[str]):
     return '*'.join(axes)
+
+
+def axis_normalized(
+        a: AbstractArray,
+        axis: None | str | Sequence[str],
+) -> tuple[str]:
+    """
+    Convert all the possible values of the ``axis`` argument to a :class:`tuple` of :class:`str`.
+
+    :param a: If ``axis`` is :class:`None` the result is ``a.axes``.
+    :param axis: The ``axis`` value to normalize.
+    :return: Normalized ``axis`` parameter.
+    """
+
+    if axis is None:
+        result = a.axes
+    elif isinstance(axis, str):
+        result = axis,
+    else:
+        result = tuple(axis)
+    return result
 
 
 @dataclasses.dataclass(eq=False)
