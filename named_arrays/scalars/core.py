@@ -341,6 +341,15 @@ class AbstractScalarArray(
         else:
             return super().__lshift__(other)
 
+    def __truediv__(self: Self, other: na.ArrayLike | u.UnitBase) -> ScalarArray:
+        if isinstance(other, u.UnitBase):
+            return ScalarArray(
+                ndarray=self.ndarray / other,
+                axes=self.axes
+            )
+        else:
+            return super().__truediv__(other)
+
     def __array_ufunc__(
             self,
             function: np.ufunc,
