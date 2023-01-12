@@ -549,29 +549,6 @@ class ScalarArray(
     def centers(self: Self) -> Self:
         return self
 
-    # @property
-    # def normalized(self: ArrayT) -> ArrayT:
-    #     other = super().normalized
-    #     if isinstance(other.ndarray, other.type_array_auxiliary):
-    #         other.ndarray = np.array(other.ndarray)
-    #     if other.axes is None:
-    #         other.axes = []
-    #     return other
-
-    # @property
-    # def unit(self) -> float | u.Unit:
-    #     unit = super().unit
-    #     if hasattr(self.ndarray, 'unit'):
-    #         unit = self.ndarray.unit
-    #     return unit
-
-    # @property
-    # def shape(self: ArrayT) -> dict[str, int]:
-    #     shape = super().shape
-    #     for i in range(np.ndim(self.ndarray)):
-    #         shape[self.axes[i]] = self.array.shape[i]
-    #     return shape
-
     def __setitem__(
             self: Self,
             key: dict[str, int | slice | AbstractScalar] | AbstractScalar,
