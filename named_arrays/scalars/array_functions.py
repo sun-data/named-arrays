@@ -7,6 +7,7 @@ import named_arrays as na
 __all__ = [
     'HANDLED_FUNCTIONS',
     'PERCENTILE_LIKE_FUNCTIONS',
+    'FFT_LIKE_FUNCTIONS',
     'FFTN_LIKE_FUNCTIONS',
 ]
 
@@ -44,6 +45,12 @@ ARG_REDUCE_FUNCTIONS = [
     np.nanargmin,
     np.argmax,
     np.nanargmax,
+]
+FFT_LIKE_FUNCTIONS = [
+    np.fft.fft,
+    np.fft.ifft,
+    np.fft.rfft,
+    np.fft.irfft,
 ]
 FFTN_LIKE_FUNCTIONS = [
     np.fft.fft2,
@@ -195,6 +202,25 @@ def array_function_arg_reduce(
         result[axis] = indices
 
     return result
+
+
+def array_function_fft_like(
+        func: Callable,
+        a: na.ScalarArray,
+        axis: str,
+        n: None | int = None,
+        norm: str = "backward"
+) -> na.ScalarArray:
+
+    return na.ScalarArray(
+        ndarray=func(
+            a=a.ndarray,
+            n=n,
+            axis=a.axes.index(axis),
+            norm=norm,
+        ),
+        axes=tuple(f"{ax}_frequency" if ax == axis else ax for ax in a.axes),
+    )
 
 
 def array_function_fftn_like(
