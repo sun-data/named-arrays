@@ -83,6 +83,16 @@ def unit(
         return None
 
 
+def unit_normalized(
+        value: bool | int | float | complex | str | np.ndarray | u.Quantity | AbstractArray
+) -> u.UnitBase:
+    result = unit(value)
+    if result is None:
+        return u.dimensionless_unscaled
+    else:
+        return result
+
+
 def type_array(
         *values: bool | int | float | complex | str | np.ndarray | u.Quantity | AbstractArray,
 ) -> Type[AbstractExplicitArray]:
@@ -278,10 +288,7 @@ class AbstractArray(
         Similar to :attr:`unit` but returns :attr:`astropy.units.dimensionless_unscaled` if :attr:`ndarray` is not an
         instance of :class:`astropy.units.Quantity`.
         """
-        result = self.unit
-        if result is None:
-            result = u.dimensionless_unscaled
-        return result
+        return unit_normalized(self)
 
     @property
     @abc.abstractmethod
