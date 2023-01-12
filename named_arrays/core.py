@@ -20,6 +20,7 @@ __all__ = [
     'QuantityLike',
     'get_dtype',
     'unit',
+    'unit_normalized',
     'type_array',
     'broadcast_shapes',
     'shape_broadcasted',
