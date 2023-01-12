@@ -436,6 +436,10 @@ class AbstractArray(
         """
 
     @abc.abstractmethod
+    def __bool__(self: Self) -> bool:
+        return True
+
+    @abc.abstractmethod
     def __getitem__(
             self: Self,
             item: dict[str, int | slice | AbstractArray] | AbstractArray,

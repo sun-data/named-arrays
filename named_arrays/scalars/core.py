@@ -321,7 +321,7 @@ class AbstractScalarArray(
             )
 
     def __bool__(self: Self) -> bool:
-        return self.ndarray.__bool__()
+        return super().__bool__() and self.ndarray.__bool__()
 
     def __mul__(self: Self, other: na.ArrayLike | u.Unit) -> ScalarArray:
         if isinstance(other, u.UnitBase):
