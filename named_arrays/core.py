@@ -383,13 +383,6 @@ class AbstractArray(
         L2-norm of this array.
         """
 
-    @abc.abstractmethod
-    def __getitem__(
-            self: Self,
-            item: dict[str, int | slice | AbstractArray] | AbstractArray,
-    ) -> Self:
-        pass
-
     @property
     def indices(self: Self) -> dict[str, named_arrays.scalars.ScalarArrayRange]:
         return indices(self.shape)
@@ -438,6 +431,13 @@ class AbstractArray(
         -------
         Array with the specified axes combined
         """
+
+    @abc.abstractmethod
+    def __getitem__(
+            self: Self,
+            item: dict[str, int | slice | AbstractArray] | AbstractArray,
+    ) -> Self:
+        pass
 
     @abc.abstractmethod
     def ndarray_aligned(self: Self, shape: dict[str, int]) -> QuantityLike:
