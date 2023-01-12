@@ -444,6 +444,10 @@ class AbstractArray(
         return super().__mul__(other)
 
     @abc.abstractmethod
+    def __lshift__(self: Self, other: ArrayLike | u.UnitBase) -> AbstractExplicitArray:
+        return super().__lshift__(other)
+
+    @abc.abstractmethod
     def __getitem__(
             self: Self,
             item: dict[str, int | slice | AbstractArray] | AbstractArray,
