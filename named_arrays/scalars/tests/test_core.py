@@ -213,6 +213,12 @@ class AbstractTestAbstractScalarArray(
         ):
             pass
 
+        @pytest.mark.parametrize('s', [None, dict(y=_num_y), dict(x=_num_x), dict(x=_num_x, y=_num_y)])
+        class TestFFTNLikeFunctions(
+            AbstractTestAbstractScalar.TestArrayFunctions.TestFFTNLikeFunctions,
+        ):
+            pass
+
 
 @pytest.mark.parametrize('array', _scalar_arrays())
 class TestScalarArray(

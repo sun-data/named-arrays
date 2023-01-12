@@ -1060,6 +1060,61 @@ class AbstractTestAbstractArray(
 
                 assert np.all(array_reduced == array_reduced_expected)
 
+        @pytest.mark.parametrize(
+            argnames='func',
+            argvalues=[
+                np.fft.fft2,
+                np.fft.ifft2,
+                np.fft.rfft2,
+                np.fft.irfft2,
+                np.fft.fftn,
+                np.fft.ifftn,
+                np.fft.rfftn,
+                np.fft.irfftn,
+            ]
+        )
+        class TestFFTNLikeFunctions:
+            def test_fftn_like_functions(
+                    self,
+                    func: Callable,
+                    array: na.AbstractArray,
+                    s: None | dict[str, int],
+            ):
+                shape = array.shape
+
+                axis_normalized = na.axis_normalized(
+                    a=array,
+                    axis=s.keys() if s is not None else s,
+                )
+
+                if not all(ax in shape for ax in axis_normalized):
+                    with pytest.raises(ValueError):
+                        func(a=array, s=s)
+                    return
+
+                if func in [np.fft.rfft2, np.fft.irfft2, np.fft.rfftn, np.fft.irfftn]:
+                    if not shape:
+                        with pytest.raises(IndexError):
+                            func(a=array, s=s)
+                        return
+
+                result = func(
+                    a=array,
+                    s=s,
+                )
+                result_expected = func(
+                    a=array.ndarray,
+                    s=list(s.values()) if s is not None else s,
+                    axes=[array.axes.index(ax) for ax in s] if s is not None else s,
+                )
+
+                assert isinstance(result, na.AbstractArray)
+                for ax in result.axes:
+                    if ax not in set(array.axes) - set(axis_normalized):
+                        assert "frequency" in ax
+
+                assert np.all(result.ndarray == result_expected)
+
 
 class AbstractTestAbstractExplicitArray(
     AbstractTestAbstractArray,
