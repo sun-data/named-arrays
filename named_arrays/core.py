@@ -440,6 +440,10 @@ class AbstractArray(
         return True
 
     @abc.abstractmethod
+    def __mul__(self: Self, other: ArrayLike | u.Unit) -> AbstractExplicitArray:
+        return super().__mul__(other)
+
+    @abc.abstractmethod
     def __getitem__(
             self: Self,
             item: dict[str, int | slice | AbstractArray] | AbstractArray,
