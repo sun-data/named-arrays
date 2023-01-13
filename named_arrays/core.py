@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, TypeVar, Generic, Sequence, Iterator, Union, Type
+from typing import TYPE_CHECKING, TypeVar, Generic, Sequence, Iterator, Union, Type, Callable, Collection, Any
 from typing_extensions import Self
 if TYPE_CHECKING:
     import named_arrays.scalars
@@ -461,6 +461,18 @@ class AbstractArray(
     ) -> None | AbstractArray | tuple[AbstractArray, ...]:
         """
         Method to override the behavior of numpy's ufuncs.
+        """
+
+    @abc.abstractmethod
+    def __array_function__(
+            self: Self,
+            func: Callable,
+            types: Collection,
+            args: tuple,
+            kwargs: dict[str, Any],
+    ):
+        """
+        Method to override the behavior of numpy's array functions.
         """
 
     @abc.abstractmethod
