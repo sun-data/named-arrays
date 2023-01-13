@@ -177,7 +177,7 @@ class AbstractScalarArray(
     ) -> ScalarArray:
 
         if axis_new is None:
-            axis_new = ''.join(axes)
+            axis_new = na.flatten_axes(axes)
 
         axes_new = list(self.axes)
         shape_new = self.shape
