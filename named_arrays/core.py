@@ -452,6 +452,18 @@ class AbstractArray(
         return super().__truediv__(other)
 
     @abc.abstractmethod
+    def __array_ufunc__(
+            self,
+            function: np.ufunc,
+            method: str,
+            *inputs,
+            **kwargs,
+    ) -> None | AbstractArray | tuple[AbstractArray, ...]:
+        """
+        Method to override the behavior of numpy's ufuncs.
+        """
+
+    @abc.abstractmethod
     def __getitem__(
             self: Self,
             item: dict[str, int | slice | AbstractArray] | AbstractArray,
