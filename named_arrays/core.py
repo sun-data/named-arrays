@@ -420,7 +420,7 @@ class AbstractArray(
             self: Self,
             axes: Sequence[str],
             axis_new: str,
-    ) -> Self:
+    ) -> AbstractExplicitArray:
         """
         Combine some of the axes of the array into a single new axis.
 
