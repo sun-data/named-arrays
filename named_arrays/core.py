@@ -419,7 +419,7 @@ class AbstractArray(
     def combine_axes(
             self: Self,
             axes: Sequence[str],
-            axis_new: str,
+            axis_new: None | str,
     ) -> AbstractExplicitArray:
         """
         Combine some of the axes of the array into a single new axis.
