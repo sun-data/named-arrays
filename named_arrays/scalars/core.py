@@ -202,136 +202,6 @@ class AbstractScalarArray(
             axes=tuple(axes_new),
         )
 
-    def matrix_multiply(
-            self: Self,
-            other: AbstractScalar,
-            axis_rows: str,
-            axis_columns: str,
-    ) -> ScalarArray:
-
-        shape = self.shape_broadcasted(other)
-        shape_rows = shape.pop(axis_rows)
-        shape_columns = shape.pop(axis_columns)
-        shape = {**shape, axis_rows: shape_rows, axis_columns: shape_columns}
-
-        data_self = self.ndarray_aligned(shape)
-        data_other = other.ndarray_aligned(shape)
-
-        return ScalarArray(
-            ndarray=np.matmul(data_self, data_other),
-            axes=list(shape.keys()),
-        )
-
-    def matrix_determinant(
-            self: Self,
-            axis_rows: str,
-            axis_columns: str
-    ) -> ScalarArray:
-        shape = self.shape
-        if shape[axis_rows] != shape[axis_columns]:
-            raise ValueError('Matrix must be square')
-
-        if shape[axis_rows] == 2:
-            a = self[{axis_rows: 0, axis_columns: 0}]
-            b = self[{axis_rows: 0, axis_columns: 1}]
-            c = self[{axis_rows: 1, axis_columns: 0}]
-            d = self[{axis_rows: 1, axis_columns: 1}]
-            return a * d - b * c
-
-        elif shape[axis_rows] == 3:
-            a = self[{axis_rows: 0, axis_columns: 0}]
-            b = self[{axis_rows: 0, axis_columns: 1}]
-            c = self[{axis_rows: 0, axis_columns: 2}]
-            d = self[{axis_rows: 1, axis_columns: 0}]
-            e = self[{axis_rows: 1, axis_columns: 1}]
-            f = self[{axis_rows: 1, axis_columns: 2}]
-            g = self[{axis_rows: 2, axis_columns: 0}]
-            h = self[{axis_rows: 2, axis_columns: 1}]
-            i = self[{axis_rows: 2, axis_columns: 2}]
-            return (a * e * i) + (b * f * g) + (c * d * h) - (c * e * g) - (b * d * i) - (a * f * h)
-
-        else:
-            value = np.moveaxis(
-                a=self.ndarray,
-                source=[self.axis_names.index(axis_rows), self.axis_names.index(axis_columns)],
-                destination=[~1, ~0],
-            )
-
-            axes_new = list(self.axes)
-            axes_new.remove(axis_rows)
-            axes_new.remove(axis_columns)
-
-            return ScalarArray(
-                ndarray=np.linalg.det(value),
-                axes=tuple(axes_new),
-            )
-
-    def matrix_inverse(
-            self: Self,
-            axis_rows: str,
-            axis_columns: str,
-    ) -> ScalarArray:
-        shape = self.shape
-        if shape[axis_rows] != shape[axis_columns]:
-            raise ValueError('Matrix must be square')
-
-        axis_rows_inverse = axis_columns
-        axis_columns_inverse = axis_rows
-
-        if shape[axis_rows] == 1:
-            return 1 / self
-
-        elif shape[axis_rows] == 2:
-            result = ScalarArray(ndarray=self.ndarray.copy(), axes=self.axes.copy())
-            result[{axis_rows_inverse: 0, axis_columns_inverse: 0}] = self[{axis_rows: 1, axis_columns: 1}]
-            result[{axis_rows_inverse: 1, axis_columns_inverse: 1}] = self[{axis_rows: 0, axis_columns: 0}]
-            result[{axis_rows_inverse: 0, axis_columns_inverse: 1}] = -self[{axis_rows: 0, axis_columns: 1}]
-            result[{axis_rows_inverse: 1, axis_columns_inverse: 0}] = -self[{axis_rows: 1, axis_columns: 0}]
-            return result / self.matrix_determinant(axis_rows=axis_rows, axis_columns=axis_columns)
-
-        elif shape[axis_rows] == 3:
-            a = self[{axis_rows: 0, axis_columns: 0}]
-            b = self[{axis_rows: 0, axis_columns: 1}]
-            c = self[{axis_rows: 0, axis_columns: 2}]
-            d = self[{axis_rows: 1, axis_columns: 0}]
-            e = self[{axis_rows: 1, axis_columns: 1}]
-            f = self[{axis_rows: 1, axis_columns: 2}]
-            g = self[{axis_rows: 2, axis_columns: 0}]
-            h = self[{axis_rows: 2, axis_columns: 1}]
-            i = self[{axis_rows: 2, axis_columns: 2}]
-
-            result = ScalarArray(ndarray=self.array.copy(), axes=self.axes.copy())
-            result[{axis_rows_inverse: 0, axis_columns_inverse: 0}] = (e * i - f * h)
-            result[{axis_rows_inverse: 0, axis_columns_inverse: 1}] = -(b * i - c * h)
-            result[{axis_rows_inverse: 0, axis_columns_inverse: 2}] = (b * f - c * e)
-            result[{axis_rows_inverse: 1, axis_columns_inverse: 0}] = -(d * i - f * g)
-            result[{axis_rows_inverse: 1, axis_columns_inverse: 1}] = (a * i - c * g)
-            result[{axis_rows_inverse: 1, axis_columns_inverse: 2}] = -(a * f - c * d)
-            result[{axis_rows_inverse: 2, axis_columns_inverse: 0}] = (d * h - e * g)
-            result[{axis_rows_inverse: 2, axis_columns_inverse: 1}] = -(a * h - b * g)
-            result[{axis_rows_inverse: 2, axis_columns_inverse: 2}] = (a * e - b * d)
-            return result / self.matrix_determinant(axis_rows=axis_rows, axis_columns=axis_columns)
-
-        else:
-            index_axis_rows = self.axes.index(axis_rows)
-            index_axis_columns = self.axes.index(axis_columns)
-            value = np.moveaxis(
-                a=self.ndarray,
-                source=[index_axis_rows, index_axis_columns],
-                destination=[~1, ~0],
-            )
-
-            axes_new = list(self.axes)
-            axes_new.remove(axis_rows)
-            axes_new.remove(axis_columns)
-            axes_new.append(axis_rows_inverse)
-            axes_new.append(axis_columns_inverse)
-
-            return ScalarArray(
-                ndarray=np.linalg.inv(value),
-                axes=tuple(axes_new),
-            )
-
     def __bool__(self: Self) -> bool:
         return super().__bool__() and self.ndarray.__bool__()
 
@@ -495,6 +365,136 @@ class AbstractScalarArray(
 
         else:
             raise ValueError('Invalid index type')
+
+    def matrix_multiply(
+            self: Self,
+            other: AbstractScalar,
+            axis_rows: str,
+            axis_columns: str,
+    ) -> ScalarArray:
+
+        shape = self.shape_broadcasted(other)
+        shape_rows = shape.pop(axis_rows)
+        shape_columns = shape.pop(axis_columns)
+        shape = {**shape, axis_rows: shape_rows, axis_columns: shape_columns}
+
+        data_self = self.ndarray_aligned(shape)
+        data_other = other.ndarray_aligned(shape)
+
+        return ScalarArray(
+            ndarray=np.matmul(data_self, data_other),
+            axes=list(shape.keys()),
+        )
+
+    def matrix_determinant(
+            self: Self,
+            axis_rows: str,
+            axis_columns: str
+    ) -> ScalarArray:
+        shape = self.shape
+        if shape[axis_rows] != shape[axis_columns]:
+            raise ValueError('Matrix must be square')
+
+        if shape[axis_rows] == 2:
+            a = self[{axis_rows: 0, axis_columns: 0}]
+            b = self[{axis_rows: 0, axis_columns: 1}]
+            c = self[{axis_rows: 1, axis_columns: 0}]
+            d = self[{axis_rows: 1, axis_columns: 1}]
+            return a * d - b * c
+
+        elif shape[axis_rows] == 3:
+            a = self[{axis_rows: 0, axis_columns: 0}]
+            b = self[{axis_rows: 0, axis_columns: 1}]
+            c = self[{axis_rows: 0, axis_columns: 2}]
+            d = self[{axis_rows: 1, axis_columns: 0}]
+            e = self[{axis_rows: 1, axis_columns: 1}]
+            f = self[{axis_rows: 1, axis_columns: 2}]
+            g = self[{axis_rows: 2, axis_columns: 0}]
+            h = self[{axis_rows: 2, axis_columns: 1}]
+            i = self[{axis_rows: 2, axis_columns: 2}]
+            return (a * e * i) + (b * f * g) + (c * d * h) - (c * e * g) - (b * d * i) - (a * f * h)
+
+        else:
+            value = np.moveaxis(
+                a=self.ndarray,
+                source=[self.axis_names.index(axis_rows), self.axis_names.index(axis_columns)],
+                destination=[~1, ~0],
+            )
+
+            axes_new = list(self.axes)
+            axes_new.remove(axis_rows)
+            axes_new.remove(axis_columns)
+
+            return ScalarArray(
+                ndarray=np.linalg.det(value),
+                axes=tuple(axes_new),
+            )
+
+    def matrix_inverse(
+            self: Self,
+            axis_rows: str,
+            axis_columns: str,
+    ) -> ScalarArray:
+        shape = self.shape
+        if shape[axis_rows] != shape[axis_columns]:
+            raise ValueError('Matrix must be square')
+
+        axis_rows_inverse = axis_columns
+        axis_columns_inverse = axis_rows
+
+        if shape[axis_rows] == 1:
+            return 1 / self
+
+        elif shape[axis_rows] == 2:
+            result = ScalarArray(ndarray=self.ndarray.copy(), axes=self.axes.copy())
+            result[{axis_rows_inverse: 0, axis_columns_inverse: 0}] = self[{axis_rows: 1, axis_columns: 1}]
+            result[{axis_rows_inverse: 1, axis_columns_inverse: 1}] = self[{axis_rows: 0, axis_columns: 0}]
+            result[{axis_rows_inverse: 0, axis_columns_inverse: 1}] = -self[{axis_rows: 0, axis_columns: 1}]
+            result[{axis_rows_inverse: 1, axis_columns_inverse: 0}] = -self[{axis_rows: 1, axis_columns: 0}]
+            return result / self.matrix_determinant(axis_rows=axis_rows, axis_columns=axis_columns)
+
+        elif shape[axis_rows] == 3:
+            a = self[{axis_rows: 0, axis_columns: 0}]
+            b = self[{axis_rows: 0, axis_columns: 1}]
+            c = self[{axis_rows: 0, axis_columns: 2}]
+            d = self[{axis_rows: 1, axis_columns: 0}]
+            e = self[{axis_rows: 1, axis_columns: 1}]
+            f = self[{axis_rows: 1, axis_columns: 2}]
+            g = self[{axis_rows: 2, axis_columns: 0}]
+            h = self[{axis_rows: 2, axis_columns: 1}]
+            i = self[{axis_rows: 2, axis_columns: 2}]
+
+            result = ScalarArray(ndarray=self.array.copy(), axes=self.axes.copy())
+            result[{axis_rows_inverse: 0, axis_columns_inverse: 0}] = (e * i - f * h)
+            result[{axis_rows_inverse: 0, axis_columns_inverse: 1}] = -(b * i - c * h)
+            result[{axis_rows_inverse: 0, axis_columns_inverse: 2}] = (b * f - c * e)
+            result[{axis_rows_inverse: 1, axis_columns_inverse: 0}] = -(d * i - f * g)
+            result[{axis_rows_inverse: 1, axis_columns_inverse: 1}] = (a * i - c * g)
+            result[{axis_rows_inverse: 1, axis_columns_inverse: 2}] = -(a * f - c * d)
+            result[{axis_rows_inverse: 2, axis_columns_inverse: 0}] = (d * h - e * g)
+            result[{axis_rows_inverse: 2, axis_columns_inverse: 1}] = -(a * h - b * g)
+            result[{axis_rows_inverse: 2, axis_columns_inverse: 2}] = (a * e - b * d)
+            return result / self.matrix_determinant(axis_rows=axis_rows, axis_columns=axis_columns)
+
+        else:
+            index_axis_rows = self.axes.index(axis_rows)
+            index_axis_columns = self.axes.index(axis_columns)
+            value = np.moveaxis(
+                a=self.ndarray,
+                source=[index_axis_rows, index_axis_columns],
+                destination=[~1, ~0],
+            )
+
+            axes_new = list(self.axes)
+            axes_new.remove(axis_rows)
+            axes_new.remove(axis_columns)
+            axes_new.append(axis_rows_inverse)
+            axes_new.append(axis_columns_inverse)
+
+            return ScalarArray(
+                ndarray=np.linalg.inv(value),
+                axes=tuple(axes_new),
+            )
 
     def filter_median(
             self: Self,
