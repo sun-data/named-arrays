@@ -29,6 +29,7 @@ __all__ = [
     'flatten_axes',
     'axis_normalized',
     'AbstractArray',
+    'ArrayLike',
     'AbstractExplicitArray',
     'AbstractImplicitArray',
     'AbstractRandomMixin',
