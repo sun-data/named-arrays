@@ -371,7 +371,7 @@ class AbstractScalarArray(
     ) -> None | ScalarArray | tuple[ScalarArray, ...]:
 
         if function is np.matmul:
-            raise ValueError('np.matmul not supported, please use named_arrays.AbstractScalarArray.matrix_inverse()')
+            function = np.multiply
 
         inputs_normalized = []
         for inp in inputs:

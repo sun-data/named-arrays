@@ -81,6 +81,58 @@ class AbstractTestAbstractScalar(
     ):
         super().test_reshape(array=array, shape=shape)
 
+    class TestMatmul(
+        tests.test_core.AbstractTestAbstractArray.TestMatmul,
+    ):
+
+        def test_matmul(
+                self,
+                array: None | bool | int | float | complex | str | na.AbstractArray,
+                array_2: None | bool | int | float | complex | str | na.AbstractArray,
+                out: bool,
+        ):
+            shape = na.shape_broadcasted(array, array_2)
+            shape = {k: shape[k] for k in sorted(shape)}
+
+            if out:
+                type_array = na.type_array(array, array_2)
+                out = type_array.empty(shape)
+                out_expected = type_array.empty(shape).ndarray
+                unit, unit_2 = na.unit(array), na.unit(array_2)
+                if unit is not None:
+                    out = out << unit
+                    out_expected = out_expected << unit
+                if unit_2 is not None:
+                    out = out * unit_2
+                    out_expected = out_expected * unit_2
+            else:
+                out = None
+                out_expected = None
+
+            result = np.matmul(array, array_2, out=out)
+            if array is None or array_2 is None:
+                assert result is None
+            else:
+                result = result.broadcast_to(shape)
+                result_expected = np.multiply(
+                    array.ndarray if isinstance(array, na.AbstractArray) else array,
+                    np.transpose(array_2.ndarray) if isinstance(array_2, na.AbstractArray) else array_2,
+                    out=out_expected,
+                )
+
+                assert np.all(result.ndarray == result_expected)
+
+        def test_matmul_reversed(
+                self,
+                array: na.AbstractArray,
+                array_2: None | bool | int | float | complex | str | na.AbstractArray,
+                out: bool,
+        ):
+            array = np.transpose(array)
+            if array_2 is not None:
+                array_2 = np.transpose(array_2)
+            self.test_matmul(array_2, array, out=out)
+
 
 class AbstractTestAbstractScalarArray(
     AbstractTestAbstractScalar,
@@ -105,6 +157,12 @@ class AbstractTestAbstractScalarArray(
     @pytest.mark.parametrize('array_2', _scalar_arrays_2())
     class TestUfuncBinary(
         AbstractTestAbstractScalar.TestUfuncBinary,
+    ):
+        pass
+
+    @pytest.mark.parametrize('array_2', _scalar_arrays_2())
+    class TestMatmul(
+        AbstractTestAbstractScalar.TestMatmul,
     ):
         pass
 

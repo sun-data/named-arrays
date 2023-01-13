@@ -441,7 +441,6 @@ class AbstractTestAbstractArray(
         argvalues=[
             np.add,
             np.subtract,
-            np.matmul,
             np.divide,
             np.logaddexp,
             np.logaddexp2,
@@ -493,11 +492,6 @@ class AbstractTestAbstractArray(
                 array_2: None | bool | int | float | complex | str | na.AbstractArray,
                 out: bool,
         ):
-
-            if ufunc is np.matmul:
-                with pytest.raises(ValueError, match='np.matmul not supported*'):
-                    ufunc(array, array_2, casting='no')
-                return
 
             dtypes = dict()
             for types in ufunc.types:
@@ -626,6 +620,26 @@ class AbstractTestAbstractArray(
             if array_2 is not None:
                 array_2 = np.transpose(array_2)
             self.test_ufunc_binary(ufunc, array_2, array, out=out)
+
+    @pytest.mark.parametrize('out', [False, True])
+    class TestMatmul(abc.ABC):
+        @abc.abstractmethod
+        def test_matmul(
+                self,
+                array: None | bool | int | float | complex | str | na.AbstractArray,
+                array_2: None | bool | int | float | complex | str | na.AbstractArray,
+                out: bool,
+        ):
+            pass
+
+        @abc.abstractmethod
+        def test_matmul_reversed(
+                self,
+                array: na.AbstractArray,
+                array_2: None | bool | int | float | complex | str | na.AbstractArray,
+                out: bool,
+        ):
+            pass
 
     class TestArrayFunctions:
 
