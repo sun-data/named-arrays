@@ -482,21 +482,6 @@ class AbstractArray(
     ) -> Self:
         pass
 
-    @abc.abstractmethod
-    def ndarray_aligned(self: Self, shape: dict[str, int]) -> QuantityLike:
-        """
-        Align :attr:`ndarray` to a particular shape.
-
-        Parameters
-        ----------
-        shape
-            New shape to align :attr:`ndarray` to.
-
-        Returns
-        -------
-        An instance of :class:`numpy.ndarray` with the axes aligned.
-        """
-
     def _interp_linear_recursive(
             self: Self,
             item: dict[str, Self],

@@ -119,6 +119,18 @@ class AbstractScalarArray(
         )
 
     def ndarray_aligned(self: Self, shape: dict[str, int]) -> np.ndarray:
+        """
+        Align :attr:`ndarray` to a particular shape.
+
+        Parameters
+        ----------
+        shape
+            New shape to align :attr:`ndarray` to.
+
+        Returns
+        -------
+        An instance of :class:`numpy.ndarray` with the axes aligned.
+        """
         ndarray = self.ndarray
         ndim_missing = len(shape) - np.ndim(ndarray)
         value = np.expand_dims(ndarray, tuple(~np.arange(ndim_missing)))
