@@ -401,7 +401,7 @@ class AbstractArray(
         )
 
     @abc.abstractmethod
-    def add_axes(self: Self, axes: str | Sequence[str]) -> Self:
+    def add_axes(self: Self, axes: str | Sequence[str]) -> AbstractExplicitArray:
         """
         Add new singleton axes to this array
 
