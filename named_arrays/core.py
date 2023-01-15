@@ -310,6 +310,13 @@ class AbstractArray(
 
     @property
     @abc.abstractmethod
+    def type_array_abstract(self: Self) -> Type[AbstractArray]:
+        """
+        The :class:`AbstractArray` type corresponding to this array
+        """
+
+    @property
+    @abc.abstractmethod
     def scalar(self: Self) -> named_arrays.scalars.AbstractScalar:
         """
         Converts this array to an instance of :class:`named_arrays.AbstractScalar`

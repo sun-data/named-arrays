@@ -195,6 +195,11 @@ class AbstractTestAbstractArray(
     def test_type_array(self, array: na.AbstractArray):
         assert issubclass(array.type_array, na.AbstractExplicitArray)
 
+    def test_type_array_abstract(self, array: na.AbstractArray):
+        assert issubclass(array.type_array_abstract, na.AbstractArray)
+        assert not issubclass(array.type_array_abstract, na.AbstractExplicitArray)
+        assert not issubclass(array.type_array_abstract, na.AbstractImplicitArray)
+
     def test_scalar(self, array: na.AbstractArray):
         assert isinstance(array.scalar, na.AbstractScalar)
 
