@@ -15,6 +15,7 @@ import numpy.typing as npt
 import astropy.units as u
 
 import named_arrays.mixins
+from . import _core_array_functions
 
 __all__ = [
     'QuantityLike',
@@ -483,6 +484,10 @@ class AbstractArray(
         """
         Method to override the behavior of numpy's array functions.
         """
+        if func in _core_array_functions.HANDLED_FUNCTIONS:
+            return _core_array_functions.HANDLED_FUNCTIONS[func](*args, **kwargs)
+
+        return NotImplemented
 
     @abc.abstractmethod
     def _getitem(
