@@ -522,7 +522,6 @@ class AbstractArray(
 
         raise ValueError(f"item not supported by array with type {type(self)}")
 
-
     def _interp_linear_recursive(
             self: Self,
             item: dict[str, Self],
