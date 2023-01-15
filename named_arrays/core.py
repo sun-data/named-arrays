@@ -328,6 +328,7 @@ class AbstractArray(
         """
         The vector components of this array expressed as a :class:`dict` where the keys are the names of the component.
         """
+        return dict()
 
     @property
     @abc.abstractmethod
