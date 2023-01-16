@@ -16,3 +16,10 @@ def implements(numpy_function: Callable):
         HANDLED_FUNCTIONS[numpy_function] = func
         return func
     return decorator
+
+
+@implements(np.shape)
+def shape(
+        a: na.AbstractScalarArray,
+) -> dict[str, int]:
+    return a.shape

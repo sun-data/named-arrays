@@ -265,13 +265,6 @@ def broadcast_to(
     )
 
 
-@implements(np.shape)
-def shape(
-        a: na.AbstractScalarArray,
-) -> dict[str, int]:
-    return a.shape
-
-
 @implements(np.transpose)
 def transpose(
         a: na.AbstractScalarArray,

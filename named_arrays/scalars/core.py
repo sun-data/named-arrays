@@ -288,6 +288,10 @@ class AbstractScalarArray(
             args: tuple,
             kwargs: dict[str, Any],
     ):
+        result = super().__array_function__(func=func, types=types, args=args, kwargs=kwargs)
+        if result is not NotImplemented:
+            return result
+
         from . import array_functions
 
         if func in array_functions.DEFAULT_FUNCTIONS:
