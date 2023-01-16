@@ -5,6 +5,7 @@ import astropy.units as u
 import named_arrays as na
 
 __all__ = [
+    'DEFAULT_FUNCTIONS',
     'HANDLED_FUNCTIONS',
     'PERCENTILE_LIKE_FUNCTIONS',
     'FFT_LIKE_FUNCTIONS',
