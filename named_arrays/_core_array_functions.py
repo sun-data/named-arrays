@@ -11,7 +11,7 @@ HANDLED_FUNCTIONS = dict()
 
 
 def implements(numpy_function: Callable):
-    """Register an __array_function__ implementation for AbstractScalarArray objects."""
+    """Register an ``__array_function__`` implementation for :class:`named_array.AbstractArray` objects."""
     def decorator(func):
         HANDLED_FUNCTIONS[numpy_function] = func
         return func
