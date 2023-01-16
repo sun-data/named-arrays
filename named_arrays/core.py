@@ -908,7 +908,7 @@ class AbstractArrayRange(
     pass
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(eq=False)
 class AbstractSpace(
     AbstractParameterizedArray,
 ):
