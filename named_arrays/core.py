@@ -727,7 +727,7 @@ class AbstractExplicitArray(
             return None
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(eq=False)
 class AbstractImplicitArray(
     AbstractArray,
 ):
