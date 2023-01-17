@@ -461,6 +461,44 @@ class AbstractArray(
         """
 
     @abc.abstractmethod
+    def _getitem(
+            self: Self,
+            item: dict[str, int | slice | AbstractArray] | AbstractArray,
+    ):
+        pass
+
+    @abc.abstractmethod
+    def _getitem_reversed(
+            self: Self,
+            array: AbstractArray,
+            item: dict[str, int | slice | AbstractArray] | AbstractArray
+    ):
+        pass
+
+    def __getitem__(
+            self: Self,
+            item: dict[str, int | slice | AbstractArray] | AbstractArray,
+    ) -> AbstractExplicitArray:
+        result = self._getitem(item)
+        if result is not NotImplemented:
+            return result
+
+        else:
+            if isinstance(item, dict):
+                for ax in item:
+                    if isinstance(item[ax], AbstractArray):
+                        result = item[ax]._getitem_reversed(self, item)
+                        if result is not NotImplemented:
+                            return result
+
+            elif isinstance(item, AbstractArray):
+                result = item._getitem_reversed(self, item)
+                if result is not NotImplemented:
+                    return result
+
+        raise ValueError(f"item not supported by array with type {type(self)}")
+
+    @abc.abstractmethod
     def __bool__(self: Self) -> bool:
         return True
 
@@ -505,44 +543,6 @@ class AbstractArray(
             return _core_array_functions.HANDLED_FUNCTIONS[func](*args, **kwargs)
 
         return NotImplemented
-
-    @abc.abstractmethod
-    def _getitem(
-            self: Self,
-            item: dict[str, int | slice | AbstractArray] | AbstractArray,
-    ):
-        pass
-
-    @abc.abstractmethod
-    def _getitem_reversed(
-            self: Self,
-            array: AbstractArray,
-            item: dict[str, int | slice | AbstractArray] | AbstractArray
-    ):
-        pass
-
-    def __getitem__(
-            self: Self,
-            item: dict[str, int | slice | AbstractArray] | AbstractArray,
-    ) -> AbstractExplicitArray:
-        result = self._getitem(item)
-        if result is not NotImplemented:
-            return result
-
-        else:
-            if isinstance(item, dict):
-                for ax in item:
-                    if isinstance(item[ax], AbstractArray):
-                        result = item[ax]._getitem_reversed(self, item)
-                        if result is not NotImplemented:
-                            return result
-
-            elif isinstance(item, AbstractArray):
-                result = item._getitem_reversed(self, item)
-                if result is not NotImplemented:
-                    return result
-
-        raise ValueError(f"item not supported by array with type {type(self)}")
 
     def _interp_linear_recursive(
             self: Self,
