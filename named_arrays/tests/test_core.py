@@ -7,7 +7,6 @@ import numpy as np
 import astropy.units as u
 import astropy.units.quantity_helper.helpers as quantity_helpers
 import named_arrays as na
-from . import test_mixins
 
 num_x = 1
 num_y = 2
@@ -130,7 +129,7 @@ class TestIndexingFunctions:
 
 
 class AbstractTestAbstractArray(
-    test_mixins.AbstractTestNDArrayMethodsMixin,
+    abc.ABC,
 ):
 
     @pytest.mark.parametrize('axis', [None, 'x', ('x', 'y')])
@@ -1192,6 +1191,102 @@ class AbstractTestAbstractArray(
                         assert "frequency" in ax
 
                 assert np.all(result.ndarray == result_expected)
+
+    def test_broadcast_to(
+            self,
+            array: na.AbstractArray,
+            shape: dict[str, int],
+    ):
+        assert np.all(array.broadcast_to(shape) == np.broadcast_to(array, shape))
+
+    @pytest.mark.parametrize('shape', [dict(r=-1)])
+    def test_reshape(
+            self,
+            array: na.AbstractArray,
+            shape: dict[str, int],
+    ):
+        assert np.all(array.reshape(shape) == np.reshape(array, shape))
+
+    def test_min(
+            self,
+            array: na.AbstractArray,
+    ):
+        assert np.all(array.min() == np.min(array))
+
+    def test_max(
+            self,
+            array: na.AbstractArray,
+    ):
+        assert np.all(array.max() == np.max(array))
+
+    def test_sum(
+            self,
+            array: na.AbstractArray,
+    ):
+        assert np.all(array.sum() == np.sum(array))
+
+    def test_ptp(
+            self,
+            array: na.AbstractArray,
+    ):
+        if not np.issubdtype(array.dtype, bool):
+            assert np.all(array.ptp() == np.ptp(array))
+        else:
+            with pytest.raises(TypeError, match='numpy boolean subtract, .*'):
+                array.ptp()
+
+    def test_mean(
+            self,
+            array: na.AbstractArray,
+    ):
+        assert np.all(array.mean() == np.mean(array))
+
+    def test_std(
+            self,
+            array: na.AbstractArray,
+    ):
+        assert np.all(array.std() == np.std(array))
+
+    def test_percentile(
+            self,
+            array: na.AbstractArray,
+    ):
+        q = 25 * u.percent
+        kwargs = dict(method='closest_observation')
+        assert np.all(array.percentile(q, **kwargs) == np.percentile(array, q, **kwargs))
+
+    def test_all(
+            self,
+            array: na.AbstractArray,
+    ):
+        if getattr(array, 'unit', None) is None:
+            assert np.all(array.all() == np.all(array))
+        else:
+            with pytest.raises(TypeError, match="no implementation found for .*"):
+                array.all()
+
+    def test_any(
+            self,
+            array: na.AbstractArray
+    ):
+        if getattr(array, 'unit', None) is None:
+            assert np.all(array.any() == np.any(array))
+        else:
+            with pytest.raises(TypeError, match="no implementation found for .*"):
+                array.any()
+
+    def test_rms(
+            self,
+            array: na.AbstractArray,
+    ):
+        assert np.all(array.rms() == np.sqrt(np.mean(np.square(array))))
+
+    def test_transpose(
+            self,
+            array: na.AbstractArray,
+    ):
+        assert np.all(array.transpose() == np.transpose(array))
+
 
 
 class AbstractTestAbstractExplicitArray(
