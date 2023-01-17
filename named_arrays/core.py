@@ -189,7 +189,6 @@ def axis_normalized(
 
 @dataclasses.dataclass(eq=False)
 class AbstractArray(
-    named_arrays.mixins.CopyableMixin,
     named_arrays.mixins.NDArrayMethodsMixin,
     np.lib.mixins.NDArrayOperatorsMixin,
     abc.ABC,
@@ -459,6 +458,20 @@ class AbstractArray(
         -------
         Array with the specified axes combined
         """
+
+    def copy_shallow(self: Self) -> Self:
+        return copy.copy(self)
+
+    def copy(self: Self) -> Self:
+        return copy.deepcopy(self)
+
+    def __copy__(self: Self) -> Self:
+        fields = {field.name: getattr(self, field.name) for field in dataclasses.fields(self)}
+        return type(self)(**fields)
+
+    def __deepcopy__(self: Self, memodict={}) -> Self:
+        fields = {field.name: copy.deepcopy(getattr(self, field.name)) for field in dataclasses.fields(self)}
+        return type(self)(**fields)
 
     @abc.abstractmethod
     def _getitem(

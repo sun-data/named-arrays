@@ -2,6 +2,7 @@ from __future__ import annotations
 from typing import Sequence, Type, Callable
 import pytest
 import abc
+import dataclasses
 import numpy as np
 import astropy.units as u
 import astropy.units.quantity_helper.helpers as quantity_helpers
@@ -129,7 +130,6 @@ class TestIndexingFunctions:
 
 
 class AbstractTestAbstractArray(
-    test_mixins.AbstractTestCopyable,
     test_mixins.AbstractTestNDArrayMethodsMixin,
 ):
 
@@ -318,6 +318,20 @@ class AbstractTestAbstractArray(
         else:
             with pytest.raises(ValueError):
                 array.combine_axes(axes=axes, axis_new=axis_new)
+
+    def test_copy_shallow(self, array: na.AbstractArray):
+        array_copy = array.copy_shallow()
+        assert isinstance(array_copy, na.AbstractArray)
+        assert dataclasses.is_dataclass(array_copy)
+        for field in dataclasses.fields(array_copy):
+            assert getattr(array, field.name) is getattr(array_copy, field.name)
+
+    def test_copy(self, array: na.AbstractArray):
+        array_copy = array.copy()
+        assert isinstance(array_copy, na.AbstractArray)
+        assert dataclasses.is_dataclass(array_copy)
+        for field in dataclasses.fields(array_copy):
+            assert np.all(getattr(array, field.name) == getattr(array_copy, field.name))
 
     @pytest.mark.parametrize(
         argnames='ufunc',

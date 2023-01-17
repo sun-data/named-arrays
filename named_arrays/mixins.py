@@ -9,26 +9,8 @@ import numpy.typing as npt
 import astropy.units as u
 
 __all__ = [
-    'CopyableMixin',
     'NDArrayMethodsMixin'
 ]
-
-
-class CopyableMixin(abc.ABC):
-
-    def copy_shallow(self: Self) -> Self:
-        return copy.copy(self)
-
-    def copy(self: Self) -> Self:
-        return copy.deepcopy(self)
-
-    def __copy__(self: Self) -> Self:
-        fields = {field.name: getattr(self, field.name) for field in dataclasses.fields(self)}
-        return type(self)(**fields)
-
-    def __deepcopy__(self: Self, memodict={}) -> Self:
-        fields = {field.name: copy.deepcopy(getattr(self, field.name)) for field in dataclasses.fields(self)}
-        return type(self)(**fields)
 
 
 @dataclasses.dataclass(eq=False)
