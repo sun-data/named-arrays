@@ -210,6 +210,13 @@ class AbstractTestAbstractArray(
             assert isinstance(component, str)
             assert isinstance(components[component], (int, float, complex, np.ndarray, na.AbstractArray))
 
+    def test_components_normalized(self, array: na.AbstractArray):
+        components = array.components_normalized
+        assert isinstance(components, dict)
+        for component in components:
+            assert isinstance(component, str)
+            assert isinstance(components[component], na.AbstractArray)
+
     def test_nominal(self, array: na.AbstractArray):
         assert isinstance(array.nominal, na.AbstractArray)
 
