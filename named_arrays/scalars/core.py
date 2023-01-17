@@ -536,13 +536,13 @@ class AbstractScalarArray(
 ScalarLike = Union[na.QuantityLike, AbstractScalar]
 
 
-@dataclasses.dataclass(eq=False, slots=True)
+@dataclasses.dataclass(eq=False)
 class ScalarArray(
     AbstractScalarArray,
     na.AbstractExplicitArray,
     Generic[NDArrayT],
 ):
-    ndarray: NDArrayT
+    ndarray: NDArrayT = dataclasses.MISSING
     axes: None | tuple[str, ...] = None
 
     def __post_init__(self: Self):
@@ -625,7 +625,7 @@ class AbstractImplicitScalarArray(
     pass
 
 
-@dataclasses.dataclass(eq=False, slots=True)
+@dataclasses.dataclass(eq=False)
 class AbstractScalarRandomSample(
     AbstractImplicitScalarArray,
     na.AbstractRandomSample,
@@ -633,14 +633,14 @@ class AbstractScalarRandomSample(
     pass
 
 
-@dataclasses.dataclass(eq=False, slots=True)
+@dataclasses.dataclass(eq=False)
 class ScalarUniformRandomSample(
     AbstractScalarRandomSample,
     na.AbstractUniformRandomSample,
     Generic[StartT, StopT],
 ):
-    start: StartT
-    stop: StopT
+    start: StartT = dataclasses.MISSING
+    stop: StopT = dataclasses.MISSING
     shape_random: dict[str, int] = None
     seed: None | int = None
 
@@ -685,14 +685,14 @@ class ScalarUniformRandomSample(
         return self
 
 
-@dataclasses.dataclass(eq=False, slots=True)
+@dataclasses.dataclass(eq=False)
 class ScalarNormalRandomSample(
     AbstractScalarRandomSample,
     na.AbstractNormalRandomSample,
     Generic[CenterT, WidthT],
 ):
-    center: CenterT
-    width: WidthT
+    center: CenterT = dataclasses.MISSING
+    width: WidthT = dataclasses.MISSING
     shape_random: None | dict[str, int] = None
     seed: None | int = None
 
@@ -737,7 +737,7 @@ class ScalarNormalRandomSample(
         return self
 
 
-@dataclasses.dataclass(eq=False, slots=True)
+@dataclasses.dataclass(eq=False)
 class AbstractParameterizedScalarArray(
     AbstractImplicitScalarArray,
     na.AbstractParameterizedArray,
@@ -745,15 +745,15 @@ class AbstractParameterizedScalarArray(
     pass
 
 
-@dataclasses.dataclass(eq=False, slots=True)
+@dataclasses.dataclass(eq=False)
 class ScalarArrayRange(
     AbstractParameterizedScalarArray,
     na.AbstractArrayRange,
     Generic[StartT, StopT],
 ):
-    start: StartT
-    stop: StopT
-    axis: str
+    start: StartT = dataclasses.MISSING
+    stop: StopT = dataclasses.MISSING
+    axis: str = dataclasses.MISSING
     step: int = 1
 
     @property
@@ -784,15 +784,15 @@ class AbstractScalarSpace(
     pass
 
 
-@dataclasses.dataclass(eq=False, slots=True)
+@dataclasses.dataclass(eq=False)
 class ScalarLinearSpace(
     AbstractScalarSpace,
     na.AbstractLinearSpace,
     Generic[StartT, StopT],
 ):
-    start: StartT
-    stop: StopT
-    axis: str
+    start: StartT = dataclasses.MISSING
+    stop: StopT = dataclasses.MISSING
+    axis: str = dataclasses.MISSING
     num: int = 11
     endpoint: bool = False
 
@@ -881,7 +881,7 @@ class ScalarLinearSpace(
 #         return np.random.default_rng(seed=self.seed)
 
 
-@dataclasses.dataclass(eq=False, slots=True)
+@dataclasses.dataclass(eq=False)
 class ScalarStratifiedRandomSpace(
     ScalarLinearSpace[StartT, StopT],
     na.AbstractStratifiedRandomSpace,
@@ -915,16 +915,16 @@ class ScalarStratifiedRandomSpace(
         )
 
 
-@dataclasses.dataclass(eq=False, slots=True)
+@dataclasses.dataclass(eq=False)
 class ScalarLogarithmicSpace(
     AbstractScalarSpace,
     na.AbstractLogarithmicSpace,
     Generic[StartExponentT, StopExponentT, BaseT]
 ):
-    start_exponent: StartExponentT
-    stop_exponent: StopExponentT
-    base: BaseT
-    axis: str
+    start_exponent: StartExponentT = dataclasses.MISSING
+    stop_exponent: StopExponentT = dataclasses.MISSING
+    base: BaseT = dataclasses.MISSING
+    axis: str = dataclasses.MISSING
     num: int = 11
     endpoint: bool = False
 
@@ -957,15 +957,15 @@ class ScalarLogarithmicSpace(
         return self
 
 
-@dataclasses.dataclass(eq=False, slots=True)
+@dataclasses.dataclass(eq=False)
 class ScalarGeometricSpace(
     AbstractScalarSpace,
     na.AbstractGeometricSpace,
     Generic[StartT, StopT],
 ):
-    start: StartT
-    stop: StopT
-    axis: str
+    start: StartT = dataclasses.MISSING
+    stop: StopT = dataclasses.MISSING
+    axis: str = dataclasses.MISSING
     num: int = 11
     endpoint: bool = False
 
