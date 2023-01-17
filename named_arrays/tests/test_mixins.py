@@ -37,6 +37,7 @@ class AbstractTestNDArrayMethodsMixin(
     ):
         assert np.all(array.broadcast_to(shape) == np.broadcast_to(array, shape))
 
+    @pytest.mark.parametrize('shape', [dict(r=-1)])
     def test_reshape(
             self,
             array: named_arrays.mixins.NDArrayMethodsMixin,

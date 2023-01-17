@@ -73,14 +73,6 @@ class AbstractTestAbstractScalar(
     ):
         super().test_broadcast_to(array=array, shape=shape)
 
-    @pytest.mark.parametrize('shape', [dict(r=-1)])
-    def test_reshape(
-            self,
-            array: na.AbstractArray,
-            shape: dict[str, int],
-    ):
-        super().test_reshape(array=array, shape=shape)
-
     class TestMatmul(
         tests.test_core.AbstractTestAbstractArray.TestMatmul,
     ):
