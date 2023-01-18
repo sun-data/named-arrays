@@ -171,7 +171,6 @@ class AbstractTestAbstractArray(
     def test_size(self, array: na.AbstractArray):
         size = array.size
         assert isinstance(size, int)
-        assert size == np.size(array.ndarray)
 
     def test_dtype(self, array: na.AbstractArray):
         assert array.dtype is not None

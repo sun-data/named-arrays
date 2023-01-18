@@ -133,6 +133,10 @@ class AbstractTestAbstractScalarArray(
         super().test_axes(array)
         assert len(array.axes) == np.ndim(array.ndarray)
 
+    def test_size(self, array: na.AbstractScalarArray):
+        super().test_size(array)
+        assert array.size == np.size(array.ndarray)
+
     @pytest.mark.parametrize(
         argnames='item',
         argvalues=[
