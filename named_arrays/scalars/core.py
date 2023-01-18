@@ -55,10 +55,6 @@ class AbstractScalar(
         return self
 
     @property
-    def components(self: Self) -> dict[str, Self]:
-        return {'': self}
-
-    @property
     def length(self) -> AbstractScalar:
         if np.issubdtype(self.dtype, np.number):
             return np.abs(self)

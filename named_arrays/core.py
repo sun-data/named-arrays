@@ -320,14 +320,6 @@ class AbstractArray(
 
     @property
     @abc.abstractmethod
-    def components(self: Self) -> dict[str, ArrayLike]:
-        """
-        The vector components of this array expressed as a :class:`dict` where the keys are the names of the component.
-        """
-        return dict()
-
-    @property
-    @abc.abstractmethod
     def nominal(self: Self) -> AbstractArray:
         """
         The nominal value of this array.

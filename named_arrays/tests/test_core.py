@@ -200,13 +200,6 @@ class AbstractTestAbstractArray(
     def test_scalar(self, array: na.AbstractArray):
         assert isinstance(array.scalar, na.AbstractScalar)
 
-    def test_components(self, array: na.AbstractArray):
-        components = array.components
-        assert isinstance(components, dict)
-        for component in components:
-            assert isinstance(component, str)
-            assert isinstance(components[component], (int, float, complex, np.ndarray, na.AbstractArray))
-
     def test_nominal(self, array: na.AbstractArray):
         assert isinstance(array.nominal, na.AbstractArray)
 
