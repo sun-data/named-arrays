@@ -230,13 +230,6 @@ class AbstractTestAbstractArray(
             with pytest.raises(u.UnitConversionError):
                 array.to(unit)
 
-    def test_broadcasted(self, array: na.AbstractArray):
-        array_broadcasted = array.broadcasted
-        shape = array.shape
-        components = array_broadcasted.components
-        for component in components:
-            assert components[component].shape == shape
-
     def test_length(self, array: na.AbstractArray):
         if np.issubdtype(array.dtype, np.number):
             assert isinstance(array.length, na.AbstractScalar)

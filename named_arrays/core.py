@@ -381,10 +381,6 @@ class AbstractArray(
         """
 
     @property
-    def broadcasted(self: Self) -> Self:
-        return self.broadcast_to(self.shape)
-
-    @property
     @abc.abstractmethod
     def length(self: Self) -> named_arrays.scalars.AbstractScalar:
         """
