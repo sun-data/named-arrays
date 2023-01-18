@@ -129,6 +129,9 @@ class AbstractTestAbstractScalar(
 class AbstractTestAbstractScalarArray(
     AbstractTestAbstractScalar,
 ):
+    def test_axes(self, array: na.AbstractArray):
+        super().test_axes(array)
+        assert len(array.axes) == np.ndim(array.ndarray)
 
     @pytest.mark.parametrize(
         argnames='item',
