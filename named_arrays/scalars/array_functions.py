@@ -331,6 +331,9 @@ def stack(
         arrays: Sequence[bool | int | float | complex | str | u.Quantity | na.AbstractScalarArray],
         axis: str,
         out: None | na.ScalarArray = None,
+        *,
+        dtype: str | np.dtype | Type = None,
+        casting: str = "same_kind",
 ) -> na.ScalarArray:
     arrays = [na.ScalarArray(arr) if not isinstance(arr, na.AbstractArray) else arr for arr in arrays]
     for array in arrays:
@@ -348,7 +351,9 @@ def stack(
         np.stack(
             arrays=arrays,
             axis=axis_ndarray,
-            out=out.transpose(axes_new).ndarray
+            out=out.transpose(axes_new).ndarray,
+            dtype=dtype,
+            casting=casting
         )
         return out
     else:
@@ -356,7 +361,9 @@ def stack(
             ndarray=np.stack(
                 arrays=arrays,
                 axis=axis_ndarray,
-                out=out
+                out=out,
+                dtype=dtype,
+                casting=casting,
             ),
             axes=axes_new,
         )
