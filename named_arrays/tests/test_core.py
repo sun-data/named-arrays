@@ -173,7 +173,7 @@ class AbstractTestAbstractArray(
         assert isinstance(size, int)
 
     def test_dtype(self, array: na.AbstractArray):
-        assert array.dtype is not None
+        assert isinstance(array.dtype, np.dtype)
 
     def test_unit(self, array: na.AbstractArray):
         unit = array.unit
