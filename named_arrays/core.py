@@ -343,7 +343,7 @@ class AbstractArray(
     @abc.abstractmethod
     def astype(
             self: Self,
-            dtype: Type,
+            dtype: str | np.dtype | Type,
             order: str = 'K',
             casting='unsafe',
             subok: bool = True,
