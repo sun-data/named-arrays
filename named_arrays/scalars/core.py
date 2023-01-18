@@ -573,6 +573,10 @@ class ScalarArray(
         )
 
     @property
+    def dtype(self: Self) -> np.dtype:
+        return na.get_dtype(self.ndarray)
+
+    @property
     def array(self: Self) -> Self:
         return self
 

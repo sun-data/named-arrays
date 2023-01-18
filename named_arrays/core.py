@@ -815,10 +815,6 @@ class AbstractExplicitArray(
         return result
 
     @property
-    def dtype(self: Self) -> npt.DTypeLike:
-        return self.ndarray_normalized.dtype
-
-    @property
     def unit(self: Self) -> None | u.Unit:
         if isinstance(self.ndarray, (u.Quantity, AbstractArray)):
             return self.ndarray.unit
