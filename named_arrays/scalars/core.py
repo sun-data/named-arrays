@@ -92,7 +92,7 @@ class AbstractScalarArray(
 
     def astype(
             self: Self,
-            dtype: npt.DTypeLike,
+            dtype: str | np.dtype | Type,
             order: str = 'K',
             casting='unsafe',
             subok: bool = True,
