@@ -14,8 +14,6 @@ import numpy as np
 import numpy.typing as npt
 import astropy.units as u
 
-import named_arrays as na
-
 __all__ = [
     'QuantityLike',
     'get_dtype',
@@ -327,21 +325,6 @@ class AbstractArray(
         The vector components of this array expressed as a :class:`dict` where the keys are the names of the component.
         """
         return dict()
-
-    @property
-    def components_normalized(self: Self) -> dict[str, AbstractArray]:
-        """
-        A version of :attr:`components` where every value is guaranteed to be an instance of
-        :class:`named_arrays.AbstractArray`.
-        """
-        components = self.components
-        result = dict()
-        for c in components:
-            if not isinstance(components[c], AbstractArray):
-                result[c] = na.ScalarArray(components[c])
-            else:
-                result[c] = components[c]
-        return result
 
     @property
     @abc.abstractmethod
