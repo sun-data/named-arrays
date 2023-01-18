@@ -51,7 +51,7 @@ QuantityLike = Union[int, float, complex, np.ndarray, u.Quantity]
 
 def get_dtype(
         value: bool | int | float | complex | str | np.ndarray | AbstractArray,
-) -> Type:
+) -> np.dtype:
     """
     Get the equivalent :attr:`numpy.ndarray.dtype` of the argument.
 
