@@ -91,7 +91,7 @@ def unit_normalized(
     result = unit(value)
     if result is None:
         return u.dimensionless_unscaled
-    elif isinstance(result, u.UnitBase):
+    elif isinstance(result, dict):
         return {c: u.dimensionless_unscaled if result[c] is None else result[c] for c in result}
     else:
         return result
