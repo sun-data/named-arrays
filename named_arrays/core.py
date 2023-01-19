@@ -264,7 +264,7 @@ class AbstractArray(
         """
 
     @property
-    def unit_normalized(self: Self) -> u.Unit:
+    def unit_normalized(self: Self) -> u.UnitBase | dict[str, u.UnitBase]:
         """
         Similar to :attr:`unit` but returns :attr:`astropy.units.dimensionless_unscaled` if :attr:`ndarray` is not an
         instance of :class:`astropy.units.Quantity`.
