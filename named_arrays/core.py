@@ -215,17 +215,6 @@ class AbstractArray(
         """
 
     @property
-    def ndarray_normalized(self: Self) -> np.ndarray:
-        """
-        Similar to :attr:`ndarray` but guaranteed to be an instance of
-        :class:`numpy.ndarray`.
-        """
-        ndarray = self.ndarray
-        if not isinstance(ndarray, np.ndarray):
-            ndarray = np.array(ndarray)
-        return ndarray
-
-    @property
     @abc.abstractmethod
     def axes(self: Self) -> tuple[str, ...]:
         """
