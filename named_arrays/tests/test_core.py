@@ -143,9 +143,6 @@ class AbstractTestAbstractArray(
         for ax in axis_normalized:
             assert isinstance(ax, str)
 
-    def test_ndarray(self, array: na.AbstractArray):
-        assert isinstance(array.ndarray, (int, float, complex, str, np.ndarray))
-
     def test_axes(self, array: na.AbstractArray):
         axes = array.axes
         assert isinstance(axes, tuple)

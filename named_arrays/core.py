@@ -206,16 +206,6 @@ class AbstractArray(
 
     @property
     @abc.abstractmethod
-    def ndarray(self: Self) -> bool | int | float | complex | str | np.ndarray | u.Quantity:
-        """
-        Underlying data that is wrapped by this class.
-
-        This is usually an instance of :class:`numpy.ndarray` or :class:`astropy.units.Quantity`, but it can also be a
-        built-in python type such as a :class:`int`, :class:`float`, or :class:`bool`
-        """
-
-    @property
-    @abc.abstractmethod
     def axes(self: Self) -> tuple[str, ...]:
         """
         A :class:`tuple` of :class:`str` representing the names of each dimension of :attr:`ndarray`.
@@ -777,10 +767,6 @@ class AbstractImplicitArray(
     @property
     def dtype(self: Self) -> npt.DTypeLike:
         return self.array.dtype
-
-    @property
-    def ndarray(self: Self) -> QuantityLike:
-        return self.array.ndarray
 
     @property
     def ndim(self: Self) -> int:
