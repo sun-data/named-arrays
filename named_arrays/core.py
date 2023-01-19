@@ -787,10 +787,6 @@ class AbstractExplicitArray(
         """
 
     @property
-    def ndim(self: Self) -> int:
-        return np.ndim(self.ndarray)
-
-    @property
     def size(self: Self) -> int:
         return np.size(self.ndarray)
 

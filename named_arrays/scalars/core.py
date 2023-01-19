@@ -577,6 +577,10 @@ class ScalarArray(
         return {ax: sz for (ax, sz) in zip(self.axes, np.shape(self.ndarray), strict=True)}
 
     @property
+    def ndim(self: Self) -> int:
+        return np.ndim(self.ndarray)
+
+    @property
     def dtype(self: Self) -> np.dtype:
         return na.get_dtype(self.ndarray)
 
