@@ -795,15 +795,6 @@ class AbstractExplicitArray(
         return np.size(self.ndarray)
 
     @property
-    def shape(self: Self) -> dict[str, int]:
-        ndarray = self.ndarray
-        axes = self.axes
-        result = dict()
-        for i in range(self.ndim):
-            result[axes[i]] = ndarray.shape[i]
-        return result
-
-    @property
     def unit(self: Self) -> None | u.Unit:
         if isinstance(self.ndarray, (u.Quantity, AbstractArray)):
             return self.ndarray.unit

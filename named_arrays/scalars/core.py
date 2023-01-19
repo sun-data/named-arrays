@@ -573,6 +573,10 @@ class ScalarArray(
         )
 
     @property
+    def shape(self: Self) -> dict[str, int]:
+        return {ax: sz for (ax, sz) in zip(self.axes, np.shape(self.ndarray), strict=True)}
+
+    @property
     def dtype(self: Self) -> np.dtype:
         return na.get_dtype(self.ndarray)
 
