@@ -87,7 +87,7 @@ def unit(
 
 def unit_normalized(
         value: float | complex | np.ndarray | u.UnitBase | dict[str, None | u.UnitBase] | u.Quantity | AbstractArray
-) -> u.UnitBase:
+) -> u.UnitBase | dict[str, u.UnitBase]:
     result = unit(value)
     if result is None:
         return u.dimensionless_unscaled
