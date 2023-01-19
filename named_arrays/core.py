@@ -255,7 +255,7 @@ class AbstractArray(
 
     @property
     @abc.abstractmethod
-    def unit(self: Self) -> None | u.UnitBase:
+    def unit(self: Self) -> None | u.UnitBase | dict[str, None | u.UnitBase]:
         """
         Unit associated with the array.
 
