@@ -174,7 +174,7 @@ class AbstractTestAbstractArray(
 
     @abc.abstractmethod
     def test_unit(self, array: na.AbstractArray):
-        pass
+        assert array.unit == array.array.unit
 
     @abc.abstractmethod
     def test_unit_normalized(self, array: na.AbstractArray):
