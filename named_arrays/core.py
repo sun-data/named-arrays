@@ -86,11 +86,13 @@ def unit(
 
 
 def unit_normalized(
-        value: bool | int | float | complex | str | np.ndarray | u.Quantity | AbstractArray
+        value: float | complex | np.ndarray | u.UnitBase | dict[str, None | u.UnitBase] | u.Quantity | AbstractArray
 ) -> u.UnitBase:
     result = unit(value)
     if result is None:
         return u.dimensionless_unscaled
+    elif isinstance(result, u.UnitBase):
+        return {c: u.dimensionless_unscaled if result[c] is None else result[c] for c in result}
     else:
         return result
 
