@@ -99,7 +99,7 @@ class AbstractScalarArray(
             copy: bool = True,
     ) -> ScalarArray:
         return ScalarArray(
-            ndarray=self.ndarray_normalized.astype(
+            ndarray=np.asanyarray(self.ndarray).astype(
                 dtype=dtype,
                 order=order,
                 casting=casting,
