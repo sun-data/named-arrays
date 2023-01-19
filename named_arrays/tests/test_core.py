@@ -172,10 +172,9 @@ class AbstractTestAbstractArray(
     def test_dtype(self, array: na.AbstractArray):
         assert isinstance(array.dtype, np.dtype)
 
+    @abc.abstractmethod
     def test_unit(self, array: na.AbstractArray):
-        unit = array.unit
-        if unit is not None:
-            assert isinstance(array.unit, u.UnitBase)
+        pass
 
     def test_unit_normalized(self, array: na.AbstractArray):
         if array.unit is None:

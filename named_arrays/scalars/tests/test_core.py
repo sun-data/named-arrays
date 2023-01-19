@@ -62,6 +62,11 @@ class AbstractTestAbstractScalar(
     def test_ndarray(self, array: na.AbstractArray):
         assert isinstance(array.ndarray, (int, float, complex, str, np.ndarray))
 
+    def test_unit(self, array: na.AbstractScalar):
+        unit = array.unit
+        if unit is not None:
+            assert isinstance(unit, u.UnitBase)
+
     @pytest.mark.parametrize(
         argnames='shape',
         argvalues=[
