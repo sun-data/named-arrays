@@ -302,13 +302,6 @@ class AbstractArray(
 
     @property
     @abc.abstractmethod
-    def scalar(self: Self) -> named_arrays.scalars.AbstractScalar:
-        """
-        Converts this array to an instance of :class:`named_arrays.AbstractScalar`
-        """
-
-    @property
-    @abc.abstractmethod
     def nominal(self: Self) -> AbstractArray:
         """
         The nominal value of this array.

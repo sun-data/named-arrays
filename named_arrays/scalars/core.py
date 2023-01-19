@@ -50,9 +50,6 @@ def as_named_array(value: bool | int | float | complex | str | u.Quantity | na.A
 class AbstractScalar(
     na.AbstractArray,
 ):
-    @property
-    def scalar(self: Self) -> Self:
-        return self
 
     @property
     def length(self) -> AbstractScalar:
