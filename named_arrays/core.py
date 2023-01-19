@@ -309,13 +309,6 @@ class AbstractArray(
 
     @property
     @abc.abstractmethod
-    def distribution(self: Self) -> None | AbstractArray:
-        """
-        The distribution of values of this array.
-        """
-
-    @property
-    @abc.abstractmethod
     def centers(self: Self) -> AbstractArray:
         """
         The central value for this array. Usually returns this array unless an instance of

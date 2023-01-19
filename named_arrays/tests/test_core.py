@@ -200,9 +200,6 @@ class AbstractTestAbstractArray(
     def test_nominal(self, array: na.AbstractArray):
         assert isinstance(array.nominal, na.AbstractArray)
 
-    def test_distribution(self, array: na.AbstractArray):
-        assert isinstance(array.distribution, na.AbstractArray) or array.distribution is None
-
     def test_centers(self, array: na.AbstractArray):
         assert isinstance(array.centers, na.AbstractArray)
 

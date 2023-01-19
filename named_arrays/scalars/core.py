@@ -83,10 +83,6 @@ class AbstractScalarArray(
     def nominal(self: Self) -> Self:
         return self
 
-    @property
-    def distribution(self: Self) -> None:
-        return None
-
     def astype(
             self: Self,
             dtype: str | np.dtype | Type,
