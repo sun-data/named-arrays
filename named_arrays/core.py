@@ -787,10 +787,6 @@ class AbstractExplicitArray(
         """
 
     @property
-    def size(self: Self) -> int:
-        return np.size(self.ndarray)
-
-    @property
     def unit(self: Self) -> None | u.Unit:
         if isinstance(self.ndarray, (u.Quantity, AbstractArray)):
             return self.ndarray.unit

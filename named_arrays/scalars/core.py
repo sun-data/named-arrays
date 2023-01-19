@@ -581,6 +581,10 @@ class ScalarArray(
         return np.ndim(self.ndarray)
 
     @property
+    def size(self: Self) -> int:
+        return np.size(self.ndarray)
+
+    @property
     def dtype(self: Self) -> np.dtype:
         return na.get_dtype(self.ndarray)
 
