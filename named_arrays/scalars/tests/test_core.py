@@ -67,6 +67,13 @@ class AbstractTestAbstractScalar(
         if unit is not None:
             assert isinstance(unit, u.UnitBase)
 
+    def test_unit_normalized(self, array: na.AbstractScalar):
+        super().test_unit_normalized(array)
+        if array.unit is None:
+            assert array.unit_normalized == u.dimensionless_unscaled
+        else:
+            assert array.unit_normalized == array.unit
+
     @pytest.mark.parametrize(
         argnames='shape',
         argvalues=[
