@@ -79,10 +79,6 @@ class AbstractScalarArray(
     def type_array_abstract(self: Self) -> Type[AbstractScalarArray]:
         return AbstractScalarArray
 
-    @property
-    def nominal(self: Self) -> Self:
-        return self
-
     def astype(
             self: Self,
             dtype: str | np.dtype | Type,

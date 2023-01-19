@@ -302,13 +302,6 @@ class AbstractArray(
 
     @property
     @abc.abstractmethod
-    def nominal(self: Self) -> AbstractArray:
-        """
-        The nominal value of this array.
-        """
-
-    @property
-    @abc.abstractmethod
     def centers(self: Self) -> AbstractArray:
         """
         The central value for this array. Usually returns this array unless an instance of
