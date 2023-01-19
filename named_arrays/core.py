@@ -76,7 +76,7 @@ def get_dtype(
 
 def unit(
         value: float | complex | np.ndarray | u.UnitBase | dict[str, None | u.UnitBase] | u.Quantity | AbstractArray
-) -> None | u.UnitBase:
+) -> None | u.UnitBase | dict[str, None | u.UnitBase]:
     if isinstance(value, (u.UnitBase, dict)):
         return value
     elif isinstance(value, (u.Quantity, AbstractArray)):
