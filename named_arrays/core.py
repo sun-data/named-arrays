@@ -786,13 +786,6 @@ class AbstractExplicitArray(
             A new array of ones with the specified shape and data type
         """
 
-    @property
-    def unit(self: Self) -> None | u.Unit:
-        if isinstance(self.ndarray, (u.Quantity, AbstractArray)):
-            return self.ndarray.unit
-        else:
-            return None
-
 
 @dataclasses.dataclass(eq=False)
 class AbstractImplicitArray(

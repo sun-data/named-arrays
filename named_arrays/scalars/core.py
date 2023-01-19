@@ -589,6 +589,10 @@ class ScalarArray(
         return na.get_dtype(self.ndarray)
 
     @property
+    def unit(self: Self) -> None | u.UnitBase:
+        return na.unit(self.ndarray)
+
+    @property
     def array(self: Self) -> Self:
         return self
 
