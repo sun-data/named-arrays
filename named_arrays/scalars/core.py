@@ -199,6 +199,69 @@ class AbstractScalarArray(
             axes=tuple(axes_new),
         )
 
+    def _getitem(
+            self: Self,
+            item: dict[str, int | slice | AbstractScalarArray] | AbstractScalarArray,
+    ):
+
+        if isinstance(item, AbstractScalarArray):
+            value = np.moveaxis(
+                a=self.ndarray,
+                source=[self.axes.index(axis) for axis in item.axes],
+                destination=np.arange(len(item.axes)),
+            )
+
+            return ScalarArray(
+                ndarray=np.moveaxis(value[item.ndarray], 0, ~0),
+                axes=tuple(axis for axis in self.axes if axis not in item.axes) + ('boolean', )
+            )
+
+        elif isinstance(item, dict):
+            axes = self.axes
+            item_advanced = dict()      # type: typ.Dict[str, AbstractScalarArray]
+            for axis in item:
+                item_axis = item[axis]
+                if isinstance(item_axis, na.AbstractArray):
+                    if isinstance(item_axis, AbstractScalarArray):
+                        item_advanced[axis] = item_axis
+                    else:
+                        return NotImplemented
+
+            shape_advanced = na.shape_broadcasted(*item_advanced.values())
+
+            ndarray_organized = np.moveaxis(
+                self.ndarray,
+                source=tuple(axes.index(ax) for ax in item_advanced),
+                destination=tuple(range(len(item_advanced))),
+            )
+
+            axes_organized = list(item_advanced.keys()) + list(ax for ax in axes if ax not in item_advanced)
+
+            axes_new = axes_organized.copy()
+            index = [slice(None)] * self.ndim   # type: list[int | slice | AbstractScalar]
+            for ax in item:
+                item_axis = item[ax]
+                if ax in item_advanced:
+                    item_axis = item_axis.ndarray_aligned(shape_advanced)
+                index[axes_organized.index(ax)] = item_axis
+                if not isinstance(item_axis, slice):
+                    axes_new.remove(ax)
+
+            return ScalarArray(
+                ndarray=ndarray_organized[tuple(index)],
+                axes=tuple(shape_advanced.keys()) + tuple(axes_new),
+            )
+
+        else:
+            return NotImplemented
+
+    def _getitem_reversed(
+            self: Self,
+            array: AbstractScalarArray,
+            item: dict[str, int | slice | na.AbstractArray] | na.AbstractArray,
+    ):
+        return NotImplemented
+
     def __bool__(self: Self) -> bool:
         return super().__bool__() and self.ndarray.__bool__()
 
@@ -305,69 +368,6 @@ class AbstractScalarArray(
         if func in array_functions.HANDLED_FUNCTIONS:
             return array_functions.HANDLED_FUNCTIONS[func](*args, **kwargs)
 
-        return NotImplemented
-
-    def _getitem(
-            self: Self,
-            item: dict[str, int | slice | AbstractScalarArray] | AbstractScalarArray,
-    ):
-
-        if isinstance(item, AbstractScalarArray):
-            value = np.moveaxis(
-                a=self.ndarray,
-                source=[self.axes.index(axis) for axis in item.axes],
-                destination=np.arange(len(item.axes)),
-            )
-
-            return ScalarArray(
-                ndarray=np.moveaxis(value[item.ndarray], 0, ~0),
-                axes=tuple(axis for axis in self.axes if axis not in item.axes) + ('boolean', )
-            )
-
-        elif isinstance(item, dict):
-            axes = self.axes
-            item_advanced = dict()      # type: typ.Dict[str, AbstractScalarArray]
-            for axis in item:
-                item_axis = item[axis]
-                if isinstance(item_axis, na.AbstractArray):
-                    if isinstance(item_axis, AbstractScalarArray):
-                        item_advanced[axis] = item_axis
-                    else:
-                        return NotImplemented
-
-            shape_advanced = na.shape_broadcasted(*item_advanced.values())
-
-            ndarray_organized = np.moveaxis(
-                self.ndarray,
-                source=tuple(axes.index(ax) for ax in item_advanced),
-                destination=tuple(range(len(item_advanced))),
-            )
-
-            axes_organized = list(item_advanced.keys()) + list(ax for ax in axes if ax not in item_advanced)
-
-            axes_new = axes_organized.copy()
-            index = [slice(None)] * self.ndim   # type: list[int | slice | AbstractScalar]
-            for ax in item:
-                item_axis = item[ax]
-                if ax in item_advanced:
-                    item_axis = item_axis.ndarray_aligned(shape_advanced)
-                index[axes_organized.index(ax)] = item_axis
-                if not isinstance(item_axis, slice):
-                    axes_new.remove(ax)
-
-            return ScalarArray(
-                ndarray=ndarray_organized[tuple(index)],
-                axes=tuple(shape_advanced.keys()) + tuple(axes_new),
-            )
-
-        else:
-            return NotImplemented
-
-    def _getitem_reversed(
-            self: Self,
-            array: AbstractScalarArray,
-            item: dict[str, int | slice | na.AbstractArray] | na.AbstractArray,
-    ):
         return NotImplemented
 
     def matrix_multiply(
