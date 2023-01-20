@@ -59,7 +59,7 @@ class AbstractTestAbstractScalar(
     tests.test_core.AbstractTestAbstractArray,
 ):
 
-    def test_ndarray(self, array: na.AbstractArray):
+    def test_ndarray(self, array: na.AbstractScalar):
         assert isinstance(array.ndarray, (int, float, complex, str, np.ndarray))
 
     def test_unit(self, array: na.AbstractScalar):
