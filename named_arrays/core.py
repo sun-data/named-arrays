@@ -767,7 +767,7 @@ class AbstractImplicitArray(
         return self.array.axes
 
     @property
-    def dtype(self: Self) -> npt.DTypeLike:
+    def dtype(self: Self) -> np.dtype | dict[str, np.dtype]:
         return self.array.dtype
 
     @property
