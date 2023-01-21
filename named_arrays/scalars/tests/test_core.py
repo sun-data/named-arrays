@@ -190,17 +190,6 @@ class AbstractTestAbstractScalarArray(
     ):
 
         @pytest.mark.parametrize(
-            argnames='axes',
-            argvalues=[
-                None,
-                ['x', 'y'],
-                ['y', 'x'],
-            ],
-        )
-        def test_transpose(self, array: na.AbstractArray, axes: None | Sequence[str]):
-            super().test_transpose(array=array, axes=axes)
-
-        @pytest.mark.parametrize(
             argnames='source,destination',
             argvalues=[
                 ['y', 'y2'],

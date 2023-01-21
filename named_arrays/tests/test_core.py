@@ -659,8 +659,16 @@ class AbstractTestAbstractArray(
         def test_shape(self, array: na.AbstractArray):
             assert np.shape(array) == array.shape
 
+        @pytest.mark.parametrize(
+            argnames='axes',
+            argvalues=[
+                None,
+                ['x', 'y'],
+                ['y', 'x'],
+            ],
+        )
         def test_transpose(self, array: na.AbstractArray, axes: None | Sequence[str]):
-            axes_normalized = tuple(reversed(array.axes)) if axes is None else axes
+            axes_normalized = tuple(reversed(array.axes) if axes is None else axes)
             result = np.transpose(
                 a=array,
                 axes=axes
