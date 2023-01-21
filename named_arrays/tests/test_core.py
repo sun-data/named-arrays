@@ -8,9 +8,9 @@ import astropy.units as u
 import astropy.units.quantity_helper.helpers as quantity_helpers
 import named_arrays as na
 
-num_x = 1
-num_y = 2
-num_z = 3
+num_x = 11
+num_y = 12
+num_z = 13
 
 
 def _normalize_shape(shape: dict[str, None | int]) -> dict[str, int]:
@@ -645,6 +645,13 @@ class AbstractTestAbstractArray(
 
     class TestArrayFunctions:
 
+        @pytest.mark.parametrize(
+            argnames='shape',
+            argvalues=[
+                dict(x=num_x, y=num_y),
+                dict(x=num_x, y=num_y, z=num_z),
+            ]
+        )
         def test_broadcast_to(self, array: na.AbstractArray, shape: dict[str, int]):
             result = np.broadcast_to(array, shape=shape)
             assert result.shape == shape
