@@ -294,10 +294,9 @@ def moveaxis(
 
     axes = list(a.axes)
 
-    types_sequence = (list, tuple,)
-    if not isinstance(source, types_sequence):
+    if isinstance(source, str):
         source = (source,)
-    if not isinstance(destination, types_sequence):
+    if isinstance(destination, str):
         destination = (destination,)
 
     for src, dest in zip(source, destination):
