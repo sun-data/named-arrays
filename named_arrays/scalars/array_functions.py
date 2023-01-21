@@ -275,7 +275,7 @@ def transpose(
 
     if axes is not None:
         a = a.add_axes(axes)
-    axes = tuple(reversed(a.axes)) if axes is None else axes
+    axes = tuple(reversed(a.axes) if axes is None else axes)
     return na.ScalarArray(
         ndarray=np.transpose(
             a=a.ndarray,
