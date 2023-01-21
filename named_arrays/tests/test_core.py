@@ -686,7 +686,7 @@ class AbstractTestAbstractArray(
             destination_normalized = (destination, ) if isinstance(destination, str) else destination
 
             if any(ax not in array.axes for ax in source_normalized):
-                with pytest.raises(ValueError, match=r"source axis .* not in array axes .*"):
+                with pytest.raises(ValueError, match=r"source axes .* not in array axes .*"):
                     np.moveaxis(a=array, source=source, destination=destination)
                 return
 

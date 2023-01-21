@@ -299,9 +299,11 @@ def moveaxis(
     if isinstance(destination, str):
         destination = (destination,)
 
+    set_axis_diff = set(source) - set(axes)
+    if set_axis_diff:
+        raise ValueError(f"source axes {tuple(set_axis_diff)} not in array axes {axes}")
+
     for src, dest in zip(source, destination):
-        if src not in axes:
-            raise ValueError(f"source axis {src} not in array axes {a.axes}")
         axes[axes.index(src)] = dest
 
     return na.ScalarArray(
