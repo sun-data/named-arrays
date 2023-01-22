@@ -676,6 +676,13 @@ class AbstractTestAbstractArray(
             assert result.axes == axes_normalized
             assert {ax: result.shape[ax] for ax in result.shape if ax in array.axes} == array.shape
 
+        @pytest.mark.parametrize(
+            argnames='source,destination',
+            argvalues=[
+                ['y', 'y2'],
+                [('x', 'y'), ('x2', 'y2')],
+            ]
+        )
         def test_moveaxis(
                 self,
                 array: na.AbstractArray,

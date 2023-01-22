@@ -189,21 +189,6 @@ class AbstractTestAbstractScalarArray(
         AbstractTestAbstractScalar.TestArrayFunctions,
     ):
 
-        @pytest.mark.parametrize(
-            argnames='source,destination',
-            argvalues=[
-                ['y', 'y2'],
-                [('x', 'y'), ('x2', 'y2')],
-            ]
-        )
-        def test_moveaxis(
-                self,
-                array: na.AbstractArray,
-                source: str | Sequence[str],
-                destination: str | Sequence[str],
-        ):
-            super().test_moveaxis(array=array, source=source, destination=destination)
-
         @pytest.mark.parametrize('newshape', [dict(r=-1)])
         def test_reshape(self, array: na.AbstractArray, newshape: dict[str, int]):
             super().test_reshape(array=array, newshape=newshape)
