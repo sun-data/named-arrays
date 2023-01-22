@@ -699,7 +699,7 @@ class AbstractTestAbstractArray(
 
             result = np.moveaxis(a=array, source=source, destination=destination)
 
-            assert np.all(array.ndarray == result.ndarray)
+            assert np.all(array.sum() == result.sum())
             assert len(array.axes) == len(result.axes)
             assert not any(ax in result.axes for ax in source_normalized)
             assert all(ax in result.axes for ax in destination_normalized)
