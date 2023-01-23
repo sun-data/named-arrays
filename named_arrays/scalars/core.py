@@ -565,7 +565,7 @@ class ScalarArray(
         )
 
     @classmethod
-    def ones(cls: Type[Self], shape: dict[str, int], dtype: Type = float) -> Self:
+    def ones(cls: Type[Self], shape: dict[str, int], dtype: Type | np.dtype = float) -> Self:
         return cls(
             ndarray=np.ones(shape=tuple(shape.values()), dtype=dtype),
             axes=tuple(shape.keys()),
