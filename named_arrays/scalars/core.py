@@ -551,7 +551,7 @@ class ScalarArray(
             raise ValueError(f'Each axis name must be unique, got {self.axes}.')
 
     @classmethod
-    def empty(cls: Type[Self], shape: dict[str, int], dtype: Type = float) -> Self:
+    def empty(cls: Type[Self], shape: dict[str, int], dtype: Type | np.dtype = float) -> Self:
         return cls(
             ndarray=np.empty(shape=tuple(shape.values()), dtype=dtype),
             axes=tuple(shape.keys()),
