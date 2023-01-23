@@ -189,10 +189,6 @@ class AbstractTestAbstractScalarArray(
         AbstractTestAbstractScalar.TestArrayFunctions,
     ):
 
-        @pytest.mark.parametrize('newshape', [dict(r=-1)])
-        def test_reshape(self, array: na.AbstractArray, newshape: dict[str, int]):
-            super().test_reshape(array=array, newshape=newshape)
-
         @pytest.mark.parametrize('axis', ['y', 'z'])
         @pytest.mark.parametrize('use_out', [False, True])
         def test_stack(

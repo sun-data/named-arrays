@@ -704,6 +704,7 @@ class AbstractTestAbstractArray(
             assert not any(ax in result.axes for ax in source_normalized)
             assert all(ax in result.axes for ax in destination_normalized)
 
+        @pytest.mark.parametrize('newshape', [dict(r=-1)])
         def test_reshape(self, array: na.AbstractArray, newshape: dict[str, int]):
 
             result = np.reshape(a=array, newshape=newshape)
