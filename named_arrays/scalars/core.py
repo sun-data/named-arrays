@@ -558,7 +558,7 @@ class ScalarArray(
         )
 
     @classmethod
-    def zeros(cls: Type[Self], shape: dict[str, int], dtype: Type = float) -> Self:
+    def zeros(cls: Type[Self], shape: dict[str, int], dtype: Type | np.dtype = float) -> Self:
         return cls(
             ndarray=np.zeros(shape=tuple(shape.values()), dtype=dtype),
             axes=tuple(shape.keys()),
