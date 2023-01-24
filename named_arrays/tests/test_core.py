@@ -725,6 +725,8 @@ class AbstractTestAbstractArray(
             with pytest.raises(NotImplementedError):
                 np.linalg.inv(array)
 
+        @pytest.mark.parametrize('axis', ['y', 'z'])
+        @pytest.mark.parametrize('use_out', [False, True])
         def test_stack(
                 self,
                 array: na.AbstractArray,
