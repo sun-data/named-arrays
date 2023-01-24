@@ -149,6 +149,7 @@ class AbstractTestAbstractScalar(
         tests.test_core.AbstractTestAbstractArray.TestArrayFunctions
     ):
 
+        @pytest.mark.parametrize('axis', [None, 'x', 'y'])
         def test_sort(self, array: na.AbstractScalar, axis: None | str):
 
             super().test_sort(array=array, axis=axis)
@@ -209,10 +210,6 @@ class AbstractTestAbstractScalarArray(
     class TestArrayFunctions(
         AbstractTestAbstractScalar.TestArrayFunctions,
     ):
-
-        @pytest.mark.parametrize('axis', [None, 'x', 'y'])
-        def test_sort(self, array: na.AbstractScalarArray, axis: None | str):
-            super().test_sort(array=array, axis=axis)
 
         @pytest.mark.parametrize('axis', [None, 'x', 'y'])
         def test_argsort(self, array: na.AbstractScalarArray, axis: None | str):
