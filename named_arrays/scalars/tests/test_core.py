@@ -189,16 +189,6 @@ class AbstractTestAbstractScalarArray(
         AbstractTestAbstractScalar.TestArrayFunctions,
     ):
 
-        @pytest.mark.parametrize('axis', ['x', 'y'])
-        @pytest.mark.parametrize('use_out', [False, True])
-        def test_concatenate(
-                self,
-                array: na.AbstractArray,
-                axis: str,
-                use_out: bool,
-        ):
-            super().test_concatenate(array=array, axis=axis, use_out=use_out)
-
         @pytest.mark.parametrize('axis', [None, 'x', 'y'])
         def test_sort(self, array: na.AbstractScalarArray, axis: None | str):
             super().test_sort(array=array, axis=axis)

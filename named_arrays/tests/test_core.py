@@ -752,6 +752,8 @@ class AbstractTestAbstractArray(
             assert np.all(result[{axis: 0}] == array)
             assert np.all(result[{axis: 1}] == array)
 
+        @pytest.mark.parametrize('axis', ['x', 'y'])
+        @pytest.mark.parametrize('use_out', [False, True])
         def test_concatenate(
                 self,
                 array: na.AbstractArray,
@@ -766,7 +768,7 @@ class AbstractTestAbstractArray(
             shape_out[axis] = 2 * shape_out[axis]
 
             if use_out:
-                out = na.ScalarArray.empty(shape_out, dtype=array.dtype)
+                out = array.type_array.empty(shape_out, dtype=array.dtype)
                 if array.unit is not None:
                     out = out << array.unit
             else:
