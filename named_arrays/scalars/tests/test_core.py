@@ -145,6 +145,27 @@ class AbstractTestAbstractScalar(
                 array_2 = np.transpose(array_2)
             self.test_matmul(array_2, array, out=out)
 
+    class TestArrayFunctions(
+        tests.test_core.AbstractTestAbstractArray.TestArrayFunctions
+    ):
+
+        def test_sort(self, array: na.AbstractScalar, axis: None | str):
+
+            super().test_sort(array=array, axis=axis)
+
+            if axis is not None and axis not in array.axes:
+                with pytest.raises(ValueError, match="axis .* not in input array with axes .*"):
+                    np.sort(a=array, axis=axis)
+                return
+
+            result = np.sort(a=array, axis=axis)
+            result_ndarray = np.sort(
+                a=array.ndarray,
+                axis=array.axes.index(axis) if axis is not None else axis,
+            )
+
+            assert np.all(result.ndarray == result_ndarray)
+
 
 class AbstractTestAbstractScalarArray(
     AbstractTestAbstractScalar,
