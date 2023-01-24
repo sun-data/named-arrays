@@ -739,7 +739,7 @@ class AbstractTestAbstractArray(
                 return
 
             if use_out:
-                out = na.ScalarArray.empty({axis: len(arrays)} | array.shape, dtype=array.dtype)
+                out = array.type_array.empty({axis: len(arrays)} | array.shape, dtype=array.dtype)
                 if array.unit is not None:
                     out = out << array.unit
             else:
