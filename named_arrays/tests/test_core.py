@@ -1222,11 +1222,13 @@ class AbstractTestAbstractArray(
             self,
             array: na.AbstractArray,
     ):
-        if not np.issubdtype(array.dtype, bool):
-            assert np.all(array.ptp() == np.ptp(array))
-        else:
-            with pytest.raises(TypeError, match='numpy boolean subtract, .*'):
-                array.ptp()
+        if not isinstance(array.dtype, dict):
+            if np.issubdtype(array.dtype, bool):
+                with pytest.raises(TypeError, match='numpy boolean subtract, .*'):
+                    array.ptp()
+                return
+
+        assert np.all(array.ptp() == np.ptp(array))
 
     def test_mean(
             self,
