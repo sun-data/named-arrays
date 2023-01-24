@@ -747,8 +747,8 @@ class AbstractTestAbstractArray(
 
             result = np.stack(arrays=arrays, axis=axis, out=out)
 
-            assert np.all(result[{axis: 0}].ndarray == array.ndarray)
-            assert np.all(result[{axis: 1}].ndarray == array.ndarray)
+            assert np.all(result[{axis: 0}] == array)
+            assert np.all(result[{axis: 1}] == array)
 
         def test_concatenate(
                 self,
