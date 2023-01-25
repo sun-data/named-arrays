@@ -802,12 +802,13 @@ class AbstractTestAbstractArray(
 
             assert isinstance(result, dict)
 
+            array_broadcasted = array.broadcast_to(array.shape)
             if axis is not None:
-                sorted = array[result]
+                sorted = array_broadcasted[result]
             else:
-                sorted = array.reshape({array.axes_flattened: -1})[result]
+                sorted = array_broadcasted.reshape({array.axes_flattened: -1})[result]
 
-            sorted_expected = np.sort(array, axis=axis)
+            sorted_expected = np.sort(array_broadcasted, axis=axis)
 
             assert np.all(sorted == sorted_expected)
 
