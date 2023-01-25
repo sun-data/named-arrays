@@ -712,17 +712,6 @@ class AbstractTestAbstractArray(
             assert result.size == array.size
             assert result.axes == tuple(newshape.keys())
 
-        def test_unravel_index(self, array: na.AbstractArray):
-            indices_raveled = na.ScalarArrayRange(0, array.size, axis=array.axes_flattened).reshape(array.shape)
-            indices_raveled = indices_raveled * array.type_array.ones(shape=dict(), dtype=int)
-            result = np.unravel_index(
-                indices=indices_raveled,
-                shape=array.shape,
-            )
-            expected = array.indices
-            for ax in result:
-                assert np.all(result[ax] == expected[ax])
-
         def test_linalg_inv(self, array: na.AbstractArray):
             with pytest.raises(NotImplementedError):
                 np.linalg.inv(array)
@@ -813,6 +802,17 @@ class AbstractTestAbstractArray(
             sorted_expected = np.sort(array_broadcasted, axis=axis)
 
             assert np.all(sorted == sorted_expected)
+
+        def test_unravel_index(self, array: na.AbstractArray):
+            indices_raveled = na.ScalarArrayRange(0, array.size, axis=array.axes_flattened).reshape(array.shape)
+            indices_raveled = indices_raveled * array.type_array.ones(shape=dict(), dtype=int)
+            result = np.unravel_index(
+                indices=indices_raveled,
+                shape=array.shape,
+            )
+            expected = array.indices
+            for ax in result:
+                assert np.all(result[ax] == expected[ax])
 
         @pytest.mark.parametrize('array_2', ['copy', 'ones'])
         def test_array_equal(self, array: na.AbstractArray, array_2: str):
