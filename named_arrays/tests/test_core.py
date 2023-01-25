@@ -713,8 +713,10 @@ class AbstractTestAbstractArray(
             assert result.axes == tuple(newshape.keys())
 
         def test_unravel_index(self, array: na.AbstractArray):
+            indices_raveled = na.ScalarArrayRange(0, array.size, axis=array.axes_flattened).reshape(array.shape)
+            indices_raveled = indices_raveled * array.type_array.ones(shape=dict(), dtype=int)
             result = np.unravel_index(
-                indices=na.ScalarArrayRange(0, array.size, axis=array.axes_flattened).reshape(array.shape),
+                indices=indices_raveled,
                 shape=array.shape,
             )
             expected = array.indices
