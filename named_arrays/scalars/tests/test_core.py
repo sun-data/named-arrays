@@ -167,6 +167,20 @@ class AbstractTestAbstractScalar(
 
             assert np.all(result.ndarray == result_ndarray)
 
+        def test_nonzero(self, array: na.AbstractArray):
+            if not array.shape:
+                with pytest.raises(DeprecationWarning, match="Calling nonzero on 0d arrays is deprecated, .*"):
+                    np.nonzero(array)
+                return
+
+            result = np.nonzero(array)
+            expected = np.nonzero(array.ndarray)
+
+            for i, ax in enumerate(array.axes):
+                assert np.all(result[ax].ndarray == expected[i])
+                assert len(result[ax].axes) == 1
+                assert result[ax].axes[0] == f"{array.axes_flattened}_nonzero"
+
 
 class AbstractTestAbstractScalarArray(
     AbstractTestAbstractScalar,

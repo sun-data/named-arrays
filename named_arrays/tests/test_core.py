@@ -826,19 +826,9 @@ class AbstractTestAbstractArray(
 
             assert not np.array_equal(array, array_2)
 
+        @abc.abstractmethod
         def test_nonzero(self, array: na.AbstractArray):
-            if not array.shape:
-                with pytest.raises(DeprecationWarning, match="Calling nonzero on 0d arrays is deprecated, .*"):
-                    np.nonzero(array)
-                return
-
-            result = np.nonzero(array)
-            expected = np.nonzero(array.ndarray)
-
-            for i, ax in enumerate(array.axes):
-                assert np.all(result[ax].ndarray == expected[i])
-                assert len(result[ax].axes) == 1
-                assert result[ax].axes[0] == f"{array.axes_flattened}_nonzero"
+            pass
 
         def test_nan_to_num(self, array: na.AbstractArray, copy: bool):
 
