@@ -784,6 +784,7 @@ class AbstractTestAbstractArray(
         def test_sort(self, array: na.AbstractArray, axis: None | str):
             pass
 
+        @pytest.mark.parametrize('axis', [None, 'x', 'y'])
         def test_argsort(self, array: na.AbstractArray, axis: None | str):
 
             if axis is not None:
