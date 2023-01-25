@@ -814,11 +814,15 @@ class AbstractTestAbstractArray(
 
             assert np.all(sorted == sorted_expected)
 
-        def test_array_equal(self, array: na.AbstractArray, array_2: None | na.AbstractArray):
-            if array_2 is None:
+        @pytest.mark.parametrize('array_2', ['copy', 'ones'])
+        def test_array_equal(self, array: na.AbstractArray, array_2: str):
+            if array_2 == 'copy':
                 array_2 = array.copy()
                 assert np.array_equal(array, array_2)
                 return
+
+            elif array_2 == 'ones':
+                array_2 = array.type_array.ones(array.shape)
 
             assert not np.array_equal(array, array_2)
 

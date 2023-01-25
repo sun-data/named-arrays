@@ -211,10 +211,6 @@ class AbstractTestAbstractScalarArray(
         AbstractTestAbstractScalar.TestArrayFunctions,
     ):
 
-        @pytest.mark.parametrize('array_2', [None, 100 * na.ScalarArray.ones(shape=dict(x=_num_y))])
-        def test_array_equal(self, array: na.AbstractArray, array_2: None | na.AbstractArray):
-            super().test_array_equal(array, array_2)
-
         @pytest.mark.parametrize('copy', [False, True])
         def test_nan_to_num(self, array: na.AbstractArray, copy: bool):
             super().test_nan_to_num(array=array, copy=copy)
