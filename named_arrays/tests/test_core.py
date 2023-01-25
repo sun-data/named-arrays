@@ -830,20 +830,9 @@ class AbstractTestAbstractArray(
         def test_nonzero(self, array: na.AbstractArray):
             pass
 
+        @abc.abstractmethod
         def test_nan_to_num(self, array: na.AbstractArray, copy: bool):
-
-            if not copy and not isinstance(array, na.AbstractExplicitArray):
-                with pytest.raises(ValueError, match="can't write to an array .*"):
-                    np.nan_to_num(array, copy=copy)
-                return
-
-            result = np.nan_to_num(array, copy=copy)
-            expected = np.nan_to_num(array.ndarray, copy=copy)
-
-            if not copy:
-                assert result is array
-
-            assert np.all(result.ndarray == expected)
+            pass
 
         @pytest.mark.parametrize(
             argnames='func',

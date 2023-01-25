@@ -181,6 +181,24 @@ class AbstractTestAbstractScalar(
                 assert len(result[ax].axes) == 1
                 assert result[ax].axes[0] == f"{array.axes_flattened}_nonzero"
 
+        @pytest.mark.parametrize('copy', [False, True])
+        def test_nan_to_num(self, array: na.AbstractArray, copy: bool):
+
+            super().test_nan_to_num(array=array, copy=copy)
+
+            if not copy and not isinstance(array, na.AbstractExplicitArray):
+                with pytest.raises(ValueError, match="can't write to an array .*"):
+                    np.nan_to_num(array, copy=copy)
+                return
+
+            result = np.nan_to_num(array, copy=copy)
+            expected = np.nan_to_num(array.ndarray, copy=copy)
+
+            if not copy:
+                assert result is array
+
+            assert np.all(result.ndarray == expected)
+
 
 class AbstractTestAbstractScalarArray(
     AbstractTestAbstractScalar,
@@ -224,10 +242,6 @@ class AbstractTestAbstractScalarArray(
     class TestArrayFunctions(
         AbstractTestAbstractScalar.TestArrayFunctions,
     ):
-
-        @pytest.mark.parametrize('copy', [False, True])
-        def test_nan_to_num(self, array: na.AbstractArray, copy: bool):
-            super().test_nan_to_num(array=array, copy=copy)
 
         @pytest.mark.parametrize('axis', [None, 'y', 'x', ('x', 'y')])
         class TestReductionFunctions(
