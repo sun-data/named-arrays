@@ -508,8 +508,8 @@ def array_equal(
         equal_nan: bool = False,
 ) -> bool:
     return np.array_equal(
-        a1=a1.ndarray,
-        a2=a2.ndarray,
+        a1=na.as_named_array(a1).ndarray,
+        a2=na.as_named_array(a2).ndarray,
         equal_nan=equal_nan,
     )
 
