@@ -243,12 +243,6 @@ class AbstractTestAbstractScalarArray(
         AbstractTestAbstractScalar.TestArrayFunctions,
     ):
 
-        @pytest.mark.parametrize('axis', [None, 'y', 'x', ('x', 'y')])
-        class TestReductionFunctions(
-            AbstractTestAbstractScalar.TestArrayFunctions.TestReductionFunctions
-        ):
-            pass
-
         @pytest.mark.parametrize(
             argnames='q',
             argvalues=[

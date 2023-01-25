@@ -858,6 +858,7 @@ class AbstractTestAbstractArray(
             ]
         )
         @pytest.mark.parametrize('dtype', [None, float])
+        @pytest.mark.parametrize('axis', [None, 'y', 'x', ('x', 'y')])
         @pytest.mark.parametrize('out', [False, True])
         @pytest.mark.parametrize('keepdims', [False, True])
         @pytest.mark.parametrize('where', [False, True])
