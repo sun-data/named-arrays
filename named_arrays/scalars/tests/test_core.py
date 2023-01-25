@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Type, Sequence
+from typing import Type, Sequence, Callable
 import pytest
 import numpy as np
 import astropy.units as u
@@ -148,6 +148,98 @@ class AbstractTestAbstractScalar(
     class TestArrayFunctions(
         tests.test_core.AbstractTestAbstractArray.TestArrayFunctions
     ):
+
+        class TestReductionFunctions(
+            tests.test_core.AbstractTestAbstractArray.TestArrayFunctions.TestReductionFunctions
+        ):
+            def test_reduction_functions(
+                    self,
+                    func: Callable,
+                    array: na.AbstractScalar,
+                    axis: None | str | Sequence[str],
+                    dtype: Type,
+                    out: bool,
+                    keepdims: bool,
+                    where: bool,
+            ):
+                kwargs = dict()
+                kwargs_ndarray = dict()
+
+                axis_normalized = axis if axis is not None else array.axes
+                axis_normalized = (axis_normalized, ) if isinstance(axis_normalized, str) else axis_normalized
+                shape_result = {ax: 1 if ax in axis_normalized else array.shape[ax] for ax in reversed(array.shape)}
+
+                if dtype is not None:
+                    kwargs['dtype'] = dtype
+                    kwargs_ndarray['dtype'] = dtype
+
+                if keepdims:
+                    kwargs['keepdims'] = keepdims
+                    kwargs_ndarray['keepdims'] = keepdims
+                else:
+                    for ax in axis_normalized:
+                        if ax in shape_result:
+                            shape_result.pop(ax)
+
+                if out:
+                    kwargs['out'] = array.type_array.empty(shape_result)
+                    kwargs_ndarray['out'] = array.type_array.empty(shape_result).ndarray.transpose()
+                    if array.unit is not None:
+                        kwargs['out'] = kwargs['out'] << array.unit
+                        kwargs_ndarray['out'] = kwargs_ndarray['out'] << array.unit
+
+                if where:
+                    if array.shape:
+                        kwargs['where'] = na.ScalarArray(
+                            ndarray=np.random.choice([False, True], size=np.shape(array.ndarray)),
+                            axes=array.axes,
+                        )
+                        kwargs['where'][{ax: 0 for ax in axis_normalized if ax in kwargs['where'].axes}] = True
+                    else:
+                        kwargs['where'] = na.ScalarArray(True)
+                    kwargs_ndarray['where'] = kwargs['where'].ndarray
+                    if func in [np.min, np.nanmin, np.max, np.nanmax]:
+                        kwargs['initial'] = 0
+                        kwargs_ndarray['initial'] = kwargs['initial']
+
+                if dtype is not None:
+                    if func in [np.all, np.any, np.max, np.nanmax, np.min, np.nanmin, np.median, np.nanmedian]:
+                        with pytest.raises(
+                                expected_exception=TypeError,
+                                match=r".* got an unexpected keyword argument .*"
+                        ):
+                            func(array, axis=axis, **kwargs, )
+                        return
+
+                if array.unit is not None:
+                    if func in [np.all, np.any]:
+                        if 'where' in kwargs:
+                            kwargs.pop('where')
+                        with pytest.raises(
+                                expected_exception=TypeError,
+                                match=r"(no implementation found for *)|(cannot evaluate truth value of quantities. *)"
+                        ):
+                            func(array, axis=axis, **kwargs, )
+                        return
+
+                    if func in [np.prod, np.nanprod]:
+                        with pytest.raises(u.UnitsError):
+                            func(array, axis=axis, **kwargs, )
+                        return
+
+                if func in [np.median, np.nanmedian]:
+                    if where:
+                        with pytest.raises(TypeError, match=r".* got an unexpected keyword argument \'where\'"):
+                            func(array, axis=axis, **kwargs, )
+                        return
+
+                result = func(array, axis=axis, **kwargs, )
+                result_ndarray = func(
+                    array.ndarray,
+                    axis=tuple(array.axes.index(ax) for ax in axis_normalized if ax in array.axes),
+                    **kwargs_ndarray,
+                )
+                assert np.all(result.ndarray == result_ndarray)
 
         @pytest.mark.parametrize('axis', [None, 'x', 'y'])
         def test_sort(self, array: na.AbstractScalar, axis: None | str):
