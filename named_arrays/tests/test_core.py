@@ -643,7 +643,7 @@ class AbstractTestAbstractArray(
         ):
             pass
 
-    class TestArrayFunctions:
+    class TestArrayFunctions(abc.ABC):
 
         @pytest.mark.parametrize(
             argnames='shape',
