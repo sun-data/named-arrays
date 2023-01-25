@@ -535,4 +535,6 @@ def nan_to_num(
             axes=x.axes,
         )
     else:
+        if not isinstance(x, na.AbstractExplicitArray):
+            raise ValueError("can't write to an array that is not an instance of `named_array.AbstractExplictArray`")
         return x

@@ -832,6 +832,11 @@ class AbstractTestAbstractArray(
 
         def test_nan_to_num(self, array: na.AbstractArray, copy: bool):
 
+            if not copy and not isinstance(array, na.AbstractExplicitArray):
+                with pytest.raises(ValueError, match="can't write to an array .*"):
+                    np.nan_to_num(array, copy=copy)
+                return
+
             result = np.nan_to_num(array, copy=copy)
             expected = np.nan_to_num(array.ndarray, copy=copy)
 
