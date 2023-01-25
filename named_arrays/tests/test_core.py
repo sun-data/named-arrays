@@ -646,195 +646,6 @@ class AbstractTestAbstractArray(
     class TestArrayFunctions(abc.ABC):
 
         @pytest.mark.parametrize(
-            argnames='shape',
-            argvalues=[
-                dict(x=num_x, y=num_y),
-                dict(x=num_x, y=num_y, z=num_z),
-            ]
-        )
-        def test_broadcast_to(self, array: na.AbstractArray, shape: dict[str, int]):
-            result = np.broadcast_to(array, shape=shape)
-            assert result.shape == shape
-
-        def test_shape(self, array: na.AbstractArray):
-            assert np.shape(array) == array.shape
-
-        @pytest.mark.parametrize(
-            argnames='axes',
-            argvalues=[
-                None,
-                ['x', 'y'],
-                ['y', 'x'],
-            ],
-        )
-        def test_transpose(self, array: na.AbstractArray, axes: None | Sequence[str]):
-            axes_normalized = tuple(reversed(array.axes) if axes is None else axes)
-            result = np.transpose(
-                a=array,
-                axes=axes
-            )
-            assert result.axes == axes_normalized
-            assert {ax: result.shape[ax] for ax in result.shape if ax in array.axes} == array.shape
-
-        @pytest.mark.parametrize(
-            argnames='source,destination',
-            argvalues=[
-                ['y', 'y2'],
-                [('x', 'y'), ('x2', 'y2')],
-            ]
-        )
-        def test_moveaxis(
-                self,
-                array: na.AbstractArray,
-                source: str | Sequence[str],
-                destination: str | Sequence[str],
-        ):
-            source_normalized = (source, ) if isinstance(source, str) else source
-            destination_normalized = (destination, ) if isinstance(destination, str) else destination
-
-            if any(ax not in array.axes for ax in source_normalized):
-                with pytest.raises(ValueError, match=r"source axes .* not in array axes .*"):
-                    np.moveaxis(a=array, source=source, destination=destination)
-                return
-
-            result = np.moveaxis(a=array, source=source, destination=destination)
-
-            assert np.all(array.sum() == result.sum())
-            assert len(array.axes) == len(result.axes)
-            assert not any(ax in result.axes for ax in source_normalized)
-            assert all(ax in result.axes for ax in destination_normalized)
-
-        @pytest.mark.parametrize('newshape', [dict(r=-1)])
-        def test_reshape(self, array: na.AbstractArray, newshape: dict[str, int]):
-
-            result = np.reshape(a=array, newshape=newshape)
-
-            assert result.size == array.size
-            assert result.axes == tuple(newshape.keys())
-
-        def test_linalg_inv(self, array: na.AbstractArray):
-            with pytest.raises(NotImplementedError):
-                np.linalg.inv(array)
-
-        @pytest.mark.parametrize('axis', ['y', 'z'])
-        @pytest.mark.parametrize('use_out', [False, True])
-        def test_stack(
-                self,
-                array: na.AbstractArray,
-                axis: str,
-                use_out: bool,
-        ):
-            arrays = [array, array]
-
-            if axis in array.axes:
-                with pytest.raises(ValueError, match=r"axis .* already in array"):
-                    np.stack(arrays, axis=axis)
-                return
-
-            if use_out:
-                out = array.type_array.empty({axis: len(arrays)} | array.shape, dtype=array.dtype)
-                if array.unit is not None:
-                    out = out << array.unit
-            else:
-                out = None
-
-            result = np.stack(arrays=arrays, axis=axis, out=out)
-
-            assert np.all(result[{axis: 0}] == array)
-            assert np.all(result[{axis: 1}] == array)
-
-        @pytest.mark.parametrize('axis', ['x', 'y'])
-        @pytest.mark.parametrize('use_out', [False, True])
-        def test_concatenate(
-                self,
-                array: na.AbstractArray,
-                axis: str,
-                use_out: bool,
-        ):
-            arrays = [array, array]
-
-            shape_out = array.shape
-            if axis not in shape_out:
-                shape_out[axis] = 1
-            shape_out[axis] = 2 * shape_out[axis]
-
-            if use_out:
-                out = array.type_array.empty(shape_out, dtype=array.dtype)
-                if array.unit is not None:
-                    out = out << array.unit
-            else:
-                out = None
-
-            result = np.concatenate(arrays, axis=axis, out=out)
-
-            assert result.shape == shape_out
-            assert np.all(result[{axis: slice(None, shape_out[axis] // 2)}] == array)
-            assert np.all(result[{axis: slice(shape_out[axis] // 2, None)}] == array)
-
-        @abc.abstractmethod
-        def test_sort(self, array: na.AbstractArray, axis: None | str):
-            pass
-
-        @pytest.mark.parametrize('axis', [None, 'x', 'y'])
-        def test_argsort(self, array: na.AbstractArray, axis: None | str):
-
-            if axis is not None:
-                if axis not in array.axes:
-                    with pytest.raises(ValueError, match="axis .* not in input array with axes .*"):
-                        np.argsort(a=array, axis=axis)
-                    return
-            else:
-                if not array.shape:
-                    with pytest.raises(ValueError, match="sorting zero-dimensional arrays is not supported"):
-                        np.argsort(a=array, axis=axis)
-                    return
-
-            result = np.argsort(a=array, axis=axis)
-
-            assert isinstance(result, dict)
-
-            array_broadcasted = array.broadcast_to(array.shape)
-            if axis is not None:
-                sorted = array_broadcasted[result]
-            else:
-                sorted = array_broadcasted.reshape({array.axes_flattened: -1})[result]
-
-            sorted_expected = np.sort(array_broadcasted, axis=axis)
-
-            assert np.all(sorted == sorted_expected)
-
-        def test_unravel_index(self, array: na.AbstractArray):
-            indices_raveled = na.ScalarArrayRange(0, array.size, axis=array.axes_flattened).reshape(array.shape)
-            indices_raveled = indices_raveled * array.type_array.ones(shape=dict(), dtype=int)
-            result = np.unravel_index(
-                indices=indices_raveled,
-                shape=array.shape,
-            )
-            expected = array.indices
-            for ax in result:
-                assert np.all(result[ax] == expected[ax])
-
-        @pytest.mark.parametrize('array_2', ['copy', 'ones'])
-        def test_array_equal(self, array: na.AbstractArray, array_2: str):
-            if array_2 == 'copy':
-                array_2 = array.copy()
-                assert np.array_equal(array, array_2)
-                return
-
-            elif array_2 == 'ones':
-                array_2 = array.type_array.ones(array.shape)
-
-            assert not np.array_equal(array, array_2)
-
-        @abc.abstractmethod
-        def test_nonzero(self, array: na.AbstractArray):
-            pass
-
-        @abc.abstractmethod
-        def test_nan_to_num(self, array: na.AbstractArray, copy: bool):
-            pass
-
-        @pytest.mark.parametrize(
             argnames='func',
             argvalues=[
                 np.all,
@@ -1177,6 +988,195 @@ class AbstractTestAbstractArray(
                         assert "frequency" in ax
 
                 assert np.all(result.ndarray == result_expected)
+
+        @pytest.mark.parametrize(
+            argnames='shape',
+            argvalues=[
+                dict(x=num_x, y=num_y),
+                dict(x=num_x, y=num_y, z=num_z),
+            ]
+        )
+        def test_broadcast_to(self, array: na.AbstractArray, shape: dict[str, int]):
+            result = np.broadcast_to(array, shape=shape)
+            assert result.shape == shape
+
+        def test_shape(self, array: na.AbstractArray):
+            assert np.shape(array) == array.shape
+
+        @pytest.mark.parametrize(
+            argnames='axes',
+            argvalues=[
+                None,
+                ['x', 'y'],
+                ['y', 'x'],
+            ],
+        )
+        def test_transpose(self, array: na.AbstractArray, axes: None | Sequence[str]):
+            axes_normalized = tuple(reversed(array.axes) if axes is None else axes)
+            result = np.transpose(
+                a=array,
+                axes=axes
+            )
+            assert result.axes == axes_normalized
+            assert {ax: result.shape[ax] for ax in result.shape if ax in array.axes} == array.shape
+
+        @pytest.mark.parametrize(
+            argnames='source,destination',
+            argvalues=[
+                ['y', 'y2'],
+                [('x', 'y'), ('x2', 'y2')],
+            ]
+        )
+        def test_moveaxis(
+                self,
+                array: na.AbstractArray,
+                source: str | Sequence[str],
+                destination: str | Sequence[str],
+        ):
+            source_normalized = (source, ) if isinstance(source, str) else source
+            destination_normalized = (destination, ) if isinstance(destination, str) else destination
+
+            if any(ax not in array.axes for ax in source_normalized):
+                with pytest.raises(ValueError, match=r"source axes .* not in array axes .*"):
+                    np.moveaxis(a=array, source=source, destination=destination)
+                return
+
+            result = np.moveaxis(a=array, source=source, destination=destination)
+
+            assert np.all(array.sum() == result.sum())
+            assert len(array.axes) == len(result.axes)
+            assert not any(ax in result.axes for ax in source_normalized)
+            assert all(ax in result.axes for ax in destination_normalized)
+
+        @pytest.mark.parametrize('newshape', [dict(r=-1)])
+        def test_reshape(self, array: na.AbstractArray, newshape: dict[str, int]):
+
+            result = np.reshape(a=array, newshape=newshape)
+
+            assert result.size == array.size
+            assert result.axes == tuple(newshape.keys())
+
+        def test_linalg_inv(self, array: na.AbstractArray):
+            with pytest.raises(NotImplementedError):
+                np.linalg.inv(array)
+
+        @pytest.mark.parametrize('axis', ['y', 'z'])
+        @pytest.mark.parametrize('use_out', [False, True])
+        def test_stack(
+                self,
+                array: na.AbstractArray,
+                axis: str,
+                use_out: bool,
+        ):
+            arrays = [array, array]
+
+            if axis in array.axes:
+                with pytest.raises(ValueError, match=r"axis .* already in array"):
+                    np.stack(arrays, axis=axis)
+                return
+
+            if use_out:
+                out = array.type_array.empty({axis: len(arrays)} | array.shape, dtype=array.dtype)
+                if array.unit is not None:
+                    out = out << array.unit
+            else:
+                out = None
+
+            result = np.stack(arrays=arrays, axis=axis, out=out)
+
+            assert np.all(result[{axis: 0}] == array)
+            assert np.all(result[{axis: 1}] == array)
+
+        @pytest.mark.parametrize('axis', ['x', 'y'])
+        @pytest.mark.parametrize('use_out', [False, True])
+        def test_concatenate(
+                self,
+                array: na.AbstractArray,
+                axis: str,
+                use_out: bool,
+        ):
+            arrays = [array, array]
+
+            shape_out = array.shape
+            if axis not in shape_out:
+                shape_out[axis] = 1
+            shape_out[axis] = 2 * shape_out[axis]
+
+            if use_out:
+                out = array.type_array.empty(shape_out, dtype=array.dtype)
+                if array.unit is not None:
+                    out = out << array.unit
+            else:
+                out = None
+
+            result = np.concatenate(arrays, axis=axis, out=out)
+
+            assert result.shape == shape_out
+            assert np.all(result[{axis: slice(None, shape_out[axis] // 2)}] == array)
+            assert np.all(result[{axis: slice(shape_out[axis] // 2, None)}] == array)
+
+        @abc.abstractmethod
+        def test_sort(self, array: na.AbstractArray, axis: None | str):
+            pass
+
+        @pytest.mark.parametrize('axis', [None, 'x', 'y'])
+        def test_argsort(self, array: na.AbstractArray, axis: None | str):
+
+            if axis is not None:
+                if axis not in array.axes:
+                    with pytest.raises(ValueError, match="axis .* not in input array with axes .*"):
+                        np.argsort(a=array, axis=axis)
+                    return
+            else:
+                if not array.shape:
+                    with pytest.raises(ValueError, match="sorting zero-dimensional arrays is not supported"):
+                        np.argsort(a=array, axis=axis)
+                    return
+
+            result = np.argsort(a=array, axis=axis)
+
+            assert isinstance(result, dict)
+
+            array_broadcasted = array.broadcast_to(array.shape)
+            if axis is not None:
+                sorted = array_broadcasted[result]
+            else:
+                sorted = array_broadcasted.reshape({array.axes_flattened: -1})[result]
+
+            sorted_expected = np.sort(array_broadcasted, axis=axis)
+
+            assert np.all(sorted == sorted_expected)
+
+        def test_unravel_index(self, array: na.AbstractArray):
+            indices_raveled = na.ScalarArrayRange(0, array.size, axis=array.axes_flattened).reshape(array.shape)
+            indices_raveled = indices_raveled * array.type_array.ones(shape=dict(), dtype=int)
+            result = np.unravel_index(
+                indices=indices_raveled,
+                shape=array.shape,
+            )
+            expected = array.indices
+            for ax in result:
+                assert np.all(result[ax] == expected[ax])
+
+        @pytest.mark.parametrize('array_2', ['copy', 'ones'])
+        def test_array_equal(self, array: na.AbstractArray, array_2: str):
+            if array_2 == 'copy':
+                array_2 = array.copy()
+                assert np.array_equal(array, array_2)
+                return
+
+            elif array_2 == 'ones':
+                array_2 = array.type_array.ones(array.shape)
+
+            assert not np.array_equal(array, array_2)
+
+        @abc.abstractmethod
+        def test_nonzero(self, array: na.AbstractArray):
+            pass
+
+        @abc.abstractmethod
+        def test_nan_to_num(self, array: na.AbstractArray, copy: bool):
+            pass
 
     def test_broadcast_to(
             self,
