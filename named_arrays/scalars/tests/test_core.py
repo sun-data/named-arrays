@@ -241,6 +241,69 @@ class AbstractTestAbstractScalar(
                 )
                 assert np.all(result.ndarray == result_ndarray)
 
+        class TestPercentileLikeFunctions(
+            tests.test_core.AbstractTestAbstractArray.TestArrayFunctions.TestPercentileLikeFunctions
+        ):
+
+            def test_percentile_like_functions(
+                    self,
+                    func: Callable,
+                    array: na.AbstractArray,
+                    q: float | u.Quantity | na.AbstractArray,
+                    axis: None | str | Sequence[str],
+                    out: bool,
+                    keepdims: bool,
+            ):
+                super().test_percentile_like_functions(
+                    func=func,
+                    array=array.array,
+                    q=q,
+                    axis=axis,
+                    out=out,
+                    keepdims=keepdims,
+                )
+
+                kwargs = dict()
+                kwargs_ndarray = dict()
+
+                q_normalized = q if isinstance(q, na.AbstractArray) else na.ScalarArray(q)
+
+                axis_normalized = axis if axis is not None else array.axes
+                axis_normalized = (axis_normalized, ) if isinstance(axis_normalized, str) else axis_normalized
+                shape_result = q_normalized.shape
+                shape_result |= {ax: 1 if ax in axis_normalized else array.shape[ax] for ax in array.shape}
+
+                if keepdims:
+                    kwargs['keepdims'] = keepdims
+                    kwargs_ndarray['keepdims'] = keepdims
+                else:
+                    for ax in axis_normalized:
+                        if ax in shape_result:
+                            shape_result.pop(ax)
+
+                if out:
+                    out_dtype = na.get_dtype(array)
+                    kwargs['out'] = array.type_array.empty(shape_result, dtype=out_dtype)
+                    kwargs_ndarray['out'] = array.type_array.empty(shape_result, dtype=out_dtype).ndarray
+                    if array.unit is not None:
+                        kwargs['out'] = kwargs['out'] << array.unit
+                        kwargs_ndarray['out'] = kwargs_ndarray['out'] << array.unit
+                    elif q_normalized.unit is not None:
+                        kwargs['out'] = kwargs['out'] << u.dimensionless_unscaled
+                        kwargs_ndarray['out'] = kwargs_ndarray['out'] << u.dimensionless_unscaled
+
+                kwargs['method'] = 'closest_observation'
+                kwargs_ndarray['method'] = kwargs['method']
+
+                result = func(array, q, axis=axis, **kwargs, )
+                result_ndarray = func(
+                    array.ndarray,
+                    q_normalized.ndarray,
+                    axis=tuple(array.axes.index(ax) for ax in axis_normalized if ax in array.axes),
+                    **kwargs_ndarray,
+                )
+                assert np.all(result.ndarray == result_ndarray)
+
         @pytest.mark.parametrize('axis', [None, 'x', 'y'])
         def test_sort(self, array: na.AbstractScalar, axis: None | str):
 
