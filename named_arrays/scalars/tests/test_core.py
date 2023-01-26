@@ -343,7 +343,6 @@ class AbstractTestAbstractScalarArray(
                 na.ScalarLinearSpace(.25, .75, axis='q', num=3, endpoint=True),
             ]
         )
-        @pytest.mark.parametrize('axis', [None, 'y', 'x', ('x', 'y')])
         class TestPercentileLikeFunctions(
             AbstractTestAbstractScalar.TestArrayFunctions.TestPercentileLikeFunctions
         ):
