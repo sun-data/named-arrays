@@ -162,6 +162,16 @@ class AbstractTestAbstractScalar(
                     keepdims: bool,
                     where: bool,
             ):
+                super().test_reduction_functions(
+                    func=func,
+                    array=array,
+                    axis=axis,
+                    dtype=dtype,
+                    out=out,
+                    keepdims=keepdims,
+                    where=where,
+                )
+
                 kwargs = dict()
                 kwargs_ndarray = dict()
 
