@@ -80,6 +80,37 @@ class AbstractTestAbstractScalar(
         else:
             assert array.unit_normalized == array.unit
 
+    def test__getitem__(
+            self,
+            array: na.AbstractScalar,
+            item: dict[str, int | slice | na.AbstractArray] | na.AbstractArray
+    ):
+        super().test__getitem__(array=array, item=item)
+
+        if array.shape:
+            result = array[item]
+            assert isinstance(result, na.AbstractArray)
+
+            if isinstance(item, dict):
+                item_expected = [Ellipsis]
+                for axis in item:
+                    if isinstance(item[axis], na.AbstractArray):
+                        item_expected.append(item[axis].ndarray)
+                    else:
+                        item_expected.append(item[axis])
+                item_expected = tuple(item_expected)
+            else:
+                item_expected = (Ellipsis, item.ndarray)
+
+            result_expected = array.ndarray[item_expected]
+            if 'y' in result.axes:
+                result = result.change_axis_index('y', ~0)
+            assert np.all(result.ndarray == result_expected)
+
+        else:
+            with pytest.raises(ValueError):
+                array[item]
+
     class TestUfuncUnary(
         tests.test_core.AbstractTestAbstractArray.TestUfuncUnary,
     ):

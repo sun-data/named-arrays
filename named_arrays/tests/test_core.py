@@ -231,35 +231,6 @@ class AbstractTestAbstractArray(
         assert isinstance(array.length, (int, float, complex, np.ndarray, na.AbstractScalar))
         assert np.all(array.length >= 0)
 
-    def test__getitem__(
-            self,
-            array: na.AbstractArray,
-            item: dict[str, int | slice | na.AbstractArray] | na.AbstractArray
-    ):
-        if array.shape:
-            result = array[item]
-            assert isinstance(result, na.AbstractArray)
-
-            if isinstance(item, dict):
-                item_expected = [Ellipsis]
-                for axis in item:
-                    if isinstance(item[axis], na.AbstractArray):
-                        item_expected.append(item[axis].ndarray)
-                    else:
-                        item_expected.append(item[axis])
-                item_expected = tuple(item_expected)
-            else:
-                item_expected = (Ellipsis, item.ndarray)
-
-            result_expected = array.ndarray[item_expected]
-            if 'y' in result.axes:
-                result = result.change_axis_index('y', ~0)
-            assert np.all(result.ndarray == result_expected)
-
-        else:
-            with pytest.raises(ValueError):
-                array[item]
-
     def test_indices(self, array: na.AbstractArray):
 
         indices = array.indices
@@ -308,6 +279,14 @@ class AbstractTestAbstractArray(
         assert dataclasses.is_dataclass(array_copy)
         for field in dataclasses.fields(array_copy):
             assert np.all(getattr(array, field.name) == getattr(array_copy, field.name))
+
+    @abc.abstractmethod
+    def test__getitem__(
+            self,
+            array: na.AbstractArray,
+            item: dict[str, int | slice | na.AbstractArray] | na.AbstractArray
+    ):
+        pass
 
     @pytest.mark.parametrize(
         argnames='ufunc',
