@@ -121,6 +121,8 @@ class AbstractTestAbstractScalar(
                 array: na.AbstractArray,
                 out: bool,
         ):
+            super().test_ufunc_unary(ufunc=ufunc, array=array, out=out)
+
             dtypes = dict()
             for types in ufunc.types:
                 dtype_inputs, dtype_outputs = types.split('->')
