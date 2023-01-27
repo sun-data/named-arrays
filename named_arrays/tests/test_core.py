@@ -1003,6 +1003,13 @@ class AbstractTestAbstractArray(
         def test_nan_to_num(self, array: na.AbstractArray, copy: bool):
             pass
 
+    @pytest.mark.parametrize(
+        argnames='shape',
+        argvalues=[
+            dict(x=num_x, y=num_y),
+            dict(x=num_x, y=num_y, z=13),
+        ]
+    )
     def test_broadcast_to(
             self,
             array: na.AbstractArray,
