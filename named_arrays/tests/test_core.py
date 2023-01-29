@@ -654,7 +654,6 @@ class AbstractTestAbstractArray(
                     keepdims: bool,
             ):
                 kwargs = dict()
-                kwargs_ndarray = dict()
 
                 if axis is not None:
                     shape_result = {ax: 1 if ax == axis else array.shape[ax] for ax in reversed(array.shape)}
@@ -668,7 +667,6 @@ class AbstractTestAbstractArray(
 
                 if keepdims:
                     kwargs['keepdims'] = keepdims
-                    kwargs_ndarray['keepdims'] = keepdims
 
                 if out:
                     if axis is not None:
