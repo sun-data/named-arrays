@@ -457,6 +457,19 @@ class AbstractArray(
         return super().__truediv__(other)
 
     @abc.abstractmethod
+    def __array_matmul__(
+            self: Self,
+            x1: ArrayLike,
+            x2: ArrayLike,
+            out: None | AbstractExplicitArray = None,
+            **kwargs,
+    ) -> AbstractExplicitArray:
+        """
+        Method to handle the behavior of :func:`numpy.matmul` which has different behavior than the other ufuncs.
+        """
+        return NotImplemented
+
+    @abc.abstractmethod
     def __array_ufunc__(
             self,
             function: np.ufunc,
@@ -467,6 +480,10 @@ class AbstractArray(
         """
         Method to override the behavior of numpy's ufuncs.
         """
+        if function is np.matmul:
+            return self.__array_matmul__(*inputs, **kwargs)
+        else:
+            return NotImplemented
 
     @abc.abstractmethod
     def __array_function__(

@@ -68,6 +68,24 @@ class AbstractScalar(
         else:
             raise ValueError('Can only compute length of numeric arrays')
 
+    def __array_matmul__(
+            self: Self,
+            x1: na.ArrayLike,
+            x2: na.ArrayLike,
+            out: None | AbstractScalar = None,
+            **kwargs,
+    ) -> na.AbstractExplicitArray:
+        result = super().__array_matmul__(x1=x1, x2=x2, out=out, **kwargs)
+        if result is not NotImplemented:
+            return result
+
+        return np.multiply(
+            x1,
+            x2,
+            out=out,
+            **kwargs,
+        )
+
 
 @dataclasses.dataclass(eq=False)
 class AbstractScalarArray(
@@ -302,8 +320,14 @@ class AbstractScalarArray(
             **kwargs,
     ) -> None | ScalarArray | tuple[ScalarArray, ...]:
 
-        if function is np.matmul:
-            function = np.multiply
+        result = super().__array_ufunc__(
+            function,
+            method,
+            *inputs,
+            **kwargs,
+        )
+        if result is not NotImplemented:
+            return result
 
         inputs_normalized = []
         for inp in inputs:
