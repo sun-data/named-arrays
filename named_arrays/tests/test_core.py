@@ -549,14 +549,16 @@ class AbstractTestAbstractArray(
         ):
             pass
 
-        @abc.abstractmethod
         def test_matmul_reversed(
                 self,
                 array: na.AbstractArray,
                 array_2: None | bool | int | float | complex | str | na.AbstractArray,
                 out: bool,
         ):
-            pass
+            array = np.transpose(array)
+            if array_2 is not None:
+                array_2 = np.transpose(array_2)
+            self.test_matmul(array_2, array, out=out)
 
     class TestArrayFunctions(abc.ABC):
 
