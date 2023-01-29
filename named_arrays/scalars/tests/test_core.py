@@ -509,12 +509,6 @@ class AbstractTestAbstractScalarArray(
         ):
             pass
 
-        @pytest.mark.parametrize('axis', [None, 'y'])
-        class TestArgReductionFunctions(
-            AbstractTestAbstractScalar.TestArrayFunctions.TestArgReductionFunctions,
-        ):
-            pass
-
         @pytest.mark.parametrize('axis', ['x', 'y'])
         class TestFFTLikeFunctions(
             AbstractTestAbstractScalar.TestArrayFunctions.TestFFTLikeFunctions,

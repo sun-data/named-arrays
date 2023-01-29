@@ -640,6 +640,7 @@ class AbstractTestAbstractArray(
                 (np.nanargmax, np.nanmax),
             ]
         )
+        @pytest.mark.parametrize('axis', [None, 'y'])
         @pytest.mark.parametrize('out', [False, True])
         @pytest.mark.parametrize('keepdims', [False, True])
         class TestArgReductionFunctions:
