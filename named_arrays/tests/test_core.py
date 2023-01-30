@@ -402,6 +402,8 @@ class AbstractTestAbstractArray(
     class TestUfuncBinary(
         abc.ABC,
     ):
+
+        @abc.abstractmethod
         def test_ufunc_binary(
                 self,
                 ufunc: np.ufunc,
@@ -409,126 +411,7 @@ class AbstractTestAbstractArray(
                 array_2: None | bool | int | float | complex | str | na.AbstractArray,
                 out: bool,
         ):
-
-            dtypes = dict()
-            for types in ufunc.types:
-                dtype_inputs, dtype_outputs = types.split('->')
-                if not len(dtype_inputs) == 2:
-                    raise TypeError('This test is only valid for binary ufuncs')
-                dtype_inputs = tuple(np.dtype(c) for c in dtype_inputs)
-                dtype_outputs = tuple(np.dtype(c) for c in dtype_outputs)
-                dtypes[dtype_inputs] = dtype_outputs
-
-            if (na.get_dtype(array), na.get_dtype(array_2)) not in dtypes:
-                with pytest.raises(TypeError):
-                    ufunc(array, casting='no')
-                return
-
-            shape = na.shape_broadcasted(array, array_2)
-            shape = {k: shape[k] for k in sorted(shape)}
-
-            unit = na.unit(array)
-            unit_2 = na.unit(array_2)
-
-            if out:
-                type_array = na.type_array(array, array_2)
-                dtype_in = (na.get_dtype(array), na.get_dtype(array_2))
-                out = tuple(type_array.empty(shape, dtype=dtypes[dtype_in][i]) for i in range(ufunc.nout))
-                out_ndarray = tuple(type_array.empty(shape, dtype=dtypes[dtype_in][i]).ndarray for i in range(ufunc.nout))
-                if ufunc is np.copysign:
-                    if unit is not None:
-                        out = tuple(o << unit for o in out)
-                        out_ndarray = tuple(o << unit for o in out_ndarray)
-                elif unit is not None or unit_2 is not None:
-                    if ufunc not in quantity_helpers.twoarg_comparison_ufuncs:
-                        out = tuple(o << u.dimensionless_unscaled for o in out)
-                        out_ndarray = tuple(o << u.dimensionless_unscaled for o in out_ndarray)
-            else:
-                out = (None,) * ufunc.nout
-                out_ndarray = (None,) * ufunc.nout
-            out = out[0] if len(out) == 1 else out
-            out_ndarray = out_ndarray[0] if len(out_ndarray) == 1 else out_ndarray
-
-            ignored_ufuncs = tuple()
-            ignored_ufuncs = ignored_ufuncs + quantity_helpers.twoarg_invariant_ufuncs
-            ignored_ufuncs = ignored_ufuncs + (np.floor_divide, np.divmod, )
-            ignored_ufuncs = ignored_ufuncs + quantity_helpers.twoarg_invtrig_ufuncs
-            ignored_ufuncs = ignored_ufuncs + quantity_helpers.twoarg_comparison_ufuncs
-
-            if ufunc in quantity_helpers.UNSUPPORTED_UFUNCS:
-                if unit is not None or unit_2 is not None:
-                    with pytest.raises(TypeError):
-                        ufunc(array, array_2, out=out, casting='no')
-                    return
-
-            if unit is not None:
-                if unit_2 is None or not unit.is_equivalent(unit_2):
-                    if ufunc in ignored_ufuncs:
-                        with pytest.raises(u.UnitConversionError):
-                            ufunc(array, array_2, out=out, casting='no')
-                        return
-
-            if unit_2 is not None:
-                if unit is None or not unit_2.is_equivalent(unit):
-                    if ufunc in ignored_ufuncs:
-                        with pytest.raises(u.UnitConversionError):
-                            ufunc(array, array_2, out=out, casting='no')
-                        return
-
-            if unit is not None and not unit.is_equivalent(u.dimensionless_unscaled):
-                if ufunc in quantity_helpers.two_arg_dimensionless_ufuncs:
-                    with pytest.raises(u.UnitTypeError):
-                        ufunc(array, array_2, out=out)
-                    return
-
-            if unit_2 is not None and not unit_2.is_equivalent(u.dimensionless_unscaled):
-                if ufunc in quantity_helpers.two_arg_dimensionless_ufuncs + (np.power, np.float_power, np.heaviside):
-                    with pytest.raises(u.UnitTypeError):
-                        ufunc(array, array_2, out=out, casting='no')
-                    return
-
-            if unit is not None and not unit.is_equivalent(u.dimensionless_unscaled):
-                if ufunc in (np.power, np.float_power):
-                    if array_2.shape:
-                        with pytest.raises(
-                                ValueError,
-                                match="Quantities and Units may only be raised to a scalar power"
-                        ):
-                            ufunc(array, array_2, out=out, casting='no')
-                    return
-
-            if ufunc in [np.power, np.float_power]:
-                where = (array_2 >= 1) & (array >= 0)
-            elif ufunc in [np.divide, np.floor_divide, np.remainder, np.fmod, np.divmod]:
-                where = array_2 != 0
-                where = na.ScalarArray(where) if not isinstance(where, na.AbstractArray) else where
-            else:
-                where = na.ScalarArray(True)
-            where = where.broadcast_to(shape)
-
-            result = ufunc(array, array_2, out=out, where=where)
-            result_ndarray = ufunc(
-                array.ndarray if isinstance(array, na.AbstractArray) else array,
-                np.transpose(array_2.ndarray) if isinstance(array_2, na.AbstractArray) else np.transpose(array_2),
-                out=out_ndarray,
-                casting='no',
-                where=where.ndarray
-            )
-
-            if ufunc.nout == 1:
-                result = (result,)
-                result_ndarray = (result_ndarray,)
-                out = (out, )
-
-            for i in range(ufunc.nout):
-                result_i = result[i].broadcast_to(shape)
-                assert np.all(
-                    result_i.ndarray == result_ndarray[i],
-                    where=where.ndarray,
-                )
-
-                if out[i] is not None:
-                    assert result[i] is out[i]
+            pass
 
         def test_ufunc_binary_reversed(
                 self,
