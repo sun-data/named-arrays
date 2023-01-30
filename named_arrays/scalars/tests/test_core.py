@@ -537,6 +537,43 @@ class AbstractTestAbstractScalar(
                 )
                 assert np.all(result.ndarray == result_ndarray)
 
+        class TestFFTLikeFunctions(
+            tests.test_core.AbstractTestAbstractArray.TestArrayFunctions.TestFFTLikeFunctions
+        ):
+
+            def test_fft_like_functions(
+                    self,
+                    func: Callable,
+                    array: na.AbstractScalar,
+                    axis: str,
+            ):
+                super().test_fft_like_functions(
+                    func=func,
+                    array=array,
+                    axis=axis,
+                )
+
+                if axis not in array.axes:
+                    with pytest.raises(ValueError):
+                        func(a=array, axis=axis)
+                    return
+
+                result = func(
+                    a=array,
+                    axis=axis,
+                )
+                result_expected = func(
+                    a=array.ndarray,
+                    axis=array.axes.index(axis)
+                )
+
+                assert isinstance(result, na.AbstractArray)
+                for ax in result.axes:
+                    if ax not in set(array.axes) - {axis}:
+                        assert "frequency" in ax
+
+                assert np.all(result.ndarray == result_expected)
+
         @pytest.mark.parametrize('axis', [None, 'x', 'y'])
         def test_sort(self, array: na.AbstractScalar, axis: None | str):
 

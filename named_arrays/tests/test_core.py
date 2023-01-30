@@ -597,34 +597,16 @@ class AbstractTestAbstractArray(
                 np.fft.irfft,
             ]
         )
-        class TestFFTLikeFunctions:
+        class TestFFTLikeFunctions(abc.ABC):
+
+            @abc.abstractmethod
             def test_fft_like_functions(
                     self,
                     func: Callable,
                     array: na.AbstractArray,
                     axis: str,
             ):
-
-                if axis not in array.axes:
-                    with pytest.raises(ValueError):
-                        func(a=array, axis=axis)
-                    return
-
-                result = func(
-                    a=array,
-                    axis=axis,
-                )
-                result_expected = func(
-                    a=array.ndarray,
-                    axis=array.axes.index(axis)
-                )
-
-                assert isinstance(result, na.AbstractArray)
-                for ax in result.axes:
-                    if ax not in set(array.axes) - {axis}:
-                        assert "frequency" in ax
-
-                assert np.all(result.ndarray == result_expected)
+                pass
 
         @pytest.mark.parametrize(
             argnames='func',
