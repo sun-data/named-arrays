@@ -518,6 +518,7 @@ class AbstractTestAbstractArray(
             if ufunc.nout == 1:
                 result = (result,)
                 result_ndarray = (result_ndarray,)
+                out = (out, )
 
             for i in range(ufunc.nout):
                 result_i = result[i].broadcast_to(shape)
@@ -525,6 +526,9 @@ class AbstractTestAbstractArray(
                     result_i.ndarray == result_ndarray[i],
                     where=where.ndarray,
                 )
+
+                if out[i] is not None:
+                    assert result[i] is out[i]
 
         def test_ufunc_binary_reversed(
                 self,

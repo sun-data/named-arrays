@@ -188,9 +188,13 @@ class AbstractTestAbstractScalar(
             if ufunc.nout == 1:
                 result = (result, )
                 result_ndarray = (result_ndarray, )
+                out = (out, )
 
             for i in range(ufunc.nout):
                 assert np.all(result[i].ndarray == result_ndarray[i], where=where.ndarray)
+
+                if out[i] is not None:
+                    assert result[i] is out[i]
 
     class TestMatmul(
         tests.test_core.AbstractTestAbstractArray.TestMatmul,

@@ -329,6 +329,8 @@ class AbstractScalarArray(
         if result is not NotImplemented:
             return result
 
+        nout = function.nout
+
         inputs_normalized = []
         for inp in inputs:
             if isinstance(inp, self.type_ndarray):
@@ -346,20 +348,33 @@ class AbstractScalarArray(
         inputs = tuple(inp.ndarray_aligned(shape) for inp in inputs)
 
         if 'out' in kwargs:
-            kwargs['out'] = tuple(o.ndarray_aligned(shape) for o in kwargs['out'])
+            out = kwargs['out']
+            kwargs['out'] = tuple(o.ndarray_aligned(shape) if o is not None else o for o in kwargs['out'])
+        else:
+            out = None
 
         if 'where' in kwargs:
             if isinstance(kwargs['where'], na.AbstractArray):
                 kwargs['where'] = kwargs['where'].ndarray_aligned(shape)
 
         for inp in inputs:
-            result = inp.__array_ufunc__(function, method, *inputs, **kwargs)
-            if result is not NotImplemented:
-                axes=tuple(shape.keys())
-                if function.nout > 1:
-                    return tuple(self.type_array(r, axes=axes) for r in result)
+            result_ndarray = inp.__array_ufunc__(function, method, *inputs, **kwargs)
+            if result_ndarray is not NotImplemented:
+                if nout == 1:
+                    result_ndarray = (result_ndarray, )
+                result = list(self.type_array(result_ndarray[i], axes=tuple(shape.keys())) for i in range(nout))
+
+                if out is not None:
+                    for i in range(nout):
+                        if out[i] is not None:
+                            out[i].ndarray = result[i].ndarray_aligned(out[i].shape)
+                            result[i] = out[i]
+
+                if nout == 1:
+                    result = result[0]
                 else:
-                    return ScalarArray(result, axes=axes)
+                    result = tuple(result)
+                return result
 
         return NotImplemented
 
