@@ -732,12 +732,6 @@ class AbstractTestAbstractScalarArray(
         ):
             pass
 
-        @pytest.mark.parametrize('axis', ['x', 'y'])
-        class TestFFTLikeFunctions(
-            AbstractTestAbstractScalar.TestArrayFunctions.TestFFTLikeFunctions,
-        ):
-            pass
-
         @pytest.mark.parametrize('s', [None, dict(y=_num_y), dict(x=_num_x), dict(x=_num_x, y=_num_y)])
         class TestFFTNLikeFunctions(
             AbstractTestAbstractScalar.TestArrayFunctions.TestFFTNLikeFunctions,
