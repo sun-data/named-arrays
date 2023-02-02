@@ -227,24 +227,32 @@ def array_function_fft_like(
 
 def array_function_fftn_like(
         func: Callable,
-        a: na.ScalarArray,
+        a: na.AbstractScalarArray,
+        axes: dict[str, str],
         s: None | dict[str, int] = None,
         norm: str = "backward",
 ) -> na.ScalarArray:
 
+    a = a.array
+    shape = a.shape
+
+    if not all(ax in shape for ax in axes):
+        raise ValueError(f"Not all transform axes {axes} are in input array shape {shape}")
+
     if s is None:
-        axes_normalized = a.axes
-    else:
-        axes_normalized = tuple(s.keys())
+        s = {ax: shape[ax] for ax in axes}
+
+    if not axes.keys() == s.keys():
+        raise ValueError(f"'axes' {axes} and 's' {s} must have the same keys")
 
     return na.ScalarArray(
         ndarray=func(
             a=a.ndarray,
-            s=s.values() if s is not None else s,
-            axes=tuple(a.axes.index(ax) for ax in s) if s is not None else s,
+            s={ax: s[ax] for ax in axes}.values(),
+            axes=tuple(a.axes.index(ax) for ax in axes),
             norm=norm,
         ),
-        axes=tuple(f"{ax}_frequency" if ax in axes_normalized else ax for ax in a.axes),
+        axes=tuple(axes[ax] if ax in axes else ax for ax in a.axes),
     )
 
 

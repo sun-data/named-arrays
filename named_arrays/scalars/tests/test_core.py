@@ -581,46 +581,53 @@ class AbstractTestAbstractScalar(
                     self,
                     func: Callable,
                     array: na.AbstractArray,
+                    axes: dict[str, str],
                     s: None | dict[str, int],
             ):
                 super().test_fftn_like_functions(
                     func=func,
                     array=array,
+                    axes=axes,
                     s=s,
                 )
 
                 shape = array.shape
 
-                axis_normalized = na.axis_normalized(
-                    a=array,
-                    axis=s.keys() if s is not None else s,
-                )
-
-                if not all(ax in shape for ax in axis_normalized):
+                if not all(ax in shape for ax in axes):
                     with pytest.raises(ValueError):
-                        func(a=array, s=s)
+                        func(a=array, axes=axes, s=s)
                     return
 
                 if func in [np.fft.rfft2, np.fft.irfft2, np.fft.rfftn, np.fft.irfftn]:
                     if not shape:
                         with pytest.raises(IndexError):
-                            func(a=array, s=s)
+                            func(a=array, axes=axes, s=s)
                         return
+
+                if s is not None and axes.keys() != s.keys():
+                    with pytest.raises(ValueError):
+                        func(a=array, axes=axes, s=s)
+                    return
+
+                if s is None:
+                    s_normalized = {ax: shape[ax] for ax in axes}
+                else:
+                    s_normalized = {ax: s[ax] for ax in axes}
 
                 result = func(
                     a=array,
+                    axes=axes,
                     s=s,
                 )
                 result_expected = func(
                     a=array.ndarray,
-                    s=list(s.values()) if s is not None else s,
-                    axes=[array.axes.index(ax) for ax in s] if s is not None else s,
+                    s=s_normalized.values(),
+                    axes=[array.axes.index(ax) for ax in axes],
                 )
 
                 assert isinstance(result, na.AbstractArray)
-                for ax in result.axes:
-                    if ax not in set(array.axes) - set(axis_normalized):
-                        assert "frequency" in ax
+                assert all(axes[ax] in result.axes for ax in axes)
+                assert all(ax not in result.axes for ax in axes)
 
                 assert np.all(result.ndarray == result_expected)
 
