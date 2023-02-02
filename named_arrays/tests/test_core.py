@@ -622,6 +622,7 @@ class AbstractTestAbstractArray(
                 np.fft.irfftn,
             ]
         )
+        @pytest.mark.parametrize('s', [None, dict(y=num_y), dict(x=num_x), dict(x=num_x, y=num_y)])
         class TestFFTNLikeFunctions(abc.ABC):
 
             @abc.abstractmethod
