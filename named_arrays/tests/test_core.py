@@ -597,7 +597,7 @@ class AbstractTestAbstractArray(
                 np.fft.irfft,
             ]
         )
-        @pytest.mark.parametrize('axis', ['x', 'y'])
+        @pytest.mark.parametrize('axis', [('x', 'kx'), ('y', 'ky')])
         class TestFFTLikeFunctions(abc.ABC):
 
             @abc.abstractmethod
@@ -605,7 +605,7 @@ class AbstractTestAbstractArray(
                     self,
                     func: Callable,
                     array: na.AbstractArray,
-                    axis: str,
+                    axis: tuple[str, str],
             ):
                 pass
 

@@ -553,7 +553,7 @@ class AbstractTestAbstractScalar(
                     axis=axis,
                 )
 
-                if axis not in array.axes:
+                if axis[0] not in array.axes:
                     with pytest.raises(ValueError):
                         func(a=array, axis=axis)
                     return
@@ -564,13 +564,12 @@ class AbstractTestAbstractScalar(
                 )
                 result_expected = func(
                     a=array.ndarray,
-                    axis=array.axes.index(axis)
+                    axis=array.axes.index(axis[0])
                 )
 
                 assert isinstance(result, na.AbstractArray)
-                for ax in result.axes:
-                    if ax not in set(array.axes) - {axis}:
-                        assert "frequency" in ax
+                assert axis[1] in result.axes
+                assert not axis[0] in result.axes
 
                 assert np.all(result.ndarray == result_expected)
 

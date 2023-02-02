@@ -208,8 +208,8 @@ def array_function_arg_reduce(
 
 def array_function_fft_like(
         func: Callable,
-        a: na.ScalarArray,
-        axis: str,
+        a: na.AbstractScalarArray,
+        axis: tuple[str, str],
         n: None | int = None,
         norm: str = "backward"
 ) -> na.ScalarArray:
@@ -218,10 +218,10 @@ def array_function_fft_like(
         ndarray=func(
             a=a.ndarray,
             n=n,
-            axis=a.axes.index(axis),
+            axis=a.axes.index(axis[0]),
             norm=norm,
         ),
-        axes=tuple(f"{ax}_frequency" if ax == axis else ax for ax in a.axes),
+        axes=tuple(axis[1] if ax == axis[0] else ax for ax in a.axes),
     )
 
 
