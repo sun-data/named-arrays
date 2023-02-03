@@ -192,14 +192,9 @@ class AbstractTestAbstractArray(
         array_new = array.astype(dtype)
         assert array_new.dtype == dtype
 
-    @pytest.mark.parametrize('unit', [u.m, u.s])
+    @abc.abstractmethod
     def test_to(self, array: na.AbstractArray, unit: None | u.UnitBase):
-        if isinstance(array.unit, u.UnitBase) and array.unit.is_equivalent(unit):
-            array_new = array.to(unit)
-            assert array_new.unit == unit
-        else:
-            with pytest.raises(u.UnitConversionError):
-                array.to(unit)
+        pass
 
     def test_length(self, array: na.AbstractArray):
         dtype = array.dtype

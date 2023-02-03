@@ -80,6 +80,16 @@ class AbstractTestAbstractScalar(
         else:
             assert array.unit_normalized == array.unit
 
+    @pytest.mark.parametrize('unit', [u.m, u.s])
+    def test_to(self, array: na.AbstractScalar, unit: None | u.UnitBase):
+        super().test_to(array=array, unit=unit)
+        if isinstance(array.unit, u.UnitBase) and array.unit.is_equivalent(unit):
+            array_new = array.to(unit)
+            assert array_new.unit == unit
+        else:
+            with pytest.raises(u.UnitConversionError):
+                array.to(unit)
+
     def test__getitem__(
             self,
             array: na.AbstractScalar,
