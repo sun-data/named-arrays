@@ -111,6 +111,11 @@ class AbstractTestAbstractScalarArray(
     class TestArrayFunctions(
         AbstractTestAbstractScalar.TestArrayFunctions,
     ):
+        @pytest.mark.parametrize('v', _scalar_arrays_2())
+        @pytest.mark.parametrize('mode', ['full', 'same', 'valid'])
+        def test_convolve(self, array: na.AbstractArray, v: na.AbstractArray, mode: str):
+            super().test_convolve(array=array, v=v, mode=mode)
+
         @pytest.mark.parametrize(
             argnames='shape',
             argvalues=[
