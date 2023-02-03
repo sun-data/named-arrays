@@ -62,6 +62,24 @@ class AbstractScalar(
         """
 
     @property
+    @abc.abstractmethod
+    def unit(self: Self) -> None | u.UnitBase | dict[str, None | u.UnitBase]:
+        """
+        Unit associated with the array.
+
+        If :attr:`ndarray` is an instance of :class:`astropy.units.Quantity`, return :attr:`astropy.units.Quantity.unit`,
+        otherwise return :class:`None`.
+        """
+
+    @property
+    def unit_normalized(self: Self) -> u.UnitBase | dict[str, u.UnitBase]:
+        """
+        Similar to :attr:`unit` but returns :attr:`astropy.units.dimensionless_unscaled` if :attr:`ndarray` is not an
+        instance of :class:`astropy.units.Quantity`.
+        """
+        return na.unit_normalized(self)
+
+    @property
     def length(self) -> AbstractScalar:
         if np.issubdtype(self.dtype, np.number):
             return np.abs(self)
@@ -680,6 +698,10 @@ class AbstractImplicitScalarArray(
     @property
     def ndarray(self: Self) -> na.QuantityLike:
         return self.array.ndarray
+
+    @property
+    def unit(self: Self) -> float | u.Unit:
+        return self.array.unit
 
 
 @dataclasses.dataclass(eq=False)

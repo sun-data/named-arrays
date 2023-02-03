@@ -173,14 +173,6 @@ class AbstractTestAbstractArray(
     def test_dtype(self, array: na.AbstractArray):
         assert array.dtype == array.array.dtype
 
-    @abc.abstractmethod
-    def test_unit(self, array: na.AbstractArray):
-        assert array.unit == array.array.unit
-
-    @abc.abstractmethod
-    def test_unit_normalized(self, array: na.AbstractArray):
-        assert array.unit_normalized == array.array.unit_normalized
-
     def test_array(self, array: na.AbstractArray):
         assert isinstance(array.array, na.AbstractExplicitArray)
 

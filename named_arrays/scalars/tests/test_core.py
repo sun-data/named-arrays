@@ -68,13 +68,13 @@ class AbstractTestAbstractScalar(
         assert isinstance(array.dtype, np.dtype)
 
     def test_unit(self, array: na.AbstractScalar):
-        super().test_unit(array)
+        assert array.unit == array.array.unit
         unit = array.unit
         if unit is not None:
             assert isinstance(unit, u.UnitBase)
 
     def test_unit_normalized(self, array: na.AbstractScalar):
-        super().test_unit_normalized(array)
+        assert array.unit_normalized == array.array.unit_normalized
         if array.unit is None:
             assert array.unit_normalized == u.dimensionless_unscaled
         else:
