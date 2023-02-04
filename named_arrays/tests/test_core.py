@@ -688,9 +688,7 @@ class AbstractTestAbstractArray(
                 return
 
             if use_out:
-                out = array.type_array.empty({axis: len(arrays)} | array.shape, dtype=array.dtype)
-                if array.unit is not None:
-                    out = out << array.unit
+                out = 0 * np.stack(arrays=arrays, axis=axis)
             else:
                 out = None
 
