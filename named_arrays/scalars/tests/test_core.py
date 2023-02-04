@@ -90,6 +90,17 @@ class AbstractTestAbstractScalar(
             with pytest.raises(u.UnitConversionError):
                 array.to(unit)
 
+    def test_length(self, array: na.AbstractScalar):
+        super().test_length(array=array)
+        if not np.issubdtype(array.dtype, np.number):
+            with pytest.raises(ValueError):
+                array.length
+            return
+
+        length = array.length
+        assert isinstance(length, (int, float, np.ndarray, na.AbstractScalar))
+        assert np.all(length >= 0)
+
     def test__getitem__(
             self,
             array: na.AbstractScalar,

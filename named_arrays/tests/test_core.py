@@ -192,27 +192,9 @@ class AbstractTestAbstractArray(
     def test_to(self, array: na.AbstractArray, unit: None | u.UnitBase):
         pass
 
+    @abc.abstractmethod
     def test_length(self, array: na.AbstractArray):
-        dtype = array.dtype
-
-        if not isinstance(dtype, dict):
-            dtype = dict(x=dtype)
-        if not all(np.issubdtype(dtype[c], np.number) for c in dtype):
-            with pytest.raises(ValueError):
-                array.length
-            return
-
-        unit = array.unit
-        if isinstance(unit, dict):
-            iter_unit = iter(unit)
-            unit_0 = na.unit_normalized(unit[next(iter_unit)])
-            if not all(unit_0.is_equivalent(na.unit_normalized(unit[c])) for c in iter_unit):
-                with pytest.raises(u.UnitConversionError):
-                    array.length
-                return
-
-        assert isinstance(array.length, (int, float, complex, np.ndarray, na.AbstractScalar))
-        assert np.all(array.length >= 0)
+        pass
 
     def test_indices(self, array: na.AbstractArray):
 
