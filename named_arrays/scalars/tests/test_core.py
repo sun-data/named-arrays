@@ -702,6 +702,18 @@ class AbstractTestAbstractScalar(
 
             assert np.all(result.ndarray == expected)
 
+    def test_all(
+            self,
+            array: na.AbstractScalar,
+    ):
+        super().test_all(array=array)
+        if array.unit is not None:
+            with pytest.raises(TypeError, match="no implementation found for .*"):
+                array.all()
+            return
+
+        assert np.all(array.all() == np.all(array))
+
 
 class AbstractTestAbstractScalarArray(
     AbstractTestAbstractScalar,

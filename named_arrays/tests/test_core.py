@@ -862,15 +862,12 @@ class AbstractTestAbstractArray(
         kwargs = dict(method='closest_observation')
         assert np.all(array.percentile(q, **kwargs) == np.percentile(array, q, **kwargs))
 
+    @abc.abstractmethod
     def test_all(
             self,
             array: na.AbstractArray,
     ):
-        if getattr(array, 'unit', None) is None:
-            assert np.all(array.all() == np.all(array))
-        else:
-            with pytest.raises(TypeError, match="no implementation found for .*"):
-                array.all()
+        pass
 
     def test_any(
             self,
