@@ -64,7 +64,7 @@ class AbstractTestAbstractScalar(
         assert isinstance(array.ndarray, (int, float, complex, str, np.ndarray))
 
     def test_dtype(self, array: na.AbstractScalar):
-        super().test_dtype(array)
+        assert array.dtype == array.array.dtype
         assert isinstance(array.dtype, np.dtype)
 
     def test_unit(self, array: na.AbstractScalar):

@@ -248,13 +248,6 @@ class AbstractArray(
 
     @property
     @abc.abstractmethod
-    def dtype(self: Self) -> np.dtype | dict[str, np.dtype]:
-        """
-        Data type of the array. Equivalent to :attr:`numpy.ndarray.dtype`
-        """
-
-    @property
-    @abc.abstractmethod
     def array(self: Self) -> AbstractExplicitArray:
         """
         Converts this array to an instance of :class:`named_arrays.AbstractExplicitArray`
@@ -764,10 +757,6 @@ class AbstractImplicitArray(
     @property
     def axes(self: Self) -> tuple[str, ...]:
         return self.array.axes
-
-    @property
-    def dtype(self: Self) -> np.dtype | dict[str, np.dtype]:
-        return self.array.dtype
 
     @property
     def ndim(self: Self) -> int:

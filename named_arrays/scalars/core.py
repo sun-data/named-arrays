@@ -63,6 +63,13 @@ class AbstractScalar(
 
     @property
     @abc.abstractmethod
+    def dtype(self: Self) -> np.dtype:
+        """
+        Data type of the array. Equivalent to :attr:`numpy.ndarray.dtype`
+        """
+
+    @property
+    @abc.abstractmethod
     def unit(self: Self) -> None | u.UnitBase | dict[str, None | u.UnitBase]:
         """
         Unit associated with the array.
@@ -698,6 +705,10 @@ class AbstractImplicitScalarArray(
     @property
     def ndarray(self: Self) -> na.QuantityLike:
         return self.array.ndarray
+
+    @property
+    def dtype(self: Self) -> np.dtype | dict[str, np.dtype]:
+        return self.array.dtype
 
     @property
     def unit(self: Self) -> float | u.Unit:
