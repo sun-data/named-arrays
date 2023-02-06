@@ -871,15 +871,12 @@ class AbstractTestAbstractArray(
     ):
         pass
 
+    @abc.abstractmethod
     def test_any(
             self,
             array: na.AbstractArray
     ):
-        if getattr(array, 'unit', None) is None:
-            assert np.all(array.any() == np.any(array))
-        else:
-            with pytest.raises(TypeError, match="no implementation found for .*"):
-                array.any()
+        pass
 
     def test_rms(
             self,
