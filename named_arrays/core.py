@@ -76,9 +76,9 @@ def get_dtype(
 
 
 def unit(
-        value: float | complex | np.ndarray | u.UnitBase | dict[str, None | u.UnitBase] | u.Quantity | AbstractArray
-) -> None | u.UnitBase | dict[str, None | u.UnitBase]:
-    if isinstance(value, (u.UnitBase, dict)):
+        value: float | complex | np.ndarray | u.UnitBase | u.Quantity | AbstractArray
+) -> None | u.UnitBase:
+    if isinstance(value, u.UnitBase):
         return value
     elif isinstance(value, (u.Quantity, AbstractArray)):
         return value.unit
@@ -87,13 +87,11 @@ def unit(
 
 
 def unit_normalized(
-        value: float | complex | np.ndarray | u.UnitBase | dict[str, None | u.UnitBase] | u.Quantity | AbstractArray
+        value: float | complex | np.ndarray | u.UnitBase | u.Quantity | AbstractArray
 ) -> u.UnitBase | dict[str, u.UnitBase]:
     result = unit(value)
     if result is None:
         return u.dimensionless_unscaled
-    elif isinstance(result, dict):
-        return {c: u.dimensionless_unscaled if result[c] is None else result[c] for c in result}
     else:
         return result
 
