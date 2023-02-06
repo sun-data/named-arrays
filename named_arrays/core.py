@@ -64,8 +64,13 @@ def get_dtype(
     ``dtype`` of the argument
 
     """
-    if isinstance(value, (np.ndarray, AbstractArray)):
+    if isinstance(value, np.ndarray):
         return value.dtype
+    if isinstance(value, AbstractArray):
+        if isinstance(value, na.AbstractScalar):
+            return value.dtype
+        else:
+            raise ValueError("non-scalar instances of `na.AbstractArray` may not be represented by a single dtype")
     else:
         return np.array(value).dtype
 
