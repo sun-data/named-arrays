@@ -708,6 +708,18 @@ class AbstractTestAbstractScalar(
 
             assert np.all(result.ndarray == expected)
 
+    def test_ptp(
+            self,
+            array: na.AbstractScalar,
+    ):
+        super().test_ptp(array=array)
+        if np.issubdtype(array.dtype, bool):
+            with pytest.raises(TypeError, match='numpy boolean subtract, .*'):
+                array.ptp()
+            return
+
+        assert np.all(array.ptp() == np.ptp(array))
+
     def test_all(
             self,
             array: na.AbstractScalar,

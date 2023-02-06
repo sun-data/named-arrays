@@ -831,17 +831,12 @@ class AbstractTestAbstractArray(
     ):
         assert np.all(array.sum() == np.sum(array))
 
+    @abc.abstractmethod
     def test_ptp(
             self,
             array: na.AbstractArray,
     ):
-        if not isinstance(array.dtype, dict):
-            if np.issubdtype(array.dtype, bool):
-                with pytest.raises(TypeError, match='numpy boolean subtract, .*'):
-                    array.ptp()
-                return
-
-        assert np.all(array.ptp() == np.ptp(array))
+        pass
 
     def test_mean(
             self,
