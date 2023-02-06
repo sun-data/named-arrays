@@ -713,9 +713,7 @@ class AbstractTestAbstractArray(
             shape_out[axis] = 2 * shape_out[axis]
 
             if use_out:
-                out = array.type_array.empty(shape_out, dtype=array.dtype)
-                if array.unit is not None:
-                    out = out << array.unit
+                out = 0 * np.concatenate(arrays=arrays, axis=axis)
             else:
                 out = None
 
