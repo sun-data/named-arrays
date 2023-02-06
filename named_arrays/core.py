@@ -1,11 +1,6 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING, TypeVar, Generic, Sequence, Iterator, Union, Type, Callable, Collection, Any
 from typing_extensions import Self
-if TYPE_CHECKING:
-    import named_arrays.scalars
-    import named_arrays.vectors
-    import named_arrays.matrices
-
 import abc
 import dataclasses
 import copy
@@ -13,6 +8,7 @@ import secrets
 import numpy as np
 import numpy.typing as npt
 import astropy.units as u
+import named_arrays as na
 
 __all__ = [
     'QuantityLike',
@@ -156,9 +152,8 @@ def ndindex(
         yield dict(zip(shape.keys(), index))
 
 
-def indices(shape: dict[str, int]) -> dict[str, named_arrays.scalars.ScalarArrayRange]:
-    import named_arrays.scalars
-    return {axis: named_arrays.scalars.ScalarArrayRange(0, shape[axis], axis=axis) for axis in shape}
+def indices(shape: dict[str, int]) -> dict[str, na.ScalarArrayRange]:
+    return {axis: na.ScalarArrayRange(0, shape[axis], axis=axis) for axis in shape}
 
 
 def flatten_axes(axes: Sequence[str]):
@@ -309,13 +304,13 @@ class AbstractArray(
 
     @property
     @abc.abstractmethod
-    def length(self: Self) -> named_arrays.scalars.AbstractScalar:
+    def length(self: Self) -> na.AbstractScalar:
         """
         L2-norm of this array.
         """
 
     @property
-    def indices(self: Self) -> dict[str, named_arrays.scalars.ScalarArrayRange]:
+    def indices(self: Self) -> dict[str, na.ScalarArrayRange]:
         return indices(self.shape)
 
     def ndindex(
