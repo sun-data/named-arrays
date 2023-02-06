@@ -697,6 +697,9 @@ class AbstractTestAbstractArray(
             assert np.all(result[{axis: 0}] == array)
             assert np.all(result[{axis: 1}] == array)
 
+            if use_out:
+                assert result is out
+
         @pytest.mark.parametrize('axis', ['x', 'y'])
         @pytest.mark.parametrize('use_out', [False, True])
         def test_concatenate(
@@ -722,6 +725,9 @@ class AbstractTestAbstractArray(
             assert result.shape == shape_out
             assert np.all(result[{axis: slice(None, shape_out[axis] // 2)}] == array)
             assert np.all(result[{axis: slice(shape_out[axis] // 2, None)}] == array)
+
+            if use_out:
+                assert result is out
 
         @abc.abstractmethod
         def test_sort(self, array: na.AbstractArray, axis: None | str):
