@@ -80,8 +80,13 @@ def unit(
 ) -> None | u.UnitBase:
     if isinstance(value, u.UnitBase):
         return value
-    elif isinstance(value, (u.Quantity, AbstractArray)):
+    elif isinstance(value, u.Quantity):
         return value.unit
+    elif isinstance(value, AbstractArray):
+        if isinstance(value, na.AbstractScalar):
+            return value.unit
+        else:
+            raise ValueError("non-scalar instances of `na.AbstractArray` may not be represented by a single unit")
     else:
         return None
 
