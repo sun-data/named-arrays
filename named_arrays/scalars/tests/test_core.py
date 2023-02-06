@@ -826,6 +826,21 @@ class TestScalarArrayCreation(
     def type_array(self) -> Type[na.ScalarArray]:
         return na.ScalarArray
 
+    def test_empty(self, shape: dict[str, int], dtype: Type):
+        super().test_empty(shape=shape, dtype=dtype)
+        result = self.type_array.empty(shape, dtype=dtype)
+        assert result.dtype == dtype
+
+    def test_zeros(self, shape: dict[str, int], dtype: Type):
+        super().test_zeros(shape=shape, dtype=dtype)
+        result = self.type_array.zeros(shape, dtype=dtype)
+        assert result.dtype == dtype
+
+    def test_ones(self, shape: dict[str, int], dtype: Type):
+        super().test_ones(shape=shape, dtype=dtype)
+        result = self.type_array.ones(shape, dtype=dtype)
+        assert result.dtype == dtype
+
 
 class AbstractTestAbstractImplicitScalarArray(
     AbstractTestAbstractScalarArray,
