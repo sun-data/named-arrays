@@ -9,7 +9,7 @@ if TYPE_CHECKING:
 import abc
 import dataclasses
 import copy
-import random
+import secrets
 import numpy as np
 import numpy.typing as npt
 import astropy.units as u
@@ -778,7 +778,7 @@ class AbstractRandomMixin(
 
     def __post_init__(self):
         if self.seed is None:
-            self.seed = random.randint(0, 10 ** 12)
+            self.seed = secrets.randbits(128)
 
     @property
     @abc.abstractmethod
