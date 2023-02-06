@@ -80,6 +80,12 @@ class AbstractTestAbstractScalar(
         else:
             assert array.unit_normalized == array.unit
 
+    @pytest.mark.parametrize('dtype', [int, float])
+    def test_astype(self, array: na.AbstractScalar, dtype: Type):
+        super().test_astype(array=array, dtype=dtype)
+        array_new = array.astype(dtype)
+        assert array_new.dtype == dtype
+
     @pytest.mark.parametrize('unit', [u.m, u.s])
     def test_to(self, array: na.AbstractScalar, unit: None | u.UnitBase):
         super().test_to(array=array, unit=unit)

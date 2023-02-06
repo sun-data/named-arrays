@@ -183,10 +183,9 @@ class AbstractTestAbstractArray(
     def test_centers(self, array: na.AbstractArray):
         assert isinstance(array.centers, na.AbstractArray)
 
-    @pytest.mark.parametrize('dtype', [int, float])
+    @abc.abstractmethod
     def test_astype(self, array: na.AbstractArray, dtype: type):
-        array_new = array.astype(dtype)
-        assert array_new.dtype == dtype
+        pass
 
     @abc.abstractmethod
     def test_to(self, array: na.AbstractArray, unit: None | u.UnitBase):
