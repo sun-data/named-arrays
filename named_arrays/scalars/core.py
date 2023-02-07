@@ -125,12 +125,12 @@ class AbstractScalarArray(
     __named_array_priority__: ClassVar[int] = 1
 
     @property
-    def type_array(self: Self) -> Type[ScalarArray]:
-        return ScalarArray
-
-    @property
     def type_array_abstract(self: Self) -> Type[AbstractScalarArray]:
         return AbstractScalarArray
+
+    @property
+    def type_array(self: Self) -> Type[ScalarArray]:
+        return ScalarArray
 
     def astype(
             self: Self,
