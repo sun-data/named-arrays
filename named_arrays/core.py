@@ -211,6 +211,20 @@ class AbstractArray(
 
     @property
     @abc.abstractmethod
+    def type_array_abstract(self: Self) -> Type[AbstractArray]:
+        """
+        The :class:`AbstractArray` type corresponding to this array
+        """
+
+    @property
+    @abc.abstractmethod
+    def type_array(self: Self) -> Type[AbstractExplicitArray]:
+        """
+        The :class:`AbstractExplicitArray` type corresponding to this array
+        """
+
+    @property
+    @abc.abstractmethod
     def axes(self: Self) -> tuple[str, ...]:
         """
         A :class:`tuple` of :class:`str` representing the names of each dimension of :attr:`ndarray`.
@@ -254,20 +268,6 @@ class AbstractArray(
     def array(self: Self) -> AbstractExplicitArray:
         """
         Converts this array to an instance of :class:`named_arrays.AbstractExplicitArray`
-        """
-
-    @property
-    @abc.abstractmethod
-    def type_array(self: Self) -> Type[AbstractExplicitArray]:
-        """
-        The :class:`AbstractExplicitArray` type corresponding to this array
-        """
-
-    @property
-    @abc.abstractmethod
-    def type_array_abstract(self: Self) -> Type[AbstractArray]:
-        """
-        The :class:`AbstractArray` type corresponding to this array
         """
 
     @property
