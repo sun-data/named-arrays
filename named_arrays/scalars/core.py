@@ -708,7 +708,7 @@ class AbstractImplicitScalarArray(
         return self.array.ndarray
 
     @property
-    def dtype(self: Self) -> np.dtype | dict[str, np.dtype]:
+    def dtype(self: Self) -> np.dtype:
         return self.array.dtype
 
     @property
