@@ -1,15 +1,13 @@
 from __future__ import annotations
 from typing import TypeVar, Generic, ClassVar, Type, Sequence, Callable, Collection, Any, Union, cast, Dict
 from typing_extensions import Self
-
 import abc
 import dataclasses
 import numpy as np
 import numpy.typing as npt
 import scipy.ndimage
 import astropy.units as u
-
-import named_arrays.core as na
+import named_arrays as na
 
 __all__ = [
     'as_named_array',
@@ -117,10 +115,6 @@ class AbstractScalarArray(
     AbstractScalar,
     Generic[NDArrayT],
 ):
-
-    type_ndarray_primary: ClassVar[Type] = np.ndarray
-    type_ndarray_auxiliary: ClassVar[tuple[Type, ...]] = (str, bool, int, float, complex, np.generic)
-    type_ndarray: ClassVar[tuple[Type, ...]] = type_ndarray_auxiliary + (type_ndarray_primary, )
 
     __named_array_priority__: ClassVar[int] = 1
 
@@ -357,52 +351,71 @@ class AbstractScalarArray(
 
         nout = function.nout
 
-        inputs_normalized = []
+        kwargs_ndarray = kwargs.copy()
+
+        if "out" in kwargs_ndarray:
+            out = kwargs_ndarray["out"]
+            out_normalized = list()
+            for o in out:
+                if o is not None:
+                    if isinstance(o, ScalarArray):
+                        if isinstance(o.ndarray, np.ndarray):
+                            o = o.ndarray
+                        else:
+                            o = None
+                    else:
+                        raise ValueError(
+                            f"`out` argument must be `None` or an instance of `named_arrays.ScalarArray` got {type(o)}"
+                        )
+                out_normalized.append(o)
+            kwargs_ndarray["out"] = tuple(out_normalized)
+        else:
+            out = (None, ) * nout
+
+        out_arrays = tuple(o for o in out if o is not None)
+        if out_arrays:
+            shape = out_arrays[0].shape
+            if any(o.shape != shape for o in out_arrays[1:]):
+                raise ValueError(
+                    f"all the `out` arrays should have the same shape, got {tuple(o.shape for o in out_arrays)}"
+                )
+        else:
+            shape = na.shape_broadcasted(*inputs)
+
+        if 'where' in kwargs_ndarray:
+            if isinstance(kwargs_ndarray['where'], na.AbstractArray):
+                if isinstance(kwargs_ndarray['where'], na.AbstractScalarArray):
+                    kwargs_ndarray['where'] = kwargs_ndarray['where'].ndarray_aligned(shape)
+                else:
+                    return kwargs_ndarray['where'].__array_ufunc__(function, method, *inputs, **kwargs)
+
+        inputs_ndarray = []
         for inp in inputs:
-            if isinstance(inp, self.type_ndarray):
-                inp = ScalarArray(inp)
-            elif isinstance(inp, AbstractScalar):
-                pass
+            if isinstance(inp, na.AbstractArray):
+                if isinstance(inp, AbstractScalarArray):
+                    inp = inp.ndarray_aligned(shape)
+                else:
+                    return NotImplemented
             elif inp is None:
                 return None
-            else:
-                return NotImplemented
-            inputs_normalized.append(inp)
-        inputs = inputs_normalized
+            inputs_ndarray.append(inp)
 
-        shape = na.shape_broadcasted(*inputs)
-        inputs = tuple(inp.ndarray_aligned(shape) for inp in inputs)
+        result_ndarray = getattr(function, method)(*inputs_ndarray, **kwargs_ndarray)
+        if nout == 1:
+            result_ndarray = (result_ndarray, )
+        result = list(ScalarArray(result_ndarray[i], axes=tuple(shape.keys())) for i in range(nout))
 
-        if 'out' in kwargs:
-            out = kwargs['out']
-            kwargs['out'] = tuple(o.ndarray_aligned(shape) if o is not None else o for o in kwargs['out'])
+        for i in range(nout):
+            if out[i] is not None:
+                out[i].ndarray = result[i].ndarray
+                result[i] = out[i]
+
+        if nout == 1:
+            result = result[0]
         else:
-            out = None
+            result = tuple(result)
+        return result
 
-        if 'where' in kwargs:
-            if isinstance(kwargs['where'], na.AbstractArray):
-                kwargs['where'] = kwargs['where'].ndarray_aligned(shape)
-
-        for inp in inputs:
-            result_ndarray = inp.__array_ufunc__(function, method, *inputs, **kwargs)
-            if result_ndarray is not NotImplemented:
-                if nout == 1:
-                    result_ndarray = (result_ndarray, )
-                result = list(self.type_array(result_ndarray[i], axes=tuple(shape.keys())) for i in range(nout))
-
-                if out is not None:
-                    for i in range(nout):
-                        if out[i] is not None:
-                            out[i].ndarray = result[i].ndarray_aligned(out[i].shape)
-                            result[i] = out[i]
-
-                if nout == 1:
-                    result = result[0]
-                else:
-                    result = tuple(result)
-                return result
-
-        return NotImplemented
 
     def __array_function__(
             self: Self,
