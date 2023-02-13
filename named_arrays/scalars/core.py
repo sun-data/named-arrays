@@ -160,31 +160,32 @@ class AbstractScalarArray(
             axes=self.axes,
         )
 
-    def ndarray_aligned(self: Self, shape: dict[str, int]) -> np.ndarray:
+    def ndarray_aligned(self: Self, axes: Sequence[str]) -> np.ndarray:
         """
-        Align :attr:`ndarray` to a particular shape.
+        Align :attr:`ndarray` to a particular sequence of axes.
 
         Parameters
         ----------
-        shape
-            New shape to align :attr:`ndarray` to.
+        axes
+            New sequence of axes to align :attr:`ndarray` to.
 
         Returns
         -------
         An instance of :class:`numpy.ndarray` with the axes aligned.
         """
         ndarray = self.ndarray
-        ndim_missing = len(shape) - np.ndim(ndarray)
+        axes = tuple(axes)
+        ndim_missing = len(axes) - np.ndim(ndarray)
         value = np.expand_dims(ndarray, tuple(~np.arange(ndim_missing)))
         source = []
         destination = []
         for axis_index, axis_name in enumerate(self.axes):
             source.append(axis_index)
-            if axis_name not in shape:
+            if axis_name not in axes:
                 raise ValueError(
-                    f"'shape' is missing dimensions. 'shape' is {shape} but 'self.shape' is {self.shape}"
+                    f"`axes` is missing axes. `axes` is {axes} but `self.axes` is {self.axes}"
                 )
-            destination.append(list(shape.keys()).index(axis_name))
+            destination.append(axes.index(axis_name))
         value = np.moveaxis(value, source=source, destination=destination)
         return value
 
