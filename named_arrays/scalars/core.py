@@ -712,7 +712,7 @@ class AbstractImplicitScalarArray(
         return self.array.dtype
 
     @property
-    def unit(self: Self) -> float | u.Unit:
+    def unit(self: Self) -> None | u.Unit:
         return self.array.unit
 
 
