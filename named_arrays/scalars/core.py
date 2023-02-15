@@ -177,7 +177,8 @@ class AbstractScalarArray(
             source.append(axis_index)
             if axis_name not in axes:
                 raise ValueError(
-                    f"`axes` is missing axes. `axes` is {axes} but `self.axes` is {self.axes}"
+                    f"`axes` is missing axes present in the input array. "
+                    f"`axes` is {axes} but `self.axes` is {self.axes}"
                 )
             destination.append(axes.index(axis_name))
         value = np.moveaxis(value, source=source, destination=destination)
