@@ -8,6 +8,7 @@ __all__ = [
     'shape',
     'broadcast_to',
     'stack',
+    'concatenate',
     'add_axes',
 ]
 
@@ -40,6 +41,26 @@ def stack(
         arrays = list(arrays)
         arrays[0] = na.ScalarArray(arrays[0])
     return np.stack(
+        arrays=arrays,
+        axis=axis,
+        out=out,
+        dtype=dtype,
+        casting=casting,
+    )
+
+
+def concatenate(
+        arrays: Sequence[na.ArrayLike],
+        axis: str,
+        out: None | na.AbstractExplicitArray = None,
+        *,
+        dtype: str | np.dtype | Type = None,
+        casting: None | str = "same_kind",
+) -> na.AbstractArray:
+    if not any(isinstance(a, na.AbstractArray) for a in arrays):
+        arrays = list(arrays)
+        arrays[0] = na.ScalarArray(arrays[0])
+    return np.concatenate(
         arrays=arrays,
         axis=axis,
         out=out,
