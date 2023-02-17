@@ -145,83 +145,53 @@ class AbstractTestAbstractScalar(
         def test_ufunc_unary(
                 self,
                 ufunc: np.ufunc,
-                array: na.AbstractArray,
-                out: bool,
+                array: na.AbstractScalar,
         ):
-            super().test_ufunc_unary(ufunc=ufunc, array=array, out=out)
 
-            dtypes = dict()
-            for types in ufunc.types:
-                dtype_inputs, dtype_outputs = types.split('->')
-                if len(dtype_inputs) != 1:
-                    raise ValueError('This test is only valid for unary ufuncs')
-                dtype_inputs = np.dtype(dtype_inputs)
-                dtype_outputs = tuple(np.dtype(c) for c in dtype_outputs)
-                dtypes[dtype_inputs] = dtype_outputs
-
-            if array.dtype not in dtypes:
-                with pytest.raises(TypeError):
-                    ufunc(array, casting ='no')
+            try:
+                ufunc(array.ndarray)
+            except Exception as e:
+                with pytest.raises(type(e)):
+                    ufunc(array)
                 return
 
-            if out:
-                type_array = array.type_array
-                out = tuple(type_array.empty(array.shape, dtype=dtypes[array.dtype][i]) for i in range(ufunc.nout))
-                out_ndarray = tuple(type_array.empty(array.shape, dtype=dtypes[array.dtype][i]).ndarray for i in range(ufunc.nout))
-                if array.unit is not None and ufunc not in quantity_helpers.onearg_test_ufuncs:
-                    out = tuple(o << array.unit for o in out)
-                    out_ndarray = tuple(o << array.unit for o in out_ndarray)
-            else:
-                out = (None,) * ufunc.nout
-                out_ndarray = (None,) * ufunc.nout
-            out = out[0] if len(out) == 1 else out
-            out_ndarray = out_ndarray[0] if len(out_ndarray) == 1 else out_ndarray
-
-            ignored_ufuncs = tuple()
-            ignored_ufuncs = ignored_ufuncs + quantity_helpers.dimensionless_to_dimensionless_ufuncs
-            ignored_ufuncs = ignored_ufuncs + quantity_helpers.radian_to_dimensionless_ufuncs
-            ignored_ufuncs = ignored_ufuncs + quantity_helpers.dimensionless_to_radian_ufuncs
-            ignored_ufuncs = ignored_ufuncs + quantity_helpers.degree_to_radian_ufuncs
-            ignored_ufuncs = ignored_ufuncs + quantity_helpers.radian_to_degree_ufuncs
-            ignored_ufuncs = ignored_ufuncs + tuple(quantity_helpers.UNSUPPORTED_UFUNCS)
-            ignored_ufuncs = ignored_ufuncs + (np.modf, np.frexp)
-
-            if array.unit is not None and ufunc in ignored_ufuncs:
-                with pytest.raises(TypeError):
-                    ufunc(array, out=out, casting='no')
-                return
+            kwargs = dict()
+            kwargs_ndarray = dict()
 
             if ufunc in [np.log, np.log2, np.log10, np.sqrt]:
-                where = array > 0
+                kwargs["where"] = array > 0
             elif ufunc in [np.log1p]:
-                where = array >= -1
+                kwargs["where"] = array >= -1
             elif ufunc in [np.arcsin, np.arccos, np.arctanh]:
-                where = (-1 <= array) & (array <= 1)
+                kwargs["where"] = (-1 <= array) & (array <= 1)
             elif ufunc in [np.arccosh]:
-                where = array >= 1
+                kwargs["where"] = array >= 1
             elif ufunc in [np.reciprocal]:
-                where = array != 0
-            else:
-                where = na.ScalarArray(True)
+                kwargs["where"] = array != 0
 
-            result = ufunc(array, out=out, where=where)
-            result_ndarray = ufunc(
-                array.ndarray,
-                out=out_ndarray,
-                casting='no',
-                where=where.ndarray,
-            )
+            if "where" in kwargs:
+                kwargs_ndarray["where"] = kwargs["where"].ndarray
+
+            result = ufunc(array, **kwargs)
+            result_ndarray = ufunc(array.ndarray, **kwargs_ndarray)
 
             if ufunc.nout == 1:
-                result = (result, )
-                result_ndarray = (result_ndarray, )
+                out = 0 * result
+            else:
+                out = tuple(0 * r for r in result)
+
+            result_out = ufunc(array, out=out, **kwargs)
+
+            if ufunc.nout == 1:
                 out = (out, )
+                result_ndarray = (result_ndarray, )
+                result = (result, )
+                result_out = (result_out, )
 
             for i in range(ufunc.nout):
-                assert np.all(result[i].ndarray == result_ndarray[i], where=where.ndarray)
-
-                if out[i] is not None:
-                    assert result[i] is out[i]
+                assert np.array_equal(result[i].ndarray, result_ndarray[i])
+                assert np.array_equal(result[i], result_out[i])
+                assert result_out[i] is out[i]
 
     class TestUfuncBinary(
         tests.test_core.AbstractTestAbstractArray.TestUfuncBinary,
