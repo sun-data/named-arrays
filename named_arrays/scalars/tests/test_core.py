@@ -105,7 +105,7 @@ class AbstractTestAbstractScalar(
 
         length = array.length
         assert isinstance(length, (int, float, np.ndarray, na.AbstractScalar))
-        assert np.all(length >= 0)
+        assert np.all(length.ndarray >= 0)
 
     def test__getitem__(
             self,
