@@ -189,8 +189,15 @@ class AbstractTestAbstractScalar(
                 result_out = (result_out, )
 
             for i in range(ufunc.nout):
-                assert np.array_equal(result[i].ndarray, result_ndarray[i])
-                assert np.array_equal(result[i], result_out[i])
+                r = result[i]
+                r_ndarray = result_ndarray[i]
+                r_out = result_out[i]
+                if "where" in kwargs:
+                    r = r[kwargs["where"]]
+                    r_ndarray = r_ndarray[kwargs_ndarray["where"]]
+                    r_out = r_out[kwargs["where"]]
+                assert np.array_equal(r.ndarray, r_ndarray)
+                assert np.array_equal(r, r_out)
                 assert result_out[i] is out[i]
 
     class TestUfuncBinary(
