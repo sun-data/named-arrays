@@ -386,7 +386,7 @@ class AbstractScalarArray(
                 if isinstance(kwargs_ndarray['where'], na.AbstractScalarArray):
                     kwargs_ndarray['where'] = kwargs_ndarray['where'].ndarray_aligned(shape)
                 else:
-                    return kwargs_ndarray['where'].__array_ufunc__(function, method, *inputs, **kwargs)
+                    return NotImplemented
 
         inputs_ndarray = []
         for inp in inputs:
