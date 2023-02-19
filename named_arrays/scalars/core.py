@@ -365,9 +365,7 @@ class AbstractScalarArray(
                         else:
                             o = None
                     else:
-                        raise ValueError(
-                            f"`out` argument must be `None` or an instance of `named_arrays.ScalarArray` got {type(o)}"
-                        )
+                        return NotImplemented
                 out_normalized.append(o)
             kwargs_ndarray["out"] = tuple(out_normalized)
         else:
