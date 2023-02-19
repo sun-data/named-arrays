@@ -504,7 +504,7 @@ class AbstractArray(
     def max(
             self: Self,
             axis: None | str | Sequence[str] = None,
-            initial: npt.ArrayLike = None,
+            initial: npt.ArrayLike = np._NoValue,
             where: Self = np._NoValue,
     ) -> Self:
         return np.max(self, axis=axis, initial=initial, where=where)
