@@ -483,9 +483,7 @@ class AbstractTestAbstractArray(
                 (np.nanargmax, np.nanmax),
             ]
         )
-        @pytest.mark.parametrize('axis', [None, 'y'])
-        @pytest.mark.parametrize('out', [False, True])
-        @pytest.mark.parametrize('keepdims', [False, True])
+        @pytest.mark.parametrize('axis', [None, 'y', ('x', 'y')])
         class TestArgReductionFunctions:
             def test_arg_reduction_functions(
                     self,
@@ -493,34 +491,12 @@ class AbstractTestAbstractArray(
                     func: Callable,
                     array: na.AbstractArray,
                     axis: None | str,
-                    out: bool,
-                    keepdims: bool,
             ):
                 kwargs = dict()
 
                 if axis is not None:
-                    shape_result = {ax: 1 if ax == axis else array.shape[ax] for ax in reversed(array.shape)}
-                    if not keepdims:
-                        shape_result.pop(axis, None)
-                else:
-                    if keepdims:
-                        shape_result = {ax: 1 for ax in reversed(array.shape)}
-                    else:
-                        shape_result = dict()
-
-                if keepdims:
-                    kwargs['keepdims'] = keepdims
-
-                if out:
-                    if axis is not None:
-                        kwargs['out'] = array.indices
-                        kwargs['out'][axis] = array.type_array.empty(shape_result, dtype=int)
-                    else:
-                        kwargs['out'] = {ax: array.type_array.empty(shape_result, dtype=int) for ax in array.axes}
-
-                if axis is not None:
-                    if axis not in array.axes:
-                        with pytest.raises(ValueError, match='Reduction axis .* not in array with axes .*'):
+                    if not set(axis).issubset(array.axes):
+                        with pytest.raises(ValueError, match='Reduction axes .* are not a subset of the array axes .*'):
                             argfunc(array, axis=axis, **kwargs)
                         return
                 else:
@@ -532,15 +508,10 @@ class AbstractTestAbstractArray(
                             argfunc(array, axis=axis, **kwargs)
                         return
 
-                if out:
-                    with pytest.raises(NotImplementedError, match=r"out keyword argument is not implemented for .*"):
-                        argfunc(array, axis=axis, **kwargs)
-                    return
-
                 result = argfunc(array, axis=axis, **kwargs)
 
                 array_reduced = array[result]
-                array_reduced_expected = func(array, axis=axis, keepdims=keepdims)
+                array_reduced_expected = func(array, axis=axis)
 
                 assert np.all(array_reduced == array_reduced_expected)
 

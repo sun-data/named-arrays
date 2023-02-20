@@ -197,46 +197,39 @@ def array_function_percentile_like(
 def array_function_arg_reduce(
         func: Callable,
         a: na.AbstractScalarArray,
-        axis: None | str = None,
-        out: None | dict[str, na.ScalarArray] = None,
-        keepdims: None | bool = None,
+        axis: None | str | Sequence[str] = None,
 ) -> dict[str, na.ScalarArray]:
 
+    a = a.array
+    shape_a = a.shape
+
     if axis is not None:
-        if axis not in a.axes:
-            raise ValueError(f"Reduction axis '{axis}' not in array with axes {a.axes}")
+        if isinstance(axis, str):
+            axis = (axis, )
+        if not set(axis).issubset(a.axes):
+            raise ValueError(f"Reduction axes {axis} are not a subset of the array axes {a.axes}")
     else:
         if not a.shape:
             raise ValueError(f"Applying {func} to zero-dimensional arrays is not supported")
 
-    if out is not None:
-        raise NotImplementedError(f"out keyword argument is not implemented for {func}")
-
-    if keepdims:
-        axis_out = a.axes
-    else:
-        if axis is not None:
-            axis_out = tuple(ax for ax in a.axes if not ax == axis)
-        else:
-            axis_out = tuple()
-
-    kwargs = dict()
-
     if axis is not None:
-        kwargs['axis'] = a.axes.index(axis) if axis is not None else axis
-    if keepdims is not None:
-        kwargs['keepdims'] = keepdims
+        axis_flattened = na.flatten_axes(axis)
+        a_flattened = a.combine_axes(axes=axis, axis_new=axis_flattened)
+        axis_ndarray = a_flattened.axes.index(axis_flattened)
 
-    indices = na.ScalarArray(
-        ndarray=func(a.ndarray, **kwargs),
-        axes=axis_out,
-    )
+        indices = na.ScalarArray(
+            ndarray=func(a_flattened.ndarray, axis=axis_ndarray),
+            axes=tuple(ax for ax in a_flattened.axes if ax != axis_flattened),
+        )
 
-    if axis is None:
-        result = np.unravel_index(indices=indices, shape=a.shape)
+        result = np.unravel_index(indices, shape={ax: shape_a[ax] for ax in axis})
+        for ax in shape_a:
+            if ax not in axis:
+                result[ax] = na.ScalarArrayRange(0, shape_a[ax], axis=ax)
+
     else:
-        result = a.indices
-        result[axis] = indices
+        index = na.ScalarArray(func(a.ndarray, axis=axis))
+        result = np.unravel_index(index, shape=shape_a)
 
     return result
 
