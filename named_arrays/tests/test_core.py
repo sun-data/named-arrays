@@ -305,7 +305,6 @@ class AbstractTestAbstractArray(
             np.trunc,
         ]
     )
-    @pytest.mark.parametrize('out', [False, True])
     class TestUfuncUnary(abc.ABC):
 
         @abc.abstractmethod
@@ -313,7 +312,6 @@ class AbstractTestAbstractArray(
                 self,
                 ufunc: np.ufunc,
                 array: na.AbstractArray,
-                out: bool,
         ):
             pass
 
