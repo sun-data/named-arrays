@@ -360,7 +360,6 @@ class AbstractTestAbstractArray(
             np.fmod,
         ]
     )
-    @pytest.mark.parametrize('out', [False, True])
     class TestUfuncBinary(
         abc.ABC,
     ):
@@ -371,7 +370,6 @@ class AbstractTestAbstractArray(
                 ufunc: np.ufunc,
                 array: None | bool | int | float | complex | str | na.AbstractArray,
                 array_2: None | bool | int | float | complex | str | na.AbstractArray,
-                out: bool,
         ):
             pass
 
@@ -380,12 +378,11 @@ class AbstractTestAbstractArray(
                 ufunc: np.ufunc,
                 array: na.AbstractArray,
                 array_2: None | bool | int | float | complex | str | na.AbstractArray,
-                out: bool,
         ):
             array = np.transpose(array)
             if array_2 is not None:
                 array_2 = np.transpose(array_2)
-            self.test_ufunc_binary(ufunc, array_2, array, out=out)
+            self.test_ufunc_binary(ufunc, array_2, array)
 
     @pytest.mark.parametrize('out', [False, True])
     class TestMatmul(abc.ABC):
