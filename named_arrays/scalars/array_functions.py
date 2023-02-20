@@ -522,6 +522,18 @@ def array_equal(
     )
 
 
+@implements(np.array_equiv)
+def array_equiv(
+        a1: na.AbstractScalarArray,
+        a2: na.AbstractScalarArray,
+) -> bool:
+    shape = na.shape_broadcasted(a1, a2)
+    return np.array_equiv(
+        a1=na.as_named_array(a1).ndarray_aligned(shape),
+        a2=na.as_named_array(a2).ndarray_aligned(shape),
+    )
+
+
 @implements(np.nonzero)
 def nonzero(a: na.AbstractScalarArray):
     result = np.nonzero(a.ndarray)
