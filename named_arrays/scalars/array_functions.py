@@ -80,14 +80,14 @@ def array_function_default(
     a = a.array
     axes_a = a.axes
 
+    axis_normalized = na.axis_normalized(a, axis=axis)
+
     if axis is not None:
-        if not set(axis).issubset(axes_a):
+        if not set(axis_normalized).issubset(axes_a):
             raise ValueError(
                 f"the `axis` argument must be `None` or a subset of `a.axes`, "
                 f"got {axis} for `axis`, but `{a.axes} for `a.axes`"
             )
-
-    axis_normalized = na.axis_normalized(a, axis=axis)
 
     if out is not None:
         if not isinstance(out, na.ScalarArray):
@@ -147,8 +147,10 @@ def array_function_percentile_like(
     a = a.array
     axes_a = a.axes
 
+    axis_normalized = na.axis_normalized(a, axis=axis)
+
     if axis is not None:
-        if not set(axis).issubset(axes_a):
+        if not set(axis_normalized).issubset(axes_a):
             raise ValueError(
                 f"the `axis` argument must be `None` or a subset of `a.axes`, "
                 f"got {axis} for `axis`, but `{a.axes} for `a.axes`"
@@ -160,8 +162,6 @@ def array_function_percentile_like(
     axis_union = set(a.axes) & set(q.axes)
     if axis_union:
         raise ValueError(f"'q' must not have any shared axes with 'a', but axes {axis_union} are shared")
-
-    axis_normalized = na.axis_normalized(a, axis=axis)
 
     axes_result = axes_q + (tuple(ax for ax in axes_a if ax not in axis_normalized) if not keepdims else axes_a)
 
