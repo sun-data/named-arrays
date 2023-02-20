@@ -464,6 +464,15 @@ class AbstractTestAbstractScalar(
                 kwargs['method'] = 'closest_observation'
                 kwargs_ndarray['method'] = kwargs['method']
 
+                if axis is not None:
+                    if not set(axis).issubset(array.axes):
+                        with pytest.raises(
+                                expected_exception=ValueError,
+                                match=r"the `axis` argument must be `None` or a subset of `a.axes`"
+                        ):
+                            func(array, q, axis=axis, **kwargs)
+                        return
+
                 result = func(array, q, axis=axis, **kwargs, )
                 result_ndarray = func(
                     array.ndarray,
@@ -472,6 +481,8 @@ class AbstractTestAbstractScalar(
                     **kwargs_ndarray,
                 )
                 assert np.all(result.ndarray == result_ndarray)
+                if out:
+                    assert result is kwargs["out"]
 
         class TestFFTLikeFunctions(
             tests.test_core.AbstractTestAbstractArray.TestArrayFunctions.TestFFTLikeFunctions

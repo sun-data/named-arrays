@@ -67,21 +67,6 @@ FFTN_LIKE_FUNCTIONS = [
 HANDLED_FUNCTIONS = dict()
 
 
-def _calc_axes_new(
-        a: na.AbstractScalarArray,
-        axis: None | str | Sequence[str],
-        *,
-        keepdims: None | bool = None,
-) -> tuple[str, ...]:
-    if keepdims is None:
-        keepdims = False
-    if keepdims:
-        return a.axes
-    else:
-        axis = na.axis_normalized(a, axis)
-        return tuple(ax for ax in a.axes if ax not in axis)
-
-
 def array_function_default(
         func: Callable,
         a: na.AbstractScalarArray,
@@ -154,39 +139,59 @@ def array_function_percentile_like(
         q: float | u.Quantity | na.AbstractScalarArray,
         axis: None | str | Sequence[str] = None,
         out: None | na.ScalarArray = None,
-        overwrite_input: bool = False,
-        method: str = 'linear',
+        overwrite_input: bool = np._NoValue,
+        method: str = np._NoValue,
         keepdims: bool = False,
 ) -> na.ScalarArray:
 
-    if not isinstance(q, na.AbstractArray):
-        q = na.ScalarArray(q)
+    a = a.array
+    axes_a = a.axes
+
+    if axis is not None:
+        if not set(axis).issubset(axes_a):
+            raise ValueError(
+                f"the `axis` argument must be `None` or a subset of `a.axes`, "
+                f"got {axis} for `axis`, but `{a.axes} for `a.axes`"
+            )
+
+    q = q.array if isinstance(q, na.AbstractArray) else na.ScalarArray(q)
+    axes_q = q.axes
 
     axis_union = set(a.axes) & set(q.axes)
     if axis_union:
         raise ValueError(f"'q' must not have any shared axes with 'a', but axes {axis_union} are shared")
 
     axis_normalized = na.axis_normalized(a, axis=axis)
-    if out is not None:
-        axis_out = tuple(ax for ax in a.axes if ax not in axis_normalized) if not keepdims else a.axes
-        axis_out = q.axes + axis_out
-        out = out.transpose(axis_out)
+
+    axes_result = axes_q + (tuple(ax for ax in axes_a if ax not in axis_normalized) if not keepdims else axes_a)
 
     kwargs = dict()
+    kwargs["axis"] = tuple(axes_a.index(ax) for ax in axis_normalized)
 
-    if axis is not None:
-        kwargs['axis'] = tuple(a.axes.index(ax) for ax in axis_normalized if ax in a.axes)
     if out is not None:
-        kwargs['out'] = out.ndarray
-    kwargs['overwrite_input'] = overwrite_input
-    kwargs['method'] = method
-    if keepdims is not None:
-        kwargs['keepdims'] = keepdims
+        if not isinstance(out, na.ScalarArray):
+            raise ValueError(f"`out` should be `None` or an instance of `named_arrays.ScalarArray`, got `{type(out)}`")
+        kwargs["out"] = out.ndarray_aligned(axes_result)
+    else:
+        kwargs["out"] = out
 
-    return na.ScalarArray(
-        ndarray=func(a.ndarray, q.ndarray, **kwargs),
-        axes=q.axes + _calc_axes_new(a, axis=axis, keepdims=keepdims),
+    if overwrite_input is not np._NoValue:
+        kwargs['overwrite_input'] = overwrite_input
+    if method is not np._NoValue:
+        kwargs['method'] = method
+    kwargs['keepdims'] = keepdims
+
+    result_ndarray = func(a.ndarray, q.ndarray, **kwargs)
+
+    result = na.ScalarArray(
+        ndarray=result_ndarray,
+        axes=axes_result,
     )
+
+    if out is not None:
+        out.ndarray = result.ndarray_aligned(out.shape)
+        result = out
+    return result
 
 
 def array_function_arg_reduce(
