@@ -328,7 +328,7 @@ class AbstractTestAbstractScalar(
 
                 axis_normalized = axis if axis is not None else array.axes
                 axis_normalized = (axis_normalized, ) if isinstance(axis_normalized, str) else axis_normalized
-                shape_result = {ax: 1 if ax in axis_normalized else array.shape[ax] for ax in reversed(array.shape)}
+                shape_result = {ax: 1 if ax in axis_normalized else array.shape[ax] for ax in array.shape}
 
                 if dtype is not None:
                     kwargs['dtype'] = dtype
@@ -344,7 +344,7 @@ class AbstractTestAbstractScalar(
 
                 if out:
                     kwargs['out'] = array.type_array.empty(shape_result)
-                    kwargs_ndarray['out'] = array.type_array.empty(shape_result).ndarray.transpose()
+                    kwargs_ndarray['out'] = array.type_array.empty(shape_result).ndarray
                     if array.unit is not None:
                         kwargs['out'] = kwargs['out'] << array.unit
                         kwargs_ndarray['out'] = kwargs_ndarray['out'] << array.unit
@@ -372,6 +372,18 @@ class AbstractTestAbstractScalar(
                             func(array, axis=axis, **kwargs, )
                         return
 
+                if func in [np.median, np.nanmedian]:
+                    if where:
+                        with pytest.raises(TypeError, match=r".* got an unexpected keyword argument \'where\'"):
+                            func(array, axis=axis, **kwargs, )
+                        return
+
+                if axis is not None:
+                    if not set(axis).issubset(array.axes):
+                        with pytest.raises(ValueError, match=r"the `axis` argument must be `None` or a subset of `a.axes`"):
+                            func(array, axis=axis, **kwargs)
+                        return
+
                 if array.unit is not None:
                     if func in [np.all, np.any]:
                         if 'where' in kwargs:
@@ -388,19 +400,15 @@ class AbstractTestAbstractScalar(
                             func(array, axis=axis, **kwargs, )
                         return
 
-                if func in [np.median, np.nanmedian]:
-                    if where:
-                        with pytest.raises(TypeError, match=r".* got an unexpected keyword argument \'where\'"):
-                            func(array, axis=axis, **kwargs, )
-                        return
-
                 result = func(array, axis=axis, **kwargs, )
                 result_ndarray = func(
                     array.ndarray,
                     axis=tuple(array.axes.index(ax) for ax in axis_normalized if ax in array.axes),
                     **kwargs_ndarray,
                 )
-                assert np.all(result.ndarray == result_ndarray)
+                assert np.allclose(result.ndarray, result_ndarray)
+                if out:
+                    assert result is kwargs["out"]
 
         class TestPercentileLikeFunctions(
             tests.test_core.AbstractTestAbstractArray.TestArrayFunctions.TestPercentileLikeFunctions

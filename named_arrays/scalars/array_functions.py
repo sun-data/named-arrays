@@ -86,36 +86,66 @@ def array_function_default(
         func: Callable,
         a: na.AbstractScalarArray,
         axis: None | str | Sequence[str] = None,
-        dtype: None | Type = None,
+        dtype: type | np.dtype = np._NoValue,
         out: None | na.ScalarArray = None,
-        keepdims: None | bool = None,
-        initial: None | bool | int | float | complex | u.Quantity = None,
-        where: None | na.AbstractScalarArray = None,
+        keepdims: bool = False,
+        initial: bool | int | float | complex | u.Quantity = np._NoValue,
+        where: bool | na.AbstractScalarArray = np._NoValue,
 ):
-    axis_normalized = na.axis_normalized(a, axis=axis)
-    if out is not None:
-        axis_out = tuple(ax for ax in a.axes if ax not in axis_normalized) if not keepdims else a.axes
-        out = out.transpose(axis_out)
-
-    kwargs = dict()
+    a = a.array
+    axes_a = a.axes
 
     if axis is not None:
-        kwargs['axis'] = tuple(a.axes.index(ax) for ax in axis_normalized if ax in a.axes)
-    if dtype is not None:
-        kwargs['dtype'] = dtype
-    if out is not None:
-        kwargs['out'] = out.ndarray
-    if keepdims is not None:
-        kwargs['keepdims'] = keepdims
-    if initial is not None:
-        kwargs['initial'] = initial
-    if where is not None and where is not np._NoValue:
-        kwargs['where'] = na.as_named_array(where).ndarray_aligned(a.shape)
+        if not set(axis).issubset(axes_a):
+            raise ValueError(
+                f"the `axis` argument must be `None` or a subset of `a.axes`, "
+                f"got {axis} for `axis`, but `{a.axes} for `a.axes`"
+            )
 
-    return na.ScalarArray(
-        ndarray=func(a.ndarray, **kwargs),
-        axes=_calc_axes_new(a, axis=axis, keepdims=keepdims),
-    )
+    axis_normalized = na.axis_normalized(a, axis=axis)
+
+    if out is not None:
+        if not isinstance(out, na.ScalarArray):
+            raise ValueError(f"`out` should be `None` or an instance of `{a.type_array}`, got `{type(out)}`")
+        axes_ndarray = out.axes
+        if not keepdims:
+            axes_ndarray = axes_ndarray + tuple(ax for ax in axes_a if ax not in out.axes)
+    else:
+        axes_ndarray = axes_a
+
+    kwargs = dict()
+    kwargs["axis"] = tuple(axes_ndarray.index(ax) for ax in axis_normalized)
+    if dtype is not np._NoValue:
+        kwargs["dtype"] = dtype
+    if out is not None and isinstance(out.ndarray, np.ndarray):
+        kwargs["out"] = out.ndarray
+    else:
+        kwargs["out"] = None
+    kwargs["keepdims"] = keepdims
+    if initial is not np._NoValue:
+        kwargs["initial"] = initial
+    if where is not np._NoValue:
+        if isinstance(where, na.AbstractArray):
+            if isinstance(where, na.AbstractScalarArray):
+                kwargs["where"] = where.ndarray_aligned(axes_ndarray)
+            else:
+                return NotImplemented
+        else:
+            kwargs["where"] = where
+
+    axes_result = tuple(ax for ax in axes_ndarray if ax not in axis_normalized) if not keepdims else axes_ndarray
+
+    result_ndarray = func(a.ndarray_aligned(axes_ndarray), **kwargs)
+
+    if out is None:
+        result = na.ScalarArray(
+            ndarray=result_ndarray,
+            axes=axes_result,
+        )
+    else:
+        out.ndarray = result_ndarray
+        result = out
+    return result
 
 
 def array_function_percentile_like(
