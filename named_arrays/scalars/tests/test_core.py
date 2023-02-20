@@ -60,9 +60,6 @@ class AbstractTestAbstractScalar(
     tests.test_core.AbstractTestAbstractArray,
 ):
 
-    def test_ndarray(self, array: na.AbstractScalar):
-        assert isinstance(array.ndarray, (int, float, complex, str, np.ndarray))
-
     def test_dtype(self, array: na.AbstractScalar):
         assert array.dtype == array.array.dtype
         assert isinstance(array.dtype, np.dtype)
@@ -105,11 +102,96 @@ class AbstractTestAbstractScalar(
 
         length = array.length
         assert isinstance(length, (int, float, np.ndarray, na.AbstractScalar))
-        assert np.all(length.ndarray >= 0)
+        assert np.all(length >= 0)
 
-    def test__getitem__(
+    class TestMatmul(
+        tests.test_core.AbstractTestAbstractArray.TestMatmul,
+    ):
+
+        def test_matmul(
+                self,
+                array: None | bool | int | float | complex | str | na.AbstractArray,
+                array_2: None | bool | int | float | complex | str | na.AbstractArray,
+        ):
+            result = np.matmul(array, array_2)
+
+            if array is None or array_2 is None:
+                assert result is None
+                return
+
+            result_expected = np.multiply(array, array_2)
+
+            out = 0 * result
+            result_out = np.matmul(array, array_2, out=out)
+
+            assert np.all(result == result_expected)
+            assert np.all(result == result_out)
+            assert result_out is out
+
+    def test_ptp(
             self,
             array: na.AbstractScalar,
+    ):
+        super().test_ptp(array=array)
+        if np.issubdtype(array.dtype, bool):
+            with pytest.raises(TypeError, match='numpy boolean subtract, .*'):
+                array.ptp()
+            return
+
+        assert np.all(array.ptp() == np.ptp(array))
+
+    def test_all(
+            self,
+            array: na.AbstractScalar,
+    ):
+        super().test_all(array=array)
+        if array.unit is not None:
+            with pytest.raises(TypeError, match="no implementation found for .*"):
+                array.all()
+            return
+
+        assert np.all(array.all() == np.all(array))
+
+    def test_any(
+            self,
+            array: na.AbstractScalar,
+    ):
+        super().test_any(array=array)
+        if array.unit is not None:
+            with pytest.raises(TypeError, match="no implementation found for .*"):
+                array.any()
+            return
+
+        assert np.all(array.any() == np.any(array))
+
+
+class AbstractTestAbstractScalarArray(
+    AbstractTestAbstractScalar,
+):
+
+    def test_ndarray(self, array: na.AbstractScalarArray):
+        assert isinstance(array.ndarray, (int, float, complex, str, np.ndarray))
+
+    def test_axes(self, array: na.AbstractArray):
+        super().test_axes(array)
+        assert len(array.axes) == np.ndim(array.ndarray)
+
+    def test_size(self, array: na.AbstractScalarArray):
+        super().test_size(array)
+        assert array.size == np.size(array.ndarray)
+
+    @pytest.mark.parametrize(
+        argnames='item',
+        argvalues=[
+            dict(y=0),
+            dict(y=slice(0,1)),
+            dict(y=na.ScalarArray(np.array([0, 1]), axes=('y', ))),
+            na.ScalarLinearSpace(0, 1, axis='y', num=_num_y) > 0.5,
+        ]
+    )
+    def test__getitem__(
+            self,
+            array: na.AbstractScalarArray,
             item: dict[str, int | slice | na.AbstractArray] | na.AbstractArray
     ):
         super().test__getitem__(array=array, item=item)
@@ -139,14 +221,15 @@ class AbstractTestAbstractScalar(
                 array[item]
 
     class TestUfuncUnary(
-        tests.test_core.AbstractTestAbstractArray.TestUfuncUnary,
+        AbstractTestAbstractScalar.TestUfuncUnary,
     ):
 
         def test_ufunc_unary(
                 self,
                 ufunc: np.ufunc,
-                array: na.AbstractScalar,
+                array: na.AbstractScalarArray,
         ):
+            super().test_ufunc_unary(ufunc, array)
 
             try:
                 ufunc(array.ndarray)
@@ -193,16 +276,18 @@ class AbstractTestAbstractScalar(
                 assert np.all(result[i] == result_out[i], **kwargs)
                 assert result_out[i] is out[i]
 
+    @pytest.mark.parametrize('array_2', _scalar_arrays_2())
     class TestUfuncBinary(
-        tests.test_core.AbstractTestAbstractArray.TestUfuncBinary,
+        AbstractTestAbstractScalar.TestUfuncBinary,
     ):
 
         def test_ufunc_binary(
                 self,
                 ufunc: np.ufunc,
-                array: None | bool | int | float | complex | str | na.AbstractArray,
-                array_2: None | bool | int | float | complex | str | na.AbstractArray,
+                array: None | bool | int | float | complex | str | na.AbstractScalarArray,
+                array_2: None | bool | int | float | complex | str | na.AbstractScalarArray,
         ):
+            super().test_ufunc_binary(ufunc, array, array_2)
 
             if array is None or array_2 is None:
                 assert ufunc(array, array_2) is None
@@ -245,51 +330,34 @@ class AbstractTestAbstractScalar(
             result_out = ufunc(array, array_2, out=out, **kwargs)
 
             if ufunc.nout == 1:
-                out = (out, )
-                result_ndarray = (result_ndarray, )
-                result = (result, )
-                result_out = (result_out, )
+                out = (out,)
+                result_ndarray = (result_ndarray,)
+                result = (result,)
+                result_out = (result_out,)
 
             for i in range(ufunc.nout):
                 assert np.all(result[i].broadcast_to(shape).ndarray == result_ndarray[i], **kwargs_ndarray)
                 assert np.all(result[i] == result_out[i], **kwargs)
                 assert result_out[i] is out[i]
 
+    @pytest.mark.parametrize('array_2', _scalar_arrays_2())
     class TestMatmul(
-        tests.test_core.AbstractTestAbstractArray.TestMatmul,
+        AbstractTestAbstractScalar.TestMatmul,
     ):
-
-        def test_matmul(
-                self,
-                array: None | bool | int | float | complex | str | na.AbstractArray,
-                array_2: None | bool | int | float | complex | str | na.AbstractArray,
-        ):
-            result = np.matmul(array, array_2)
-
-            if array is None or array_2 is None:
-                assert result is None
-                return
-
-            result_expected = np.multiply(array, array_2)
-
-            out = 0 * result
-            result_out = np.matmul(array, array_2, out=out)
-
-            assert np.all(result == result_expected)
-            assert np.all(result == result_out)
-            assert result_out is out
+        pass
 
     class TestArrayFunctions(
-        tests.test_core.AbstractTestAbstractArray.TestArrayFunctions
+        AbstractTestAbstractScalar.TestArrayFunctions,
     ):
 
         class TestReductionFunctions(
-            tests.test_core.AbstractTestAbstractArray.TestArrayFunctions.TestReductionFunctions
+            AbstractTestAbstractScalar.TestArrayFunctions.TestReductionFunctions
         ):
+
             def test_reduction_functions(
                     self,
                     func: Callable,
-                    array: na.AbstractScalar,
+                    array: na.AbstractScalarArray,
                     axis: None | str | Sequence[str],
                     dtype: Type,
                     out: bool,
@@ -393,14 +461,22 @@ class AbstractTestAbstractScalar(
                 if out:
                     assert result is kwargs["out"]
 
+        @pytest.mark.parametrize(
+            argnames='q',
+            argvalues=[
+                .25,
+                25 * u.percent,
+                na.ScalarLinearSpace(.25, .75, axis='q', num=3, endpoint=True),
+            ]
+        )
         class TestPercentileLikeFunctions(
-            tests.test_core.AbstractTestAbstractArray.TestArrayFunctions.TestPercentileLikeFunctions
+            AbstractTestAbstractScalar.TestArrayFunctions.TestPercentileLikeFunctions
         ):
 
             def test_percentile_like_functions(
                     self,
                     func: Callable,
-                    array: na.AbstractArray,
+                    array: na.AbstractScalarArray,
                     q: float | u.Quantity | na.AbstractArray,
                     axis: None | str | Sequence[str],
                     out: bool,
@@ -421,7 +497,7 @@ class AbstractTestAbstractScalar(
                 q_normalized = q if isinstance(q, na.AbstractArray) else na.ScalarArray(q)
 
                 axis_normalized = axis if axis is not None else array.axes
-                axis_normalized = (axis_normalized, ) if isinstance(axis_normalized, str) else axis_normalized
+                axis_normalized = (axis_normalized,) if isinstance(axis_normalized, str) else axis_normalized
                 shape_result = q_normalized.shape
                 shape_result |= {ax: 1 if ax in axis_normalized else array.shape[ax] for ax in array.shape}
 
@@ -468,13 +544,13 @@ class AbstractTestAbstractScalar(
                     assert result is kwargs["out"]
 
         class TestFFTLikeFunctions(
-            tests.test_core.AbstractTestAbstractArray.TestArrayFunctions.TestFFTLikeFunctions
+            AbstractTestAbstractScalar.TestArrayFunctions.TestFFTLikeFunctions
         ):
 
             def test_fft_like_functions(
                     self,
                     func: Callable,
-                    array: na.AbstractScalar,
+                    array: na.AbstractScalarArray,
                     axis: str,
             ):
                 super().test_fft_like_functions(
@@ -504,13 +580,13 @@ class AbstractTestAbstractScalar(
                 assert np.all(result.ndarray == result_expected)
 
         class TestFFTNLikeFunctions(
-            tests.test_core.AbstractTestAbstractArray.TestArrayFunctions.TestFFTNLikeFunctions
+            AbstractTestAbstractScalar.TestArrayFunctions.TestFFTNLikeFunctions
         ):
 
             def test_fftn_like_functions(
                     self,
                     func: Callable,
-                    array: na.AbstractArray,
+                    array: na.AbstractScalarArray,
                     axes: dict[str, str],
                     s: None | dict[str, int],
             ):
@@ -562,7 +638,7 @@ class AbstractTestAbstractScalar(
                 assert np.all(result.ndarray == result_expected)
 
         @pytest.mark.parametrize('axis', [None, 'x', 'y'])
-        def test_sort(self, array: na.AbstractScalar, axis: None | str):
+        def test_sort(self, array: na.AbstractScalarArray, axis: None | str):
 
             super().test_sort(array=array, axis=axis)
 
@@ -579,7 +655,7 @@ class AbstractTestAbstractScalar(
 
             assert np.all(result.ndarray == result_ndarray)
 
-        def test_nonzero(self, array: na.AbstractArray):
+        def test_nonzero(self, array: na.AbstractScalarArray):
             if not array.shape:
                 with pytest.raises(DeprecationWarning, match="Calling nonzero on 0d arrays is deprecated, .*"):
                     np.nonzero(array)
@@ -594,7 +670,7 @@ class AbstractTestAbstractScalar(
                 assert result[ax].axes[0] == f"{array.axes_flattened}_nonzero"
 
         @pytest.mark.parametrize('copy', [False, True])
-        def test_nan_to_num(self, array: na.AbstractArray, copy: bool):
+        def test_nan_to_num(self, array: na.AbstractScalarArray, copy: bool):
 
             super().test_nan_to_num(array=array, copy=copy)
 
@@ -610,99 +686,6 @@ class AbstractTestAbstractScalar(
                 assert result is array
 
             assert np.all(result.ndarray == expected)
-
-    def test_ptp(
-            self,
-            array: na.AbstractScalar,
-    ):
-        super().test_ptp(array=array)
-        if np.issubdtype(array.dtype, bool):
-            with pytest.raises(TypeError, match='numpy boolean subtract, .*'):
-                array.ptp()
-            return
-
-        assert np.all(array.ptp() == np.ptp(array))
-
-    def test_all(
-            self,
-            array: na.AbstractScalar,
-    ):
-        super().test_all(array=array)
-        if array.unit is not None:
-            with pytest.raises(TypeError, match="no implementation found for .*"):
-                array.all()
-            return
-
-        assert np.all(array.all() == np.all(array))
-
-    def test_any(
-            self,
-            array: na.AbstractScalar,
-    ):
-        super().test_any(array=array)
-        if array.unit is not None:
-            with pytest.raises(TypeError, match="no implementation found for .*"):
-                array.any()
-            return
-
-        assert np.all(array.any() == np.any(array))
-
-
-class AbstractTestAbstractScalarArray(
-    AbstractTestAbstractScalar,
-):
-    def test_axes(self, array: na.AbstractArray):
-        super().test_axes(array)
-        assert len(array.axes) == np.ndim(array.ndarray)
-
-    def test_size(self, array: na.AbstractScalarArray):
-        super().test_size(array)
-        assert array.size == np.size(array.ndarray)
-
-    @pytest.mark.parametrize(
-        argnames='item',
-        argvalues=[
-            dict(y=0),
-            dict(y=slice(0,1)),
-            dict(y=na.ScalarArray(np.array([0, 1]), axes=('y', ))),
-            na.ScalarLinearSpace(0, 1, axis='y', num=_num_y) > 0.5,
-        ]
-    )
-    def test__getitem__(
-            self,
-            array: na.AbstractArray,
-            item: dict[str, int | slice | na.AbstractArray] | na.AbstractArray
-    ):
-        super().test__getitem__(array, item)
-
-    @pytest.mark.parametrize('array_2', _scalar_arrays_2())
-    class TestUfuncBinary(
-        AbstractTestAbstractScalar.TestUfuncBinary,
-    ):
-        pass
-
-    @pytest.mark.parametrize('array_2', _scalar_arrays_2())
-    class TestMatmul(
-        AbstractTestAbstractScalar.TestMatmul,
-    ):
-        pass
-
-    class TestArrayFunctions(
-        AbstractTestAbstractScalar.TestArrayFunctions,
-    ):
-
-        @pytest.mark.parametrize(
-            argnames='q',
-            argvalues=[
-                .25,
-                25 * u.percent,
-                na.ScalarLinearSpace(.25, .75, axis='q', num=3, endpoint=True),
-            ]
-        )
-        class TestPercentileLikeFunctions(
-            AbstractTestAbstractScalar.TestArrayFunctions.TestPercentileLikeFunctions
-        ):
-            pass
 
 
 @pytest.mark.parametrize('array', _scalar_arrays())

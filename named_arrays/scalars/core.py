@@ -51,16 +51,6 @@ class AbstractScalar(
 
     @property
     @abc.abstractmethod
-    def ndarray(self: Self) -> bool | int | float | complex | str | np.ndarray | u.Quantity:
-        """
-        Underlying data that is wrapped by this class.
-
-        This is usually an instance of :class:`numpy.ndarray` or :class:`astropy.units.Quantity`, but it can also be a
-        built-in python type such as a :class:`int`, :class:`float`, or :class:`bool`
-        """
-
-    @property
-    @abc.abstractmethod
     def dtype(self: Self) -> np.dtype:
         """
         Data type of the array. Equivalent to :attr:`numpy.ndarray.dtype`
@@ -125,6 +115,16 @@ class AbstractScalarArray(
     @property
     def type_array(self: Self) -> Type[ScalarArray]:
         return ScalarArray
+
+    @property
+    @abc.abstractmethod
+    def ndarray(self: Self) -> bool | int | float | complex | str | np.ndarray | u.Quantity:
+        """
+        Underlying data that is wrapped by this class.
+
+        This is usually an instance of :class:`numpy.ndarray` or :class:`astropy.units.Quantity`, but it can also be a
+        built-in python type such as a :class:`int`, :class:`float`, or :class:`bool`
+        """
 
     def astype(
             self: Self,
