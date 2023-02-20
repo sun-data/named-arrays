@@ -813,7 +813,7 @@ class AbstractTestAbstractArray(
             array: na.AbstractArray,
             shape: dict[str, int],
     ):
-        assert np.all(array.broadcast_to(shape) == np.broadcast_to(array, shape))
+        assert np.array_equal(array.broadcast_to(shape), np.broadcast_to(array, shape))
 
     @pytest.mark.parametrize('shape', [dict(r=-1)])
     def test_reshape(
@@ -821,25 +821,25 @@ class AbstractTestAbstractArray(
             array: na.AbstractArray,
             shape: dict[str, int],
     ):
-        assert np.all(array.reshape(shape) == np.reshape(array, shape))
+        assert np.array_equal(array.reshape(shape), np.reshape(array, shape))
 
     def test_min(
             self,
             array: na.AbstractArray,
     ):
-        assert np.all(array.min() == np.min(array))
+        assert np.array_equal(array.min(), np.min(array))
 
     def test_max(
             self,
             array: na.AbstractArray,
     ):
-        assert np.all(array.max() == np.max(array))
+        assert np.array_equal(array.max(), np.max(array))
 
     def test_sum(
             self,
             array: na.AbstractArray,
     ):
-        assert np.all(array.sum() == np.sum(array))
+        assert np.array_equal(array.sum(), np.sum(array))
 
     @abc.abstractmethod
     def test_ptp(
@@ -852,13 +852,13 @@ class AbstractTestAbstractArray(
             self,
             array: na.AbstractArray,
     ):
-        assert np.all(array.mean() == np.mean(array))
+        assert np.array_equal(array.mean(), np.mean(array))
 
     def test_std(
             self,
             array: na.AbstractArray,
     ):
-        assert np.all(array.std() == np.std(array))
+        assert np.array_equal(array.std(), np.std(array))
 
     def test_percentile(
             self,
@@ -866,7 +866,7 @@ class AbstractTestAbstractArray(
     ):
         q = 25 * u.percent
         kwargs = dict(method='closest_observation')
-        assert np.all(array.percentile(q, **kwargs) == np.percentile(array, q, **kwargs))
+        assert np.array_equal(array.percentile(q, **kwargs), np.percentile(array, q, **kwargs))
 
     @abc.abstractmethod
     def test_all(
@@ -886,13 +886,13 @@ class AbstractTestAbstractArray(
             self,
             array: na.AbstractArray,
     ):
-        assert np.all(array.rms() == np.sqrt(np.mean(np.square(array))))
+        assert np.array_equal(array.rms(), np.sqrt(np.mean(np.square(array))))
 
     def test_transpose(
             self,
             array: na.AbstractArray,
     ):
-        assert np.all(array.transpose() == np.transpose(array))
+        assert np.array_equal(array.transpose(), np.transpose(array))
 
 
 
