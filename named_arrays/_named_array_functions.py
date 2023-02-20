@@ -1,6 +1,7 @@
 from __future__ import annotations
-from typing import Sequence, Type
+from typing import Sequence, overload, Type
 import numpy as np
+import astropy.units as u
 import named_arrays as na
 
 __all__ = [
@@ -23,7 +24,17 @@ def shape(a: na.ArrayLike) -> dict[str, int]:
     return np.shape(a)
 
 
-def broadcast_to(array: na.ArrayLike, shape: dict[str, int]) -> na.AbstractArray:
+@overload
+def broadcast_to(array: float | complex | np.ndarray | u.Quantity, shape: dict[str, int]) -> na.ScalarArray:
+    ...
+
+
+@overload
+def broadcast_to(array: na.AbstractScalarArray, shape: dict[str, int]) -> na.ScalarArray:
+    ...
+
+
+def broadcast_to(array, shape):
     if not isinstance(array, na.AbstractArray):
         array = na.ScalarArray(array)
     return np.broadcast_to(array=array, shape=shape)
