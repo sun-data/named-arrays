@@ -356,7 +356,7 @@ class AbstractTestAbstractArray(
             np.fmin,
             np.copysign,
             np.nextafter,
-            # np.ldexp,
+            np.ldexp,
             np.fmod,
         ]
     )
