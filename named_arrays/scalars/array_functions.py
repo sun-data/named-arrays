@@ -78,15 +78,15 @@ def array_function_default(
         where: bool | na.AbstractScalarArray = np._NoValue,
 ):
     a = a.array
-    axes_a = a.axes
+    shape = na.shape_broadcasted(a, where)
 
     axis_normalized = na.axis_normalized(a, axis=axis)
 
     if axis is not None:
-        if not set(axis_normalized).issubset(axes_a):
+        if not set(axis_normalized).issubset(shape):
             raise ValueError(
-                f"the `axis` argument must be `None` or a subset of `a.axes`, "
-                f"got {axis} for `axis`, but `{a.axes} for `a.axes`"
+                f"the `axis` argument must be `None` or a subset of the broadcasted shape of `a` and `where`, "
+                f"got {axis} for `axis`, but `{shape} for `shape`"
             )
 
     if out is not None:
@@ -94,9 +94,9 @@ def array_function_default(
             raise ValueError(f"`out` should be `None` or an instance of `{a.type_array}`, got `{type(out)}`")
         axes_ndarray = out.axes
         if not keepdims:
-            axes_ndarray = axes_ndarray + tuple(ax for ax in axes_a if ax not in out.axes)
+            axes_ndarray = axes_ndarray + tuple(ax for ax in shape if ax not in out.axes)
     else:
-        axes_ndarray = axes_a
+        axes_ndarray = tuple(shape)
 
     kwargs = dict()
     kwargs["axis"] = tuple(axes_ndarray.index(ax) for ax in axis_normalized)
