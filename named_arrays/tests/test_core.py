@@ -430,9 +430,7 @@ class AbstractTestAbstractArray(
         )
         @pytest.mark.parametrize('dtype', [None, float])
         @pytest.mark.parametrize('axis', [None, 'y', 'x', ('x', 'y')])
-        @pytest.mark.parametrize('out', [False, True])
         @pytest.mark.parametrize('keepdims', [False, True])
-        @pytest.mark.parametrize('where', [False, True])
         class TestReductionFunctions(abc.ABC):
 
             @abc.abstractmethod
@@ -441,10 +439,9 @@ class AbstractTestAbstractArray(
                     func: Callable,
                     array: na.AbstractArray,
                     axis: None | str | Sequence[str],
-                    dtype: Type,
-                    out: bool,
+                    dtype: None | type | np.dtype,
                     keepdims: bool,
-                    where: bool,
+                    where: bool | na.AbstractArray,
             ):
                 pass
 
