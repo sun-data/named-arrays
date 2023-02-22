@@ -1177,6 +1177,12 @@ class AbstractTestAbstractNormalRandomSample(
 ):
     pass
 
+class AbstractTestAbstractPoissonRandomSample(
+    AbstractTestAbstractRandomMixin,
+    AbstractTestAbstractImplicitArray,
+):
+    pass
+
 
 class AbstractTestAbstractParameterizedArray(
     AbstractTestAbstractImplicitArray,

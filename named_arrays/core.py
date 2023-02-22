@@ -763,6 +763,12 @@ class AbstractNormalRandomSample(
 ):
     pass
 
+@dataclasses.dataclass
+class AbstractPoissonRandomSample(
+    AbstractRandomSample,
+):
+    pass
+
 
 @dataclasses.dataclass(eq=False)
 class AbstractParameterizedArray(
