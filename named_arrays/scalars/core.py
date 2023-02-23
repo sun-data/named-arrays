@@ -1358,8 +1358,7 @@ class ScalarStratifiedRandomSpace(
         delta = ScalarUniformRandomSample(
             start=-step_size / 2,
             stop=step_size / 2,
-            axis=self.axis,
-            num=self.num,
+            shape_random=result.shape,
             seed=self.seed,
         )
 

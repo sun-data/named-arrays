@@ -381,6 +381,40 @@ class TestScalarLinearSpace(
 ):
     pass
 
+def _scalar_stratified_random_spaces():
+    starts = [
+        0,
+        na.ScalarArray(np.random.random(_num_x), axes=('x', )),
+    ]
+    stops = [
+        10,
+        na.ScalarArray(10 * np.random.random(_num_x) + 1, axes=('x', )),
+    ]
+    units = [None, u.mm]
+    endpoints = [
+        False,
+        True,
+    ]
+    seeds = [None, _num_x]
+    return [
+        na.ScalarStratifiedRandomSpace(
+            start=start << unit if unit is not None else start,
+            stop=stop << unit if unit is not None else stop,
+            axis='y',
+            num=_num_y,
+            endpoint=endpoint,
+            seed=seed
+        ) for start in starts for stop in stops for unit in units for endpoint in endpoints for seed in seeds
+    ]
+
+
+@pytest.mark.parametrize('array', _scalar_stratified_random_spaces())
+class TestStratifiedRandomSpace(
+    AbstractTestAbstractScalarSpace,
+    tests.test_core.AbstractTestAbstractStratifiedRandomSpace,
+):
+    pass
+
 
 # class OldTestScalarArray:
 #     def test__post_init__(self):
