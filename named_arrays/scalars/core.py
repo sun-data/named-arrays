@@ -254,7 +254,7 @@ class AbstractScalarArray(
 
             return ScalarArray(
                 ndarray=np.moveaxis(value[item.ndarray], 0, ~0),
-                axes=tuple(axis for axis in self.axes if axis not in item.axes) + (f"{item.axes_flattened}_boolean", )
+                axes=tuple(axis for axis in self.axes if axis not in item.axes) + (item.axes_flattened, )
             )
 
         elif isinstance(item, dict):
