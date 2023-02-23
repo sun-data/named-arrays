@@ -562,6 +562,38 @@ def array_equiv(
     )
 
 
+@implements(np.allclose)
+def allclose(
+        a: na.ScalarLike,
+        b: na.ScalarLike,
+        rtol: float = 1e-05,
+        atol: float = 1e-08,
+        equal_nan: bool = False,
+) -> bool:
+
+    shape = na.shape_broadcasted(a, b)
+
+    if isinstance(a, na.AbstractArray):
+        if isinstance(a, na.AbstractScalarArray):
+            a = a.ndarray_aligned(shape)
+        else:
+            return NotImplemented
+
+    if isinstance(b, na.AbstractArray):
+        if isinstance(b, na.AbstractScalarArray):
+            b = b.ndarray_aligned(shape)
+        else:
+            return NotImplemented
+
+    return np.allclose(
+        a=a,
+        b=b,
+        rtol=rtol,
+        atol=atol,
+        equal_nan=equal_nan,
+    )
+
+
 @implements(np.nonzero)
 def nonzero(a: na.AbstractScalarArray):
     a = a.array

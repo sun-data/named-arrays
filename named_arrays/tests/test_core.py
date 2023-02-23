@@ -758,6 +758,21 @@ class AbstractTestAbstractArray(
                 array_2 = array.type_array.ones(array.shape)
                 assert not np.array_equiv(array, array_2)
 
+        @pytest.mark.parametrize("array_2", ["copy", "broadcast", "zeros"])
+        def test_allclose(self, array: na.AbstractArray, array_2: str):
+            if array_2 == "copy":
+                array_2 = array + array * na.ScalarUniformRandomSample(-1e-10, 1e-10, shape_random=array.shape)
+                assert np.allclose(array, array_2)
+
+            elif array_2 == "broadcast":
+                shape_new = array.shape | dict(extra_axis=5)
+                array_2 = array + array * na.ScalarUniformRandomSample(-1e-10, 1e-10, shape_random=shape_new)
+                assert np.allclose(array, array_2)
+
+            elif array_2 == "zeros":
+                array_2 = 0 * array
+                assert not np.allclose(array, array_2)
+
         @abc.abstractmethod
         def test_nonzero(self, array: na.AbstractArray):
             pass
