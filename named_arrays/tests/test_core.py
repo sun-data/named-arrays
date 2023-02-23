@@ -773,9 +773,15 @@ class AbstractTestAbstractArray(
                 array_2 = 0 * array
                 assert not np.allclose(array, array_2)
 
-        @abc.abstractmethod
         def test_nonzero(self, array: na.AbstractArray):
-            pass
+
+            if not array.shape:
+                with pytest.raises(DeprecationWarning, match="Calling nonzero on 0d arrays is deprecated, .*"):
+                    np.nonzero(array)
+                return
+
+            mask = array > array.mean()
+            assert np.all(array[np.nonzero(mask)] == array[mask])
 
         @abc.abstractmethod
         def test_nan_to_num(self, array: na.AbstractArray, copy: bool):
