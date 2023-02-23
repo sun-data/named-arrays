@@ -619,6 +619,9 @@ class AbstractTestAbstractScalarArray(
             assert np.all(result.ndarray == result_ndarray)
 
         def test_nonzero(self, array: na.AbstractScalarArray):
+
+            super().test_nonzero(array)
+
             if not array.shape:
                 with pytest.raises(DeprecationWarning, match="Calling nonzero on 0d arrays is deprecated, .*"):
                     np.nonzero(array)
