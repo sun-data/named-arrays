@@ -564,8 +564,11 @@ def array_equiv(
 
 @implements(np.nonzero)
 def nonzero(a: na.AbstractScalarArray):
+    a = a.array
+    axes = a.axes
+    axes_flattened = a.axes_flattened
     result = np.nonzero(a.ndarray)
-    return {a.axes[r]: na.ScalarArray(result[r], axes=(f'{a.axes_flattened}_nonzero',)) for r, _ in enumerate(result)}
+    return {axes[r]: na.ScalarArray(result[r], axes=(f'{axes_flattened}_nonzero',)) for r, _ in enumerate(result)}
 
 
 @implements(np.nan_to_num)
