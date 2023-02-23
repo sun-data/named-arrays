@@ -633,7 +633,7 @@ class AbstractTestAbstractScalarArray(
             for i, ax in enumerate(array.axes):
                 assert np.all(result[ax].ndarray == expected[i])
                 assert len(result[ax].axes) == 1
-                assert result[ax].axes[0] == f"{array.axes_flattened}_nonzero"
+                assert result[ax].axes[0] == array.axes_flattened
 
         @pytest.mark.parametrize('copy', [False, True])
         def test_nan_to_num(self, array: na.AbstractScalarArray, copy: bool):
