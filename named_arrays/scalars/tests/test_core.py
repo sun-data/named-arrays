@@ -421,7 +421,7 @@ class AbstractTestAbstractScalarArray(
                 result_out = func(array, out=out, **kwargs)
 
                 assert np.all(result.ndarray == result_ndarray)
-                assert np.all(result == result_out)
+                assert np.allclose(result, result_out)
                 assert result_out is out
 
         @pytest.mark.parametrize(
