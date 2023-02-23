@@ -1177,6 +1177,14 @@ class AbstractTestAbstractNormalRandomSample(
 ):
     pass
 
+class AbstractTestAbstractPoissonRandomSample(
+    AbstractTestAbstractRandomMixin,
+    AbstractTestAbstractImplicitArray,
+):
+
+    def test_center(self, array: na.AbstractSymmetricRangeMixin):
+        assert isinstance(array.center, (int, float, complex, u.Quantity, na.AbstractArray))
+
 
 class AbstractTestAbstractParameterizedArray(
     AbstractTestAbstractImplicitArray,
