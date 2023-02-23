@@ -1179,7 +1179,7 @@ class ScalarPoissonRandomSample(
             center = center.value
 
         value = self._rng.poisson(
-            loc=center,
+            lam=center,
             size=tuple(shape.values()),
         )
 

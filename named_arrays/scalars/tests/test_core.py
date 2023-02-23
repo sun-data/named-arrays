@@ -328,7 +328,7 @@ def _scalar_poisson_random_samples() -> list[na.ScalarNormalRandomSample]:
     ]
 
 
-@pytest.mark.parametrize('array', _scalar_normal_random_samples())
+@pytest.mark.parametrize('array', _scalar_poisson_random_samples())
 class TestScalarPoissonRandomSample(
     AbstractTestAbstractScalarRandomSample,
     tests.test_core.AbstractTestAbstractPoissonRandomSample,
