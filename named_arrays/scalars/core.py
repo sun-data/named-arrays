@@ -1452,7 +1452,7 @@ class ScalarLogarithmicSpace(
                 stop=stop_exponent.ndarray_aligned(shape),
                 num=self.num,
                 endpoint=self.endpoint,
-                base=base.ndarray_aligned(shape),
+                base=base.ndarray_aligned(shape | {self.axis: 1}),
                 axis=~0,
             ),
             axes=tuple(shape.keys()) + (self.axis, )

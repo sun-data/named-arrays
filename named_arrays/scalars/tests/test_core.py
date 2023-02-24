@@ -447,7 +447,7 @@ def _scalar_logarithmic_spaces():
     ]
     bases = [
         2,
-        # na.ScalarArray(10 * np.random.random(_num_x) + 1, axes=('x',)),
+        na.ScalarArray(np.random.random(_num_x) + 1, axes=('x',)),
     ]
     # units = [None, u.mm]
     units = [None]
