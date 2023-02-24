@@ -288,6 +288,12 @@ class AbstractScalarArray(
                 if not isinstance(item_axis, slice):
                     axes_new.remove(ax)
 
+            if any(ax in shape_advanced for ax in axes_new):
+                raise ValueError(
+                    f"axis in advanced axes, {tuple(shape_advanced)}, "
+                    f"is already in basic axes, {tuple(axes_new)}"
+                )
+
             return ScalarArray(
                 ndarray=ndarray_organized[tuple(index)],
                 axes=tuple(shape_advanced.keys()) + tuple(axes_new),
