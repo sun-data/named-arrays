@@ -313,6 +313,28 @@ class TestScalarNormalRandomSample(
 ):
     pass
 
+def _scalar_poisson_random_samples() -> list[na.ScalarNormalRandomSample]:
+    centers = [
+        0,
+        na.ScalarArray(np.random.random(_num_x), axes=('x', )),
+    ]
+    units = [None, u.mm]
+    shapes_random = [dict(y=_num_y)]
+    return [
+        na.ScalarPoissonRandomSample(
+            center=center << unit if unit is not None else center,
+            shape_random=shape_random,
+        ) for center in centers for unit in units for shape_random in shapes_random
+    ]
+
+
+@pytest.mark.parametrize('array', _scalar_poisson_random_samples())
+class TestScalarPoissonRandomSample(
+    AbstractTestAbstractScalarRandomSample,
+    tests.test_core.AbstractTestAbstractPoissonRandomSample,
+):
+    pass
+
 
 class AbstractTestAbstractScalarParameterizedArray(
     AbstractTestAbstractScalarImplicitArray,

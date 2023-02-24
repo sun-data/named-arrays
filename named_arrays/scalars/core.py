@@ -20,6 +20,7 @@ __all__ = [
     'AbstractScalarImplicitArray',
     'ScalarUniformRandomSample',
     'ScalarNormalRandomSample',
+    'ScalarPoissonRandomSample',
     'AbstractScalarParameterizedArray',
     'ScalarArrayRange',
     'AbstractScalarSpace',
@@ -1134,6 +1135,51 @@ class ScalarNormalRandomSample(
         value = self._rng.normal(
             loc=center,
             scale=width,
+            size=tuple(shape.values()),
+        )
+
+        if unit is not None:
+            value = value << unit
+
+        return ScalarArray(
+            ndarray=value,
+            axes=tuple(shape.keys())
+        )
+
+    @property
+    def centers(self: Self) -> Self:
+        return self
+
+
+@dataclasses.dataclass(eq=False, slots=True)
+class ScalarPoissonRandomSample(
+    AbstractScalarRandomSample,
+    na.AbstractPoissonRandomSample,
+    Generic[CenterT],
+):
+    center: CenterT
+    shape_random: None | dict[str, int] = None
+    seed: None | int = None
+
+    @property
+    def array(self: Self) -> ScalarArray:
+        center = self.center
+        if not isinstance(center, na.AbstractArray):
+            center = ScalarArray(center)
+
+
+        shape_random = self.shape_random if self.shape_random is not None else dict()
+        shape = na.shape_broadcasted(center) | shape_random
+
+        center = center.ndarray_aligned(shape)
+
+        unit = None
+        if isinstance(center, u.Quantity):
+            unit = center.unit
+            center = center.value
+
+        value = self._rng.poisson(
+            lam=center,
             size=tuple(shape.values()),
         )
 
