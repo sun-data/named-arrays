@@ -415,8 +415,47 @@ class TestStratifiedRandomSpace(
     pass
 
 def _scalar_logarithmic_spaces():
-    starts = [
+    start_exponents = [
         0,
+        na.ScalarArray(np.random.random(_num_x), axes=('x', )),
+    ]
+    stop_exponents = [
+        2,
+        na.ScalarArray(np.random.random(_num_x) + 2, axes=('x', )),
+    ]
+    bases = [
+        2,
+        # na.ScalarArray(10 * np.random.random(_num_x) + 1, axes=('x',)),
+    ]
+    # units = [None, u.mm]
+    units = [None]
+    endpoints = [
+        False,
+        True,
+    ]
+    seeds = [None, _num_x]
+    return [
+        na.ScalarLogarithmicSpace(
+            start_exponent=start << unit if unit is not None else start,
+            stop_exponent=stop << unit if unit is not None else stop,
+            base=base,
+            axis='y',
+            num=_num_y,
+            endpoint=endpoint,
+        ) for start in start_exponents for stop in stop_exponents for base in bases for unit in units for endpoint in endpoints
+    ]
+
+
+@pytest.mark.parametrize('array', _scalar_logarithmic_spaces())
+class TestScalarLogarithmicSpace(
+    AbstractTestAbstractScalarSpace,
+    tests.test_core.AbstractTestAbstractLogarithmicSpace,
+):
+    pass
+
+def _scalar_geometric_spaces():
+    starts = [
+        1,
         na.ScalarArray(np.random.random(_num_x), axes=('x', )),
     ]
     stops = [
@@ -428,23 +467,21 @@ def _scalar_logarithmic_spaces():
         False,
         True,
     ]
-    seeds = [None, _num_x]
     return [
-        na.ScalarStratifiedRandomSpace(
+        na.ScalarGeometricSpace(
             start=start << unit if unit is not None else start,
             stop=stop << unit if unit is not None else stop,
             axis='y',
             num=_num_y,
-            endpoint=endpoint,
-            seed=seed
-        ) for start in starts for stop in stops for unit in units for endpoint in endpoints for seed in seeds
+            endpoint=endpoint
+        ) for start in starts for stop in stops for unit in units for endpoint in endpoints
     ]
 
 
-@pytest.mark.parametrize('array', _scalar_stratified_random_spaces())
-class TestStratifiedRandomSpace(
+@pytest.mark.parametrize('array', _scalar_geometric_spaces())
+class TestScalarGeometricSpace(
     AbstractTestAbstractScalarSpace,
-    tests.test_core.AbstractTestAbstractStratifiedRandomSpace,
+    tests.test_core.AbstractTestAbstractGeometricSpace,
 ):
     pass
 
