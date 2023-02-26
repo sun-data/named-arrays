@@ -217,14 +217,21 @@ class AbstractTestAbstractArray(
             assert axis in array_new.axes
             assert array_new.shape[axis] == 1
 
-    @pytest.mark.parametrize('axes', [('x', 'y'), ('x', 'y', 'z')])
-    def test_combine_axes(self, array: na.AbstractArray, axes: Sequence[str]):
+    @pytest.mark.parametrize('axes', [None, ('x', 'y'), ('x', 'y', 'z')])
+    def test_combine_axes(
+            self,
+            array: na.AbstractArray,
+            axes: None | Sequence[str]
+    ):
         axis_new = 'new_test_axis'
-        if set(axes).issubset(array.axes):
+        if axes is None or set(axes).issubset(array.axes):
             array_new = array.combine_axes(axes=axes, axis_new=axis_new)
             assert axis_new in array_new.axes
-            assert array_new.shape[axis_new] == np.array([array.shape[axis] for axis in axes]).prod()
-            for axis in axes:
+            axes_normlized = array.axes if axes is None else axes
+            num_axis_new =  np.array(
+                [array.shape[ax] for ax in axes_normlized]).prod()
+            assert array_new.shape[axis_new] == num_axis_new
+            for axis in axes_normlized:
                 assert axis not in array_new.axes
         else:
             with pytest.raises(ValueError):

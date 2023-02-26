@@ -348,7 +348,7 @@ class AbstractArray(
     @abc.abstractmethod
     def combine_axes(
             self: Self,
-            axes: Sequence[str],
+            axes: None | Sequence[str] = None,
             axis_new: None | str = None,
     ) -> AbstractExplicitArray:
         """

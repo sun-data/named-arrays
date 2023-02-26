@@ -210,9 +210,12 @@ class AbstractScalarArray(
 
     def combine_axes(
             self: Self,
-            axes: Sequence[str],
+            axes: None | Sequence[str] = None,
             axis_new: None | str = None,
     ) -> ScalarArray:
+
+        if axes is None:
+            axes = self.axes
 
         if axis_new is None:
             axis_new = na.flatten_axes(axes)
