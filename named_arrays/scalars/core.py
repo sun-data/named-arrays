@@ -290,6 +290,8 @@ class AbstractScalarArray(
             index = [slice(None)] * self.ndim   # type: list[int | slice | AbstractScalar]
             for ax in item:
                 item_axis = item[ax]
+                if item_axis is None:
+                    continue
                 if ax in item_advanced:
                     item_axis = item_axis.ndarray_aligned(shape_advanced)
                 index[axes_organized.index(ax)] = item_axis
