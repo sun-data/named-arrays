@@ -31,6 +31,8 @@ def _scalar_arrays():
         na.ScalarArray(np.random.choice([True, False], size=_num_y), axes=('y', )),
         na.ScalarArray(np.random.choice([True, False], size=(_num_x, _num_y)), axes=('x', 'y'))
     ]
+    arrays_bool[0][dict(y=0)] = True
+    arrays_bool[1][dict(x=0, y=0)] = True
     return arrays_numeric + arrays_bool
 
 
