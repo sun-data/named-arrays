@@ -602,20 +602,37 @@ class AbstractTestAbstractScalarArray(
 
                 assert np.all(result.ndarray == result_expected)
 
-        @pytest.mark.parametrize('axis', [None, 'x', 'y'])
+        @pytest.mark.parametrize('axis', [None, 'x', 'y', ('x', 'y')])
         def test_sort(self, array: na.AbstractScalarArray, axis: None | str):
 
             super().test_sort(array=array, axis=axis)
 
-            if axis is not None and axis not in array.axes:
-                with pytest.raises(ValueError, match="axis .* not in input array with axes .*"):
-                    np.sort(a=array, axis=axis)
+            axis_normalized = na.axis_normalized(array, axis)
+
+            if axis is not None:
+                if not set(axis_normalized).issubset(array.axes):
+                    with pytest.raises(
+                            expected_exception=ValueError,
+                            match="`axis`, .* is not a subset of `a.axes`, .*"
+                    ):
+                        np.sort(array, axis=axis)
+                    return
+            else:
+                if not array.shape:
+                    result = np.sort(a=array, axis=axis)
+                    assert np.all(result == array)
                 return
+
+            axis_flattened = na.flatten_axes(axis_normalized)
+            array_normalized = array.combine_axes(
+                axes=axis_normalized,
+                axis_new=axis_flattened,
+            )
 
             result = np.sort(a=array, axis=axis)
             result_ndarray = np.sort(
-                a=array.ndarray,
-                axis=array.axes.index(axis) if axis is not None else axis,
+                a=array_normalized.ndarray,
+                axis=array_normalized.axes.index(axis_flattened) if axis is not None else axis,
             )
 
             assert np.all(result.ndarray == result_ndarray)

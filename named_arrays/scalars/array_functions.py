@@ -463,14 +463,34 @@ def concatenate(
 @implements(np.sort)
 def sort(
         a: na.AbstractScalarArray,
-        axis: None | str,
+        axis: None | str | Sequence[str],
         kind: None | str = None,
         order: None | str | list[str] = None,
 ) -> na.ScalarArray:
 
+    a = a.array
+
     if axis is not None:
-        if axis not in a.axes:
-            raise ValueError(f"axis '{axis}' not in input array with axes {a.axes}")
+        if isinstance(axis, str):
+            axis = (axis, )
+        else:
+            axis = tuple(axis)
+
+        if not axis:
+            raise ValueError(
+                f"if `axis` is a sequence, it must not be empty, got {axis}")
+
+        if not set(axis).issubset(a.axes):
+            raise ValueError(
+                f"`axis`, {axis} is not a subset of `a.axes`, {a.axes}")
+
+        axis_new = na.flatten_axes(axis)
+        a = a.combine_axes(axes=axis, axis_new=axis_new)
+        axis = axis_new
+
+    else:
+        if not a.shape:
+            return a
 
     return na.ScalarArray(
         ndarray=np.sort(
