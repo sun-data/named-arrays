@@ -597,6 +597,8 @@ def allclose(
 @implements(np.nonzero)
 def nonzero(a: na.AbstractScalarArray):
     a = a.array
+    if not a.shape:
+        return dict()
     axes = a.axes
     axes_flattened = a.axes_flattened
     result = np.nonzero(a.ndarray)

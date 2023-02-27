@@ -624,12 +624,12 @@ class AbstractTestAbstractScalarArray(
 
             super().test_nonzero(array)
 
+            result = np.nonzero(array)
+
             if not array.shape:
-                with pytest.raises(DeprecationWarning, match="Calling nonzero on 0d arrays is deprecated, .*"):
-                    np.nonzero(array)
+                assert result == dict()
                 return
 
-            result = np.nonzero(array)
             expected = np.nonzero(array.ndarray)
 
             for i, ax in enumerate(array.axes):

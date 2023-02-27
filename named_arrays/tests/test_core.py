@@ -150,6 +150,11 @@ class AbstractTestAbstractArray(
             assert isinstance(axis, str)
 
     def test_axes_flattened(self, array: na.AbstractArray):
+        if not array.shape:
+            with pytest.raises(ValueError, match="`axes` must be a non-empty sequence, got .*"):
+                array.axes_flattened
+            return
+
         axes = array.axes_flattened
         assert isinstance(axes, str)
         for ax in array.axes:
@@ -728,7 +733,7 @@ class AbstractTestAbstractArray(
             assert np.all(sorted == sorted_expected)
 
         def test_unravel_index(self, array: na.AbstractArray):
-            indices_raveled = na.ScalarArrayRange(0, array.size, axis=array.axes_flattened).reshape(array.shape)
+            indices_raveled = na.ScalarArrayRange(0, array.size, axis='raveled').reshape(array.shape)
             indices_raveled = indices_raveled * array.type_array.ones(shape=dict(), dtype=int)
             result = np.unravel_index(
                 indices=indices_raveled,
@@ -779,12 +784,6 @@ class AbstractTestAbstractArray(
                 assert not np.allclose(array, array_2)
 
         def test_nonzero(self, array: na.AbstractArray):
-
-            if not array.shape:
-                with pytest.raises(DeprecationWarning, match="Calling nonzero on 0d arrays is deprecated, .*"):
-                    np.nonzero(array)
-                return
-
             mask = array > array.mean()
             assert np.all(array[np.nonzero(mask)] == array[mask])
 

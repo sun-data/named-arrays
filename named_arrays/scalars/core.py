@@ -255,9 +255,14 @@ class AbstractScalarArray(
                 destination=np.arange(len(item.axes)),
             )
 
+            if item.shape:
+                axis_new = item.axes_flattened
+            else:
+                axis_new = "boolean"
+
             return ScalarArray(
                 ndarray=np.moveaxis(value[item.ndarray], 0, ~0),
-                axes=tuple(axis for axis in self.axes if axis not in item.axes) + (item.axes_flattened, )
+                axes=tuple(axis for axis in self.axes if axis not in item.axes) + (axis_new, )
             )
 
         elif isinstance(item, dict):

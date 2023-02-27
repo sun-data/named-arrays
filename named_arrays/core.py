@@ -165,6 +165,8 @@ def indices(shape: dict[str, int]) -> dict[str, na.ScalarArrayRange]:
 
 
 def flatten_axes(axes: Sequence[str]):
+    if not axes:
+        raise ValueError(f"`axes` must be a non-empty sequence, got {axes}")
     return '*'.join(axes)
 
 
