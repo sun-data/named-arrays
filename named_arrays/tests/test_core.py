@@ -7,9 +7,9 @@ import numpy as np
 import astropy.units as u
 import named_arrays as na
 
-num_x = 11
-num_y = 12
-num_z = 13
+num_x = 3
+num_y = 4
+num_z = 5
 
 
 def _normalize_shape(shape: dict[str, None | int]) -> dict[str, int]:
