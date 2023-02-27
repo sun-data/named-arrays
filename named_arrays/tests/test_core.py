@@ -738,17 +738,15 @@ class AbstractTestAbstractArray(
             for ax in result:
                 assert np.all(result[ax] == expected[ax])
 
-        @pytest.mark.parametrize('array_2', ['copy', 'ones'])
+        @pytest.mark.parametrize('array_2', ['copy', 'zeros'])
         def test_array_equal(self, array: na.AbstractArray, array_2: str):
-            if array_2 == 'copy':
+            if array_2 == "copy":
                 array_2 = array.copy()
                 assert np.array_equal(array, array_2)
-                return
 
-            elif array_2 == 'ones':
-                array_2 = array.type_array.ones(array.shape)
-
-            assert not np.array_equal(array, array_2)
+            elif array_2 == "zeros":
+                array_2 = 0 * array
+                assert not np.array_equal(array, array_2)
 
         @pytest.mark.parametrize("array_2", ["copy", "broadcast", "ones"])
         def test_array_equiv(self, array: na.AbstractArray, array_2: str):
