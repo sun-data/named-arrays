@@ -402,7 +402,7 @@ class AbstractTestAbstractArray(
         elif ufunc in [np.log1p]:
             where = array >= -1
         elif ufunc in [np.arcsin, np.arccos, np.arctanh]:
-            where = (-1 <= array) & (array <= 1)
+            where = (-1 < array) & (array < 1)
         elif ufunc in [np.arccosh]:
             where = array >= 1
         elif ufunc in [np.reciprocal]:
