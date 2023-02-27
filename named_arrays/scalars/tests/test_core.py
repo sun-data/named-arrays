@@ -449,22 +449,19 @@ def _scalar_logarithmic_spaces():
         2,
         na.ScalarArray(np.random.random(_num_x) + 1, axes=('x',)),
     ]
-    # units = [None, u.mm]
-    units = [None]
     endpoints = [
         False,
         True,
     ]
-    seeds = [None, _num_x]
     return [
         na.ScalarLogarithmicSpace(
-            start_exponent=start << unit if unit is not None else start,
-            stop_exponent=stop << unit if unit is not None else stop,
+            start_exponent=start,
+            stop_exponent=stop,
             base=base,
             axis='y',
             num=_num_y,
             endpoint=endpoint,
-        ) for start in start_exponents for stop in stop_exponents for base in bases for unit in units for endpoint in endpoints
+        ) for start in start_exponents for stop in stop_exponents for base in bases for endpoint in endpoints
     ]
 
 
