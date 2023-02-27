@@ -477,12 +477,10 @@ def sort(
             axis = tuple(axis)
 
         if not axis:
-            raise ValueError(
-                f"if `axis` is a sequence, it must not be empty, got {axis}")
+            raise ValueError(f"if `axis` is a sequence, it must not be empty, got {axis}")
 
         if not set(axis).issubset(a.axes):
-            raise ValueError(
-                f"`axis`, {axis} is not a subset of `a.axes`, {a.axes}")
+            raise ValueError(f"`axis`, {axis} is not a subset of `a.axes`, {a.axes}")
 
         axis_new = na.flatten_axes(axis)
         a = a.combine_axes(axes=axis, axis_new=axis_new)
