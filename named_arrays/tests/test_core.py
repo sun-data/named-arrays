@@ -5,7 +5,6 @@ import abc
 import dataclasses
 import numpy as np
 import astropy.units as u
-import astropy.units.quantity_helper.helpers as quantity_helpers
 import named_arrays as na
 
 num_x = 11
