@@ -300,22 +300,14 @@ class AbstractTestAbstractScalarArray(
             array_2_ndarray = array_2.ndarray if isinstance(array_2, na.AbstractArray) else array_2
             array_2_ndarray = np.transpose(array_2_ndarray)
 
-            try:
-                ufunc(array_ndarray, array_2_ndarray)
-            except Exception as e:
-                with pytest.raises(type(e)):
-                    ufunc(array, array_2)
-                return
-
             kwargs = dict()
             kwargs_ndarray = dict()
 
+            unit_2 = na.unit_normalized(array_2)
             if ufunc in [np.power, np.float_power]:
-                kwargs["where"] = (array_2 >= 1) & (array >= 0)
+                kwargs["where"] = (array_2 >= (1 * unit_2)) & (array >= 0)
             elif ufunc in [np.divide, np.floor_divide, np.remainder, np.fmod, np.divmod]:
                 kwargs["where"] = array_2 != 0
-
-            result = ufunc(array, array_2, **kwargs)
 
             shape = na.shape_broadcasted(array, array_2)
             shape = {ax: shape[ax] for ax in sorted(shape)}
@@ -323,6 +315,14 @@ class AbstractTestAbstractScalarArray(
                 kwargs["where"] = na.broadcast_to(kwargs["where"], shape)
                 kwargs_ndarray["where"] = kwargs["where"].ndarray
 
+            try:
+                ufunc(array_ndarray, array_2_ndarray, **kwargs_ndarray)
+            except (ValueError, TypeError) as e:
+                with pytest.raises(type(e)):
+                    ufunc(array, array_2, **kwargs)
+                return
+
+            result = ufunc(array, array_2, **kwargs)
             result_ndarray = ufunc(array_ndarray, array_2_ndarray, **kwargs_ndarray)
 
             if ufunc.nout == 1:
