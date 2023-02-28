@@ -292,35 +292,6 @@ def implements(numpy_function: Callable):
     return decorator
 
 
-@implements(np.convolve)
-def convolve(
-        a: na.ScalarLike,
-        v: na.ScalarLike,
-        mode: str = 'full',
-) -> na.AbstractScalarArray:
-
-    if not isinstance(a, na.AbstractArray):
-        a = na.ScalarArray(a)
-    if not isinstance(v, na.AbstractArray):
-        v = na.ScalarArray(v)
-
-    if a.ndarray is None or v.ndarray is None:
-        return na.ScalarArray(None)
-
-    shape_broadcasted = na.shape_broadcasted(a, v)
-    if len(shape_broadcasted) > 1:
-        raise ValueError(f"'a' and 'v' must broadcast to a 1D shape, got {shape_broadcasted}")
-
-    result_ndarray = np.convolve(a.ndarray, v.ndarray, mode=mode)
-    if len(shape_broadcasted) == 0:
-        result_ndarray = result_ndarray[0]
-
-    return na.ScalarArray(
-        ndarray=result_ndarray,
-        axes=tuple(shape_broadcasted.keys()),
-    )
-
-
 @implements(np.broadcast_to)
 def broadcast_to(
         array: na.AbstractScalarArray,
@@ -682,3 +653,32 @@ def nan_to_num(
         if not isinstance(x, na.AbstractExplicitArray):
             raise ValueError("can't write to an array that is not an instance of `named_array.AbstractExplictArray`")
         return x
+
+
+@implements(np.convolve)
+def convolve(
+        a: na.ScalarLike,
+        v: na.ScalarLike,
+        mode: str = 'full',
+) -> na.AbstractScalarArray:
+
+    if not isinstance(a, na.AbstractArray):
+        a = na.ScalarArray(a)
+    if not isinstance(v, na.AbstractArray):
+        v = na.ScalarArray(v)
+
+    if a.ndarray is None or v.ndarray is None:
+        return na.ScalarArray(None)
+
+    shape_broadcasted = na.shape_broadcasted(a, v)
+    if len(shape_broadcasted) > 1:
+        raise ValueError(f"'a' and 'v' must broadcast to a 1D shape, got {shape_broadcasted}")
+
+    result_ndarray = np.convolve(a.ndarray, v.ndarray, mode=mode)
+    if len(shape_broadcasted) == 0:
+        result_ndarray = result_ndarray[0]
+
+    return na.ScalarArray(
+        ndarray=result_ndarray,
+        axes=tuple(shape_broadcasted.keys()),
+    )
