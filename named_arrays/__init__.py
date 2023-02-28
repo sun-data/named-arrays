@@ -1,3 +1,3 @@
 from ._named_array_functions import *
 from .core import *
-from .scalars import *
+from .scalars.core import *
