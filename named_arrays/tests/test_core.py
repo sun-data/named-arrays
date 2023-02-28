@@ -703,32 +703,27 @@ class AbstractTestAbstractArray(
         def test_sort(self, array: na.AbstractArray, axis: None | str):
             pass
 
-        @pytest.mark.parametrize('axis', [None, 'x', 'y'])
-        def test_argsort(self, array: na.AbstractArray, axis: None | str):
+        @pytest.mark.parametrize('axis', [None, 'x', 'y', ('x', 'y'), ()])
+        def test_argsort(self, array: na.AbstractArray, axis: None | str | Sequence[str]):
+
+            axis_normalized = na.axis_normalized(array, axis)
 
             if axis is not None:
-                if axis not in array.axes:
-                    with pytest.raises(ValueError, match="axis .* not in input array with axes .*"):
+                if not axis:
+                    with pytest.raises(ValueError, match="if `axis` is a sequence, it must not be empty, got .*"):
                         np.argsort(a=array, axis=axis)
                     return
-            else:
-                if not array.shape:
-                    with pytest.raises(ValueError, match="sorting zero-dimensional arrays is not supported"):
+
+                if not set(axis_normalized).issubset(array.axes):
+                    with pytest.raises(ValueError, match="`axis`, .* is not a subset of `a.axes`, .*"):
                         np.argsort(a=array, axis=axis)
                     return
 
             result = np.argsort(a=array, axis=axis)
-
             assert isinstance(result, dict)
 
-            array_broadcasted = array.broadcast_to(array.shape)
-            if axis is not None:
-                sorted = array_broadcasted[result]
-            else:
-                sorted = array_broadcasted.reshape({array.axes_flattened: -1})[result]
-
-            sorted_expected = np.sort(array_broadcasted, axis=axis)
-
+            sorted = array[result]
+            sorted_expected = np.sort(a=array, axis=axis)
             assert np.all(sorted == sorted_expected)
 
         def test_unravel_index(self, array: na.AbstractArray):

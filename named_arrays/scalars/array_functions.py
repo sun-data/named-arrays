@@ -508,38 +508,50 @@ def argsort(
         kind: None | str = None,
         order: None | str | list[str] = None,
 ) -> dict[str, na.ScalarArray]:
-    if axis is None:
-        if not a.shape:
-            raise ValueError("sorting zero-dimensional arrays is not supported")
 
-        indices = na.ScalarArray(
-            ndarray=np.argsort(
-                a=a.ndarray,
-                axis=axis,
-                kind=kind,
-                order=order
-            ),
-            axes=(a.axes_flattened, ),
-        )
-        return {a.axes_flattened: indices}
+    a = a.array
+    shape_a = a.shape
+
+    if axis is not None:
+        if isinstance(axis, str):
+            axis = (axis, )
+        else:
+            axis = tuple(axis)
+
+        if not axis:
+            raise ValueError(f"if `axis` is a sequence, it must not be empty, got {axis}")
+
+        if not set(axis).issubset(a.axes):
+            raise ValueError(f"`axis`, {axis} is not a subset of `a.axes`, {a.axes}")
 
     else:
-        if axis not in a.axes:
-            raise ValueError(f"axis {axis} not in input array with axes {a.axes}")
+        if not a.shape:
+            return dict()
+        else:
+            axis = a.axes
 
-        indices = na.ScalarArray(
-            ndarray=np.argsort(
-                a=a.ndarray,
-                axis=a.axes.index(axis),
-                kind=kind,
-                order=order,
-            ),
-            axes=a.axes,
-        )
+    axis_flattened = na.flatten_axes(axis)
+    a_flattened = a.combine_axes(axes=axis, axis_new=axis_flattened)
 
-        result = na.indices(a.shape)
-        result[axis] = indices
-        return result
+    indices_ndarray = np.argsort(
+        a=a_flattened.ndarray,
+        axis=a_flattened.axes.index(axis_flattened),
+        kind=kind,
+        order=order,
+    )
+    indices = na.ScalarArray(indices_ndarray, axes=a_flattened.axes)
+
+    result = np.unravel_index(indices, shape={ax: shape_a[ax] for ax in axis})
+
+    for ax in shape_a:
+        if ax not in result:
+            result[ax] = na.ScalarArrayRange(
+                start=0,
+                stop=shape_a[ax],
+                axis=ax,
+            )
+
+    return result
 
 
 @implements(np.unravel_index)
