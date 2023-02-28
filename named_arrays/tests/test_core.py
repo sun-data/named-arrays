@@ -700,7 +700,7 @@ class AbstractTestAbstractArray(
                 assert result is out
 
         @abc.abstractmethod
-        def test_sort(self, array: na.AbstractArray, axis: None | str):
+        def test_sort(self, array: na.AbstractArray, axis: None | str | Sequence[str]):
             pass
 
         @pytest.mark.parametrize('axis', [None, 'x', 'y', ('x', 'y'), ()])

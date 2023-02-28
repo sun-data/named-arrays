@@ -603,7 +603,7 @@ class AbstractTestAbstractScalarArray(
                 assert np.all(result.ndarray == result_expected)
 
         @pytest.mark.parametrize('axis', [None, 'x', 'y', ('x', 'y')])
-        def test_sort(self, array: na.AbstractScalarArray, axis: None | str):
+        def test_sort(self, array: na.AbstractScalarArray, axis: None | str | Sequence[str]):
 
             super().test_sort(array=array, axis=axis)
 
