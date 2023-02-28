@@ -637,7 +637,7 @@ def _normal_uncertain_scalar_arrays():
     ]
     units = [1, u.mm]
     arrays = [
-        na.UniformUncertainScalarArray(
+        na.NormalUncertainScalarArray(
             nominal=array_exact * unit,
             width=width * unit,
             num_distribution=_num_distribution
