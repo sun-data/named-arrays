@@ -500,7 +500,7 @@ class AbstractTestAbstractScalarArray(
                     self,
                     func: Callable,
                     array: na.AbstractScalarArray,
-                    axis: str,
+                    axis: tuple[str, str],
             ):
                 super().test_fft_like_functions(
                     func=func,
