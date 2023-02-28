@@ -569,29 +569,6 @@ class AbstractTestAbstractArray(
             ):
                 pass
 
-        def test_convolve(self, array: na.AbstractArray, v: na.AbstractArray, mode: str):
-
-            shape_broadcasted = na.shape_broadcasted(array, v)
-
-            if v is None:
-                assert np.convolve(array, v, mode=mode) == na.ScalarArray(None)
-                return
-
-            if len(shape_broadcasted) > 1:
-                with pytest.raises(ValueError, match=r"\'a\' and \'v\' must broadcast to .*"):
-                    np.convolve(array, v, mode=mode)
-                return
-
-            result = np.convolve(array, v, mode=mode)
-            result_expected = np.convolve(
-                array.ndarray,
-                v.ndarray if isinstance(v, na.AbstractArray) else v,
-                mode=mode,
-            )
-
-            assert result.axes == tuple(shape_broadcasted.keys())
-            assert np.all(result.ndarray == result_expected)
-
         @pytest.mark.parametrize(
             argnames='shape',
             argvalues=[
@@ -804,6 +781,10 @@ class AbstractTestAbstractArray(
 
         @abc.abstractmethod
         def test_nan_to_num(self, array: na.AbstractArray, copy: bool):
+            pass
+
+        @abc.abstractmethod
+        def test_convolve(self, array: na.AbstractArray, v: na.AbstractArray, mode: str):
             pass
 
     @pytest.mark.parametrize(
