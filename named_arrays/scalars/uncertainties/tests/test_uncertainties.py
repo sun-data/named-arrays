@@ -184,31 +184,33 @@ class AbstractTestAbstractUncertainScalarArray(
         ):
             super().test_ufunc_unary(ufunc, array)
 
-            try:
-                ufunc(array.distribution)
-            except Exception as e:
-                with pytest.raises(type(e)):
-                    ufunc(array)
-                return
-
             kwargs = dict()
             kwargs_nominal = dict()
             kwargs_distribution = dict()
 
+            unit = array.unit_normalized
             if ufunc in [np.log, np.log2, np.log10, np.sqrt]:
                 kwargs["where"] = array > 0
             elif ufunc in [np.log1p]:
-                kwargs["where"] = array >= -1
+                kwargs["where"] = array >= (-1 * unit)
             elif ufunc in [np.arcsin, np.arccos, np.arctanh]:
-                kwargs["where"] = (-1 <= array) & (array <= 1)
+                kwargs["where"] = ((-1 * unit) <= array) & (array <= (1 * unit))
             elif ufunc in [np.arccosh]:
-                kwargs["where"] = array >= 1
+                kwargs["where"] = array >= (1 * unit)
             elif ufunc in [np.reciprocal]:
                 kwargs["where"] = array != 0
 
             if "where" in kwargs:
                 kwargs_nominal["where"] = kwargs["where"].nominal
                 kwargs_distribution["where"] = kwargs["where"].distribution
+
+            try:
+                ufunc(array.nominal, **kwargs_nominal)
+                ufunc(array.distribution, **kwargs_distribution)
+            except (ValueError, TypeError) as e:
+                with pytest.raises(type(e)):
+                    ufunc(array, **kwargs)
+                return
 
             result = ufunc(array, **kwargs)
             result_nominal = ufunc(array.nominal, **kwargs_nominal)
