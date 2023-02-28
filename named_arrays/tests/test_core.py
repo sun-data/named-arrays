@@ -576,6 +576,29 @@ class AbstractTestAbstractArray(
                 dict(x=num_x, y=num_y, z=num_z),
             ]
         )
+        def test_convolve(self, array: na.AbstractArray, v: na.AbstractArray, mode: str):
+
+            shape_broadcasted = na.shape_broadcasted(array, v)
+
+            if v is None:
+                assert np.convolve(array, v, mode=mode) == na.ScalarArray(None)
+                return
+
+            if len(shape_broadcasted) > 1:
+                with pytest.raises(ValueError, match=r"\'a\' and \'v\' must broadcast to .*"):
+                    np.convolve(array, v, mode=mode)
+                return
+
+            result = np.convolve(array, v, mode=mode)
+            result_expected = np.convolve(
+                array.ndarray,
+                v.ndarray if isinstance(v, na.AbstractArray) else v,
+                mode=mode,
+            )
+
+            assert result.axes == tuple(shape_broadcasted.keys())
+            assert np.all(result.ndarray == result_expected)
+
         def test_broadcast_to(self, array: na.AbstractArray, shape: dict[str, int]):
             result = np.broadcast_to(array, shape=shape)
             assert result.shape == shape
@@ -978,6 +1001,14 @@ class AbstractTestAbstractNormalRandomSample(
     AbstractTestAbstractImplicitArray,
 ):
     pass
+
+class AbstractTestAbstractPoissonRandomSample(
+    AbstractTestAbstractRandomMixin,
+    AbstractTestAbstractImplicitArray,
+):
+
+    def test_center(self, array: na.AbstractSymmetricRangeMixin):
+        assert isinstance(array.center, (int, float, complex, u.Quantity, na.AbstractArray))
 
 
 class AbstractTestAbstractParameterizedArray(

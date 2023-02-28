@@ -351,6 +351,20 @@ class AbstractTestAbstractScalarArray(
     class TestArrayFunctions(
         AbstractTestAbstractScalar.TestArrayFunctions,
     ):
+        @pytest.mark.parametrize('v', _scalar_arrays_2())
+        @pytest.mark.parametrize('mode', ['full', 'same', 'valid'])
+        def test_convolve(self, array: na.AbstractArray, v: na.AbstractArray, mode: str):
+            super().test_convolve(array=array, v=v, mode=mode)
+
+        @pytest.mark.parametrize(
+            argnames='shape',
+            argvalues=[
+                dict(x=_num_x, y=_num_y),
+                dict(x=_num_x, y=_num_y, z=13),
+            ]
+        )
+        def test_broadcast_to(self, array: na.AbstractArray, shape: dict[str, int]):
+            super().test_broadcast_to(array=array, shape=shape)
 
         @pytest.mark.parametrize(
             argnames='where',
@@ -766,6 +780,28 @@ class TestScalarNormalRandomSample(
 ):
     pass
 
+def _scalar_poisson_random_samples() -> list[na.ScalarNormalRandomSample]:
+    centers = [
+        0,
+        na.ScalarArray(np.random.random(_num_x), axes=('x', )),
+    ]
+    units = [None, u.mm]
+    shapes_random = [dict(y=_num_y)]
+    return [
+        na.ScalarPoissonRandomSample(
+            center=center << unit if unit is not None else center,
+            shape_random=shape_random,
+        ) for center in centers for unit in units for shape_random in shapes_random
+    ]
+
+
+@pytest.mark.parametrize('array', _scalar_poisson_random_samples())
+class TestScalarPoissonRandomSample(
+    AbstractTestAbstractScalarRandomSample,
+    tests.test_core.AbstractTestAbstractPoissonRandomSample,
+):
+    pass
+
 
 class AbstractTestAbstractParameterizedScalarArray(
     AbstractTestAbstractImplicitScalarArray,
@@ -831,6 +867,107 @@ def _scalar_linear_spaces():
 class TestScalarLinearSpace(
     AbstractTestAbstractScalarSpace,
     tests.test_core.AbstractTestAbstractLinearSpace,
+):
+    pass
+
+def _scalar_stratified_random_spaces():
+    starts = [
+        0,
+        na.ScalarArray(np.random.random(_num_x), axes=('x', )),
+    ]
+    stops = [
+        10,
+        na.ScalarArray(10 * np.random.random(_num_x) + 1, axes=('x', )),
+    ]
+    units = [None, u.mm]
+    endpoints = [
+        False,
+        True,
+    ]
+    return [
+        na.ScalarStratifiedRandomSpace(
+            start=start << unit if unit is not None else start,
+            stop=stop << unit if unit is not None else stop,
+            axis='y',
+            num=_num_y,
+            endpoint=endpoint,
+            seed=None
+        ) for start in starts for stop in stops for unit in units for endpoint in endpoints
+    ]
+
+
+@pytest.mark.parametrize('array', _scalar_stratified_random_spaces())
+class TestStratifiedRandomSpace(
+    AbstractTestAbstractScalarSpace,
+    tests.test_core.AbstractTestAbstractStratifiedRandomSpace,
+):
+    pass
+
+def _scalar_logarithmic_spaces():
+    start_exponents = [
+        0,
+        na.ScalarArray(np.random.random(_num_x), axes=('x', )),
+    ]
+    stop_exponents = [
+        2,
+        na.ScalarArray(np.random.random(_num_x) + 2, axes=('x', )),
+    ]
+    bases = [
+        2,
+        na.ScalarArray(np.random.random(_num_x) + 1, axes=('x',)),
+    ]
+    endpoints = [
+        False,
+        True,
+    ]
+    return [
+        na.ScalarLogarithmicSpace(
+            start_exponent=start,
+            stop_exponent=stop,
+            base=base,
+            axis='y',
+            num=_num_y,
+            endpoint=endpoint,
+        ) for start in start_exponents for stop in stop_exponents for base in bases for endpoint in endpoints
+    ]
+
+
+@pytest.mark.parametrize('array', _scalar_logarithmic_spaces())
+class TestScalarLogarithmicSpace(
+    AbstractTestAbstractScalarSpace,
+    tests.test_core.AbstractTestAbstractLogarithmicSpace,
+):
+    pass
+
+def _scalar_geometric_spaces():
+    starts = [
+        1,
+        na.ScalarArray(np.random.random(_num_x), axes=('x', )),
+    ]
+    stops = [
+        10,
+        na.ScalarArray(10 * np.random.random(_num_x) + 1, axes=('x', )),
+    ]
+    units = [None, u.mm]
+    endpoints = [
+        False,
+        True,
+    ]
+    return [
+        na.ScalarGeometricSpace(
+            start=start << unit if unit is not None else start,
+            stop=stop << unit if unit is not None else stop,
+            axis='y',
+            num=_num_y,
+            endpoint=endpoint
+        ) for start in starts for stop in stops for unit in units for endpoint in endpoints
+    ]
+
+
+@pytest.mark.parametrize('array', _scalar_geometric_spaces())
+class TestScalarGeometricSpace(
+    AbstractTestAbstractScalarSpace,
+    tests.test_core.AbstractTestAbstractGeometricSpace,
 ):
     pass
 

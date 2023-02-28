@@ -882,6 +882,18 @@ class AbstractNormalRandomSample(
 ):
     pass
 
+@dataclasses.dataclass
+class AbstractPoissonRandomSample(
+    AbstractRandomSample,
+):
+
+    @property
+    @abc.abstractmethod
+    def center(self: Self) -> ArrayLike:
+        """
+        Center value of the range.
+        """
+
 
 @dataclasses.dataclass(eq=False)
 class AbstractParameterizedArray(
