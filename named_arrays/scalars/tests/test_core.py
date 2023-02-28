@@ -444,7 +444,6 @@ class AbstractTestAbstractScalarArray(
                     array: na.AbstractScalarArray,
                     q: float | u.Quantity | na.AbstractArray,
                     axis: None | str | Sequence[str],
-                    out: bool,
                     keepdims: bool,
             ):
                 super().test_percentile_like_functions(
@@ -452,61 +451,46 @@ class AbstractTestAbstractScalarArray(
                     array=array.array,
                     q=q,
                     axis=axis,
-                    out=out,
                     keepdims=keepdims,
                 )
 
-                kwargs = dict()
-                kwargs_ndarray = dict()
+                kwargs = dict(
+                    q=q,
+                    axis=axis,
+                    keepdims=keepdims,
+                )
 
                 q_normalized = q if isinstance(q, na.AbstractArray) else na.ScalarArray(q)
-
-                axis_normalized = axis if axis is not None else array.axes
-                axis_normalized = (axis_normalized,) if isinstance(axis_normalized, str) else axis_normalized
-                shape_result = q_normalized.shape
-                shape_result |= {ax: 1 if ax in axis_normalized else array.shape[ax] for ax in array.shape}
-
-                if keepdims:
-                    kwargs['keepdims'] = keepdims
-                    kwargs_ndarray['keepdims'] = keepdims
-                else:
-                    for ax in axis_normalized:
-                        if ax in shape_result:
-                            shape_result.pop(ax)
-
-                if out:
-                    out_dtype = na.get_dtype(array)
-                    kwargs['out'] = array.type_array.empty(shape_result, dtype=out_dtype)
-                    kwargs_ndarray['out'] = array.type_array.empty(shape_result, dtype=out_dtype).ndarray
-                    if array.unit is not None:
-                        kwargs['out'] = kwargs['out'] << array.unit
-                        kwargs_ndarray['out'] = kwargs_ndarray['out'] << array.unit
-                    elif q_normalized.unit is not None:
-                        kwargs['out'] = kwargs['out'] << u.dimensionless_unscaled
-                        kwargs_ndarray['out'] = kwargs_ndarray['out'] << u.dimensionless_unscaled
-
-                kwargs['method'] = 'closest_observation'
-                kwargs_ndarray['method'] = kwargs['method']
+                axis_normalized = na.axis_normalized(array, axis)
 
                 if axis is not None:
-                    if not set(axis).issubset(array.axes):
+                    if not set(axis_normalized).issubset(array.axes):
                         with pytest.raises(
-                                expected_exception=ValueError,
-                                match=r"the `axis` argument must be `None` or a subset of `a.axes`"
-                        ):
-                            func(array, q, axis=axis, **kwargs)
+                                ValueError, match=r"the `axis` argument must be `None` or a subset of"):
+                            func(array, **kwargs)
                         return
 
-                result = func(array, q, axis=axis, **kwargs, )
-                result_ndarray = func(
-                    array.ndarray,
-                    q_normalized.ndarray,
-                    axis=tuple(array.axes.index(ax) for ax in axis_normalized if ax in array.axes),
-                    **kwargs_ndarray,
+                kwargs_ndarray = dict(
+                    q=q_normalized.ndarray,
+                    axis=tuple(array.axes.index(ax) for ax in axis_normalized),
+                    keepdims=keepdims,
                 )
+
+                try:
+                    result_ndarray = func(array.ndarray, **kwargs_ndarray)
+                except Exception as e:
+                    with pytest.raises(type(e)):
+                        func(array, **kwargs)
+                    return
+
+                result = func(array, **kwargs)
+
+                out = 0 * result
+                result_out = func(array, out=out, **kwargs)
+
                 assert np.all(result.ndarray == result_ndarray)
-                if out:
-                    assert result is kwargs["out"]
+                assert np.allclose(result, result_out)
+                assert result_out is out
 
         class TestFFTLikeFunctions(
             AbstractTestAbstractScalar.TestArrayFunctions.TestFFTLikeFunctions

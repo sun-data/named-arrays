@@ -466,7 +466,6 @@ class AbstractTestAbstractArray(
             ]
         )
         @pytest.mark.parametrize('axis', [None, 'y', 'x', ('x', 'y')])
-        @pytest.mark.parametrize('out', [False, True])
         @pytest.mark.parametrize('keepdims', [False, True])
         class TestPercentileLikeFunctions(abc.ABC):
 
@@ -477,7 +476,6 @@ class AbstractTestAbstractArray(
                     array: na.AbstractArray,
                     q: float | u.Quantity | na.AbstractArray,
                     axis: None | str | Sequence[str],
-                    out: bool,
                     keepdims: bool,
             ):
                 pass
