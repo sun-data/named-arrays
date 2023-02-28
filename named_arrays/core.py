@@ -40,6 +40,7 @@ __all__ = [
     'AbstractGeometricSpace',
     'AbstractUniformRandomSample',
     'AbstractNormalRandomSample',
+    'AbstractPoissonRandomSample',
 ]
 
 QuantityLike = Union[int, float, complex, np.ndarray, u.Quantity]

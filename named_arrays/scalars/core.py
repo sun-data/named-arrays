@@ -908,13 +908,13 @@ class ScalarNormalRandomSample(
         return self
 
 
-@dataclasses.dataclass(eq=False, slots=True)
+@dataclasses.dataclass(eq=False)
 class ScalarPoissonRandomSample(
     AbstractScalarRandomSample,
     na.AbstractPoissonRandomSample,
     Generic[CenterT],
 ):
-    center: CenterT
+    center: CenterT = dataclasses.MISSING
     shape_random: None | dict[str, int] = None
     seed: None | int = None
 
@@ -923,7 +923,6 @@ class ScalarPoissonRandomSample(
         center = self.center
         if not isinstance(center, na.AbstractArray):
             center = ScalarArray(center)
-
 
         shape_random = self.shape_random if self.shape_random is not None else dict()
         shape = na.shape_broadcasted(center) | shape_random
