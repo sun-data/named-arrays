@@ -655,3 +655,12 @@ def nan_to_num(
         return na.UncertainScalarArray(result_nominal, result_distribution)
     else:
         return x
+
+
+@implements(np.convolve)
+def convolve(
+        a: na.AbstractUncertainScalarArray,
+        v: na.ScalarLike,
+        mode: str = 'full',
+) -> na.UncertainScalarArray:
+    raise ValueError("`numpy.convolve` is not supported for instances of `named_arrays.AbstractUncertainScalarArray`")
