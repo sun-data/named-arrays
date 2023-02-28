@@ -569,13 +569,6 @@ class AbstractTestAbstractArray(
             ):
                 pass
 
-        @pytest.mark.parametrize(
-            argnames='shape',
-            argvalues=[
-                dict(x=num_x, y=num_y),
-                dict(x=num_x, y=num_y, z=num_z),
-            ]
-        )
         def test_convolve(self, array: na.AbstractArray, v: na.AbstractArray, mode: str):
 
             shape_broadcasted = na.shape_broadcasted(array, v)
@@ -599,6 +592,13 @@ class AbstractTestAbstractArray(
             assert result.axes == tuple(shape_broadcasted.keys())
             assert np.all(result.ndarray == result_expected)
 
+        @pytest.mark.parametrize(
+            argnames='shape',
+            argvalues=[
+                dict(x=num_x, y=num_y),
+                dict(x=num_x, y=num_y, z=num_z),
+            ]
+        )
         def test_broadcast_to(self, array: na.AbstractArray, shape: dict[str, int]):
             result = np.broadcast_to(array, shape=shape)
             assert result.shape == shape

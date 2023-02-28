@@ -357,16 +357,6 @@ class AbstractTestAbstractScalarArray(
             super().test_convolve(array=array, v=v, mode=mode)
 
         @pytest.mark.parametrize(
-            argnames='shape',
-            argvalues=[
-                dict(x=_num_x, y=_num_y),
-                dict(x=_num_x, y=_num_y, z=13),
-            ]
-        )
-        def test_broadcast_to(self, array: na.AbstractArray, shape: dict[str, int]):
-            super().test_broadcast_to(array=array, shape=shape)
-
-        @pytest.mark.parametrize(
             argnames='where',
             argvalues=[
                 np._NoValue,
