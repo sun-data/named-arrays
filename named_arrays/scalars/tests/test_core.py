@@ -233,29 +233,30 @@ class AbstractTestAbstractScalarArray(
         ):
             super().test_ufunc_unary(ufunc, array)
 
-            try:
-                ufunc(array.ndarray)
-            except Exception as e:
-                with pytest.raises(type(e)):
-                    ufunc(array)
-                return
-
             kwargs = dict()
             kwargs_ndarray = dict()
 
+            unit = array.unit_normalized
             if ufunc in [np.log, np.log2, np.log10, np.sqrt]:
                 kwargs["where"] = array > 0
             elif ufunc in [np.log1p]:
-                kwargs["where"] = array >= -1
+                kwargs["where"] = array >= (-1 * unit)
             elif ufunc in [np.arcsin, np.arccos, np.arctanh]:
-                kwargs["where"] = (-1 <= array) & (array <= 1)
+                kwargs["where"] = ((-1 * unit) < array) & (array < (1 * unit))
             elif ufunc in [np.arccosh]:
-                kwargs["where"] = array >= 1
+                kwargs["where"] = array >= (1 * unit)
             elif ufunc in [np.reciprocal]:
                 kwargs["where"] = array != 0
 
             if "where" in kwargs:
                 kwargs_ndarray["where"] = kwargs["where"].ndarray
+
+            try:
+                ufunc(array.ndarray, **kwargs_ndarray)
+            except (ValueError, TypeError) as e:
+                with pytest.raises(type(e)):
+                    ufunc(array, **kwargs)
+                return
 
             result = ufunc(array, **kwargs)
             result_ndarray = ufunc(array.ndarray, **kwargs_ndarray)
