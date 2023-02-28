@@ -259,26 +259,27 @@ class AbstractTestAbstractUncertainScalarArray(
             else:
                 array_2_normalized = array_2
 
-            try:
-                ufunc(array_normalized.nominal, array_2_normalized.nominal)
-                ufunc(array_normalized.distribution, array_2_normalized.distribution)
-            except Exception as e:
-                with pytest.raises(type(e)):
-                    ufunc(array, array_2)
-                return
-
             kwargs = dict()
             kwargs_nominal = dict()
             kwargs_distribution = dict()
 
+            unit_2 = na.unit_normalized(array_2)
             if ufunc in [np.power, np.float_power]:
-                kwargs["where"] = (array_2_normalized >= 1) & (array_normalized >= 0)
+                kwargs["where"] = (array_2_normalized >= (1 * unit_2)) & (array_normalized >= 0)
             elif ufunc in [np.divide, np.floor_divide, np.remainder, np.fmod, np.divmod]:
                 kwargs["where"] = array_2_normalized != 0
 
             if "where" in kwargs:
                 kwargs_nominal["where"] = kwargs["where"].nominal
                 kwargs_distribution["where"] = kwargs["where"].distribution
+
+            try:
+                ufunc(array_normalized.nominal, array_2_normalized.nominal, **kwargs_nominal)
+                ufunc(array_normalized.distribution, array_2_normalized.distribution, **kwargs_distribution)
+            except (ValueError, TypeError) as e:
+                with pytest.raises(type(e)):
+                    ufunc(array, array_2, **kwargs)
+                return
 
             result = ufunc(array, array_2, **kwargs)
             result_nominal = ufunc(array_normalized.nominal, array_2_normalized.nominal, **kwargs_nominal)
