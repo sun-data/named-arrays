@@ -377,7 +377,7 @@ class AbstractTestAbstractUncertainScalarArray(
                 try:
                     result_nominal = func(array.broadcasted.nominal, **kwargs_nominal)
                     result_distribution = func(array.broadcasted.distribution, **kwargs_distribution)
-                except Exception as e:
+                except (ValueError, TypeError, u.UnitsError) as e:
                     with pytest.raises(type(e)):
                         func(array, **kwargs)
                     return
