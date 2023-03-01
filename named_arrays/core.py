@@ -119,7 +119,7 @@ def type_array(
 
 def broadcast_shapes(*shapes: dict[str, int]) -> dict[str, int]:
     result = dict()
-    for shape in shapes:
+    for shape in reversed(shapes):
         for axis in reversed(shape):
             if axis in result:
                 if result[axis] == shape[axis]:
