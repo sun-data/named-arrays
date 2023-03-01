@@ -632,17 +632,17 @@ class ScalarArray(
     Generic[NDArrayT],
 ):
     """
-    An array representing a scalar quantity with names for each of it's N axes.
+    An array representing a scalar quantity (like pressure or temperature) with names for each of its `N` axes.
 
-    A :class:`ScalarArray` is defined by a :class:`numpy.ndarray` and an axis.
+    A :class:`ScalarArray` is defined by a :class:`numpy.ndarray` and a :class:`tuple` of axis names.
 
     .. jupyter-execute::
 
         import numpy as np
-        import named_arrays.core as na
+        import named_arrays as na
 
-        x = np.array([1, 4, 9, 11, 17])
-        x = na.ScalarArray(x,axes='position_x')
+        x = np.array([1, 2, 3])
+        x = na.ScalarArray(x, axes=('position_x', ))
         print(x)
 
     They can also be defined using a :class:`astropy.units.Quantity`, or ascribed units after creation.
@@ -655,27 +655,25 @@ class ScalarArray(
 
         print(x)
 
-    What happens when we do math with :class:`ScalarArray`s?
+    What happens when we do math with instances of :class:`ScalarArray`?
 
     .. jupyter-execute::
 
-        y = np.array([0, 2, 4, 5]) * u.mm
+        y = np.array([4, 5, 6]) * u.mm
 
-        y = na.ScalarArray(y, axes='position_y')
+        y = na.ScalarArray(y, axes=('position_y', ))
         print(y**2)
 
-        radius = np.sqrt(y**2 + x**2)
+        radius = np.sqrt(x**2 + y**2)
         print(radius)
         print(radius.shape)
 
+    Note how when performing mathematical operations on two instances of :class:`ScalarArray` with different axes, the
+    arrays are automatically broadcast over every axis. There is no need to insert extra dimensions for alignment like
+    you would normally do with instances of :class:`numpy.ndarray`.
 
-    Note how when performing mathematical operations on two :class:`ScalarArray`s with different axes, the arrays are
-    automatically broadcast over every axis. There is no need to insert extra dimensions for alignment like you would
-    normally do with instances of :class:`numpy.ndarray`.
-
-    We can also use reduction operators (mean, sum, etc) on :class:`ScalarArray`s, and if desired specify the axis by name without
-    knowledge of the corresponding index axes of the original array.
-
+    We can also use reduction operators (mean, sum, etc) on instances of :class:`ScalarArray` by using the axis name
+    instead of the axis index.
     .. jupyter-execute::
 
         print(radius.mean())
@@ -967,7 +965,8 @@ class ScalarArrayRange(
     Generic[StartT, StopT],
 ):
     """
-    A :class:`ScalarArray` over the range [:attr:`start`, :attr:`stop`) incremented by :attr:`step`. An analog to :class:`numpy.arange`.
+    An :class:`AbstractScalarArray` over the range [:attr:`start`, :attr:`stop`) incremented by :attr:`step`.
+    An analog to :func:`numpy.arange`.
 
     :class:`ScalarArrayRange` can be used to create a :class:`ScalarArray` of integers.
 
@@ -979,7 +978,7 @@ class ScalarArrayRange(
         print(x.shape)
 
     Note above that ``x`` does not include :attr:`stop`, and won't in almost all cases.  :class:`ScalarArrayRange` can be used to
-    create an increasing ScalarArray of floats, even with non integer steps.
+    create an increasing :class:`ScalarArray` of floats, even with non integer steps.
 
     .. jupyter-execute::
 
@@ -987,7 +986,7 @@ class ScalarArrayRange(
         print(x.array)
 
     For the above, and more complicated uses, it is recommended to use :class:`ScalarLinearSpace` instead.  See numpy
-    documentation of :class:`numpy.arange` for more info.
+    documentation of :func:`numpy.arange` for more info.
     """
     start: StartT = dataclasses.MISSING
     stop: StopT = dataclasses.MISSING
@@ -1031,16 +1030,16 @@ class ScalarLinearSpace(
     """
     An evenly spaced :class:`ScalarArray` ranging from start to stop with num elements.
 
-    Most often :class:`ScalarArray`s won't be formed directly from a :class:`numpy.ndarray`, but through more useful routines
-    like :class:`ScalarLinearSpace`, a named_arrays equivalent to :class:`numpy.linspace`.  For example,
-    one can quickly create an evenly spaced coordinate (or axis) array with units.
+    Most often, instances of :class:`ScalarArray` won't be formed directly from a :class:`numpy.ndarray`, but through
+    more useful routines like :class:`ScalarLinearSpace`, a named_arrays equivalent to :func:`numpy.linspace`.
+    For example, one can quickly create an evenly spaced coordinate (or axis) array with units.
 
     .. jupyter-execute::
 
         import named_arrays as na
         import astropy.units as u
 
-        photon_energy = na.ScalarLinearSpace(1, 25, axis="energy", num=25) * u.keV
+        photon_energy = na.ScalarLinearSpace(1, 10, axis="energy", num=10) * u.keV
         print(photon_energy.shape)
         print(photon_energy)
 
@@ -1048,10 +1047,8 @@ class ScalarLinearSpace(
 
     .. jupyter-execute::
 
-        wavelength = 1240 * u.eV * u.nm / photon_energy
-        wavelength.axes = 'lambda'
+        wavelength = (1240 * u.eV * u.nm / photon_energy).to(u.nm)
         print(wavelength)
-
     """
     start: StartT = dataclasses.MISSING
     stop: StopT = dataclasses.MISSING
