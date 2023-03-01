@@ -65,16 +65,7 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 
-html_theme = 'bootstrap-astropy'
-html_theme_options = {
-    'logotext1': 'named_arrays',  # white,  semi-bold
-    'logotext2': '',  # blue, light
-    'logotext3': ':docs',  # white,  light
-    'astropy_project_menubar': False
-}
-html_sidebars = {
-   '**': ['globaltoc.html'],
-}
+html_theme = 'pydata_sphinx_theme'
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,

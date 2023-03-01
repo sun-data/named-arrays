@@ -12,7 +12,7 @@ setup(
         'scipy',
         'astropy @ git+https://github.com/astropy/astropy.git#egg=astropy',
         'sphinx-autodoc-typehints',
-        'astropy-sphinx-theme',
+        'pydata-sphinx-theme',
         'jupyter-sphinx',
     ],
     url='https://github.com/Kankelborg-Group/named_arrays',
