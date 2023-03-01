@@ -439,7 +439,7 @@ class AbstractTestAbstractArray(
                 np.nanmedian,
             ]
         )
-        @pytest.mark.parametrize('dtype', [None, float])
+        @pytest.mark.parametrize('dtype', [np._NoValue, float])
         @pytest.mark.parametrize('axis', [None, 'y', 'x', ('x', 'y')])
         @pytest.mark.parametrize('keepdims', [False, True])
         class TestReductionFunctions(abc.ABC):

@@ -359,8 +359,7 @@ class AbstractTestAbstractScalarArray(
                 np._NoValue,
                 True,
                 na.ScalarArray(True),
-                na.ScalarNormalRandomSample(0, 1, shape_random=dict(y=_num_y)) > 0,
-                na.ScalarNormalRandomSample(0, 1, shape_random=dict(x=_num_x, y=_num_y)) > 0,
+                (na.ScalarLinearSpace(-1, 1, 'x', _num_x) >= 0) | (na.ScalarLinearSpace(-1, 1, 'y', _num_y) >= 0),
             ]
         )
         class TestReductionFunctions(
@@ -387,7 +386,6 @@ class AbstractTestAbstractScalarArray(
 
                 kwargs = dict(
                     axis=axis,
-                    dtype=dtype,
                     keepdims=keepdims,
                     where=where,
                 )
@@ -403,17 +401,19 @@ class AbstractTestAbstractScalarArray(
 
                 kwargs_ndarray = dict(
                     axis=tuple(array.axes.index(ax) for ax in axis_normalized),
-                    dtype=dtype,
                     keepdims=keepdims,
                     where=where.ndarray if isinstance(where, na.AbstractArray) else where,
                 )
 
-                if [np.min, np.nanmin, np.max, np.nanmax]:
+                if dtype is not np._NoValue:
+                    kwargs["dtype"] = kwargs_ndarray["dtype"] = dtype
+
+                if func in [np.min, np.nanmin, np.max, np.nanmax]:
                     kwargs["initial"] = kwargs_ndarray["initial"] = 0
 
                 try:
                     result_ndarray = func(array.ndarray, **kwargs_ndarray)
-                except Exception as e:
+                except (ValueError, TypeError, u.UnitsError) as e:
                     with pytest.raises(type(e)):
                         func(array, **kwargs)
                     return
