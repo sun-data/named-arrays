@@ -479,7 +479,7 @@ class AbstractTestAbstractScalarArray(
 
                 try:
                     result_ndarray = func(array.ndarray, **kwargs_ndarray)
-                except Exception as e:
+                except (ValueError, TypeError) as e:
                     with pytest.raises(type(e)):
                         func(array, **kwargs)
                     return
