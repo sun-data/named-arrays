@@ -674,6 +674,7 @@ class ScalarArray(
 
     We can also use reduction operators (mean, sum, etc) on instances of :class:`ScalarArray` by using the axis name
     instead of the axis index.
+
     .. jupyter-execute::
 
         print(radius.mean())
