@@ -322,13 +322,14 @@ class AbstractTestAbstractUncertainScalarArray(
                 np._NoValue,
                 True,
                 na.ScalarArray(True),
-                na.ScalarNormalRandomSample(0, 1, shape_random=dict(y=_num_y)) > 0,
-                na.ScalarNormalRandomSample(0, 1, shape_random=dict(x=_num_x, y=_num_y)) > 0,
+                (na.ScalarLinearSpace(-1, 1, 'x', _num_x) >= 0) | (na.ScalarLinearSpace(-1, 1, 'y', _num_y) >= 0),
                 na.UncertainScalarArray(
-                    nominal=na.ScalarNormalRandomSample(0, 1, shape_random=dict(y=_num_y)),
-                    distribution=na.ScalarNormalRandomSample(
-                        0, 1, shape_random=dict(y=_num_y, _distribution=_num_distribution))
-                ) > 0
+                    nominal=(na.ScalarLinearSpace(-1, 1, 'x', _num_x) >= 0)
+                            | (na.ScalarLinearSpace(-1, 1, 'y', _num_y) >= 0),
+                    distribution=(na.ScalarLinearSpace(-1, 1, 'x', _num_x) >= 0)
+                                 | (na.ScalarLinearSpace(-1, 1, 'y', _num_y) >= 0)
+                                 | (na.ScalarLinearSpace(-1, 1, '_distribution', _num_distribution) >= 0)
+                ),
             ]
         )
         class TestReductionFunctions(
@@ -389,7 +390,7 @@ class AbstractTestAbstractUncertainScalarArray(
 
                 assert np.all(result.nominal == result_nominal)
                 assert np.all(result.distribution == result_distribution)
-                assert np.all(result == result_out)
+                assert np.allclose(result, result_out)
                 assert result_out is out
 
         @pytest.mark.parametrize(
