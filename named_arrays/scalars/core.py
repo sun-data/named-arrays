@@ -1057,7 +1057,7 @@ class ScalarLinearSpace(
     stop: StopT = dataclasses.MISSING
     axis: str = dataclasses.MISSING
     num: int = 11
-    endpoint: bool = False
+    endpoint: bool = True
 
     @property
     def array(self: Self) -> ScalarArray:
