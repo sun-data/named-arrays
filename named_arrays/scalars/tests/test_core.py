@@ -793,10 +793,11 @@ class TestScalarNormalRandomSample(
 ):
     pass
 
+
 def _scalar_poisson_random_samples() -> list[na.ScalarPoissonRandomSample]:
     centers = [
         4,
-        na.ScalarArray(np.random.random(_num_x), axes=('x', )),
+        na.ScalarArray(np.random.randint(1, 10, _num_x), axes=('x', )),
     ]
     units = [None, u.mm]
     shapes_random = [dict(y=_num_y)]
