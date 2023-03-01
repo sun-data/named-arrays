@@ -90,7 +90,7 @@ intersphinx_mapping = {
     'scipy': ('https://docs.scipy.org/doc/scipy/', None),
     'matplotlib': ('https://matplotlib.org/stable', None),
     'astropy': ('https://docs.astropy.org/en/stable/', None),
-    'xarray': ('https://xarray.pydata.org/en/stable/', None),
+    'xarray': ('https://docs.xarray.dev/en/stable/', None),
 }
 
 # plt.Axes.__module__ = matplotlib.axes.__name__
