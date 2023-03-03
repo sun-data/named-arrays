@@ -112,11 +112,15 @@ class AbstractVectorArray(
 
     def combine_axes(
             self: Self,
-            axes: Sequence[str],
+            axes: Sequence[str] = None,
             axis_new: str = None,
     ) -> AbstractExplicitVectorArray:
 
         shape = self.shape
+
+        if axes is None:
+            axes = tuple(shape)
+
         shape_base = {ax: shape[ax] for ax in shape if ax in axes}
 
         components = self.components
