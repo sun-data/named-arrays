@@ -43,38 +43,32 @@ class AbstractCartesianVectorArray(
         result = np.sqrt(result)
         return result
 
-    # def __mul__(self: Self, other: na.ArrayLike | u.UnitBase) -> AbstractExplicitCartesianVectorArray:
-    #     if isinstance(other, u.UnitBase):
-    #         components = self.components
-    #         other = {c: other for c in components} if isinstance(other, u.UnitBase) else other
-    #         return self.type_array.from_components(
-    #             components={c: components[c] * other[c] if other[c] is not None else components[c]
-    #                         for c in components},
-    #         )
-    #     else:
-    #         return super().__mul__(other)
-    #
-    # def __lshift__(self: Self, other: na.ArrayLike | u.UnitBase) -> AbstractExplicitCartesianVectorArray:
-    #     if isinstance(other, (u.UnitBase, dict)):
-    #         components = self.components
-    #         other = {c: other for c in components} if isinstance(other, u.UnitBase) else other
-    #         return self.type_array.from_components(
-    #             components={c: components[c] << other[c] if other[c] is not None else components[c]
-    #                         for c in components},
-    #         )
-    #     else:
-    #         return super().__lshift__(other)
-    #
-    # def __truediv__(self: Self, other: na.ArrayLike | u.UnitBase) -> AbstractExplicitCartesianVectorArray:
-    #     if isinstance(other, (u.UnitBase, dict)):
-    #         components = self.components
-    #         other = {c: other for c in components} if isinstance(other, u.UnitBase) else other
-    #         return self.type_array.from_components(
-    #             components={c: components[c] / other[c] if other[c] is not None else components[c]
-    #                         for c in components},
-    #         )
-    #     else:
-    #         return super().__truediv__(other)
+    def __mul__(self: Self, other: na.ArrayLike | u.Unit) -> AbstractExplicitCartesianVectorArray:
+        if isinstance(other, u.UnitBase):
+            result = self.type_array()
+            for c in result.components:
+                result.components[c] = result.components[c] * other
+            return result
+        else:
+            return super().__mul__(other)
+
+    def __lshift__(self: Self, other: na.ArrayLike | u.UnitBase) -> AbstractExplicitCartesianVectorArray:
+        if isinstance(other, u.UnitBase):
+            result = self.type_array()
+            for c in result.components:
+                result.components[c] = result.components[c] << other
+            return result
+        else:
+            return super().__lshift__(other)
+
+    def __truediv__(self: Self, other: na.ArrayLike | u.UnitBase) -> AbstractExplicitCartesianVectorArray:
+        if isinstance(other, u.UnitBase):
+            result = self.type_array()
+            for c in result.components:
+                result.components[c] = result.components[c] / other
+            return result
+        else:
+            return super().__truediv__(other)
 
     def __array_ufunc__(
             self: Self,

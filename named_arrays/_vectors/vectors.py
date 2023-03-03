@@ -196,33 +196,6 @@ class AbstractVectorArray(
             result = result and bool(components[c])
         return result
 
-    def __mul__(self: Self, other: na.ArrayLike | u.Unit) -> AbstractExplicitVectorArray:
-        if isinstance(other, u.UnitBase):
-            result = self.type_array()
-            for c in result.components:
-                result.components[c] = result.components[c] * other
-            return result
-        else:
-            return super().__mul__(other)
-
-    def __lshift__(self: Self, other: na.ArrayLike | u.UnitBase) -> AbstractExplicitVectorArray:
-        if isinstance(other, u.UnitBase):
-            result = self.type_array()
-            for c in result.components:
-                result.components[c] = result.components[c] << other
-            return result
-        else:
-            return super().__lshift__(other)
-
-    def __truediv__(self: Self, other: na.ArrayLike | u.UnitBase) -> AbstractExplicitVectorArray:
-        if isinstance(other, u.UnitBase):
-            result = self.type_array()
-            for c in result.components:
-                result.components[c] = result.components[c] / other
-            return result
-        else:
-            return super().__truediv__(other)
-
     def __array_matmul__(
             self: Self,
             x1: na.ArrayLike,
