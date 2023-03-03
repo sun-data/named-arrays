@@ -1,6 +1,6 @@
 import numpy as np
 import pytest
-
+import astropy.units as u
 import named_arrays as na
 import named_arrays._vectors.tests.test_vectors
 
@@ -33,48 +33,67 @@ class AbstractTestAbstractCartesianVectorArray(
                 self,
                 ufunc: np.ufunc,
                 array: na.AbstractVectorArray,
-                # out: bool,
         ):
-            out = False
-
             super().test_ufunc_unary(ufunc=ufunc, array=array)
 
             components = array.components
-            components_expected = tuple(dict() for _ in range(ufunc.nout))
+
+            kwargs = dict()
+            kwargs_components = {c: dict() for c in components}
+
+            try:
+                if ufunc in [np.log, np.log2, np.log10, np.sqrt]:
+                    kwargs["where"] = array > 0
+                elif ufunc in [np.log1p]:
+                    kwargs["where"] = array >= -1
+                elif ufunc in [np.arcsin, np.arccos, np.arctanh]:
+                    kwargs["where"] = (-1< array) & (array < 1)
+                elif ufunc in [np.arccosh]:
+                    kwargs["where"] = array >= 1
+                elif ufunc in [np.reciprocal]:
+                    kwargs["where"] = array != 0
+            except u.UnitConversionError:
+                pass
+
+            for c in components:
+                for k in kwargs:
+                    if isinstance(kwargs[k], na.AbstractVectorArray):
+                        kwargs_components[c][k] = kwargs[k].components[c]
+                    else:
+                        kwargs_components[c][k] = kwargs[k]
+
+            result_expected = tuple(array.type_array() for _ in range(ufunc.nout))
             try:
                 for c in components:
-                    result_c = ufunc(components[c])
+                    result_c = ufunc(components[c], **kwargs_components[c])
                     if ufunc.nout == 1:
                         result_c = (result_c, )
                     for i in range(ufunc.nout):
-                        components_expected[i][c] = result_c[i]
+                        result_expected[i].components[c] = result_c[i]
 
             except Exception as e:
-                print(e)
                 with pytest.raises(type(e)):
-                    ufunc(array)
+                    ufunc(array, **kwargs)
                 return
 
-            result_expected = tuple(array.type_array.from_components(components_expected[i]) for i in range(ufunc.nout))
+            result = ufunc(array, **kwargs)
 
-            if out:
-                out = tuple(0 * result_expected[i] for i in range(ufunc.nout))
-                for i in range(ufunc.nout):
-                    for c in components:
-                        if not isinstance(out[i].components[c], na.AbstractArray):
-                            out[i].components[c] = np.asanyarray(out[i].components[c])
-            else:
-                out = tuple(None for _ in range(ufunc.nout))
-
-            result = ufunc(array, out=out[0] if ufunc.nout == 1 else out)
             if ufunc.nout == 1:
-                result = (result, )
+                out = 0 * result
+            else:
+                out = tuple(0 * r for r in result)
+
+            result_out = ufunc(array, out=out, **kwargs)
+
+            if ufunc.nout == 1:
+                out = (out,)
+                result = (result,)
+                result_out = (result_out,)
 
             for i in range(ufunc.nout):
-                assert np.all(result[i] == result_expected[i])
-
-                if out[i] is not None:
-                    assert result[i] is out[i]
+                assert np.all(result[i] == result_expected[i], **kwargs)
+                assert np.all(result[i] == result_out[i], **kwargs)
+                assert result_out[i] is out[i]
 
     class TestUfuncBinary(
         named_arrays._vectors.tests.test_vectors.AbstractTestAbstractVectorArray.TestUfuncBinary,
