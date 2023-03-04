@@ -121,48 +121,30 @@ class AbstractTestAbstractVectorArray(
                 self,
                 array: None | bool | int | float | complex | str | na.AbstractArray,
                 array_2: None | bool | int | float | complex | str | na.AbstractArray,
-                out: bool,
         ):
 
-            if isinstance(array, na.AbstractVectorArray) and isinstance(array_2, na.AbstractVectorArray):
-                components_1 = array.components
-                components_2 = array_2.components
-                units = [na.unit_normalized(components_1[c]) * na.unit_normalized(components_2[c])
-                         for c in components_1]
-                units_are_compatible = all(units[0].is_equivalent(unit) for unit in units[1:])
-                if not units_are_compatible:
-                    with pytest.raises(u.UnitConversionError):
-                        np.matmul(array, array_2)
-                    return
+            try:
+                if isinstance(array, na.AbstractVectorArray) and isinstance(array_2, na.AbstractVectorArray):
+                    components_1 = array.components
+                    components_2 = array_2.components
+                    result_expected = 0
+                    for c in components_1:
+                        result_expected = result_expected + components_1[c] * components_2[c]
+                else:
+                    result_expected = np.multiply(array, array_2)
+            except (ValueError, TypeError) as e:
+                with pytest.raises(type(e)):
+                    np.matmul(array, array_2)
+                return
 
-            result_prototype = np.matmul(array, array_2)
+            result = np.matmul(array, array_2)
 
-            if out:
-                out = 0 * result_prototype
-                # if isinstance(out, na.AbstractVectorArray):
-                #     for c in out.components:
-                #         if not isinstance(out.components[c], na.AbstractArray):
-                #             out.components[c] = np.asanyarray(out.components[c])
-                #         elif isinstance(out.components[c], na.AbstractScalarArray):
-                #             out.components[c].ndarray = np.asanyarray(out.components[c].ndarray)
-                #         elif isinstance(out, na.ScalarArray):
-                #             out.ndarray = np.asanyarray(out.ndarray)
-            else:
-                out = None
+            out = 0 * result
+            result_out = np.matmul(array, array_2, out=out)
 
-            print('out', out)
-
-            result = np.matmul(array, array_2, out=out)
-
-            if isinstance(array, na.AbstractVectorArray) and isinstance(array_2, na.AbstractVectorArray):
-                assert isinstance(result, na.AbstractScalar)
-            else:
-                assert isinstance(result, na.AbstractVectorArray)
-
-            if out is not None:
-                assert result is out
-
-            assert result.sum() != 0
+            assert np.all(result == result_expected)
+            assert np.all(result == result_out)
+            assert result_out is out
 
     class TestArrayFunctions(
         named_arrays.tests.test_core.AbstractTestAbstractArray.TestArrayFunctions,
