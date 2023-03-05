@@ -161,7 +161,7 @@ class AbstractTestAbstractVectorArray(
                     axis: None | str | Sequence[str],
                     dtype: Type,
                     keepdims: bool,
-                    where: bool,
+                    where: bool | na.AbstractArray,
             ):
                 super().test_reduction_functions(
                     func=func,
