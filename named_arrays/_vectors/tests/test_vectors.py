@@ -205,7 +205,6 @@ class AbstractTestAbstractVectorArray(
                         component = na.as_named_array(array.components[c]).broadcast_to(shape)
                         result_expected.components[c] = func(component, **kwargs_components[c])
                 except (ValueError, TypeError, u.UnitsError) as e:
-                    print(e)
                     with pytest.raises(type(e)):
                         func(array, **kwargs)
                     return
