@@ -229,7 +229,6 @@ class AbstractTestAbstractVectorArray(
                     array: na.AbstractVectorArray,
                     q: float | u.Quantity | na.AbstractArray,
                     axis: None | str | Sequence[str],
-                    out: bool,
                     keepdims: bool,
             ):
                 super().test_percentile_like_functions(
@@ -237,52 +236,46 @@ class AbstractTestAbstractVectorArray(
                     array=array.array,
                     q=q,
                     axis=axis,
-                    out=out,
                     keepdims=keepdims,
                 )
 
+                shape = array.shape
                 components = array.components
+                components_q = q.components if isinstance(q, na.AbstractVectorArray) else {c: q for c in components}
 
-                if not isinstance(q, na.AbstractVectorArray):
-                    components_q = array.type_array.from_scalar(q).components
-                else:
-                    components_q = q.components
-
-                components_expected = dict()
-                try:
-                    for c in components:
-                        components_expected[c] = func(
-                            components[c],
-                            q=components_q[c],
-                            axis=axis,
-                            keepdims=keepdims,
-                        )
-
-                except Exception as e:
-                    with pytest.raises(type(e)):
-                        func(array, q=q, axis=axis, keepdims=keepdims)
-                    return
-
-                result_expected = array.type_array.from_components(components_expected)
-
-                if out:
-                    out = 0 * result_expected
-                    # if isinstance(out, na.AbstractVectorArray):
-                    #     for c in out.components:
-                    #         if not isinstance(out.components[c], na.AbstractArray):
-                    #             out.components[c] = np.asanyarray(out.components[c])
-                else:
-                    out = None
-
-                result = func(
-                    array,
+                kwargs = dict(
                     q=q,
                     axis=axis,
-                    out=out,
                     keepdims=keepdims,
                 )
 
+                kwargs_components = dict()
+                for c in components:
+                    kwargs_components[c] = dict(
+                        q=components_q[c],
+                        axis=axis,
+                        keepdims=keepdims,
+                    )
+
+                try:
+                    result_expected = array.type_array()
+                    for c in components:
+                        component = na.as_named_array(array.components[c]).broadcast_to(shape)
+                        result_expected.components[c] = func(component, **kwargs_components[c])
+                except (ValueError, TypeError) as e:
+                    with pytest.raises(type(e)):
+                        func(array, **kwargs)
+                    return
+
+                result = func(array, **kwargs)
+
+                out = 0 * result
+
+                result_out = func(array, out=out, **kwargs)
+
                 assert np.all(result == result_expected)
+                assert np.all(result == result_out)
+                assert result_out is out
 
         class TestFFTLikeFunctions(
             named_arrays.tests.test_core.AbstractTestAbstractArray.TestArrayFunctions.TestFFTLikeFunctions,
@@ -398,6 +391,10 @@ class AbstractTestAbstractVectorArray(
             result = np.nan_to_num(array, copy=copy)
 
             assert np.all(result == result_expected)
+
+        @pytest.mark.xfail
+        def test_convolve(self, array: na.AbstractVectorArray, v: na.AbstractScalarOrVectorArray, mode: str):
+            np.convolve(array, v=v, mode=mode)
 
     def test_broadcasted(self, array: na.AbstractVectorArray):
         array_broadcasted = array.broadcasted
