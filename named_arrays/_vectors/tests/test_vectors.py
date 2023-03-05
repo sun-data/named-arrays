@@ -160,7 +160,6 @@ class AbstractTestAbstractVectorArray(
                     array: na.AbstractVectorArray,
                     axis: None | str | Sequence[str],
                     dtype: Type,
-                    out: bool,
                     keepdims: bool,
                     where: bool,
             ):
@@ -169,61 +168,57 @@ class AbstractTestAbstractVectorArray(
                     array=array,
                     axis=axis,
                     dtype=dtype,
-                    out=out,
                     keepdims=keepdims,
                     where=where,
                 )
 
+                shape = na.shape_broadcasted(array, where)
                 components = array.components
 
-                kwargs = dict()
-                if dtype is not None:
-                    kwargs['dtype'] = dtype
-                if where and (func in [np.min, np.amin, np.nanmin, np.max, np.amax, np.nanmax]):
-                    kwargs['initial'] = 0
-                if where:
-                    kwargs['where'] = array > 0
-
-                components_expected = dict()
-                try:
-                    for c in components:
-                        kwargs_c = {
-                            k: kwargs[k].components[c] if isinstance(kwargs[k], na.AbstractVectorArray) else kwargs[k]
-                            for k in kwargs
-                        }
-                        components_expected[c] = func(
-                            na.as_named_array(components[c]),
-                            axis=axis,
-                            keepdims=keepdims,
-                            **kwargs_c,
-                        )
-
-                except Exception as e:
-                    with pytest.raises(type(e)):
-                        func(
-                            array,
-                            axis=axis,
-                            keepdims=keepdims,
-                            **kwargs,
-                        )
-                    return
-
-                result_expected = array.type_array.from_components(components_expected)
-
-                if out:
-                    out = 0 * result_expected
-                else:
-                    out = None
-
-                result = func(
-                    array,
+                kwargs = dict(
                     axis=axis,
-                    out=out,
                     keepdims=keepdims,
-                    **kwargs
+                    where=where,
                 )
 
+                if dtype is not np._NoValue:
+                    kwargs["dtype"] = dtype
+
+                if func in [np.min, np.nanmin, np.max, np.nanmax]:
+                    kwargs["initial"] = 0
+
+                kwargs_components = {c: dict() for c in components}
+                for c in components:
+                    for k in kwargs:
+                        if isinstance(kwargs[k], na.AbstractVectorArray):
+                            kwargs_components[c][k] = kwargs[k].components[c]
+                        else:
+                            kwargs_components[c][k] = kwargs[k]
+
+                        if isinstance(kwargs_components[c][k], na.AbstractArray):
+                            kwargs_components[c][k] = kwargs_components[c][k].broadcast_to(shape)
+
+
+                try:
+                    result_expected = array.type_array()
+                    for c in components:
+                        component = na.as_named_array(array.components[c]).broadcast_to(shape)
+                        result_expected.components[c] = func(component, **kwargs_components[c])
+                except (ValueError, TypeError, u.UnitsError) as e:
+                    print(e)
+                    with pytest.raises(type(e)):
+                        func(array, **kwargs)
+                    return
+
+                result = func(array, **kwargs)
+
+                out = 0 * result
+
+                result_out = func(array, out=out, **kwargs)
+
                 assert np.all(result == result_expected)
+                assert np.all(result == result_out)
+                assert result_out is out
 
         class TestPercentileLikeFunctions(
             named_arrays.tests.test_core.AbstractTestAbstractArray.TestArrayFunctions.TestPercentileLikeFunctions,

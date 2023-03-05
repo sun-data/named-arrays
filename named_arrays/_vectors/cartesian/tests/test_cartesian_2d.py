@@ -111,6 +111,25 @@ class AbstractTestAbstractCartesian2dVectorArray(
     class TestArrayFunctions(
         test_cartesian.AbstractTestAbstractCartesianVectorArray.TestArrayFunctions
     ):
+
+        @pytest.mark.parametrize(
+            argnames='where',
+            argvalues=[
+                np._NoValue,
+                True,
+                na.ScalarArray(True),
+                (na.ScalarLinearSpace(-1, 1, 'x', _num_x) >= 0) | (na.ScalarLinearSpace(-1, 1, 'y', _num_y) >= 0),
+                na.Cartesian2dVectorArray(
+                    x=(na.ScalarLinearSpace(-1, 1, 'x', _num_x) >= 0) | (na.ScalarLinearSpace(-1, 1, 'y', _num_y) >= 0),
+                    y=(na.ScalarLinearSpace(-1, 1, 'x', _num_x) <= 0) | (na.ScalarLinearSpace(-1, 1, 'y', _num_y) <= 0),
+                )
+            ]
+        )
+        class TestReductionFunctions(
+            test_cartesian.AbstractTestAbstractCartesianVectorArray.TestArrayFunctions.TestReductionFunctions,
+        ):
+            pass
+
         @pytest.mark.parametrize(
             argnames='q',
             argvalues=[
