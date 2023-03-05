@@ -223,7 +223,7 @@ class AbstractVectorArray(
                 for c in components_x1:
                     component_x1 = na.as_named_array(components_x1[c])
                     component_x2 = na.as_named_array(components_x2[c])
-                    result = np.add(result, np.matmul(component_x1, component_x2, out=out), out=out)
+                    result = np.add(result, np.matmul(component_x1, component_x2), out=out)
                 return result
             else:
                 return NotImplemented
