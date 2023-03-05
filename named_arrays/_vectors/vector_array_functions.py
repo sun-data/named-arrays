@@ -140,32 +140,45 @@ def array_function_percentile_like(
         keepdims: bool = False,
 ) -> na.AbstractExplicitVectorArray:
 
-    if not isinstance(q, na.AbstractVectorArray):
-        q = a.type_array.from_scalar(q)
-    if out is None:
-        out = a.type_array.from_scalar(out)
+    a = a.array
+    shape = a.shape
+
+    axis_normalized = na.axis_normalized(a, axis)
+
+    if axis is not None:
+        if not set(axis_normalized).issubset(shape):
+            raise ValueError(
+                f"the `axis` argument, {axis}, must be `None` or a subset of the shape of `a`, {shape}"
+            )
+
+    shape_base = {ax: shape[ax] for ax in axis_normalized}
 
     components = a.components
-    components_q = q.components
-    components_out = out.components
+    components_q = q.components if isinstance(q, na.AbstractVectorArray) else {c: q for c in components}
+    components_out = out.components if isinstance(out, na.AbstractVectorArray) else {c: out for c in components}
 
-    kwargs_base = dict()
-    if axis is not None:
-        kwargs_base['axis'] = axis
-    kwargs_base['overwrite_input'] = overwrite_input
-    kwargs_base['method'] = method
-    if keepdims is not None:
-        kwargs_base['keepdims'] = keepdims
+    kwargs_base = dict(
+        axis=axis,
+        overwrite_input=overwrite_input,
+        method=method,
+        keepdims=keepdims,
+    )
 
-    components_result = dict()
+    result = a.type_array()
     for c in components:
-        kwargs = kwargs_base.copy()
-        print('components_out[c]', components_out[c])
-        if components_out[c] is not None and hasattr(components_out[c], "__getitem__"):
-            kwargs['out'] = components_out[c]
-        components_result[c] = func(components[c], components_q[c], **kwargs)
+        component = na.as_named_array(components[c])
+        shape_c = na.broadcast_shapes(component.shape, shape_base)
+        result.components[c] = func(
+            component.broadcast_to(shape_c),
+            q=components_q[c],
+            out=components_out[c],
+            **kwargs_base,
+        )
 
-    return a.type_array.from_components(components_result)
+    if out is not None:
+        result = out
+
+    return result
 
 
 def array_function_arg_reduce(
