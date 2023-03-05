@@ -76,42 +76,57 @@ def array_function_default(
         func: Callable,
         a: na.AbstractVectorArray,
         axis: None | str | Sequence[str] = None,
-        dtype: None | Type = None,
+        dtype: None | type | np.dtype = np._NoValue,
         out: None | na.AbstractExplicitVectorArray = None,
-        keepdims: None | bool = None,
-        initial: None | bool | int | float | complex | u.Quantity = None,
-        where: None | na.AbstractScalarArray | na.AbstractVectorArray = None,
+        keepdims: bool = False,
+        initial: None | bool | int | float | complex | u.Quantity = np._NoValue,
+        where: na.AbstractScalarArray | na.AbstractVectorArray = np._NoValue,
 ) -> na.AbstractExplicitVectorArray:
 
-    if out is None:
-        out = a.type_array.from_scalar(out)
-    if not isinstance(where, na.AbstractVectorArray):
-        where = a.type_array.from_scalar(where)
+    a = a.array
+    shape = na.shape_broadcasted(a, where)
+
+    axis_normalized = tuple(shape) if axis is None else (axis, ) if isinstance(axis, str) else axis
+
+    if axis is not None:
+        if not set(axis_normalized).issubset(shape):
+            raise ValueError(
+                f"the `axis` argument, {axis}, must be `None` or a subset of the broadcasted shape of `a` and "
+                f"`where`, {shape} "
+            )
+
+    shape_base = {ax: shape[ax] for ax in axis_normalized}
 
     components = a.components
-    components_out = out.components
-    components_where = where.components
-    components_result = dict()
+    components_out = out.components if isinstance(out, na.AbstractVectorArray) else {c: out for c in components}
+    components_where = where.components if isinstance(where, na.AbstractVectorArray) else {c: where for c in components}
 
-    kwargs_base = dict()
-    if axis is not None:
-        kwargs_base['axis'] = axis
-    if dtype is not None:
-        kwargs_base['dtype'] = dtype
-    if keepdims is not None:
-        kwargs_base['keepdims'] = keepdims
-    if initial is not None:
-        kwargs_base['initial'] = initial
+    kwargs_base = dict(
+        axis=axis,
+        keepdims=keepdims,
+    )
 
+    if dtype is not np._NoValue:
+        kwargs_base["dtype"] = dtype
+    if initial is not np._NoValue:
+        kwargs_base["initial"] = initial
+
+    result = a.type_array()
     for c in components:
-        kwargs = kwargs_base.copy()
-        if components_out[c] is not None:
-            kwargs['out'] = components_out[c]
-        if components_where[c] is not None:
-            kwargs['where'] = components_where[c]
-        components_result[c] = func(na.as_named_array(components[c]), **kwargs)
+        component = na.as_named_array(components[c])
+        where_c = components_where[c]
+        shape_c = na.broadcast_shapes(component.shape, na.shape(where_c), shape_base)
+        result.components[c] = func(
+            component.broadcast_to(shape_c),
+            out=components_out[c],
+            where=where_c.broadcast_to(shape_c) if isinstance(where_c, na.AbstractArray) else where_c,
+            **kwargs_base,
+        )
 
-    return a.type_array.from_components(components_result)
+    if out is not None:
+        result = out
+
+    return result
 
 
 def array_function_percentile_like(
