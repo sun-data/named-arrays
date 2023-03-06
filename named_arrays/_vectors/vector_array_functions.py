@@ -530,6 +530,44 @@ def array_equiv(
 
     return result
 
+
+@implements(np.allclose)
+def allclose(
+        a: na.ArrayLike,
+        b: na.ArrayLike,
+        rtol: float = 1e-05,
+        atol: float = 1e-08,
+        equal_nan: bool = False,
+):
+    if isinstance(a, na.AbstractVectorArray):
+        components_a = a.components
+        if isinstance(b, na.AbstractVectorArray):
+            if a.type_array_abstract == b.type_array_abstract:
+                components_b = b.components
+            else:
+                return NotImplemented
+        else:
+            components_b = {c: b for c in components_a}
+    else:
+        if isinstance(b, na.AbstractVectorArray):
+            components_b = b.components
+            components_a = {c: a for c in components_b}
+        else:
+            return NotImplemented
+
+    result = True
+    for c in components_a:
+        result = result * np.allclose(
+            a=components_a[c],
+            b=components_b[c],
+            rtol=rtol,
+            atol=atol,
+            equal_nan=equal_nan,
+        )
+
+    return result
+
+
 @implements(np.nonzero)
 def nonzero(a: na.AbstractVectorArray):
     a = a.broadcasted
