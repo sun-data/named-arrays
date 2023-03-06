@@ -116,11 +116,14 @@ def array_function_default(
         component = na.as_named_array(components[c])
         where_c = components_where[c]
         shape_c = na.broadcast_shapes(component.shape, na.shape(where_c), shape_base)
+        kwargs = dict()
+        if where_c is not np._NoValue:
+            kwargs["where"] = where_c.broadcast_to(shape_c) if isinstance(where_c, na.AbstractArray) else where_c
         result.components[c] = func(
             component.broadcast_to(shape_c),
             out=components_out[c],
-            where=where_c.broadcast_to(shape_c) if isinstance(where_c, na.AbstractArray) else where_c,
             **kwargs_base,
+            **kwargs,
         )
 
     if out is not None:
