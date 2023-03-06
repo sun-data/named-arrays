@@ -139,17 +139,41 @@ class AbstractVectorArray(
             item: dict[str, int | slice | AbstractScalarOrVectorArray] | AbstractScalarOrVectorArray,
     ) -> Self:
 
-        components = self.broadcasted.components
+        array = self.array
+        shape_array = array.shape
+        components = array.components
 
         if isinstance(item, na.AbstractArray):
+            item = item.array
+            shape_item = item.shape
+
+            if not set(shape_item).issubset(shape_array):
+                raise ValueError(
+                    f"the axes in item, {tuple(shape_item)}, must be a subset of the axes in array, "
+                    f"{tuple(shape_array)}"
+                )
+
+            if not all(shape_item[ax] == shape_array[ax] for ax in shape_item):
+                raise ValueError(
+                    f"the shape of item, {shape_item}, must be consistent with the shape of the array, {shape_array}"
+                )
+
             if item.type_array_abstract == self.type_array_abstract:
-                item = item.broadcasted
+                pass
             elif isinstance(item, na.AbstractScalar):
                 item = self.type_array.from_scalar(item)
             else:
                 return NotImplemented
 
+            for c in components:
+                component = na.as_named_array(components[c])
+                components[c] = component.broadcast_to(na.broadcast_shapes(component.shape, item.components[c].shape))
+
         elif isinstance(item, dict):
+
+            if not set(item).issubset(shape_array):
+                raise ValueError(f"the axes in item, {tuple(item)}, must be a subset of the axes in self, {array.axes}")
+
             item = item.copy()
             for ax in item:
                 if isinstance(item[ax], na.AbstractArray):
@@ -163,6 +187,10 @@ class AbstractVectorArray(
                     item[ax] = self.type_array.from_scalar(item[ax])
                 else:
                     return NotImplemented
+
+                for c in components:
+                    if ax not in na.shape(components[c]):
+                        item[ax].components[c] = None
 
         else:
             return NotImplemented
