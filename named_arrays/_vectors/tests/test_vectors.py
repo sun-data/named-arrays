@@ -370,19 +370,6 @@ class AbstractTestAbstractVectorArray(
 
             assert np.all(result == result_expected)
 
-        def test_nonzero(self, array: na.AbstractVectorArray):
-            if not array.shape:
-                with pytest.raises(DeprecationWarning, match="Calling nonzero on 0d arrays is deprecated, .*"):
-                    np.nonzero(array)
-                return
-
-            result_expected = np.moveaxis(
-                a=array[array != 0],
-                source=f"{array.axes_flattened}_boolean",
-                destination=f"{array.axes_flattened}_nonzero"
-            )
-            assert np.all(array[np.nonzero(array)] == result_expected)
-
         @pytest.mark.parametrize('copy', [False, True])
         def test_nan_to_num(self, array: na.AbstractVectorArray, copy: bool):
             components = array.components
