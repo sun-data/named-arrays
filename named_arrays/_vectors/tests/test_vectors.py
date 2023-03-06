@@ -39,7 +39,7 @@ class AbstractTestAbstractVectorArray(
         super().test_axes(array)
         components = array.broadcasted.components
         for c in components:
-            assert len(array.axes) == np.ndim(components[c].ndarray)
+            assert array.axes == components[c].axes
 
     @pytest.mark.parametrize('dtype', [int, float])
     def test_astype(self, array: na.AbstractVectorArray, dtype: Type):
