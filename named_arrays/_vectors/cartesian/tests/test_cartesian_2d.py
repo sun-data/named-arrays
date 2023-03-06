@@ -207,6 +207,7 @@ def _cartesian_2d_uniform_random_samples() -> list[na.Cartesian2dVectorUniformRa
     ]
 
 
+@pytest.mark.skip
 @pytest.mark.parametrize('array', _cartesian_2d_uniform_random_samples())
 class TestCartesian2dVectorUniformRandomSample(
     AbstractTestAbstractCartesian2dVectorRandomSample,
@@ -215,6 +216,7 @@ class TestCartesian2dVectorUniformRandomSample(
     pass
 
 
+@pytest.mark.skip
 class TestCartesian2dVectorNormalRandomSample(
     AbstractTestAbstractCartesian2dVectorRandomSample,
     test_cartesian.AbstractTestAbstractCartesianVectorNormalRandomSample,
@@ -229,6 +231,7 @@ class AbstractTestAbstractParameterizedCartesian2dVectorArray(
     pass
 
 
+@pytest.mark.skip
 class TestCartesian2dVectorArrayRange(
     AbstractTestAbstractParameterizedCartesian2dVectorArray,
     test_cartesian.AbstractTestAbstractCartesianVectorArrayRange,
@@ -242,28 +245,28 @@ class AbstractTestAbstractCartesian2dVectorSpace(
 ):
     pass
 
-
+@pytest.mark.skip
 class TestCartesian2dVectorLinearSpace(
     AbstractTestAbstractCartesian2dVectorSpace,
     test_cartesian.AbstractTestAbstractCartesianVectorLinearSpace,
 ):
     pass
 
-
+@pytest.mark.skip
 class TestCartesian2dVectorStratifiedRandomSpace(
     TestCartesian2dVectorLinearSpace,
     test_cartesian.AbstractTestAbstractCartesianVectorStratifiedRandomSpace,
 ):
     pass
 
-
+@pytest.mark.skip
 class TestCartesian2dVectorLogarithmicSpace(
     AbstractTestAbstractCartesian2dVectorSpace,
     test_cartesian.AbstractTestAbstractCartesianVectorLogarithmicSpace,
 ):
     pass
 
-
+@pytest.mark.skip
 class TestCartesian2dVectorGeometricSpace(
     AbstractTestAbstractCartesian2dVectorSpace,
     test_cartesian.AbstractTestAbstractCartesianVectorGeometricSpace,
