@@ -425,37 +425,41 @@ def sort(
 @implements(np.argsort)
 def argsort(
         a: na.AbstractVectorArray,
-        axis: None | str,
+        axis: None | str | Sequence[str],
         kind: None | str = None,
         order: None | str | list[str] = None,
 ) -> dict[str, na.AbstractExplicitVectorArray]:
 
-    a = a.broadcasted
+    a = a.array
+    shape_a = a.shape
     components = a.components
 
     if axis is None:
-        result = {a.axes_flattened: dict()}
-        for c in components:
-            result[a.axes_flattened][c] = np.argsort(
-                a=components[c],
-                axis=axis,
-                kind=kind,
-                order=order,
-            )[a.axes_flattened]
-
+        axis = tuple(shape_a)
+        if not axis:
+            return dict()
+    elif isinstance(axis, str):
+        axis = (axis, )
     else:
-        result = {ax: dict() for ax in a.axes}
-        for c in components:
-            result_c = np.argsort(
-                a=components[c],
-                axis=axis,
-                kind=kind,
-                order=order,
-            )
-            for ax in result_c:
-                result[ax][c] = result_c[ax]
+        if not axis:
+            raise ValueError(f"if `axis` is a sequence, it must not be empty, got {axis}")
 
-    result = {ax: a.type_array.from_components(result[ax]) for ax in result}
+    if not set(axis).issubset(shape_a):
+        raise ValueError(f"`axis`, {axis} is not a subset of `a.axes`, {a.axes}")
+
+    shape_base = {ax: shape_a[ax] for ax in axis}
+
+    result = {ax: a.type_array() for ax in shape_a}
+    for c in components:
+        component = na.as_named_array(components[c])
+        if any(ax in axis for ax in component.axes):
+            component = component.broadcast_to(na.broadcast_shapes(component.shape, shape_base))
+            result_c = np.argsort(component, axis=axis, kind=kind, order=order)
+        else:
+            result_c = dict()
+        for ax in shape_a:
+            result[ax].components[c] = result_c[ax] if ax in result_c else None
+
     return result
 
 
