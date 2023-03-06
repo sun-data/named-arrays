@@ -386,27 +386,40 @@ def array_function_stack_like(
 @implements(np.sort)
 def sort(
         a: na.AbstractVectorArray,
-        axis: None | str,
+        axis: None | str | Sequence[str],
         kind: None | str = None,
         order: None | str | list[str] = None,
 ) -> na.AbstractExplicitVectorArray:
 
+    a = a.array
+    shape_a = a.shape
     components = a.components
-    components_result = dict()
 
+    if axis is None:
+        axis = tuple(shape_a)
+        if not axis:
+            return a
+    elif isinstance(axis, str):
+        axis = (axis, )
+    else:
+        if not axis:
+            raise ValueError(f"if `axis` is a sequence, it must not be empty, got {axis}")
+
+    if not set(axis).issubset(shape_a):
+        raise ValueError(f"`axis`, {axis} is not a subset of `a.axes`, {a.axes}")
+
+    shape_base = {ax: shape_a[ax] for ax in axis}
+
+    result = a.type_array()
     for c in components:
-
-        if not na.shape(components[c]):
-            components_result[c] = components[c]
+        component = na.as_named_array(components[c])
+        if any(ax in axis for ax in component.axes):
+            component = component.broadcast_to(na.broadcast_shapes(component.shape, shape_base))
+            result.components[c] = np.sort(component, axis=axis, kind=kind, order=order)
         else:
-            components_result[c] = np.sort(
-                a=components[c],
-                axis=axis,
-                kind=kind,
-                order=order,
-            )
+            result.components[c] = components[c]
 
-    return a.type_array.from_components(components_result)
+    return result
 
 
 @implements(np.argsort)

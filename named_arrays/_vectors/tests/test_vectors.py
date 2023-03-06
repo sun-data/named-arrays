@@ -339,27 +339,34 @@ class AbstractTestAbstractVectorArray(
                 assert all(axes[ax] in result.axes for ax in axes)
                 assert all(ax not in result.axes for ax in axes)
 
-        @pytest.mark.parametrize('axis', [None, 'x', 'y'])
-        def test_sort(self, array: na.AbstractVectorArray, axis: None | str):
+        @pytest.mark.parametrize('axis', [None, 'x', 'y', ('x', 'y'), ()])
+        def test_sort(self, array: na.AbstractVectorArray, axis: None | str | Sequence[str]):
             super().test_sort(array=array, axis=axis)
 
-            components = array.components
-            components_expected = dict()
-            try:
-                for c in components:
-                    if not na.shape(components[c]):
-                        components_expected[c] = components[c]
-                    else:
-                        components_expected[c] = np.sort(components[c], axis=axis)
+            axis_normalized = na.axis_normalized(array, axis)
 
-            except Exception as e:
-                with pytest.raises(type(e)):
-                    np.sort(array, axis=axis)
-                return
+            if axis is not None:
+                if not axis:
+                    with pytest.raises(ValueError, match=f"if `axis` is a sequence, it must not be empty, got .*"):
+                        np.sort(array, axis=axis)
+                    return
 
-            result_expected = array.type_array.from_components(components_expected)
+                if not set(axis_normalized).issubset(array.shape):
+                    with pytest.raises(ValueError, match="`axis`, .* is not a subset of `a.axes`, .*"):
+                        np.sort(array, axis=axis)
+                    return
 
             result = np.sort(array, axis=axis)
+
+            array_broadcasted = na.broadcast_to(array, array.shape)
+            components_broadcasted = array_broadcasted.components
+
+            if axis_normalized:
+                result_expected = array.type_array()
+                for c in components_broadcasted:
+                    result_expected.components[c] = np.sort(components_broadcasted[c], axis=axis_normalized)
+            else:
+                result_expected = array
 
             assert np.all(result == result_expected)
 
