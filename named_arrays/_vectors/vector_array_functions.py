@@ -570,7 +570,7 @@ def allclose(
 
 @implements(np.nonzero)
 def nonzero(a: na.AbstractVectorArray):
-    a = a.broadcasted
+    a = a.array
     components = a.components
 
     result = {ax: dict() for ax in a.axes}
