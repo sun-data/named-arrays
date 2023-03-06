@@ -188,8 +188,6 @@ def array_function_arg_reduce(
         func: Callable,
         a: na.AbstractVectorArray,
         axis: None | str = None,
-        out: None = None,
-        keepdims: None | bool = None,
 ) -> dict[str, na.AbstractVectorArray]:
 
     a = a.broadcasted
@@ -201,8 +199,6 @@ def array_function_arg_reduce(
         result_c = func(
             a=na.as_named_array(components[c]),
             axis=axis,
-            out=out,
-            keepdims=keepdims,
         )
         for ax in result_c:
             result[ax].components[c] = result_c[ax]
