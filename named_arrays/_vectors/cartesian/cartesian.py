@@ -45,27 +45,30 @@ class AbstractCartesianVectorArray(
 
     def __mul__(self: Self, other: na.ArrayLike | u.Unit) -> AbstractExplicitCartesianVectorArray:
         if isinstance(other, u.UnitBase):
+            components = self.components
             result = self.type_array()
-            for c in result.components:
-                result.components[c] = result.components[c] * other
+            for c in components:
+                result.components[c] = components[c] * other
             return result
         else:
             return super().__mul__(other)
 
     def __lshift__(self: Self, other: na.ArrayLike | u.UnitBase) -> AbstractExplicitCartesianVectorArray:
         if isinstance(other, u.UnitBase):
+            components= self.components
             result = self.type_array()
-            for c in result.components:
-                result.components[c] = result.components[c] << other
+            for c in components:
+                result.components[c] = components[c] << other
             return result
         else:
             return super().__lshift__(other)
 
     def __truediv__(self: Self, other: na.ArrayLike | u.UnitBase) -> AbstractExplicitCartesianVectorArray:
         if isinstance(other, u.UnitBase):
+            components = self.components
             result = self.type_array()
-            for c in result.components:
-                result.components[c] = result.components[c] / other
+            for c in components:
+                result.components[c] = components[c] / other
             return result
         else:
             return super().__truediv__(other)
