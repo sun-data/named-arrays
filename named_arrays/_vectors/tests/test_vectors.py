@@ -306,7 +306,7 @@ class AbstractTestAbstractVectorArray(
                     axis=axis,
                 )
 
-                if axis not in array.shape:
+                if axis[0] not in array.shape:
                     with pytest.raises(ValueError):
                         func(a=array, axis=axis)
                     return
