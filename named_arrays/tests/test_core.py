@@ -331,6 +331,7 @@ class AbstractTestAbstractArray(
         argvalues=[
             np.add,
             np.subtract,
+            np.multiply,
             np.divide,
             np.logaddexp,
             np.logaddexp2,
