@@ -235,6 +235,24 @@ class AbstractTestAbstractScalarArray(
             with pytest.raises(ValueError):
                 array[item]
 
+    def test__mul__(self, array: na.AbstractScalarArray):
+        unit = u.mm
+        result = array * unit
+        result_ndarray = array.ndarray * unit
+        assert np.all(result.ndarray == result_ndarray)
+
+    def test__lshift__(self, array: na.AbstractScalarArray):
+        unit = u.mm
+        result = array << unit
+        result_ndarray = array.ndarray << unit
+        assert np.all(result.ndarray == result_ndarray)
+
+    def test__truediv__(self, array: na.AbstractScalarArray):
+        unit = u.mm
+        result = array / unit
+        result_ndarray = array.ndarray / unit
+        assert np.all(result.ndarray == result_ndarray)
+
     class TestUfuncUnary(
         AbstractTestAbstractScalar.TestUfuncUnary,
     ):
