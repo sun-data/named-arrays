@@ -263,6 +263,10 @@ class AbstractTestAbstractArray(
     ):
         pass
 
+    @abc.abstractmethod
+    def test__bool__(self, array: na.AbstractArray):
+        pass
+
     @pytest.mark.parametrize(
         argnames='ufunc',
         argvalues=[
