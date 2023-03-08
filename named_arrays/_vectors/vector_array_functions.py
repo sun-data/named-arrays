@@ -187,21 +187,36 @@ def array_function_percentile_like(
 def array_function_arg_reduce(
         func: Callable,
         a: na.AbstractVectorArray,
-        axis: None | str = None,
+        axis: None | str | Sequence[str] = None,
 ) -> dict[str, na.AbstractVectorArray]:
 
-    a = a.broadcasted
+    a = a.array
     components = a.components
 
-    result = {ax: a.type_array() for ax in a.axes}
+    if axis is not None:
+        if isinstance(axis, str):
+            axis = (axis, )
+        if not set(axis).issubset(a.axes):
+            raise ValueError(f"Reduction axes {axis} are not a subset of the array axes {a.axes}")
+    else:
+        if not a.shape:
+            raise ValueError(f"Applying {func} to zero-dimensional arrays is not supported")
 
+    axis_normalized = na.axis_normalized(a, axis)
+
+    result = {ax: a.type_array() for ax in a.axes}
     for c in components:
-        result_c = func(
-            a=na.as_named_array(components[c]),
-            axis=axis,
-        )
-        for ax in result_c:
-            result[ax].components[c] = result_c[ax]
+        component = na.as_named_array(components[c])
+        shape_c = component.shape
+        if shape_c:
+            result_c = func(
+                a=component,
+                axis=tuple(ax for ax in axis_normalized if ax in shape_c),
+            )
+        else:
+            result_c = dict()
+        for ax in result:
+            result[ax].components[c] = result_c[ax] if ax in result_c else None
 
     return result
 
