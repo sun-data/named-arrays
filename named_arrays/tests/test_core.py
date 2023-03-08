@@ -263,6 +263,22 @@ class AbstractTestAbstractArray(
     ):
         pass
 
+    @abc.abstractmethod
+    def test__bool__(self, array: na.AbstractArray):
+        pass
+
+    @abc.abstractmethod
+    def test__mul__(self, array: na.AbstractArray):
+        pass
+
+    @abc.abstractmethod
+    def test__lshift__(self, array: na.AbstractArray):
+        pass
+
+    @abc.abstractmethod
+    def test__truediv__(self, array: na.AbstractArray):
+        pass
+
     @pytest.mark.parametrize(
         argnames='ufunc',
         argvalues=[
@@ -331,6 +347,7 @@ class AbstractTestAbstractArray(
         argvalues=[
             np.add,
             np.subtract,
+            np.multiply,
             np.divide,
             np.logaddexp,
             np.logaddexp2,

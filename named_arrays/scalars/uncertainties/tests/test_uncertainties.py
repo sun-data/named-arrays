@@ -173,6 +173,30 @@ class AbstractTestAbstractUncertainScalarArray(
 
         assert np.all(result == result_expected)
 
+    def test__mul__(self, array: na.AbstractUncertainScalarArray):
+        unit = u.mm
+        result = array * unit
+        result_nominal = array.nominal * unit
+        result_distribution = array.distribution * unit
+        assert np.all(result.nominal == result_nominal)
+        assert np.all(result.distribution == result_distribution)
+
+    def test__lshift__(self, array: na.AbstractUncertainScalarArray):
+        unit = u.mm
+        result = array << unit
+        result_nominal = array.nominal << unit
+        result_distribution = array.distribution << unit
+        assert np.all(result.nominal == result_nominal)
+        assert np.all(result.distribution == result_distribution)
+
+    def test__truediv__(self, array: na.AbstractUncertainScalarArray):
+        unit = u.mm
+        result = array / unit
+        result_nominal = array.nominal / unit
+        result_distribution = array.distribution / unit
+        assert np.all(result.nominal == result_nominal)
+        assert np.all(result.distribution == result_distribution)
+
     class TestUfuncUnary(
         named_arrays.scalars.tests.test_core.AbstractTestAbstractScalar.TestUfuncUnary
     ):

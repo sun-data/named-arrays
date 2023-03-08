@@ -26,6 +26,24 @@ class AbstractTestAbstractCartesianVectorArray(
     named_arrays._vectors.tests.test_vectors.AbstractTestAbstractVectorArray,
 ):
 
+    def test__mul__(self, array: na.AbstractVectorArray):
+        unit = u.mm
+        result = array * unit
+        for c in array.components:
+            assert np.all(result.components[c] == array.components[c] * unit)
+
+    def test__lshift__(self, array: na.AbstractVectorArray):
+        unit = u.mm
+        result = array << unit
+        for c in array.components:
+            assert np.all(result.components[c] == array.components[c] << unit)
+
+    def test__truediv__(self, array: na.AbstractVectorArray):
+        unit = u.mm
+        result = array / unit
+        for c in array.components:
+            assert np.all(result.components[c] == array.components[c] / unit)
+
     class TestUfuncUnary(
         named_arrays._vectors.tests.test_vectors.AbstractTestAbstractVectorArray.TestUfuncUnary,
     ):

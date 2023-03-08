@@ -106,6 +106,19 @@ class AbstractTestAbstractScalar(
         assert isinstance(length, (int, float, np.ndarray, na.AbstractScalar))
         assert np.all(length >= 0)
 
+    def test__bool__(self, array: na.AbstractScalarArray):
+        if array.shape or array.unit is not None:
+            with pytest.raises(
+                expected_exception=ValueError,
+                match=r"(Quantity truthiness is ambiguous, .*)"
+                      r"|(The truth value of an array with more than one element is ambiguous. .*)"
+            ):
+                bool(array)
+            return
+
+        result = bool(array)
+        assert isinstance(result, bool)
+
     class TestMatmul(
         tests.test_core.AbstractTestAbstractArray.TestMatmul,
     ):
@@ -221,6 +234,24 @@ class AbstractTestAbstractScalarArray(
         else:
             with pytest.raises(ValueError):
                 array[item]
+
+    def test__mul__(self, array: na.AbstractScalarArray):
+        unit = u.mm
+        result = array * unit
+        result_ndarray = array.ndarray * unit
+        assert np.all(result.ndarray == result_ndarray)
+
+    def test__lshift__(self, array: na.AbstractScalarArray):
+        unit = u.mm
+        result = array << unit
+        result_ndarray = array.ndarray << unit
+        assert np.all(result.ndarray == result_ndarray)
+
+    def test__truediv__(self, array: na.AbstractScalarArray):
+        unit = u.mm
+        result = array / unit
+        result_ndarray = array.ndarray / unit
+        assert np.all(result.ndarray == result_ndarray)
 
     class TestUfuncUnary(
         AbstractTestAbstractScalar.TestUfuncUnary,

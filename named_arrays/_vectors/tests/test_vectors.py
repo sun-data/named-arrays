@@ -113,6 +113,19 @@ class AbstractTestAbstractVectorArray(
 
         assert np.all(result == result_expected)
 
+    def test__bool__(self, array: na.AbstractVectorArray):
+        if array.shape or any(na.unit(array.components[c]) is not None for c in array.components):
+            with pytest.raises(
+                expected_exception=ValueError,
+                match=r"(Quantity truthiness is ambiguous, .*)"
+                      r"|(The truth value of an array with more than one element is ambiguous. .*)"
+            ):
+                bool(array)
+            return
+
+        result = bool(array)
+        assert isinstance(result, bool)
+
     class TestMatmul(
         named_arrays.tests.test_core.AbstractTestAbstractArray.TestMatmul
     ):
