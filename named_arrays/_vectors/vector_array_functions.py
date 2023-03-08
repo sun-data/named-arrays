@@ -250,19 +250,18 @@ def array_function_fftn_like(
 
     a = a.array
     components = a.components
-    shape = a.shape
+    shape_a = a.shape
 
-    if not all(ax in shape for ax in axes):
-        raise ValueError(f"Not all transform axes {axes} are in input array shape {shape}")
+    if not set(axes).issubset(shape_a):
+        raise ValueError(f"`axes`, {tuple(axes)}, not a subset of array axes, {tuple(shape_a)}")
 
-    shape_base = {ax: shape[ax] for ax in axes}
-
-    components = {c: na.broadcast_to(components[c], na.shape(components[c]) | shape_base) for c in components}
+    shape_base = {ax: shape_a[ax] for ax in axes}
 
     result = a.type_array()
     for c in components:
+        component = na.as_named_array(components[c])
         result.components[c] = func(
-            a=components[c],
+            a=na.broadcast_to(component, na.broadcast_shapes(component.shape, shape_base)),
             axes=axes,
             s=s,
             norm=norm,

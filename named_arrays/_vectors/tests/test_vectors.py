@@ -324,9 +324,9 @@ class AbstractTestAbstractVectorArray(
                     s=s,
                 )
 
-                if not all(ax in array.shape for ax in axes):
-                    with pytest.raises(ValueError):
-                        func(a=array, axes=axes, s=s)
+                if not set(axes).issubset(array.shape):
+                    with pytest.raises(ValueError, match="`axes`, .*, not a subset of array axes, .*"):
+                        func(array, axes=axes, s=s)
                     return
 
                 if s is not None and axes.keys() != s.keys():
@@ -334,11 +334,17 @@ class AbstractTestAbstractVectorArray(
                         func(a=array, axes=axes, s=s)
                     return
 
-                result = func(a=array, axes=axes, s=s)
+                result = func(array, axes=axes, s=s)
 
-                assert result.type_array_abstract == array.type_array_abstract
-                assert all(axes[ax] in result.axes for ax in axes)
-                assert all(ax not in result.axes for ax in axes)
+                result_expected = array.type_array()
+                for c in array.components:
+                    result_expected.components[c] = func(
+                        array.broadcasted.components[c],
+                        axes=axes,
+                        s=s,
+                    )
+
+                assert np.all(result == result_expected)
 
         @pytest.mark.parametrize('axis', [None, 'x', 'y', ('x', 'y'), ()])
         def test_sort(self, array: na.AbstractVectorArray, axis: None | str | Sequence[str]):
