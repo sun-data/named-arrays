@@ -209,7 +209,7 @@ def array_function_arg_reduce(
 def array_function_fft_like(
         func: Callable,
         a: na.AbstractVectorArray,
-        axis: str,
+        axis: tuple[str, str],
         n: None | int = None,
         norm: str = "backward"
 ) -> na.AbstractExplicitVectorArray:
@@ -218,12 +218,15 @@ def array_function_fft_like(
     components = a.components
     shape = a.shape
 
-    if axis not in shape:
-        raise ValueError(f"transform axis {axis} not in input array with shape {shape}")
+    if axis[0] not in shape:
+        raise ValueError(f"`axis` {axis[0]} not in array with shape {shape}")
 
     shape_axis = {axis[0]: shape[axis[0]]}
 
-    components = {c: na.broadcast_to(components[c], na.shape(components[c] | shape_axis)) for c in components}
+    components = {
+        c: na.broadcast_to(components[c], na.broadcast_shapes(na.shape(components[c]), shape_axis))
+        for c in components
+    }
 
     result = a.type_array()
     for c in components:

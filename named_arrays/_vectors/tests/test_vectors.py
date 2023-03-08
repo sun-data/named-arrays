@@ -284,7 +284,7 @@ class AbstractTestAbstractVectorArray(
             def test_fft_like_functions(
                     self,
                     func: Callable,
-                    array: na.AbstractArray,
+                    array: na.AbstractVectorArray,
                     axis: tuple[str, str],
             ):
                 super().test_fft_like_functions(
@@ -293,17 +293,18 @@ class AbstractTestAbstractVectorArray(
                     axis=axis,
                 )
 
-                if axis not in array.shape:
-                    with pytest.raises(ValueError):
-                        func(a=array, axis=axis)
+                if axis[0] not in array.shape:
+                    with pytest.raises(ValueError, match="`axis` .* not in array with shape .*"):
+                        func(array, axis=axis)
                     return
 
-                result = func(a=array, axis=axis)
+                result = func(array, axis=axis)
 
-                assert result.type_array_abstract == array.type_array_abstract
-                assert axis[1] in result.axes
-                assert not axis[0] in result.axes
-                assert result.size == array.size
+                result_expected = array.type_array()
+                for c in array.components:
+                    result_expected.components[c] = func(array.broadcasted.components[c], axis=axis)
+
+                assert np.all(result == result_expected)
 
         class TestFFTNLikeFunctions(
             named_arrays.tests.test_core.AbstractTestAbstractArray.TestArrayFunctions.TestFFTNLikeFunctions,
