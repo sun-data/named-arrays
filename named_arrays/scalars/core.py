@@ -250,6 +250,11 @@ class AbstractScalarArray(
     ):
 
         if isinstance(item, AbstractScalarArray):
+
+            if not set(item.shape).issubset(self.axes):
+                raise ValueError(
+                    f"the axes in item, {item.axes}, must be a subset of the axes in the array, {self.axes}")
+
             value = np.moveaxis(
                 a=self.ndarray,
                 source=[self.axes.index(axis) for axis in item.axes],
@@ -268,6 +273,10 @@ class AbstractScalarArray(
 
         elif isinstance(item, dict):
             axes = self.axes
+
+            if not set(item).issubset(axes):
+                raise ValueError(f"the axes in item, {tuple(item)}, must be a subset of the axes in the array, {axes}")
+
             item_advanced = dict()      # type: typ.Dict[str, AbstractScalarArray]
             for axis in item:
                 item_axis = item[axis]
