@@ -227,7 +227,11 @@ class AbstractUncertainScalarArray(
         if isinstance(array, AbstractUncertainScalarArray):
             pass
         elif isinstance(array, na.AbstractScalarArray):
-            array = UncertainScalarArray(nominal=array, distribution=array)
+            shape_distribution = na.broadcast_shapes(array.shape, {self.axis_distribution: self.num_distribution})
+            array = UncertainScalarArray(
+                nominal=array,
+                distribution=array.broadcast_to(shape_distribution),
+            )
         else:
             return NotImplemented
 
