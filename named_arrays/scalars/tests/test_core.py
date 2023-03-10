@@ -235,6 +235,72 @@ class AbstractTestAbstractScalarArray(
             with pytest.raises(ValueError):
                 array[item]
 
+    @pytest.mark.parametrize(
+        argnames='item',
+        argvalues=[
+            dict(
+                y=na.UncertainScalarArray(
+                    nominal=na.ScalarArray(np.array([0, 1]), axes=('y',)),
+                    distribution=na.ScalarArray(
+                        ndarray=np.array([[0, ], [1, ]]),
+                        axes=('y', na.UncertainScalarArray.axis_distribution),
+                    )
+                ),
+                _distribution=na.UncertainScalarArray(
+                    nominal=None,
+                    distribution=na.ScalarArray(
+                        ndarray=np.array([[0], [0]]),
+                        axes=('y', na.UncertainScalarArray.axis_distribution),
+                    )
+                )
+            ),
+            na.UniformUncertainScalarArray(
+                nominal=na.ScalarLinearSpace(0, 1, axis='y', num=_num_y),
+                width=.1,
+                num_distribution=3,
+            ) > 0.5,
+        ]
+    )
+    def test__getitem__uncertain(
+            self,
+            array: na.AbstractScalarArray,
+            item: dict[str, na.UncertainScalarArray] | na.UncertainScalarArray
+    ):
+
+        if isinstance(item, dict):
+
+            if not set(item).issubset(array.shape):
+                with pytest.raises(
+                    expected_exception=ValueError,
+                    match="the axes in item, .*, must be a subset of the axes in the array, .*"
+                ):
+                    array[item]
+                return
+
+            result_expected = na.UncertainScalarArray(
+                nominal=array[{ax: item[ax].nominal for ax in item}],
+                distribution=array[{ax: item[ax].distribution for ax in item}],
+            )
+        else:
+            if not set(item.shape).issubset(array.shape):
+                with pytest.raises(
+                    expected_exception=ValueError,
+                    match="the axes in item, .*, must be a subset of the axes in array, .*"
+                ):
+                    array[item]
+                return
+
+            shape_distribution = na.broadcast_shapes(array.shape, {item.axis_distribution: item.num_distribution})
+
+            result_expected = na.UncertainScalarArray(
+                nominal=array[item.nominal],
+                distribution=array.broadcast_to(shape_distribution)[item.distribution],
+            )
+
+        result = array[item]
+
+        assert np.all(result == result_expected)
+
     def test__mul__(self, array: na.AbstractScalarArray):
         unit = u.mm
         result = array * unit
