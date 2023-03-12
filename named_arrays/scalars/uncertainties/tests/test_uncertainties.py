@@ -140,8 +140,8 @@ class AbstractTestAbstractUncertainScalarArray(
                 return
 
             if isinstance(item, na.AbstractUncertainScalarArray):
-                item_nominal = item.nominal
-                item_distribution = item.distribution
+                item_nominal = item.nominal & np.all(item.distribution, na.UncertainScalarArray.axis_distribution)
+                item_distribution = item_nominal
             else:
                 item_nominal = item_distribution = item
 
@@ -274,12 +274,18 @@ class AbstractTestAbstractUncertainScalarArray(
             super().test_ufunc_binary(ufunc=ufunc, array=array, array_2=array_2)
 
             if not isinstance(array, na.AbstractUncertainScalarArray):
-                array_normalized = na.UncertainScalarArray(array, array)
+                array_normalized = na.UncertainScalarArray(
+                    nominal=array,
+                    distribution=na.add_axes(array, na.UncertainScalarArray.axis_distribution),
+                )
             else:
                 array_normalized = array
 
             if not isinstance(array_2, na.AbstractUncertainScalarArray):
-                array_2_normalized = na.UncertainScalarArray(array_2, array_2)
+                array_2_normalized = na.UncertainScalarArray(
+                    nominal=array_2,
+                    distribution=na.add_axes(array_2, na.UncertainScalarArray.axis_distribution),
+                )
             else:
                 array_2_normalized = array_2
 
@@ -560,14 +566,14 @@ class AbstractTestAbstractUncertainScalarArray(
 
             array_broadcasted = na.broadcast_to(array, array.shape)
             if axis_normalized:
-                result_nominal = np.sort(array_broadcasted.nominal, axis=axis_normalized)
-                result_distribution = np.sort(array_broadcasted.distribution, axis=axis_normalized)
+                result_distribution = np.sort(
+                    a=array_broadcasted.distribution.mean(array.axis_distribution),
+                    axis=axis_normalized,
+                )
             else:
-                result_nominal = array.nominal
-                result_distribution = array.distribution
+                result_distribution = array.distribution.mean(array.axis_distribution)
 
-            assert np.all(result.nominal == result_nominal)
-            assert np.all(result.distribution == result_distribution)
+            assert np.all(result.distribution.mean(array.axis_distribution) == result_distribution)
 
         @pytest.mark.parametrize('copy', [False, True])
         def test_nan_to_num(

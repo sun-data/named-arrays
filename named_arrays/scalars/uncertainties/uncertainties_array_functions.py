@@ -431,39 +431,21 @@ def sort(
         order: None | str | list[str] = None,
 ) -> na.UncertainScalarArray:
 
-    a = a.array
-    shape_a = a.shape
+    a = a.broadcasted
 
-    nominal = na.as_named_array(a.nominal)
-    distribution = na.as_named_array(a.distribution)
-
-    if axis is None:
-        axis = tuple(shape_a)
-        if not axis:
-            return a
-    elif isinstance(axis, str):
-        axis = (axis, )
-    else:
-        if not axis:
-            raise ValueError(f"if `axis` is a sequence, it must not be empty, got {axis}")
-
-    if not set(axis).issubset(shape_a):
-        raise ValueError(f"`axis`, {axis} is not a subset of `a.axes`, {a.axes}")
-
-    shape_base = {ax: shape_a[ax] for ax in axis}
-    axis_set = set(axis)
-    if not axis_set - set(nominal.axes):
-        nominal = nominal.broadcast_to(nominal.shape | shape_base)
-    if not axis_set - set(distribution.axes):
-        distribution = distribution.broadcast_to(distribution.shape | shape_base)
-
-    axis_nominal = tuple(ax for ax in axis if ax in nominal.axes)
-    axis_dist = tuple(ax for ax in axis if ax in distribution.axes)
-
-    return na.UncertainScalarArray(
-        nominal=np.sort(a=nominal, axis=axis_nominal, kind=kind, order=order) if axis_nominal else nominal,
-        distribution=np.sort(distribution, axis=axis_dist, kind=kind, order=order) if axis_dist else distribution,
+    indices_sorted = np.argsort(
+        a=a,
+        axis=axis,
+        kind=kind,
+        order=order,
     )
+
+    result = na.UncertainScalarArray(
+        nominal=a.nominal[indices_sorted],
+        distribution=a.distribution[indices_sorted],
+    )
+
+    return result
 
 
 @implements(np.argsort)
@@ -474,46 +456,14 @@ def argsort(
         order: None | str | list[str] = None,
 ) -> dict[str, na.UncertainScalarArray]:
 
-    a = a.array
-    shape_a = a.shape
+    a = a.broadcasted
 
-    nominal = na.as_named_array(a.nominal)
-    distribution = na.as_named_array(a.distribution)
-
-    if axis is None:
-        axis = tuple(shape_a)
-        if not axis:
-            return dict()
-    elif isinstance(axis, str):
-        axis = (axis, )
-    else:
-        if not axis:
-            raise ValueError(f"if `axis` is a sequence, it must not be empty, got {axis}")
-
-    if not set(axis).issubset(shape_a):
-        raise ValueError(f"`axis`, {axis} is not a subset of `a.axes`, {a.axes}")
-
-    shape_base = {ax: shape_a[ax] for ax in axis}
-    axis_set = set(axis)
-    if not axis_set - set(nominal.axes):
-        nominal = nominal.broadcast_to(nominal.shape | shape_base)
-    if not axis_set - set(distribution.axes):
-        distribution = distribution.broadcast_to(distribution.shape | shape_base)
-
-    axis_nominal = tuple(ax for ax in axis if ax in nominal.axes)
-    axis_dist = tuple(ax for ax in axis if ax in distribution.axes)
-
-    result_nominal = np.argsort(nominal, axis=axis_nominal, kind=kind, order=order) if axis_nominal else dict()
-    result_distribution = np.argsort(distribution, axis=axis_dist, kind=kind, order=order) if axis_dist else dict()
-
-    result = dict()
-    for ax in a.shape_distribution:
-        result[ax] = na.UncertainScalarArray(
-            nominal=result_nominal[ax] if ax in result_nominal else None,
-            distribution=result_distribution[ax] if ax in result_distribution else None,
-        )
-
-    return result
+    return np.argsort(
+        a=np.mean(a.distribution, axis=a.axis_distribution),
+        axis=axis,
+        kind=kind,
+        order=order,
+    )
 
 
 @implements(np.unravel_index)
@@ -624,15 +574,9 @@ def allclose(
 @implements(np.nonzero)
 def nonzero(a: na.AbstractUncertainScalarArray) -> dict[str, na.UncertainScalarArray]:
     a = a.array
-    result_nominal = np.nonzero(a.nominal)
-    result_distribution = np.nonzero(a.distribution)
 
-    result = dict()
-    for ax in a.shape_distribution:
-        result[ax] = na.UncertainScalarArray(
-            nominal=result_nominal[ax] if ax in result_nominal else None,
-            distribution=result_distribution[ax] if ax in result_distribution else None,
-        )
+    result = np.nonzero(a.nominal * np.prod(a.distribution, axis=a.axis_distribution))
+
     return result
 
 

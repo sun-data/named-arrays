@@ -159,8 +159,7 @@ class AbstractUncertainScalarArray(
         if isinstance(item, na.AbstractArray):
             item = item.array
             if isinstance(item, AbstractUncertainScalarArray):
-                item_nominal = item.nominal
-                item_distribution = item.distribution
+                item_nominal = item_distribution = item.nominal & np.all(item.distribution, axis=self.axis_distribution)
             elif isinstance(item, na.AbstractScalarArray):
                 item_nominal = item_distribution = item
             else:
@@ -180,8 +179,11 @@ class AbstractUncertainScalarArray(
                     f"{shape_array_distribution}"
                 )
 
-            nominal = na.broadcast_to(nominal, nominal.shape | item_nominal.shape)
-            distribution = na.broadcast_to(distribution, distribution.shape | item_distribution.shape)
+            shape_nominal = na.broadcast_shapes(nominal.shape, item_nominal.shape)
+            shape_distribution = na.broadcast_shapes(distribution.shape, item_distribution.shape)
+
+            nominal = na.broadcast_to(nominal, shape_nominal)
+            distribution = na.broadcast_to(distribution, shape_distribution)
 
         elif isinstance(item, dict):
 
@@ -430,12 +432,12 @@ class UncertainScalarArray(
     nominal: NominalArrayT = dataclasses.MISSING
     distribution: DistributionArrayT = dataclasses.MISSING
 
-    # def __post_init__(self):
-    #     if self.axis_distribution not in na.shape(self.distribution):
-    #         raise ValueError(
-    #             f"`axis_distribution`, '{self.axis_distribution}' not in `distribution` array with "
-    #             f"shape {na.shape(self.distribution)}"
-    #         )
+    def __post_init__(self):
+        if self.axis_distribution not in na.shape(self.distribution):
+            raise ValueError(
+                f"`axis_distribution`, '{self.axis_distribution}' not in `distribution` array with "
+                f"shape {na.shape(self.distribution)}"
+            )
 
     @classmethod
     def empty(
@@ -490,8 +492,7 @@ class UncertainScalarArray(
     @property
     def shape(self) -> dict[str, int]:
         shape = self.shape_distribution
-        if self.axis_distribution in shape:
-            shape.pop(self.axis_distribution)
+        shape.pop(self.axis_distribution)
         return shape
 
     @property
