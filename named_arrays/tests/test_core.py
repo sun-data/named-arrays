@@ -794,7 +794,9 @@ class AbstractTestAbstractArray(
 
         def test_nonzero(self, array: na.AbstractArray):
             mask = array > array.mean()
-            assert np.all(array[np.nonzero(mask)] == array[mask])
+            result = array[np.nonzero(mask)]
+            result_expected = array[mask]
+            assert np.all(result == result_expected)
 
         @abc.abstractmethod
         def test_nan_to_num(self, array: na.AbstractArray, copy: bool):
