@@ -229,7 +229,11 @@ class AbstractUncertainScalarArray(
         if isinstance(array, AbstractUncertainScalarArray):
             pass
         elif isinstance(array, na.AbstractScalarArray):
-            shape_distribution = na.broadcast_shapes(array.shape, {self.axis_distribution: self.num_distribution})
+            if isinstance(item, dict):
+                num_distribution = item[self.axis_distribution].distribution.max().ndarray + 1
+            else:
+                num_distribution = item.num_distribution
+            shape_distribution = na.broadcast_shapes(array.shape, {self.axis_distribution: num_distribution})
             array = UncertainScalarArray(
                 nominal=array,
                 distribution=array.broadcast_to(shape_distribution),
