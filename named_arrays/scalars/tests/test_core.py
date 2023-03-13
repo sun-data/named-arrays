@@ -270,7 +270,7 @@ class AbstractTestAbstractScalarArray(
 
         if isinstance(item, dict):
 
-            if not set(item).issubset(array.shape):
+            if not (set(item) - set((na.UncertainScalarArray.axis_distribution, ))).issubset(array.shape):
                 with pytest.raises(
                     expected_exception=ValueError,
                     match="the axes in item, .*, must be a subset of the axes in the array, .*"
@@ -278,9 +278,15 @@ class AbstractTestAbstractScalarArray(
                     array[item]
                 return
 
+            num_distribution = item[na.UncertainScalarArray.axis_distribution].distribution.max().ndarray + 1
+            shape_distribution = na.broadcast_shapes(
+                array.shape,
+                {na.UncertainScalarArray.axis_distribution: num_distribution}
+            )
+
             result_expected = na.UncertainScalarArray(
                 nominal=array[{ax: item[ax].nominal for ax in item}],
-                distribution=array[{ax: item[ax].distribution for ax in item}],
+                distribution=array.broadcast_to(shape_distribution)[{ax: item[ax].distribution for ax in item}],
             )
         else:
             if not set(item.shape).issubset(array.shape):
@@ -291,12 +297,7 @@ class AbstractTestAbstractScalarArray(
                     array[item]
                 return
 
-            shape_distribution = na.broadcast_shapes(array.shape, {item.axis_distribution: item.num_distribution})
-
-            result_expected = na.UncertainScalarArray(
-                nominal=array[item.nominal],
-                distribution=array.broadcast_to(shape_distribution)[item.distribution],
-            )
+            result_expected = array[item.nominal & np.all(item.distribution, axis=item.axis_distribution)]
 
         result = array[item]
 
