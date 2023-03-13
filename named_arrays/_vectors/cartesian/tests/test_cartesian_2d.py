@@ -6,6 +6,7 @@ import astropy.units as u
 
 import named_arrays as na
 import named_arrays.tests.test_core
+import named_arrays.scalars.uncertainties.tests.test_uncertainties
 from . import test_cartesian
 
 __all__ = [
@@ -27,6 +28,7 @@ __all__ = [
 
 _num_x = named_arrays.tests.test_core.num_x
 _num_y = named_arrays.tests.test_core.num_y
+_num_distribution = named_arrays.scalars.uncertainties.tests.test_uncertainties._num_distribution
 
 
 def _cartesian2d_arrays():
@@ -40,6 +42,11 @@ def _cartesian2d_arrays():
     arrays_numeric_y = [
         5.,
         na.ScalarUniformRandomSample(-5, 5, shape_random=dict(x=_num_x, y=_num_y)),
+        na.UniformUncertainScalarArray(
+            nominal=na.ScalarUniformRandomSample(-5, 5, shape_random=dict(x=_num_x, y=_num_y)),
+            width=1,
+            num_distribution=_num_distribution
+        )
     ]
     units_y = [1, u.mm]
     arrays_numeric_y = [a * unit for a in arrays_numeric_y for unit in units_y]
@@ -81,8 +88,34 @@ class AbstractTestAbstractCartesian2dVectorArray(
             dict(y=0),
             dict(y=slice(0, 1)),
             dict(y=na.ScalarArrayRange(0, 2, axis='y')),
-            dict(y=na.Cartesian2dVectorArray(x=na.ScalarArrayRange(0, 2, axis='y'), y=na.ScalarArrayRange(0, 2, axis='y'))),
+            dict(
+                y=na.Cartesian2dVectorArray(
+                    x=na.ScalarArrayRange(0, 2, axis='y'),
+                    y=na.ScalarArrayRange(0, 2, axis='y'),
+                )
+            ),
+            dict(
+                y=na.UncertainScalarArray(
+                    nominal=na.ScalarArray(np.array([0, 1]), axes=('y',)),
+                    distribution=na.ScalarArray(
+                        ndarray=np.array([[0, ], [1, ]]),
+                        axes=('y', na.UncertainScalarArray.axis_distribution),
+                    )
+                ),
+                _distribution=na.UncertainScalarArray(
+                    nominal=None,
+                    distribution=na.ScalarArray(
+                        ndarray=np.array([[0], [0]]),
+                        axes=('y', na.UncertainScalarArray.axis_distribution),
+                    )
+                )
+            ),
             na.ScalarLinearSpace(0, 1, axis='y', num=_num_y) > 0.5,
+            na.UniformUncertainScalarArray(
+                nominal=na.ScalarLinearSpace(0, 1, axis='y', num=_num_y),
+                width=0.1,
+                num_distribution=_num_distribution,
+            ) > 0.5,
             na.Cartesian2dVectorArray(
                 x=na.ScalarLinearSpace(0, 1, axis='y', num=_num_y) > 0.3,
                 y=na.ScalarLinearSpace(0, 1, axis='y', num=_num_y) > 0.5,
