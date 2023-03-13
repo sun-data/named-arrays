@@ -204,19 +204,25 @@ def array_function_arg_reduce(
 
     axis_normalized = na.axis_normalized(a, axis)
 
-    result = {ax: a.type_array() for ax in a.axes}
+    components_result = dict()
     for c in components:
         component = na.as_named_array(components[c])
         shape_c = component.shape
         if shape_c:
-            result_c = func(
+            components_result[c] = func(
                 a=component,
                 axis=tuple(ax for ax in axis_normalized if ax in shape_c),
             )
         else:
-            result_c = dict()
-        for ax in result:
-            result[ax].components[c] = result_c[ax] if ax in result_c else None
+            components_result[c] = dict()
+
+    axes_result = tuple(set(ax for c in components_result for ax in components_result[c]))
+
+    result = dict()
+    for ax in axes_result:
+        result[ax] = a.type_array()
+        for c in components:
+            result[ax].components[c] = components_result[c].get(ax, None)
 
     return result
 
