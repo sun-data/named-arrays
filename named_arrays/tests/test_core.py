@@ -10,6 +10,7 @@ import named_arrays as na
 num_x = 3
 num_y = 4
 num_z = 5
+num_distribution = 3
 
 
 def _normalize_shape(shape: dict[str, None | int]) -> dict[str, int]:

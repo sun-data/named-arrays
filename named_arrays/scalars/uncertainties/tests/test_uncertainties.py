@@ -17,7 +17,7 @@ __all__ = [
 
 _num_x = named_arrays.tests.test_core.num_x
 _num_y = named_arrays.tests.test_core.num_y
-_num_distribution = 3
+_num_distribution = named_arrays.tests.test_core.num_distribution
 
 
 def _uncertain_scalar_arrays():

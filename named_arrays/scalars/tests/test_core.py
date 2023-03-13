@@ -16,6 +16,7 @@ __all__ = [
 
 _num_x = tests.test_core.num_x
 _num_y = tests.test_core.num_y
+_num_distribution = tests.test_core.num_distribution
 
 
 def _scalar_arrays():
@@ -257,7 +258,7 @@ class AbstractTestAbstractScalarArray(
             na.UniformUncertainScalarArray(
                 nominal=na.ScalarLinearSpace(0, 1, axis='y', num=_num_y),
                 width=.1,
-                num_distribution=3,
+                num_distribution=_num_distribution,
             ) > 0.5,
         ]
     )
