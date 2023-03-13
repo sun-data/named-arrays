@@ -84,9 +84,9 @@ class AbstractTestAbstractCartesian2dVectorArray(
             dict(y=na.Cartesian2dVectorArray(x=na.ScalarArrayRange(0, 2, axis='y'), y=na.ScalarArrayRange(0, 2, axis='y'))),
             na.ScalarLinearSpace(0, 1, axis='y', num=_num_y) > 0.5,
             na.Cartesian2dVectorArray(
-                x=na.ScalarLinearSpace(0, 1, axis='y', num=_num_y),
-                y=na.ScalarLinearSpace(0, 1, axis='y', num=_num_y),
-            ) > 0.5,
+                x=na.ScalarLinearSpace(0, 1, axis='y', num=_num_y) > 0.3,
+                y=na.ScalarLinearSpace(0, 1, axis='y', num=_num_y) > 0.5,
+            ),
         ]
     )
     def test__getitem__(

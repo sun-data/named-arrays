@@ -153,7 +153,11 @@ class AbstractVectorArray(
                 components[c] = component.broadcast_to(na.broadcast_shapes(component.shape, shape_base))
 
             if item.type_array_abstract == self.type_array_abstract:
-                pass
+                item_accumulated = True
+                components_item = item.components
+                for c in components_item:
+                    item_accumulated = item_accumulated & components_item[c]
+                item = self.type_array.from_scalar(item_accumulated)
             elif isinstance(item, na.AbstractScalar):
                 item = self.type_array.from_scalar(item)
             else:

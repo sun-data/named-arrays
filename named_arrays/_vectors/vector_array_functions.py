@@ -590,14 +590,11 @@ def nonzero(a: na.AbstractVectorArray):
     a = a.array
     components = a.components
 
-    result = {ax: dict() for ax in a.axes}
+    components_accumulated = True
     for c in components:
-        result_c = np.nonzero(components[c])
-        for ax in result_c:
-            result[ax][c] = result_c[ax]
+        components_accumulated = components_accumulated & components[c]
 
-    result = {ax: a.type_array.from_components(result[ax]) for ax in result}
-    return result
+    return np.nonzero(components_accumulated)
 
 
 @implements(np.nan_to_num)

@@ -103,6 +103,10 @@ class AbstractTestAbstractVectorArray(
                 components_item = array.type_array.from_scalar(item).components
             else:
                 components_item = item.components
+                item_accumulated = True
+                for c in components_item:
+                    item_accumulated = item_accumulated & components_item[c]
+                components_item = item.type_array.from_scalar(item_accumulated).components
 
         for c in components:
             components_expected[c] = na.as_named_array(components[c])[components_item[c]]
@@ -111,6 +115,7 @@ class AbstractTestAbstractVectorArray(
 
         result = array[item]
 
+        assert isinstance(result.shape, dict)
         assert np.all(result == result_expected)
 
     def test__bool__(self, array: na.AbstractVectorArray):
