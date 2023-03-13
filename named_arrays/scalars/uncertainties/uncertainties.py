@@ -188,7 +188,7 @@ class AbstractUncertainScalarArray(
         elif isinstance(item, dict):
 
             if not set(item).issubset(shape_array_distribution):
-                raise ValueError(f"the axes in item, {tuple(item)}, must be a subset of the axes in self, {array.axes}")
+                raise ValueError(f"the axes in item, {tuple(item)}, must be a subset of the axes in the array, {array.axes}")
 
             item_nominal = dict()
             item_distribution = dict()
