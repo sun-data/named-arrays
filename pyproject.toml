@@ -20,7 +20,7 @@ dependencies = [
     "numpy",
     "matplotlib",
     "scipy",
-    'astropy @ git+https://github.com/astropy/astropy.git',
+    'astropy',
 ]
 
 [project.optional-dependencies]
