@@ -24,7 +24,7 @@ __all__ = [
 ]
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, repr=False)
 class AbstractCartesianVectorArray(
     na.AbstractVectorArray
 ):
@@ -150,7 +150,7 @@ class AbstractCartesianVectorArray(
         return result
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, repr=False)
 class AbstractExplicitCartesianVectorArray(
     AbstractCartesianVectorArray,
     na.AbstractExplicitVectorArray,
@@ -158,7 +158,7 @@ class AbstractExplicitCartesianVectorArray(
     pass
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, repr=False)
 class AbstractImplicitCartesianVectorArray(
     AbstractCartesianVectorArray,
     na.AbstractImplicitVectorArray,
@@ -166,7 +166,7 @@ class AbstractImplicitCartesianVectorArray(
     pass
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, repr=False)
 class AbstractCartesianVectorRandomSample(
     AbstractImplicitCartesianVectorArray,
     na.AbstractVectorRandomSample,
@@ -178,7 +178,7 @@ StartT = TypeVar('StartT', bound=float | complex | u.Quantity | na.AbstractScala
 StopT = TypeVar('StopT', bound=float | complex | u.Quantity | na.AbstractScalar | AbstractCartesianVectorArray)
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, repr=False)
 class AbstractCartesianVectorUniformRandomSample(
     AbstractCartesianVectorRandomSample,
     na.AbstractVectorUniformRandomSample,
@@ -221,7 +221,7 @@ CenterT = TypeVar('CenterT', bound=float | complex | u.Quantity | na.AbstractSca
 WidthT = TypeVar('WidthT', bound=float | complex | u.Quantity | na.AbstractScalar | AbstractCartesianVectorArray)
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, repr=False)
 class AbstractCartesianVectorNormalRandomSample(
     AbstractCartesianVectorRandomSample,
     na.AbstractVectorNormalRandomSample,
@@ -260,7 +260,7 @@ class AbstractCartesianVectorNormalRandomSample(
         return result
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, repr=False)
 class AbstractParameterizedCartesianVectorArray(
     AbstractImplicitCartesianVectorArray,
     na.AbstractParameterizedVectorArray,
@@ -268,7 +268,7 @@ class AbstractParameterizedCartesianVectorArray(
     pass
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, repr=False)
 class AbstractCartesianVectorArrayRange(
     AbstractParameterizedCartesianVectorArray,
     na.AbstractVectorArrayRange,
@@ -294,7 +294,7 @@ class AbstractCartesianVectorArrayRange(
         # return
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, repr=False)
 class AbstractCartesianVectorSpace(
     AbstractParameterizedCartesianVectorArray,
     na.AbstractVectorSpace,
@@ -302,7 +302,7 @@ class AbstractCartesianVectorSpace(
     pass
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, repr=False)
 class AbstractCartesianVectorLinearSpace(
     AbstractCartesianVectorSpace,
     na.AbstractVectorLinearSpace,
@@ -310,7 +310,7 @@ class AbstractCartesianVectorLinearSpace(
     pass
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, repr=False)
 class AbstractCartesianVectorStratifiedRandomSpace(
     AbstractCartesianVectorLinearSpace,
     na.AbstractVectorStratifiedRandomSpace,
@@ -318,7 +318,7 @@ class AbstractCartesianVectorStratifiedRandomSpace(
     pass
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, repr=False)
 class AbstractCartesianVectorLogarithmicSpace(
     AbstractCartesianVectorSpace,
     na.AbstractVectorLogarithmicSpace,
@@ -326,7 +326,7 @@ class AbstractCartesianVectorLogarithmicSpace(
     pass
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, repr=False)
 class AbstractCartesianVectorGeometricSpace(
     AbstractCartesianVectorSpace,
     na.AbstractVectorGeometricSpace,

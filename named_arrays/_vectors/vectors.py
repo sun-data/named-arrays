@@ -26,7 +26,7 @@ __all__ = [
 ]
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, repr=False)
 class AbstractVectorArray(
     na.AbstractArray
 ):
@@ -295,7 +295,7 @@ class AbstractVectorArray(
 AbstractScalarOrVectorArray = na.AbstractScalar | AbstractVectorArray
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, repr=False)
 class AbstractExplicitVectorArray(
     AbstractVectorArray,
     na.AbstractExplicitArray,
@@ -354,7 +354,7 @@ class AbstractExplicitVectorArray(
         return self.type_array.from_components(components_result)
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, repr=False)
 class AbstractImplicitVectorArray(
     AbstractVectorArray,
     na.AbstractImplicitArray,
@@ -364,7 +364,7 @@ class AbstractImplicitVectorArray(
         return self.array.components
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, repr=False)
 class AbstractVectorRandomSample(
     AbstractImplicitVectorArray,
     na.AbstractRandomSample,
@@ -372,7 +372,7 @@ class AbstractVectorRandomSample(
     pass
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, repr=False)
 class AbstractVectorUniformRandomSample(
     AbstractVectorRandomSample,
     na.AbstractUniformRandomSample,
@@ -380,7 +380,7 @@ class AbstractVectorUniformRandomSample(
     pass
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, repr=False)
 class AbstractVectorNormalRandomSample(
     AbstractVectorRandomSample,
     na.AbstractNormalRandomSample,
@@ -388,7 +388,7 @@ class AbstractVectorNormalRandomSample(
     pass
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, repr=False)
 class AbstractParameterizedVectorArray(
     AbstractImplicitVectorArray,
     na.AbstractParameterizedArray,
@@ -396,7 +396,7 @@ class AbstractParameterizedVectorArray(
     pass
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, repr=False)
 class AbstractVectorArrayRange(
     AbstractParameterizedVectorArray,
     na.AbstractArrayRange,
@@ -404,7 +404,7 @@ class AbstractVectorArrayRange(
     pass
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, repr=False)
 class AbstractVectorSpace(
     AbstractParameterizedVectorArray,
     na.AbstractSpace,
@@ -412,7 +412,7 @@ class AbstractVectorSpace(
     pass
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, repr=False)
 class AbstractVectorLinearSpace(
     AbstractVectorSpace,
     na.AbstractLinearSpace,
@@ -420,7 +420,7 @@ class AbstractVectorLinearSpace(
     pass
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, repr=False)
 class AbstractVectorStratifiedRandomSpace(
     AbstractVectorLinearSpace,
     na.AbstractStratifiedRandomSpace,
@@ -428,7 +428,7 @@ class AbstractVectorStratifiedRandomSpace(
     pass
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, repr=False)
 class AbstractVectorLogarithmicSpace(
     AbstractVectorSpace,
     na.AbstractLogarithmicSpace,
@@ -436,7 +436,7 @@ class AbstractVectorLogarithmicSpace(
     pass
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, repr=False)
 class AbstractVectorGeometricSpace(
     AbstractVectorSpace,
     na.AbstractGeometricSpace,

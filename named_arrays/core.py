@@ -192,7 +192,7 @@ def axis_normalized(
     return result
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, repr=False)
 class AbstractArray(
     np.lib.mixins.NDArrayOperatorsMixin,
     abc.ABC,
@@ -368,6 +368,35 @@ class AbstractArray(
         -------
         Array with the specified axes combined
         """
+
+    def to_string(self, prefix: None | str = None):
+        pre = " " * len(prefix) if prefix is not None else ""
+        tab = " " * 4
+        fields = dataclasses.fields(self)
+        result = f"{pre}{self.__class__.__qualname__}(\n"
+        for f in fields:
+            line = f"{pre}{tab}{f.name}="
+            val = getattr(self, f.name)
+            if isinstance(val, AbstractArray):
+                val_str = val.to_string(prefix=line)
+            elif isinstance(val, np.ndarray):
+                val_str = np.array2string(
+                    a=val,
+                    separator=", ",
+                    prefix=line,
+                )
+                if isinstance(val, u.Quantity):
+                    val_str = f"{val_str} {val.unit}"
+            else:
+                val_str = repr(val)
+            line += val_str
+            line += ",\n"
+            result += line
+        result += ")"
+        return result
+
+    def __repr__(self):
+        return self.to_string()
 
     def copy_shallow(self: Self) -> Self:
         return copy.copy(self)
@@ -697,7 +726,7 @@ class AbstractArray(
 ArrayLike = Union[QuantityLike, AbstractArray]
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, repr=False)
 class AbstractExplicitArray(
     AbstractArray,
 ):
@@ -756,7 +785,7 @@ class AbstractExplicitArray(
         """
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, repr=False)
 class AbstractImplicitArray(
     AbstractArray,
 ):
@@ -777,7 +806,7 @@ class AbstractImplicitArray(
         return self.array.shape
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, repr=False)
 class AbstractRandomMixin(
     abc.ABC,
 ):
@@ -803,7 +832,7 @@ class AbstractRandomMixin(
         return np.random.default_rng(seed=self.seed)
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, repr=False)
 class AbstractRangeMixin(
     abc.ABC,
 ):
@@ -827,7 +856,7 @@ class AbstractRangeMixin(
         return self.stop - self.start
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, repr=False)
 class AbstractSymmetricRangeMixin(
     AbstractRangeMixin,
 ):
@@ -854,7 +883,7 @@ class AbstractSymmetricRangeMixin(
         return self.center + self.width
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, repr=False)
 class AbstractRandomSample(
     AbstractRandomMixin,
     AbstractImplicitArray,
@@ -868,7 +897,7 @@ class AbstractRandomSample(
         """
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, repr=False)
 class AbstractUniformRandomSample(
     AbstractRangeMixin,
     AbstractRandomSample,
@@ -896,7 +925,7 @@ class AbstractPoissonRandomSample(
         """
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, repr=False)
 class AbstractParameterizedArray(
     AbstractImplicitArray,
 ):
@@ -916,7 +945,7 @@ class AbstractParameterizedArray(
         """
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, repr=False)
 class AbstractLinearParameterizedArrayMixin(
     abc.ABC
 ):
@@ -928,7 +957,7 @@ class AbstractLinearParameterizedArrayMixin(
         """
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, repr=False)
 class AbstractArrayRange(
     AbstractLinearParameterizedArrayMixin,
     AbstractRangeMixin,
@@ -937,7 +966,7 @@ class AbstractArrayRange(
     pass
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, repr=False)
 class AbstractSpace(
     AbstractParameterizedArray,
 ):
@@ -949,7 +978,7 @@ class AbstractSpace(
         """
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, repr=False)
 class AbstractLinearSpace(
     AbstractLinearParameterizedArrayMixin,
     AbstractRangeMixin,
@@ -964,7 +993,7 @@ class AbstractLinearSpace(
             return self.range / self.num
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, repr=False)
 class AbstractStratifiedRandomSpace(
     AbstractRandomMixin,
     AbstractLinearSpace,
@@ -972,7 +1001,7 @@ class AbstractStratifiedRandomSpace(
     pass
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, repr=False)
 class AbstractLogarithmicSpace(
     AbstractRangeMixin,
     AbstractSpace,
@@ -1008,7 +1037,7 @@ class AbstractLogarithmicSpace(
         return self.base ** self.stop_exponent
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, repr=False)
 class AbstractGeometricSpace(
     AbstractRangeMixin,
     AbstractSpace,
