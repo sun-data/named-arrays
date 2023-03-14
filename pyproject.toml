@@ -36,3 +36,5 @@ doc = [
 [project.urls]
 Homepage = "https://github.com/Kankelborg-Group/named_arrays"
 Documentation = "https://named-arrays.readthedocs.io/en/latest"
+
+[tool.setuptools_scm]
