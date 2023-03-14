@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "named_arrays"
+authors = [
+    {name = "Roy T. Smart", email = "roytsmart@gmail.com"},
+    {name = "Jacob D. Parker", email="jacobdparker@gmail.com"}
+]
+description = "Numpy arrays with labeled axes, similar to xarray but with support for uncertainties"
+readme = "README.md"
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+]
+dependencies = [
+    "typing_extensions",
+    "numpy",
+    "matplotlib",
+    "scipy",
+    'astropy',
+]
+dynamic = ["version"]
+
+[project.optional-dependencies]
+test = [
+    "pytest"
+]
+doc = [
+    "sphinx-autodoc-typehints",
+    "pydata-sphinx-theme",
+    "jupyter-sphinx",
+]
+
+[project.urls]
+Homepage = "https://github.com/Kankelborg-Group/named_arrays"
+Documentation = "https://named-arrays.readthedocs.io/en/latest"

@@ -30,7 +30,7 @@ _axis_distribution_default = "_distribution"
 _num_distribution_default = 11
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, repr=False)
 class AbstractUncertainScalarArray(
     na.AbstractScalar
 ):
@@ -427,7 +427,7 @@ class AbstractUncertainScalarArray(
         )
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, repr=False)
 class UncertainScalarArray(
     AbstractUncertainScalarArray,
     na.AbstractExplicitArray,
@@ -516,7 +516,7 @@ class UncertainScalarArray(
         return self
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, repr=False)
 class AbstractImplicitUncertainScalarArray(
     AbstractUncertainScalarArray,
     na.AbstractImplicitArray,
@@ -524,7 +524,7 @@ class AbstractImplicitUncertainScalarArray(
     pass
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, repr=False)
 class UniformUncertainScalarArray(
     AbstractImplicitUncertainScalarArray,
     na.AbstractRandomMixin,
@@ -556,7 +556,7 @@ class UniformUncertainScalarArray(
         return self
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, repr=False)
 class NormalUncertainScalarArray(
     AbstractImplicitUncertainScalarArray,
     na.AbstractRandomMixin,

@@ -242,6 +242,9 @@ class AbstractTestAbstractArray(
             with pytest.raises(ValueError):
                 array.combine_axes(axes=axes, axis_new=axis_new)
 
+    def test__repr__(self, array: na.AbstractArray):
+        assert isinstance(repr(array), str)
+
     def test_copy_shallow(self, array: na.AbstractArray):
         array_copy = array.copy_shallow()
         assert isinstance(array_copy, na.AbstractArray)

@@ -27,7 +27,7 @@ XT = TypeVar('XT', bound=na.ArrayLike)
 YT = TypeVar('YT', bound=na.ArrayLike)
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, repr=False)
 class AbstractCartesian2dVectorArray(
     na.AbstractCartesianVectorArray,
 ):
@@ -55,7 +55,7 @@ class AbstractCartesian2dVectorArray(
         return Cartesian2dVectorArray
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, repr=False)
 class Cartesian2dVectorArray(
     AbstractCartesian2dVectorArray,
     na.AbstractExplicitCartesianVectorArray,
@@ -111,7 +111,7 @@ class Cartesian2dVectorArray(
         )
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, repr=False)
 class AbstractImplicitCartesian2dVectorArray(
     AbstractCartesian2dVectorArray,
     na.AbstractImplicitCartesianVectorArray,
@@ -126,7 +126,7 @@ class AbstractImplicitCartesian2dVectorArray(
         return self.array.y
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, repr=False)
 class AbstractCartesian2dVectorRandomSample(
     AbstractImplicitCartesian2dVectorArray,
     na.AbstractCartesianVectorRandomSample,
@@ -134,7 +134,7 @@ class AbstractCartesian2dVectorRandomSample(
     pass
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, repr=False)
 class Cartesian2dVectorUniformRandomSample(
     AbstractCartesian2dVectorRandomSample,
     na.AbstractCartesianVectorUniformRandomSample,
@@ -142,7 +142,7 @@ class Cartesian2dVectorUniformRandomSample(
     pass
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, repr=False)
 class Cartesian2dVectorNormalRandomSample(
     AbstractCartesian2dVectorRandomSample,
     na.AbstractCartesianVectorNormalRandomSample,
@@ -150,7 +150,7 @@ class Cartesian2dVectorNormalRandomSample(
     pass
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, repr=False)
 class AbstractParameterizedCartesian2dVectorArray(
     AbstractImplicitCartesian2dVectorArray,
     na.AbstractParameterizedCartesianVectorArray,
@@ -158,7 +158,7 @@ class AbstractParameterizedCartesian2dVectorArray(
     pass
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, repr=False)
 class Cartesian2dVectorArrayRange(
     AbstractParameterizedCartesian2dVectorArray,
     na.AbstractCartesianVectorArrayRange,
@@ -166,7 +166,7 @@ class Cartesian2dVectorArrayRange(
     pass
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, repr=False)
 class AbstractCartesian2dVectorSpace(
     AbstractParameterizedCartesian2dVectorArray,
     na.AbstractCartesianVectorSpace,
@@ -174,7 +174,7 @@ class AbstractCartesian2dVectorSpace(
     pass
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, repr=False)
 class Cartesian2dVectorLinearSpace(
     AbstractCartesian2dVectorSpace,
     na.AbstractCartesianVectorLinearSpace,
@@ -182,7 +182,7 @@ class Cartesian2dVectorLinearSpace(
     pass
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, repr=False)
 class Cartesian2dVectorStratifiedRandomSpace(
     Cartesian2dVectorLinearSpace,
     na.AbstractCartesianVectorStratifiedRandomSpace,
@@ -190,7 +190,7 @@ class Cartesian2dVectorStratifiedRandomSpace(
     pass
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, repr=False)
 class Cartesian2dVectorLogarithmicSpace(
     AbstractCartesian2dVectorSpace,
     na.AbstractCartesianVectorLogarithmicSpace,
@@ -198,7 +198,7 @@ class Cartesian2dVectorLogarithmicSpace(
     pass
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, repr=False)
 class Cartesian2dVectorGeometricSpace(
     AbstractCartesian2dVectorSpace,
     na.AbstractCartesianVectorGeometricSpace,

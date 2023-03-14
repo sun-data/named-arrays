@@ -45,7 +45,7 @@ def as_named_array(value: bool | int | float | complex | str | u.Quantity | na.A
         return value
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, repr=False)
 class AbstractScalar(
     na.AbstractArray,
 ):
@@ -101,7 +101,7 @@ class AbstractScalar(
         )
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, repr=False)
 class AbstractScalarArray(
     AbstractScalar,
     Generic[NDArrayT],
@@ -634,7 +634,7 @@ class AbstractScalarArray(
 ScalarLike = Union[na.QuantityLike, AbstractScalar]
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, repr=False)
 class ScalarArray(
     AbstractScalarArray,
     na.AbstractExplicitArray,
@@ -785,7 +785,7 @@ class ScalarArray(
             self.ndarray[tuple(index)] = value
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, repr=False)
 class AbstractImplicitScalarArray(
     AbstractScalarArray,
     na.AbstractImplicitArray,
@@ -804,7 +804,7 @@ class AbstractImplicitScalarArray(
         return self.array.unit
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, repr=False)
 class AbstractScalarRandomSample(
     AbstractImplicitScalarArray,
     na.AbstractRandomSample,
@@ -812,7 +812,7 @@ class AbstractScalarRandomSample(
     pass
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, repr=False)
 class ScalarUniformRandomSample(
     AbstractScalarRandomSample,
     na.AbstractUniformRandomSample,
@@ -864,7 +864,7 @@ class ScalarUniformRandomSample(
         return self
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, repr=False)
 class ScalarNormalRandomSample(
     AbstractScalarRandomSample,
     na.AbstractNormalRandomSample,
@@ -916,7 +916,7 @@ class ScalarNormalRandomSample(
         return self
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, repr=False)
 class ScalarPoissonRandomSample(
     AbstractScalarRandomSample,
     na.AbstractPoissonRandomSample,
@@ -960,7 +960,7 @@ class ScalarPoissonRandomSample(
         return self
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, repr=False)
 class AbstractParameterizedScalarArray(
     AbstractImplicitScalarArray,
     na.AbstractParameterizedArray,
@@ -968,7 +968,7 @@ class AbstractParameterizedScalarArray(
     pass
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, repr=False)
 class ScalarArrayRange(
     AbstractParameterizedScalarArray,
     na.AbstractArrayRange,
@@ -1023,7 +1023,7 @@ class ScalarArrayRange(
         return int(np.ceil((self.stop - self.start) / self.step))
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, repr=False)
 class AbstractScalarSpace(
     AbstractParameterizedScalarArray,
     na.AbstractSpace,
@@ -1031,7 +1031,7 @@ class AbstractScalarSpace(
     pass
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, repr=False)
 class ScalarLinearSpace(
     AbstractScalarSpace,
     na.AbstractLinearSpace,
@@ -1137,7 +1137,7 @@ class ScalarLinearSpace(
             )
 
 #
-# @dataclasses.dataclass(eq=False)
+# @dataclasses.dataclass(eq=False, repr=False)
 # class _RandomSpaceMixin(_SpaceMixin):
 #
 #     seed: typ.Optional[int] = None
@@ -1151,7 +1151,7 @@ class ScalarLinearSpace(
 #         return np.random.default_rng(seed=self.seed)
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, repr=False)
 class ScalarStratifiedRandomSpace(
     ScalarLinearSpace[StartT, StopT],
     na.AbstractStratifiedRandomSpace,
@@ -1184,7 +1184,7 @@ class ScalarStratifiedRandomSpace(
         )
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, repr=False)
 class ScalarLogarithmicSpace(
     AbstractScalarSpace,
     na.AbstractLogarithmicSpace,
@@ -1226,7 +1226,7 @@ class ScalarLogarithmicSpace(
         return self
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, repr=False)
 class ScalarGeometricSpace(
     AbstractScalarSpace,
     na.AbstractGeometricSpace,
