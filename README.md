@@ -4,4 +4,81 @@
 [![codecov](https://codecov.io/gh/Kankelborg-Group/named_arrays/branch/main/graph/badge.svg?token=x8K7SLx4UB)](https://codecov.io/gh/Kankelborg-Group/named_arrays)
 [![Documentation Status](https://readthedocs.org/projects/named-arrays/badge/?version=latest)](https://named-arrays.readthedocs.io/en/latest/?badge=latest)
 
-Library that implements named tensors with astropy.units.Quantity support.
+`named_arrays` is an implementation of a [named tensor](https://nlp.seas.harvard.edu/NamedTensor), which assigns names to each axis of an n-dimensional array such as a numpy array.
+
+When using a numpy array, we often have to insert singleton dimensions to align axes before using binary operators etc.
+This is not necessary when using a named tensor implementation such as `xarray` or `named_arrays`, axes are aligned automatically using their names.
+
+## Installation
+`named_arrays` is available on PyPi and can be installed using pip
+```bash
+pip install named_arrays
+```
+
+## Examples
+
+### ScalarArray
+The fundamental type of `named_arrays` is the [`ScalarArray`](https://named-arrays.readthedocs.io/en/latest/_autosummary/named_arrays.ScalarArray.html), which is a composition of a numpy ndarray-like object and a tuple of axis names which must have the same length as the number of dimensions in the array.
+
+
+```python
+import numpy as np
+import named_arrays as na
+
+a = na.ScalarArray(np.array([1, 2, 3]), axes=('x',))
+```
+
+If we create another array with a different axis name, it will be broadcasted automatically against the first array if we add them together
+
+
+```python
+b = na.ScalarArray(np.array([4, 5]), axes=('y',))
+c = a + b
+c
+```
+
+
+
+
+    ScalarArray(
+        ndarray=[[5, 6],
+                 [6, 7],
+                 [7, 8]],
+        axes=('x', 'y'),
+    )
+
+
+
+All the usual numpy reduction operations use the axis name instead of the axis index
+
+
+```python
+c.mean('x')
+```
+
+
+
+
+    ScalarArray(
+        ndarray=[6., 7.],
+        axes=('y',),
+    )
+
+
+
+To index the array we can use a dictionary with the axis names as the keys
+
+
+```python
+c[dict(x=0)]
+```
+
+
+
+
+    ScalarArray(
+        ndarray=[5, 6],
+        axes=('y',),
+    )
+
+
