@@ -1,10 +1,9 @@
 [build-system]
-requires = ["setuptools"]
+requires = ["setuptools", "setuptools-scm"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "named_arrays"
-version = "0.1.0"
 authors = [
     {name = "Roy T. Smart", email = "roytsmart@gmail.com"},
     {name = "Jacob D. Parker", email="jacobdparker@gmail.com"}
@@ -22,6 +21,7 @@ dependencies = [
     "scipy",
     'astropy',
 ]
+dynamic = ["version"]
 
 [project.optional-dependencies]
 test = [
