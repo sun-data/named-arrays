@@ -37,5 +37,6 @@
     .. rubric:: {{ _('Inheritance Diagram') }}
 
     .. inheritance-diagram:: {{ fullname }}
+        :parts: 1
     {% endblock %}
 
