@@ -28,6 +28,8 @@ test = [
     "pytest"
 ]
 doc = [
+    "pytest",
+    "graphviz",
     "sphinx-autodoc-typehints",
     "pydata-sphinx-theme",
     "jupyter-sphinx",
