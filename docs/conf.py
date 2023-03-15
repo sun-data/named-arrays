@@ -81,6 +81,18 @@ html_theme_options = {
             "type": "fontawesome",
         },
     ],
+    "favicons": [
+          {
+             "rel": "icon",
+             "sizes": "32x32",
+             "href": "favicon_io/favicon-32x32.png",
+          },
+          {
+             "rel": "apple-touch-icon",
+             "sizes": "180x180",
+             "href": "favicon_io/apple-touch-icon.png"
+          },
+       ]
 }
 
 # https://github.com/readthedocs/readthedocs.org/issues/2569
