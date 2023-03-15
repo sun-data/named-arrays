@@ -82,3 +82,49 @@ c[dict(x=0)]
     )
 
 
+
+### ScalarLinearSpace
+We recommend that you rarely directly create instances of [`ScalarArray`](https://named-arrays.readthedocs.io/en/latest/_autosummary/named_arrays.ScalarArray.html) directly. Instead, you can use the implicit array classes: [`ScalarLinearSpace`](https://named-arrays.readthedocs.io/en/latest/_autosummary/named_arrays.ScalarLinearSpace.html), [`ScalarLogarithmicSpace`](https://named-arrays.readthedocs.io/en/latest/_autosummary/named_arrays.ScalarLogarithmicSpace.html), and [`ScalarGeometricSpace`](https://named-arrays.readthedocs.io/en/latest/_autosummary/named_arrays.ScalarGeometricSpace.html) to create arrays in a similar fashion to [`numpy.linspace()`](https://numpy.org/doc/stable/reference/generated/numpy.linspace.html), [`numpy.logspace()`](https://numpy.org/doc/stable/reference/generated/numpy.logspace.html#numpy.logspace), and [`numpy.geomspace()`](https://numpy.org/doc/stable/reference/generated/numpy.geomspace.html#numpy.geomspace) with the advantage of being able to access the inputs to these functions at a later point.
+
+
+```python
+d = na.ScalarLinearSpace(0, 1, axis='z', num=4)
+d
+```
+
+
+
+
+    ScalarLinearSpace(
+        start=0,
+        stop=1,
+        axis='z',
+        num=4,
+        endpoint=True,
+    )
+
+
+
+Thses implicit array classes work just like `ScalarArray` and can be used with any of the usual array operations.
+
+
+```python
+a + d
+```
+
+
+
+
+    ScalarArray(
+        ndarray=[[1.        , 1.33333333, 1.66666667, 2.        ],
+                 [2.        , 2.33333333, 2.66666667, 3.        ],
+                 [3.        , 3.33333333, 3.66666667, 4.        ]],
+        axes=('x', 'z'),
+    )
+
+
+
+
+```python
+
+```
