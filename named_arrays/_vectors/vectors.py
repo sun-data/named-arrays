@@ -180,6 +180,8 @@ class AbstractVectorArray(
                         return NotImplemented
                 elif isinstance(item[ax], (int, slice)):
                     item[ax] = self.type_array.from_scalar(item[ax])
+                elif item[ax] is None:
+                    item[ax] = self.type_array.from_scalar(item[ax])
                 else:
                     return NotImplemented
 
