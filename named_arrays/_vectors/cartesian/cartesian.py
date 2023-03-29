@@ -115,10 +115,10 @@ class AbstractCartesianVectorArray(
             if isinstance(where, na.AbstractArray):
                 if where.type_array_abstract == self.type_array_abstract:
                     components_where = where.components
-                elif isinstance(where, na.ScalarArray):
+                elif isinstance(where, na.AbstractScalar):
                     components_where = {c: where for c in components}
                 else:
-                    return where.__array_ufunc__(function, method, *inputs, **kwargs)
+                    return NotImplemented
             else:
                 components_where = {c: where for c in components}
         else:
