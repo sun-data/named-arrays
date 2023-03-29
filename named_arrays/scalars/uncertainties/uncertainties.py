@@ -293,6 +293,22 @@ class AbstractUncertainScalarArray(
 
         nout = function.nout
 
+        inputs_nominal = []
+        inputs_distribution = []
+        for inp in inputs:
+            if isinstance(inp, na.AbstractArray):
+                if isinstance(inp, AbstractUncertainScalarArray):
+                    inp_nominal = inp.nominal
+                    inp_distribution = inp.distribution
+                elif isinstance(inp, na.AbstractScalarArray):
+                    inp_nominal = inp_distribution = inp
+                else:
+                    return NotImplemented
+            else:
+                inp_nominal = inp_distribution = inp
+            inputs_nominal.append(inp_nominal)
+            inputs_distribution.append(inp_distribution)
+
         kwargs_nominal = dict()
         kwargs_distribution = dict()
 
@@ -341,22 +357,6 @@ class AbstractUncertainScalarArray(
             kwargs_distribution["out"] = out_distribution
         else:
             out = (None, ) * nout
-
-        inputs_nominal = []
-        inputs_distribution = []
-        for inp in inputs:
-            if isinstance(inp, na.AbstractArray):
-                if isinstance(inp, AbstractUncertainScalarArray):
-                    inp_nominal = inp.nominal
-                    inp_distribution = inp.distribution
-                elif isinstance(inp, na.AbstractScalarArray):
-                    inp_nominal = inp_distribution = inp
-                else:
-                    return NotImplemented
-            else:
-                inp_nominal = inp_distribution = inp
-            inputs_nominal.append(inp_nominal)
-            inputs_distribution.append(inp_distribution)
 
         result_nominal = getattr(function, method)(*inputs_nominal, **kwargs_nominal, **kwargs)
         result_distribution = getattr(function, method)(*inputs_distribution, **kwargs_distribution, **kwargs)

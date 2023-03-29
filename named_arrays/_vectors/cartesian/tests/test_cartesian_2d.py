@@ -61,6 +61,11 @@ def _cartesian2d_arrays_2():
         6,
         na.ScalarArray(6),
         na.ScalarUniformRandomSample(-6, 6, shape_random=dict(y=_num_y, x=_num_x)),
+        na.UniformUncertainScalarArray(
+            nominal=na.ScalarUniformRandomSample(-6, 6, shape_random=dict(y=_num_y, x=_num_x)),
+            width=1,
+            num_distribution=_num_distribution
+        )
     ]
     arrays_scalar = [a * unit for a in arrays_scalar for unit in units]
     arrays_vector_x = [

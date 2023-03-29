@@ -36,10 +36,10 @@ class AbstractCartesianVectorArray(
     @property
     def length(self: Self) -> na.AbstractScalar:
         result = 0
-        components = self.components
-        for c in components:
-            if components[c] is not None:
-                result = result + np.square(components[c])
+        entries = self.entries
+        for e in entries:
+            if entries[e] is not None:
+                result = result + np.square(np.abs(entries[e]))
         result = np.sqrt(result)
         return result
 
@@ -115,10 +115,10 @@ class AbstractCartesianVectorArray(
             if isinstance(where, na.AbstractArray):
                 if where.type_array_abstract == self.type_array_abstract:
                     components_where = where.components
-                elif isinstance(where, na.ScalarArray):
+                elif isinstance(where, na.AbstractScalar):
                     components_where = {c: where for c in components}
                 else:
-                    return where.__array_ufunc__(function, method, *inputs, **kwargs)
+                    return NotImplemented
             else:
                 components_where = {c: where for c in components}
         else:

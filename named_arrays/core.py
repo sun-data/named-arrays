@@ -369,30 +369,65 @@ class AbstractArray(
         Array with the specified axes combined
         """
 
-    def to_string(self, prefix: None | str = None):
-        pre = " " * len(prefix) if prefix is not None else ""
-        tab = " " * 4
+    def to_string(
+            self,
+            prefix: None | str = None,
+            multiline: None | bool = None,
+    ):
+        """
+        Convert this array instance to a string representation.
+
+        Parameters
+        ----------
+        prefix
+            the length of this string is used to align the output
+        multiline
+            flag which controls if the output should be spread over multiple
+            lines.
+
+        Returns
+        -------
+        array represented as a :class:`str`
+        """
         fields = dataclasses.fields(self)
-        result = f"{pre}{self.__class__.__qualname__}(\n"
-        for f in fields:
-            line = f"{pre}{tab}{f.name}="
+
+        if multiline is None:
+            multiline_normalized = any(isinstance(getattr(self, f.name), (np.ndarray, na.AbstractArray)) for f in fields)
+        else:
+            multiline_normalized = multiline
+
+        if multiline_normalized:
+            delim_field = "\n"
+            pre = " " * len(prefix) if prefix is not None else ""
+            tab = " " * 4
+        else:
+            delim_field = " "
+            pre = tab = ""
+
+        result = f"{self.__class__.__qualname__}("
+        if multiline_normalized:
+            result += "\n"
+
+        for i, f in enumerate(fields):
+            field_str = f"{pre}{tab}{f.name}="
             val = getattr(self, f.name)
             if isinstance(val, AbstractArray):
-                val_str = val.to_string(prefix=line)
+                val_str = val.to_string(prefix=f"{pre}{tab}", multiline=multiline)
             elif isinstance(val, np.ndarray):
                 val_str = np.array2string(
                     a=val,
                     separator=", ",
-                    prefix=line,
+                    prefix=field_str,
                 )
                 if isinstance(val, u.Quantity):
                     val_str = f"{val_str} {val.unit}"
             else:
                 val_str = repr(val)
-            line += val_str
-            line += ",\n"
-            result += line
-        result += ")"
+            field_str += val_str
+            if multiline_normalized or i < (len(fields) - 1):
+                field_str += f",{delim_field}"
+            result += field_str
+        result += f"{pre})"
         return result
 
     def __repr__(self):
