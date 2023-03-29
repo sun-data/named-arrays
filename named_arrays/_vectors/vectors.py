@@ -40,11 +40,25 @@ class AbstractVectorArray(
 
     @property
     @abc.abstractmethod
+    def type_matrix(self) -> Type[na.AbstractExplicitMatrixArray]:
+        """
+        The corresponding :class:`named_arrays.AbstractMatrixArray` class
+        """
+
+    @property
+    @abc.abstractmethod
     def components(self: Self) -> dict[str, na.ArrayLike]:
         """
         The vector components of this array expressed as a :class:`dict` where the keys are the names of the component.
         """
         return dict()
+
+    @property
+    def entries(self) -> dict[str, na.ArrayLike]:
+        """
+        The scalar entries that compose this object.
+        """
+        return self.components
 
     @property
     @abc.abstractmethod

@@ -45,27 +45,27 @@ class AbstractTestAbstractVectorArray(
     def test_astype(self, array: na.AbstractVectorArray, dtype: Type):
         super().test_astype(array=array, dtype=dtype)
         array_new = array.astype(dtype)
-        for c in array_new.components:
-            assert array_new.components[c].dtype == dtype
+        for e in array_new.entries:
+            assert array_new.entries[e].dtype == dtype
 
     @pytest.mark.parametrize('unit', [u.mm, u.s])
     def test_to(self, array: na.AbstractVectorArray, unit: None | u.UnitBase):
         super().test_to(array=array, unit=unit)
-        components = array.components
-        if all(unit.is_equivalent(na.unit_normalized(components[c])) for c in components):
+        entries = array.entries
+        if all(unit.is_equivalent(na.unit_normalized(entries[e])) for e in entries):
             array_new = array.to(unit)
             assert array_new.type_array_abstract == array.type_array_abstract
-            assert all(array_new.components[c].unit == unit for c in array_new.components)
+            assert all(array_new.entries[e].unit == unit for e in array_new.entries)
         else:
             with pytest.raises(u.UnitConversionError):
                 array.to(unit)
 
     def test_length(self, array: na.AbstractVectorArray):
         super().test_length(array=array)
-        components = array.components
-        components_iter = iter(components)
-        comp_0 = components[next(components_iter)]
-        if all(na.unit_normalized(comp_0).is_equivalent(na.unit_normalized(components[c])) for c in components_iter):
+        entries = array.entries
+        entries_iter = iter(entries)
+        entry_0 = entries[next(entries_iter)]
+        if all(na.unit_normalized(entry_0).is_equivalent(na.unit_normalized(entries[e])) for e in entries_iter):
             length = array.length
             assert isinstance(length, (int, float, np.ndarray, na.AbstractScalar))
             assert np.all(length >= 0)
@@ -119,7 +119,7 @@ class AbstractTestAbstractVectorArray(
         assert np.all(result == result_expected)
 
     def test__bool__(self, array: na.AbstractVectorArray):
-        if array.shape or any(na.unit(array.components[c]) is not None for c in array.components):
+        if array.shape or any(na.unit(array.entries[e]) is not None for e in array.entries):
             with pytest.raises(
                 expected_exception=ValueError,
                 match=r"(Quantity truthiness is ambiguous, .*)"
@@ -427,7 +427,7 @@ class AbstractTestAbstractVectorArray(
             array: na.AbstractVectorArray,
     ):
         super().test_ptp(array=array)
-        if any(np.issubdtype(na.get_dtype(array.components[c]), bool) for c in array.components):
+        if any(np.issubdtype(na.get_dtype(array.entries[e]), bool) for e in array.entries):
             with pytest.raises(TypeError, match='numpy boolean subtract, .*'):
                 array.ptp()
             return
@@ -439,8 +439,8 @@ class AbstractTestAbstractVectorArray(
             array: na.AbstractVectorArray,
     ):
         super().test_all(array=array)
-        components = array.components
-        if any(na.unit(components[c]) is not None for c in components):
+        entries = array.entries
+        if any(na.unit(entries[e]) is not None for e in entries):
             with pytest.raises(TypeError, match="no implementation found for .*"):
                 array.all()
             return
@@ -452,8 +452,8 @@ class AbstractTestAbstractVectorArray(
             array: na.AbstractVectorArray,
     ):
         super().test_any(array=array)
-        components = array.components
-        if any(na.unit(components[c]) is not None for c in components):
+        entries = array.entries
+        if any(na.unit(entries[e]) is not None for e in entries):
             with pytest.raises(TypeError, match="no implementation found for .*"):
                 array.any()
             return

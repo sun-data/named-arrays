@@ -36,10 +36,10 @@ class AbstractCartesianVectorArray(
     @property
     def length(self: Self) -> na.AbstractScalar:
         result = 0
-        components = self.components
-        for c in components:
-            if components[c] is not None:
-                result = result + np.square(components[c])
+        entries = self.entries
+        for e in entries:
+            if entries[e] is not None:
+                result = result + np.square(np.abs(entries[e]))
         result = np.sqrt(result)
         return result
 

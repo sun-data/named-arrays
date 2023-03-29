@@ -54,6 +54,10 @@ class AbstractCartesian2dVectorArray(
     def type_array(self: Self) -> Type[Cartesian2dVectorArray]:
         return Cartesian2dVectorArray
 
+    @property
+    def type_matrix(self) -> Type[na.Cartesian2dMatrixArray]:
+        return na.Cartesian2dMatrixArray
+
 
 @dataclasses.dataclass(eq=False, repr=False)
 class Cartesian2dVectorArray(
@@ -69,7 +73,7 @@ class Cartesian2dVectorArray(
             cls: Type[Self],
             scalar: na.AbstractScalar,
     ) -> Cartesian2dVectorArray:
-        return Cartesian2dVectorArray(x=scalar, y=scalar)
+        return cls(x=scalar, y=scalar)
 
     @classmethod
     def empty(
