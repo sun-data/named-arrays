@@ -1,5 +1,5 @@
 from ._named_array_functions import *
-from .core import *
+from ._core import *
 from ._scalars.scalars import *
 from ._scalars.uncertainties.uncertainties import *
 from ._vectors.vectors import *
