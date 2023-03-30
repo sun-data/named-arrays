@@ -9,6 +9,7 @@ build:
 
 sphinx:
   configuration: docs/conf.py
+  fail_on_warning: true
 
 python:
   install:
@@ -16,10 +17,3 @@ python:
       path: .
       extra_requirements:
         - doc
-
-
-#conda:
-#  environment: environment.yml
-
-#sphinx:
-#  fail_on_warning: true
