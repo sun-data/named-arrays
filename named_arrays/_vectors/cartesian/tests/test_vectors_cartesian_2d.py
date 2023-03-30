@@ -1,12 +1,9 @@
 from typing import Type, Callable, Sequence
-
 import pytest
 import numpy as np
 import astropy.units as u
-
 import named_arrays as na
 import named_arrays.tests.test_core
-import named_arrays.scalars.uncertainties.tests.test_uncertainties
 from . import test_vectors_cartesian
 
 __all__ = [
@@ -28,7 +25,7 @@ __all__ = [
 
 _num_x = named_arrays.tests.test_core.num_x
 _num_y = named_arrays.tests.test_core.num_y
-_num_distribution = named_arrays.scalars.uncertainties.tests.test_uncertainties._num_distribution
+_num_distribution = named_arrays.tests.test_core.num_distribution
 
 
 def _cartesian2d_arrays():
