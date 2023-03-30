@@ -81,6 +81,11 @@ html_theme_options = {
             "icon": "fa-brands fa-github",
             "type": "fontawesome",
         },
+        {
+            "name": "PyPi",
+            "url": "https://pypi.org/project/named-arrays/",
+            "icon": "fa-brands fa-python",
+        },
     ],
 }
 
