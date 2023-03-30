@@ -3,7 +3,7 @@ import numpy as np
 import astropy.units as u
 import named_arrays as na
 import named_arrays.tests.test_core
-import named_arrays._vectors.cartesian.tests.test_cartesian_2d
+import named_arrays._vectors.cartesian.tests.test_vectors_cartesian_2d
 from . import test_matrices_cartesian
 
 __all__ = [
@@ -18,7 +18,7 @@ _num_distribution = named_arrays.tests.test_core.num_distribution
 
 class AbstractTestAbstractCartesian2dMatrixArray(
     test_matrices_cartesian.AbstractTestAbstractCartesianMatrixArray,
-    named_arrays._vectors.cartesian.tests.test_cartesian_2d.AbstractTestAbstractCartesian2dVectorArray,
+    named_arrays._vectors.cartesian.tests.test_vectors_cartesian_2d.AbstractTestAbstractCartesian2dVectorArray,
 ):
     pass
 

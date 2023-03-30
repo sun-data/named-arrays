@@ -1,4 +1,4 @@
-import named_arrays._vectors.cartesian.tests.test_cartesian
+import named_arrays._vectors.cartesian.tests.test_vectors_cartesian
 import named_arrays._matrices.tests.test_matrices
 
 __all__ = [
@@ -15,7 +15,7 @@ __all__ = [
 
 class AbstractTestAbstractCartesianMatrixArray(
     named_arrays._matrices.tests.test_matrices.AbstractTestAbstractMatrixArray,
-    named_arrays._vectors.cartesian.tests.test_cartesian.AbstractTestAbstractCartesianVectorArray,
+    named_arrays._vectors.cartesian.tests.test_vectors_cartesian.AbstractTestAbstractCartesianVectorArray,
 ):
     pass
 
