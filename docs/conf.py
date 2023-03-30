@@ -78,7 +78,7 @@ html_theme_options = {
         {
             "name": "GitHub",
             "url": "https://github.com/Kankelborg-Group/named_arrays",
-            "icon": "fab fa-github-square",
+            "icon": "fa-brands fa-github",
             "type": "fontawesome",
         },
     ],
