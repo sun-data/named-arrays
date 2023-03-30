@@ -4,7 +4,7 @@ import pytest
 import astropy.units as u
 import named_arrays as na
 import named_arrays.tests.test_core
-import named_arrays.scalars.tests.test_core
+import named_arrays.scalars.tests.test_scalars
 
 __all__ = [
     'AbstractTestAbstractUncertainScalarArray',
@@ -70,7 +70,7 @@ def _uncertain_scalar_arrays_2():
 
 
 class AbstractTestAbstractUncertainScalarArray(
-    named_arrays.scalars.tests.test_core.AbstractTestAbstractScalar,
+    named_arrays.scalars.tests.test_scalars.AbstractTestAbstractScalar,
 ):
 
     def test_nominal(self, array: na.AbstractUncertainScalarArray):
@@ -198,7 +198,7 @@ class AbstractTestAbstractUncertainScalarArray(
         assert np.all(result.distribution == result_distribution)
 
     class TestUfuncUnary(
-        named_arrays.scalars.tests.test_core.AbstractTestAbstractScalar.TestUfuncUnary
+        named_arrays.scalars.tests.test_scalars.AbstractTestAbstractScalar.TestUfuncUnary
     ):
 
         def test_ufunc_unary(
@@ -262,7 +262,7 @@ class AbstractTestAbstractUncertainScalarArray(
 
     @pytest.mark.parametrize('array_2', _uncertain_scalar_arrays_2())
     class TestUfuncBinary(
-        named_arrays.scalars.tests.test_core.AbstractTestAbstractScalar.TestUfuncBinary
+        named_arrays.scalars.tests.test_scalars.AbstractTestAbstractScalar.TestUfuncBinary
     ):
 
         def test_ufunc_binary(
@@ -338,12 +338,12 @@ class AbstractTestAbstractUncertainScalarArray(
 
     @pytest.mark.parametrize('array_2', _uncertain_scalar_arrays_2())
     class TestMatmul(
-        named_arrays.scalars.tests.test_core.AbstractTestAbstractScalar.TestMatmul
+        named_arrays.scalars.tests.test_scalars.AbstractTestAbstractScalar.TestMatmul
     ):
         pass
 
     class TestArrayFunctions(
-        named_arrays.scalars.tests.test_core.AbstractTestAbstractScalar.TestArrayFunctions,
+        named_arrays.scalars.tests.test_scalars.AbstractTestAbstractScalar.TestArrayFunctions,
     ):
 
         @pytest.mark.parametrize(
@@ -363,7 +363,7 @@ class AbstractTestAbstractUncertainScalarArray(
             ]
         )
         class TestReductionFunctions(
-            named_arrays.scalars.tests.test_core.AbstractTestAbstractScalar.TestArrayFunctions.TestReductionFunctions,
+            named_arrays.scalars.tests.test_scalars.AbstractTestAbstractScalar.TestArrayFunctions.TestReductionFunctions,
         ):
 
             def test_reduction_functions(
@@ -440,7 +440,7 @@ class AbstractTestAbstractUncertainScalarArray(
             ]
         )
         class TestPercentileLikeFunctions(
-            named_arrays.scalars.tests.test_core.AbstractTestAbstractScalar.TestArrayFunctions.TestPercentileLikeFunctions
+            named_arrays.scalars.tests.test_scalars.AbstractTestAbstractScalar.TestArrayFunctions.TestPercentileLikeFunctions
         ):
 
             def test_percentile_like_functions(
@@ -498,7 +498,7 @@ class AbstractTestAbstractUncertainScalarArray(
                 assert result_out is out
 
         class TestFFTLikeFunctions(
-            named_arrays.scalars.tests.test_core.AbstractTestAbstractScalar.TestArrayFunctions.TestFFTLikeFunctions,
+            named_arrays.scalars.tests.test_scalars.AbstractTestAbstractScalar.TestArrayFunctions.TestFFTLikeFunctions,
         ):
 
             def test_fft_like_functions(
@@ -520,7 +520,7 @@ class AbstractTestAbstractUncertainScalarArray(
                 assert np.all(result.distribution == result_distribution)
 
         class TestFFTNLikeFunctions(
-            named_arrays.scalars.tests.test_core.AbstractTestAbstractScalar.TestArrayFunctions.TestFFTNLikeFunctions
+            named_arrays.scalars.tests.test_scalars.AbstractTestAbstractScalar.TestArrayFunctions.TestFFTNLikeFunctions
         ):
             def test_fftn_like_functions(
                     self,
