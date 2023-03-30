@@ -2,7 +2,7 @@ from typing import Callable, Sequence
 import numpy as np
 import astropy.units as u
 import named_arrays as na
-import named_arrays.scalars.scalar_array_functions
+import named_arrays._scalars.scalar_array_functions
 
 __all__ = [
     'DEFAULT_FUNCTIONS',
@@ -14,11 +14,11 @@ __all__ = [
     'HANDLED_FUNCTIONS',
 ]
 
-DEFAULT_FUNCTIONS = named_arrays.scalars.scalar_array_functions.DEFAULT_FUNCTIONS
-PERCENTILE_LIKE_FUNCTIONS = named_arrays.scalars.scalar_array_functions.PERCENTILE_LIKE_FUNCTIONS
-ARG_REDUCE_FUNCTIONS = named_arrays.scalars.scalar_array_functions.ARG_REDUCE_FUNCTIONS
-FFT_LIKE_FUNCTIONS = named_arrays.scalars.scalar_array_functions.FFT_LIKE_FUNCTIONS
-FFTN_LIKE_FUNCTIONS = named_arrays.scalars.scalar_array_functions.FFTN_LIKE_FUNCTIONS
+DEFAULT_FUNCTIONS = named_arrays._scalars.scalar_array_functions.DEFAULT_FUNCTIONS
+PERCENTILE_LIKE_FUNCTIONS = named_arrays._scalars.scalar_array_functions.PERCENTILE_LIKE_FUNCTIONS
+ARG_REDUCE_FUNCTIONS = named_arrays._scalars.scalar_array_functions.ARG_REDUCE_FUNCTIONS
+FFT_LIKE_FUNCTIONS = named_arrays._scalars.scalar_array_functions.FFT_LIKE_FUNCTIONS
+FFTN_LIKE_FUNCTIONS = named_arrays._scalars.scalar_array_functions.FFTN_LIKE_FUNCTIONS
 STACK_LIKE_FUNCTIONS = [np.stack, np.concatenate]
 HANDLED_FUNCTIONS = dict()
 
