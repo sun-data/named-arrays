@@ -984,7 +984,7 @@ class ScalarArrayRange(
 
         import named_arrays as na
         x = na.ScalarArrayRange(1, 8, axis = "x")
-        print(x.array)
+        print(x.explicit)
         print(x.shape)
 
     Note above that ``x`` does not include :attr:`stop`, and won't in almost all cases.  :class:`ScalarArrayRange` can be used to
@@ -993,7 +993,7 @@ class ScalarArrayRange(
     .. jupyter-execute::
 
         x = na.ScalarArrayRange(-0.5, 3, "x", 0.25)
-        print(x.array)
+        print(x.explicit)
 
     For the above, and more complicated uses, it is recommended to use :class:`ScalarLinearSpace` instead.  See numpy
     documentation of :func:`numpy.arange` for more info.
