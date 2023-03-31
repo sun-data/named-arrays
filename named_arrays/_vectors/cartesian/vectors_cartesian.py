@@ -193,40 +193,9 @@ WidthT = TypeVar('WidthT', bound=float | complex | u.Quantity | na.AbstractScala
 @dataclasses.dataclass(eq=False, repr=False)
 class AbstractCartesianVectorNormalRandomSample(
     AbstractCartesianVectorRandomSample,
-    na.AbstractVectorNormalRandomSample,
-    Generic[CenterT, WidthT],
+    na.AbstractVectorNormalRandomSample[CenterT, WidthT],
 ):
-    center: StartT = dataclasses.MISSING
-    width: StopT = dataclasses.MISSING
-    shape_random: dict[str, int] = None
-    seed: None | int = None
-
-    @property
-    def explicit(self) -> AbstractExplicitCartesianVectorArray:
-        center = self.center
-        if not isinstance(center, na.AbstractVectorArray):
-            center = self.type_explicit.from_scalar(center)
-
-        width = self.width
-        if not isinstance(width, na.AbstractVectorArray):
-            width = self.type_explicit.from_scalar(width)
-
-        seed = self.seed
-
-        result = self.type_explicit()
-        components_center = center.components
-        components_width = width.components
-
-        for c in result.components:
-            result.components[c] = na.ScalarNormalRandomSample(
-                center=components_center[c],
-                width=components_width[c],
-                shape_random=self.shape_random,
-                seed=seed,
-            ).explicit
-            seed += 1
-
-        return result
+    pass
 
 
 @dataclasses.dataclass(eq=False, repr=False)

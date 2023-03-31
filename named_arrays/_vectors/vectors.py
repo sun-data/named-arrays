@@ -452,12 +452,68 @@ class AbstractVectorUniformRandomSample(
         return result
 
 
+CenterT = TypeVar('CenterT', bound=float | complex | u.Quantity | na.AbstractScalar | AbstractVectorArray)
+WidthT = TypeVar('WidthT', bound=float | complex | u.Quantity | na.AbstractScalar | AbstractVectorArray)
+
+
 @dataclasses.dataclass(eq=False, repr=False)
 class AbstractVectorNormalRandomSample(
     AbstractVectorRandomSample,
     na.AbstractNormalRandomSample,
+    Generic[CenterT, WidthT]
 ):
-    pass
+    center: CenterT = dataclasses.MISSING
+    width: WidthT = dataclasses.MISSING
+    shape_random: dict[str, int] = None
+    seed: None | int = None
+
+    @property
+    def explicit(self) -> AbstractExplicitVectorArray:
+
+        center = self.center
+        if isinstance(center, na.AbstractArray):
+            if center.type_abstract == self.type_abstract:
+                pass
+            elif isinstance(center, na.AbstractScalar):
+                center = self.type_explicit.from_scalar(center)
+            else:
+                raise ValueError(
+                    f"`start` must either be an instance of {float}, {u.Quantity}, {na.AbstractScalar},"
+                    f" or {self.type_abstract}, got {type(center)}"
+                )
+        else:
+            center = self.type_explicit.from_scalar(center)
+
+        width = self.width
+        if isinstance(width, na.AbstractArray):
+            if width.type_abstract == self.type_abstract:
+                pass
+            elif isinstance(width, na.AbstractScalar):
+                width = self.type_explicit.from_scalar(width)
+            else:
+                raise ValueError(
+                    f"`start` must either be an instance of {float}, {u.Quantity}, {na.AbstractScalar},"
+                    f" or {self.type_abstract}, got {type(width)}"
+                )
+        else:
+            width = self.type_explicit.from_scalar(width)
+
+        seed = self.seed
+
+        result = self.type_explicit()
+        components_center = center.components
+        components_width = width.components
+
+        for c in result.components:
+            result.components[c] = na.ScalarNormalRandomSample(
+                center=components_center[c],
+                width=components_width[c],
+                shape_random=self.shape_random,
+                seed=seed,
+            ).explicit
+            seed += 1
+
+        return result
 
 
 @dataclasses.dataclass(eq=False, repr=False)
