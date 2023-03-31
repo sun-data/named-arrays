@@ -43,7 +43,7 @@ class AbstractUncertainScalarArray(
         return UncertainScalarArray
 
     @property
-    def type_array_abstract(self) -> Type[AbstractUncertainScalarArray]:
+    def type_abstract(self) -> Type[AbstractUncertainScalarArray]:
         return AbstractUncertainScalarArray
 
     @property

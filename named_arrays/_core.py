@@ -214,7 +214,7 @@ class AbstractArray(
 
     @property
     @abc.abstractmethod
-    def type_array_abstract(self: Self) -> Type[AbstractArray]:
+    def type_abstract(self: Self) -> Type[AbstractArray]:
         """
         The :class:`AbstractArray` type corresponding to this array
         """

@@ -51,8 +51,8 @@ class AbstractMatrixArray(
         rows = self.rows
         rows_iter = iter(rows)
         try:
-            row_prototype = rows[next(rows_iter)].type_array_abstract
-            return all(rows[r].type_array_abstract == row_prototype for r in rows_iter)
+            row_prototype = rows[next(rows_iter)].type_abstract
+            return all(rows[r].type_abstract == row_prototype for r in rows_iter)
         except AttributeError:
             return False
 
@@ -75,7 +75,7 @@ class AbstractMatrixArray(
         if not self.is_consistent:
             raise ValueError(
                 f"matrix rows must all have the same abstract type, got "
-                f"{tuple(rows[c].type_array_abstract for c in rows)}"
+                f"{tuple(rows[c].type_abstract for c in rows)}"
             )
         type_matrix = row_prototype.type_matrix
         type_row = self.type_vector

@@ -166,7 +166,7 @@ class AbstractVectorArray(
                 component = na.as_named_array(components[c])
                 components[c] = component.broadcast_to(na.broadcast_shapes(component.shape, shape_base))
 
-            if item.type_array_abstract == self.type_array_abstract:
+            if item.type_abstract == self.type_abstract:
                 item_accumulated = True
                 components_item = item.components
                 for c in components_item:
@@ -186,7 +186,7 @@ class AbstractVectorArray(
             item = item.copy()
             for ax in item:
                 if isinstance(item[ax], na.AbstractArray):
-                    if item[ax].type_array_abstract == self.type_array_abstract:
+                    if item[ax].type_abstract == self.type_abstract:
                         item[ax] = item[ax].explicit
                     elif isinstance(item[ax], na.AbstractScalar):
                         item[ax] = self.type_explicit.from_scalar(item[ax])
@@ -216,7 +216,7 @@ class AbstractVectorArray(
             array: na.ScalarArray,
             item: dict[str, int | slice | AbstractVectorArray] | AbstractVectorArray,
     ):
-        if array.type_array_abstract == self.type_array_abstract:
+        if array.type_abstract == self.type_abstract:
             pass
         elif isinstance(array, na.ScalarArray):
             array = self.type_explicit.from_scalar(array)
@@ -251,7 +251,7 @@ class AbstractVectorArray(
         out = out[0]
 
         if isinstance(x1, AbstractVectorArray) and isinstance(x2, AbstractVectorArray):
-            if x1.type_array_abstract == x2.type_array_abstract:
+            if x1.type_abstract == x2.type_abstract:
                 components_x1 = x1.broadcasted.components
                 components_x2 = x2.broadcasted.components
                 result = 0

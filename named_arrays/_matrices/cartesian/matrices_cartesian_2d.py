@@ -33,7 +33,7 @@ class AbstractCartesian2dMatrixArray(
         """
 
     @property
-    def type_array_abstract(self) -> Type[AbstractCartesian2dMatrixArray]:
+    def type_abstract(self) -> Type[AbstractCartesian2dMatrixArray]:
         return AbstractCartesian2dMatrixArray
 
     @property

@@ -54,7 +54,7 @@ class AbstractTestAbstractVectorArray(
         entries = array.entries
         if all(unit.is_equivalent(na.unit_normalized(entries[e])) for e in entries):
             array_new = array.to(unit)
-            assert array_new.type_array_abstract == array.type_array_abstract
+            assert array_new.type_abstract == array.type_abstract
             assert all(array_new.entries[e].unit == unit for e in array_new.entries)
         else:
             with pytest.raises(u.UnitConversionError):
@@ -91,7 +91,7 @@ class AbstractTestAbstractVectorArray(
         if isinstance(item, dict):
             components_item = {c: dict() for c in components}
             for ax in item:
-                if isinstance(item[ax], na.AbstractArray) and item[ax].type_array_abstract == array.type_array_abstract:
+                if isinstance(item[ax], na.AbstractArray) and item[ax].type_abstract == array.type_abstract:
                     components_item_ax = item[ax].components
                 else:
                     components_item_ax = array.type_explicit.from_scalar(item[ax]).components
@@ -99,7 +99,7 @@ class AbstractTestAbstractVectorArray(
                     components_item[c][ax] = components_item_ax[c]
 
         else:
-            if not item.type_array_abstract == array.type_array_abstract:
+            if not item.type_abstract == array.type_abstract:
                 components_item = array.type_explicit.from_scalar(item).components
             else:
                 components_item = item.components

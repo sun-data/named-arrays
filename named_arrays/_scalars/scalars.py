@@ -110,7 +110,7 @@ class AbstractScalarArray(
     __named_array_priority__: ClassVar[int] = 1
 
     @property
-    def type_array_abstract(self: Self) -> Type[AbstractScalarArray]:
+    def type_abstract(self: Self) -> Type[AbstractScalarArray]:
         return AbstractScalarArray
 
     @property

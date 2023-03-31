@@ -515,7 +515,7 @@ def array_equal(
         equal_nan: bool = False,
 ) -> bool:
 
-    if not a1.type_array_abstract == a2.type_array_abstract:
+    if not a1.type_abstract == a2.type_abstract:
         return False
 
     components_a1 = a1.components
@@ -538,7 +538,7 @@ def array_equiv(
         a2: na.AbstractVectorArray,
 ) -> bool:
 
-    if not a1.type_array_abstract == a2.type_array_abstract:
+    if not a1.type_abstract == a2.type_abstract:
         return False
 
     components_a1 = a1.components
@@ -565,7 +565,7 @@ def allclose(
     if isinstance(a, na.AbstractVectorArray):
         components_a = a.components
         if isinstance(b, na.AbstractVectorArray):
-            if a.type_array_abstract == b.type_array_abstract:
+            if a.type_abstract == b.type_abstract:
                 components_b = b.components
             else:
                 return NotImplemented

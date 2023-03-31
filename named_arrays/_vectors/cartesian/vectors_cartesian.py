@@ -90,7 +90,7 @@ class AbstractCartesianVectorArray(
         components_inputs = []
         for inp in inputs:
             if isinstance(inp, na.AbstractArray):
-                if inp.type_array_abstract == self.type_array_abstract:
+                if inp.type_abstract == self.type_abstract:
                     components_inp = inp.components
                 elif isinstance(inp, na.AbstractScalar):
                     components_inp = {c: inp for c in components}
@@ -113,7 +113,7 @@ class AbstractCartesianVectorArray(
         if "where" in kwargs:
             where = kwargs.pop("where")
             if isinstance(where, na.AbstractArray):
-                if where.type_array_abstract == self.type_array_abstract:
+                if where.type_abstract == self.type_abstract:
                     components_where = where.components
                 elif isinstance(where, na.AbstractScalar):
                     components_where = {c: where for c in components}
