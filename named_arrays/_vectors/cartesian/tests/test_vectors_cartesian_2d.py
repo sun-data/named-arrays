@@ -250,7 +250,34 @@ class TestCartesian2dVectorUniformRandomSample(
     pass
 
 
-@pytest.mark.skip
+def _cartesian_2d_normal_random_samples() -> list[na.Cartesian2dVectorNormalRandomSample]:
+    centers = [
+        0,
+        na.Cartesian2dVectorArray(
+            x=na.ScalarLinearSpace(0, 1, axis='x', num=_num_x),
+            y=na.ScalarLinearSpace(1, 2, axis='x', num=_num_x)
+        )
+    ]
+    widths = [
+        10,
+        na.Cartesian2dVectorArray(x=10, y=11),
+        na.Cartesian2dVectorArray(
+            x=na.ScalarLinearSpace(10, 11, axis='x', num=_num_x),
+            y=na.ScalarLinearSpace(11, 12, axis='x', num=_num_x)
+        ),
+    ]
+    units = [None, u.mm]
+    shapes_random = [dict(y=_num_y)]
+    return [
+        na.Cartesian2dVectorNormalRandomSample(
+            center=center << unit if unit is not None else center,
+            width=width << unit if unit is not None else width,
+            shape_random=shape_random,
+        ) for center in centers for width in widths for unit in units for shape_random in shapes_random
+    ]
+
+
+@pytest.mark.parametrize('array', _cartesian_2d_normal_random_samples())
 class TestCartesian2dVectorNormalRandomSample(
     AbstractTestAbstractCartesian2dVectorRandomSample,
     test_vectors_cartesian.AbstractTestAbstractCartesianVectorNormalRandomSample,
