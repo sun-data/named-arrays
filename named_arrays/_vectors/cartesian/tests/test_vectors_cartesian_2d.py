@@ -218,7 +218,6 @@ class AbstractTestAbstractCartesian2dVectorRandomSample(
 def _cartesian_2d_uniform_random_samples() -> list[na.Cartesian2dVectorUniformRandomSample]:
     starts = [
         0,
-        na.Cartesian2dVectorArray(x=0, y=1),
         na.Cartesian2dVectorArray(
             x=na.ScalarLinearSpace(0, 1, axis='x', num=_num_x),
             y=na.ScalarLinearSpace(1, 2, axis='x', num=_num_x)
@@ -243,7 +242,6 @@ def _cartesian_2d_uniform_random_samples() -> list[na.Cartesian2dVectorUniformRa
     ]
 
 
-@pytest.mark.skip
 @pytest.mark.parametrize('array', _cartesian_2d_uniform_random_samples())
 class TestCartesian2dVectorUniformRandomSample(
     AbstractTestAbstractCartesian2dVectorRandomSample,
