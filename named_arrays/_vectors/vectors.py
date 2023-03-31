@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import ClassVar, Type, Sequence, Callable, Collection, Any
+from typing import ClassVar, Type, Sequence, Callable, Collection, Any, Generic, TypeVar
 from typing_extensions import Self
 import abc
 import dataclasses
@@ -388,12 +388,68 @@ class AbstractVectorRandomSample(
     pass
 
 
+StartT = TypeVar('StartT', bound=float | complex | u.Quantity | na.AbstractScalar | AbstractVectorArray)
+StopT = TypeVar('StopT', bound=float | complex | u.Quantity | na.AbstractScalar | AbstractVectorArray)
+
+
 @dataclasses.dataclass(eq=False, repr=False)
 class AbstractVectorUniformRandomSample(
     AbstractVectorRandomSample,
     na.AbstractUniformRandomSample,
+    Generic[StartT, StopT]
 ):
-    pass
+    start: StartT = dataclasses.MISSING
+    stop: StopT = dataclasses.MISSING
+    shape_random: dict[str, int] = None
+    seed: None | int = None
+
+    @property
+    def explicit(self) -> AbstractExplicitVectorArray:
+
+        start = self.start
+        if isinstance(start, na.AbstractArray):
+            if start.type_abstract == self.type_abstract:
+                pass
+            elif isinstance(start, na.AbstractScalar):
+                start = self.type_explicit.from_scalar(start)
+            else:
+                raise ValueError(
+                    f"`start` must either be an instance of {float}, {u.Quantity}, {na.AbstractScalar},"
+                    f" or {self.type_abstract}, got {type(start)}"
+                )
+        else:
+            start = self.type_explicit.from_scalar(start)
+
+        stop = self.stop
+        if isinstance(stop, na.AbstractArray):
+            if stop.type_abstract == self.type_abstract:
+                pass
+            elif isinstance(stop, na.AbstractScalar):
+                stop = self.type_explicit.from_scalar(stop)
+            else:
+                raise ValueError(
+                    f"`stop` must either be an instance of {float}, {u.Quantity}, {na.AbstractScalar},"
+                    f" or {self.type_abstract}, got {type(stop)}"
+                )
+        else:
+            stop = self.type_explicit.from_scalar(stop)
+
+        seed = self.seed
+
+        result = self.type_explicit()
+        components_start = start.components
+        components_stop = stop.components
+
+        for c in result.components:
+            result.components[c] = na.ScalarUniformRandomSample(
+                start=components_start[c],
+                stop=components_stop[c],
+                shape_random=self.shape_random,
+                seed=seed,
+            ).explicit
+            seed += 1
+
+        return result
 
 
 @dataclasses.dataclass(eq=False, repr=False)

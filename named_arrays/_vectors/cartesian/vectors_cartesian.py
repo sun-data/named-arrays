@@ -181,40 +181,9 @@ StopT = TypeVar('StopT', bound=float | complex | u.Quantity | na.AbstractScalar 
 @dataclasses.dataclass(eq=False, repr=False)
 class AbstractCartesianVectorUniformRandomSample(
     AbstractCartesianVectorRandomSample,
-    na.AbstractVectorUniformRandomSample,
-    Generic[StartT, StopT],
+    na.AbstractVectorUniformRandomSample[StartT, StopT],
 ):
-    start: StartT = dataclasses.MISSING
-    stop: StopT = dataclasses.MISSING
-    shape_random: dict[str, int] = None
-    seed: None | int = None
-
-    @property
-    def explicit(self) -> AbstractExplicitCartesianVectorArray:
-        start = self.start
-        if not isinstance(start, na.AbstractVectorArray):
-            start = self.type_explicit.from_scalar(start)
-
-        stop = self.stop
-        if not isinstance(stop, na.AbstractVectorArray):
-            stop = self.type_explicit.from_scalar(stop)
-
-        seed = self.seed
-
-        result = self.type_explicit()
-        components_start = start.components
-        components_stop = stop.components
-
-        for c in result.components:
-            result.components[c] = na.ScalarUniformRandomSample(
-                start=components_start[c],
-                stop=components_stop[c],
-                shape_random=self.shape_random,
-                seed=seed,
-            ).explicit
-            seed += 1
-
-        return result
+    pass
 
 
 CenterT = TypeVar('CenterT', bound=float | complex | u.Quantity | na.AbstractScalar | AbstractCartesianVectorArray)
