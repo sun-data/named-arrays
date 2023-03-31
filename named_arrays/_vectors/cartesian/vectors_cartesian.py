@@ -190,7 +190,7 @@ class AbstractCartesianVectorUniformRandomSample(
     seed: None | int = None
 
     @property
-    def array(self) -> AbstractExplicitCartesianVectorArray:
+    def explicit(self) -> AbstractExplicitCartesianVectorArray:
         start = self.start
         if not isinstance(start, na.AbstractVectorArray):
             start = self.type_array.from_scalar(start)
@@ -211,7 +211,7 @@ class AbstractCartesianVectorUniformRandomSample(
                 stop=components_stop[c],
                 shape_random=self.shape_random,
                 seed=seed,
-            ).array
+            ).explicit
             seed += 1
 
         return result
@@ -233,7 +233,7 @@ class AbstractCartesianVectorNormalRandomSample(
     seed: None | int = None
 
     @property
-    def array(self) -> AbstractExplicitCartesianVectorArray:
+    def explicit(self) -> AbstractExplicitCartesianVectorArray:
         center = self.center
         if not isinstance(center, na.AbstractVectorArray):
             center = self.type_array.from_scalar(center)
@@ -254,7 +254,7 @@ class AbstractCartesianVectorNormalRandomSample(
                 width=components_width[c],
                 shape_random=self.shape_random,
                 seed=seed,
-            ).array
+            ).explicit
             seed += 1
 
         return result
@@ -275,7 +275,7 @@ class AbstractCartesianVectorArrayRange(
     Generic[StartT, StopT]
 ):
     @property
-    def array(self) -> AbstractExplicitCartesianVectorArray:
+    def explicit(self) -> AbstractExplicitCartesianVectorArray:
         start = self.start
         if not isinstance(start, na.AbstractVectorArray):
             start = self.type_array.from_scalar(start)

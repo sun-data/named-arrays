@@ -573,7 +573,7 @@ class AbstractScalarArray(
             h = self[{axis_rows: 2, axis_columns: 1}]
             i = self[{axis_rows: 2, axis_columns: 2}]
 
-            result = ScalarArray(ndarray=self.array.copy(), axes=self.axes.copy())
+            result = ScalarArray(ndarray=self.explicit.copy(), axes=self.axes.copy())
             result[{axis_rows_inverse: 0, axis_columns_inverse: 0}] = (e * i - f * h)
             result[{axis_rows_inverse: 0, axis_columns_inverse: 1}] = -(b * i - c * h)
             result[{axis_rows_inverse: 0, axis_columns_inverse: 2}] = (b * f - c * e)
@@ -745,7 +745,7 @@ class ScalarArray(
         return na.unit(self.ndarray)
 
     @property
-    def array(self: Self) -> Self:
+    def explicit(self: Self) -> Self:
         return self
 
     @property
@@ -793,15 +793,15 @@ class AbstractImplicitScalarArray(
 
     @property
     def ndarray(self: Self) -> na.QuantityLike:
-        return self.array.ndarray
+        return self.explicit.ndarray
 
     @property
     def dtype(self: Self) -> np.dtype:
-        return self.array.dtype
+        return self.explicit.dtype
 
     @property
     def unit(self: Self) -> None | u.Unit:
-        return self.array.unit
+        return self.explicit.unit
 
 
 @dataclasses.dataclass(eq=False, repr=False)
@@ -824,7 +824,7 @@ class ScalarUniformRandomSample(
     seed: None | int = None
 
     @property
-    def array(self: Self) -> ScalarArray:
+    def explicit(self: Self) -> ScalarArray:
         start = self.start
         if not isinstance(start, na.AbstractArray):
             start = ScalarArray(start)
@@ -876,7 +876,7 @@ class ScalarNormalRandomSample(
     seed: None | int = None
 
     @property
-    def array(self: Self) -> ScalarArray:
+    def explicit(self: Self) -> ScalarArray:
         center = self.center
         if not isinstance(center, na.AbstractArray):
             center = ScalarArray(center)
@@ -927,7 +927,7 @@ class ScalarPoissonRandomSample(
     seed: None | int = None
 
     @property
-    def array(self: Self) -> ScalarArray:
+    def explicit(self: Self) -> ScalarArray:
         center = self.center
         if not isinstance(center, na.AbstractArray):
             center = ScalarArray(center)
@@ -1004,7 +1004,7 @@ class ScalarArrayRange(
     step: int = 1
 
     @property
-    def array(self: Self) -> ScalarArray:
+    def explicit(self: Self) -> ScalarArray:
         return ScalarArray(
             ndarray=np.arange(
                 start=self.start,
@@ -1067,7 +1067,7 @@ class ScalarLinearSpace(
     endpoint: bool = True
 
     @property
-    def array(self: Self) -> ScalarArray:
+    def explicit(self: Self) -> ScalarArray:
         start = self.start
         if not isinstance(start, AbstractScalar):
             start = ScalarArray(start)
@@ -1159,7 +1159,7 @@ class ScalarStratifiedRandomSpace(
     seed: None | int = None
 
     @property
-    def array(self: Self) -> ScalarArray:
+    def explicit(self: Self) -> ScalarArray:
         result = self.centers
 
         step_size = self.step
@@ -1198,7 +1198,7 @@ class ScalarLogarithmicSpace(
     endpoint: bool = True
 
     @property
-    def array(self: Self) -> ScalarArray:
+    def explicit(self: Self) -> ScalarArray:
         start_exponent = self.start_exponent
         if not isinstance(start_exponent, AbstractScalar):
             start_exponent = ScalarArray(start_exponent)
@@ -1239,7 +1239,7 @@ class ScalarGeometricSpace(
     endpoint: bool = True
 
     @property
-    def array(self: Self) -> ScalarArray:
+    def explicit(self: Self) -> ScalarArray:
         start = self.start
         if not isinstance(start, AbstractScalar):
             start = ScalarArray(start)

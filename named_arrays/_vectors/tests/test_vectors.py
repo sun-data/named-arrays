@@ -251,7 +251,7 @@ class AbstractTestAbstractVectorArray(
             ):
                 super().test_percentile_like_functions(
                     func=func,
-                    array=array.array,
+                    array=array.explicit,
                     q=q,
                     axis=axis,
                     keepdims=keepdims,

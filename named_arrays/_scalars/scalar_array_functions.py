@@ -77,7 +77,7 @@ def array_function_default(
         initial: bool | int | float | complex | u.Quantity = np._NoValue,
         where: bool | na.AbstractScalarArray = np._NoValue,
 ):
-    a = a.array
+    a = a.explicit
     shape = na.shape_broadcasted(a, where)
 
     axis_normalized = na.axis_normalized(a, axis=axis)
@@ -144,7 +144,7 @@ def array_function_percentile_like(
         keepdims: bool = False,
 ) -> na.ScalarArray:
 
-    a = a.array
+    a = a.explicit
     axes_a = a.axes
 
     axis_normalized = na.axis_normalized(a, axis=axis)
@@ -156,7 +156,7 @@ def array_function_percentile_like(
                 f"got {axis} for `axis`, but `{a.axes} for `a.axes`"
             )
 
-    q = q.array if isinstance(q, na.AbstractArray) else na.ScalarArray(q)
+    q = q.explicit if isinstance(q, na.AbstractArray) else na.ScalarArray(q)
     axes_q = q.axes
 
     axis_union = set(a.axes) & set(q.axes)
@@ -200,7 +200,7 @@ def array_function_arg_reduce(
         axis: None | str | Sequence[str] = None,
 ) -> dict[str, na.ScalarArray]:
 
-    a = a.array
+    a = a.explicit
     shape_a = a.shape
 
     if axis is not None:
@@ -261,7 +261,7 @@ def array_function_fftn_like(
         norm: str = "backward",
 ) -> na.ScalarArray:
 
-    a = a.array
+    a = a.explicit
     shape = a.shape
 
     if not all(ax in shape for ax in axes):
@@ -468,7 +468,7 @@ def sort(
         order: None | str | list[str] = None,
 ) -> na.ScalarArray:
 
-    a = a.array
+    a = a.explicit
 
     if axis is not None:
         if isinstance(axis, str):
@@ -509,7 +509,7 @@ def argsort(
         order: None | str | list[str] = None,
 ) -> dict[str, na.ScalarArray]:
 
-    a = a.array
+    a = a.explicit
     shape_a = a.shape
 
     if axis is not None:
@@ -626,7 +626,7 @@ def allclose(
 
 @implements(np.nonzero)
 def nonzero(a: na.AbstractScalarArray):
-    a = a.array
+    a = a.explicit
     if not a.shape:
         return dict()
     axes = a.axes

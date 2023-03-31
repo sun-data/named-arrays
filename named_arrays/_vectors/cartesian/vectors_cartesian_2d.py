@@ -123,11 +123,11 @@ class AbstractImplicitCartesian2dVectorArray(
 
     @property
     def x(self) -> na.ArrayLike:
-        return self.array.x
+        return self.explicit.x
 
     @property
     def y(self) -> na.ArrayLike:
-        return self.array.y
+        return self.explicit.y
 
 
 @dataclasses.dataclass(eq=False, repr=False)

@@ -84,7 +84,7 @@ class AbstractUncertainScalarArray(
 
     @property
     @abc.abstractmethod
-    def array(self) -> UncertainScalarArray[na.ScalarArray, na.ScalarArray]:
+    def explicit(self) -> UncertainScalarArray[na.ScalarArray, na.ScalarArray]:
         pass
 
     def astype(
@@ -149,7 +149,7 @@ class AbstractUncertainScalarArray(
             self,
             item: dict[str, int | slice | na.AbstractScalar] | na.AbstractScalar,
     ):
-        array = self.array
+        array = self.explicit
         shape_array = array.shape
         shape_array_distribution = array.shape_distribution
 
@@ -157,7 +157,7 @@ class AbstractUncertainScalarArray(
         distribution = na.as_named_array(array.distribution)
 
         if isinstance(item, na.AbstractArray):
-            item = item.array
+            item = item.explicit
             if isinstance(item, AbstractUncertainScalarArray):
                 item_nominal = item_distribution = item.nominal & np.all(item.distribution, axis=self.axis_distribution)
             elif isinstance(item, na.AbstractScalarArray):
@@ -420,7 +420,7 @@ class AbstractUncertainScalarArray(
 
     @property
     def broadcasted(self) -> na.UncertainScalarArray:
-        a = self.array
+        a = self.explicit
         return na.UncertainScalarArray(
             nominal=na.broadcast_to(a.nominal, a.shape),
             distribution=na.broadcast_to(a.distribution, a.shape_distribution),
@@ -508,7 +508,7 @@ class UncertainScalarArray(
         return int(np.array(tuple(self.shape.values())).prod())
 
     @property
-    def array(self) -> Self:
+    def explicit(self) -> Self:
         return self.copy_shallow()
 
     @property
@@ -545,10 +545,10 @@ class UniformUncertainScalarArray(
         )
 
     @property
-    def array(self) -> UncertainScalarArray:
+    def explicit(self) -> UncertainScalarArray:
         return UncertainScalarArray(
-            nominal=na.as_named_array(self.nominal).array,
-            distribution=na.as_named_array(self.distribution).array,
+            nominal=na.as_named_array(self.nominal).explicit,
+            distribution=na.as_named_array(self.distribution).explicit,
         )
 
     @property
@@ -577,10 +577,10 @@ class NormalUncertainScalarArray(
         )
 
     @property
-    def array(self) -> UncertainScalarArray:
+    def explicit(self) -> UncertainScalarArray:
         return UncertainScalarArray(
-            nominal=na.as_named_array(self.nominal).array,
-            distribution=na.as_named_array(self.distribution).array,
+            nominal=na.as_named_array(self.nominal).explicit,
+            distribution=na.as_named_array(self.distribution).explicit,
         )
 
     @property

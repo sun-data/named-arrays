@@ -268,7 +268,7 @@ class AbstractArray(
 
     @property
     @abc.abstractmethod
-    def array(self: Self) -> AbstractExplicitArray:
+    def explicit(self: Self) -> AbstractExplicitArray:
         """
         Converts this array to an instance of :class:`named_arrays.AbstractExplicitArray`
         """
@@ -826,19 +826,19 @@ class AbstractImplicitArray(
 ):
     @property
     def axes(self: Self) -> tuple[str, ...]:
-        return self.array.axes
+        return self.explicit.axes
 
     @property
     def ndim(self: Self) -> int:
-        return self.array.ndim
+        return self.explicit.ndim
 
     @property
     def size(self: Self) -> int:
-        return self.array.size
+        return self.explicit.size
 
     @property
     def shape(self: Self) -> dict[str, int]:
-        return self.array.shape
+        return self.explicit.shape
 
 
 @dataclasses.dataclass(eq=False, repr=False)

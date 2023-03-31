@@ -193,7 +193,7 @@ def array_function_fft_like(
         norm: str = "backward"
 ) -> na.UncertainScalarArray:
 
-    a = a.array
+    a = a.explicit
     shape_a = a.shape
 
     if axis[0] not in shape_a:
@@ -226,7 +226,7 @@ def array_function_fftn_like(
         norm: str = "backward",
 ) -> na.UncertainScalarArray:
 
-    a = a.array
+    a = a.explicit
     shape_a = a.shape
 
     if not set(axes).issubset(shape_a):
@@ -265,7 +265,7 @@ def broadcast_to(
         shape: dict[str, int]
 ) -> na.UncertainScalarArray:
 
-    array = array.array
+    array = array.explicit
     shape_distribution = shape | {array.axis_distribution: array.num_distribution}
 
     return na.UncertainScalarArray(
@@ -303,7 +303,7 @@ def moveaxis(
     source = (source,) if isinstance(source, str) else source
     destination = (destination,) if isinstance(destination, str) else destination
 
-    a = a.array
+    a = a.explicit
 
     set_axis_diff = set(source) - set(a.axes)
     if set_axis_diff:
@@ -343,7 +343,7 @@ def reshape(
         newshape: dict[str, int],
 ) -> na.UncertainScalarArray:
 
-    a = a.array
+    a = a.explicit
     a.nominal = na.broadcast_to(a.nominal, shape=a.shape)
     a.distribution = na.broadcast_to(a.distribution, shape=a.shape_distribution)
     a.distribution.change_axis_index(axis=a.axis_distribution, index=~0)
@@ -475,7 +475,7 @@ def unravel_index(
     if not shape:
         return dict()
 
-    indices = indices.array
+    indices = indices.explicit
 
     result_nominal = np.unravel_index(na.as_named_array(indices.nominal), shape=shape)
     result_distribution = np.unravel_index(na.as_named_array(indices.distribution), shape=shape)
@@ -573,7 +573,7 @@ def allclose(
 
 @implements(np.nonzero)
 def nonzero(a: na.AbstractUncertainScalarArray) -> dict[str, na.UncertainScalarArray]:
-    a = a.array
+    a = a.explicit
 
     result = np.nonzero(a.nominal * np.prod(a.distribution, axis=a.axis_distribution))
 

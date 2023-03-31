@@ -175,7 +175,7 @@ class AbstractTestAbstractArray(
         assert isinstance(size, int)
 
     def test_array(self, array: na.AbstractArray):
-        assert isinstance(array.array, na.AbstractExplicitArray)
+        assert isinstance(array.explicit, na.AbstractExplicitArray)
 
     def test_type_array(self, array: na.AbstractArray):
         assert issubclass(array.type_array, na.AbstractExplicitArray)

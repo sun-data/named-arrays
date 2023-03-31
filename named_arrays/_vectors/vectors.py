@@ -62,7 +62,7 @@ class AbstractVectorArray(
 
     @property
     @abc.abstractmethod
-    def array(self: Self) -> AbstractExplicitVectorArray:
+    def explicit(self: Self) -> AbstractExplicitVectorArray:
         pass
 
     @property
@@ -153,12 +153,12 @@ class AbstractVectorArray(
             item: dict[str, int | slice | AbstractScalarOrVectorArray] | AbstractScalarOrVectorArray,
     ) -> Self:
 
-        array = self.array
+        array = self.explicit
         shape_array = array.shape
         components = array.components
 
         if isinstance(item, na.AbstractArray):
-            item = item.array
+            item = item.explicit
             shape_item = item.shape
 
             shape_base = {ax: shape_array[ax] for ax in shape_item if ax in shape_array}
@@ -187,7 +187,7 @@ class AbstractVectorArray(
             for ax in item:
                 if isinstance(item[ax], na.AbstractArray):
                     if item[ax].type_array_abstract == self.type_array_abstract:
-                        item[ax] = item[ax].array
+                        item[ax] = item[ax].explicit
                     elif isinstance(item[ax], na.AbstractScalar):
                         item[ax] = self.type_array.from_scalar(item[ax])
                     else:
@@ -304,7 +304,7 @@ class AbstractVectorArray(
 
     @property
     def broadcasted(self: Self) -> Self:
-        a = self.array
+        a = self.explicit
         return a.broadcast_to(a.shape)
 
 
@@ -359,12 +359,12 @@ class AbstractExplicitVectorArray(
         return int(np.array(tuple(self.shape.values())).prod())
 
     @property
-    def array(self: Self) -> AbstractExplicitVectorArray:
+    def explicit(self: Self) -> AbstractExplicitVectorArray:
         components = self.components
         components_result = dict()
         for c in components:
             if isinstance(components[c], na.AbstractArray):
-                components_result[c] = components[c].array
+                components_result[c] = components[c].explicit
             else:
                 components_result[c] = components[c]
         return self.type_array.from_components(components_result)
@@ -377,7 +377,7 @@ class AbstractImplicitVectorArray(
 ):
     @property
     def components(self) -> dict[str, na.ArrayLike]:
-        return self.array.components
+        return self.explicit.components
 
 
 @dataclasses.dataclass(eq=False, repr=False)

@@ -64,17 +64,17 @@ class AbstractTestAbstractScalar(
 ):
 
     def test_dtype(self, array: na.AbstractScalar):
-        assert array.dtype == array.array.dtype
+        assert array.dtype == array.explicit.dtype
         assert isinstance(array.dtype, np.dtype)
 
     def test_unit(self, array: na.AbstractScalar):
-        assert array.unit == array.array.unit
+        assert array.unit == array.explicit.unit
         unit = array.unit
         if unit is not None:
             assert isinstance(unit, u.UnitBase)
 
     def test_unit_normalized(self, array: na.AbstractScalar):
-        assert array.unit_normalized == array.array.unit_normalized
+        assert array.unit_normalized == array.explicit.unit_normalized
         if array.unit is None:
             assert array.unit_normalized == u.dimensionless_unscaled
         else:
@@ -548,7 +548,7 @@ class AbstractTestAbstractScalarArray(
             ):
                 super().test_percentile_like_functions(
                     func=func,
-                    array=array.array,
+                    array=array.explicit,
                     q=q,
                     axis=axis,
                     keepdims=keepdims,

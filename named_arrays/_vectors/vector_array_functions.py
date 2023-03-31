@@ -83,7 +83,7 @@ def array_function_default(
         where: na.AbstractScalarArray | na.AbstractVectorArray = np._NoValue,
 ) -> na.AbstractExplicitVectorArray:
 
-    a = a.array
+    a = a.explicit
     shape = na.shape_broadcasted(a, where)
 
     axis_normalized = tuple(shape) if axis is None else (axis, ) if isinstance(axis, str) else axis
@@ -143,7 +143,7 @@ def array_function_percentile_like(
         keepdims: bool = False,
 ) -> na.AbstractExplicitVectorArray:
 
-    a = a.array
+    a = a.explicit
     shape = a.shape
 
     axis_normalized = na.axis_normalized(a, axis)
@@ -190,7 +190,7 @@ def array_function_arg_reduce(
         axis: None | str | Sequence[str] = None,
 ) -> dict[str, na.AbstractVectorArray]:
 
-    a = a.array
+    a = a.explicit
     components = a.components
 
     if axis is not None:
@@ -235,7 +235,7 @@ def array_function_fft_like(
         norm: str = "backward"
 ) -> na.AbstractExplicitVectorArray:
 
-    a = a.array
+    a = a.explicit
     components = a.components
     shape = a.shape
 
@@ -269,7 +269,7 @@ def array_function_fftn_like(
         norm: str = "backward",
 ) -> na.AbstractExplicitVectorArray:
 
-    a = a.array
+    a = a.explicit
     components = a.components
     shape_a = a.shape
 
@@ -414,7 +414,7 @@ def sort(
         order: None | str | list[str] = None,
 ) -> na.AbstractExplicitVectorArray:
 
-    a = a.array
+    a = a.explicit
     shape_a = a.shape
     components = a.components
 
@@ -453,7 +453,7 @@ def argsort(
         order: None | str | list[str] = None,
 ) -> dict[str, na.AbstractExplicitVectorArray]:
 
-    a = a.array
+    a = a.explicit
     shape_a = a.shape
     components = a.components
 
@@ -492,7 +492,7 @@ def unravel_index(
         shape: dict[str, int],
 ) -> dict[str, na.AbstractExplicitVectorArray]:
 
-    indices = indices.array
+    indices = indices.explicit
     components = indices.components
     result = {ax: dict() for ax in indices.axes}
 
@@ -593,7 +593,7 @@ def allclose(
 
 @implements(np.nonzero)
 def nonzero(a: na.AbstractVectorArray):
-    a = a.array
+    a = a.explicit
     components = a.components
 
     components_accumulated = True
