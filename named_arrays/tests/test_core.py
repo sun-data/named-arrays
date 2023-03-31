@@ -178,7 +178,7 @@ class AbstractTestAbstractArray(
         assert isinstance(array.explicit, na.AbstractExplicitArray)
 
     def test_type_array(self, array: na.AbstractArray):
-        assert issubclass(array.type_array, na.AbstractExplicitArray)
+        assert issubclass(array.type_explicit, na.AbstractExplicitArray)
 
     def test_type_array_abstract(self, array: na.AbstractArray):
         assert issubclass(array.type_array_abstract, na.AbstractArray)
@@ -747,7 +747,7 @@ class AbstractTestAbstractArray(
 
         def test_unravel_index(self, array: na.AbstractArray):
             indices_raveled = na.ScalarArrayRange(0, array.size, axis='raveled').reshape(array.shape)
-            indices_raveled = indices_raveled * array.type_array.ones(shape=dict(), dtype=int)
+            indices_raveled = indices_raveled * array.type_explicit.ones(shape=dict(), dtype=int)
             result = np.unravel_index(
                 indices=indices_raveled,
                 shape=array.shape,

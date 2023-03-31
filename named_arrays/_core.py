@@ -109,7 +109,7 @@ def type_array(
     priority_max = 0
     for value in values:
         if isinstance(value, AbstractArray):
-            cls_tmp = value.type_array
+            cls_tmp = value.type_explicit
             priority_tmp = cls_tmp.__named_array_priority__
             if priority_tmp > priority_max:
                 priority_max = priority_tmp
@@ -221,7 +221,7 @@ class AbstractArray(
 
     @property
     @abc.abstractmethod
-    def type_array(self: Self) -> Type[AbstractExplicitArray]:
+    def type_explicit(self: Self) -> Type[AbstractExplicitArray]:
         """
         The :class:`AbstractExplicitArray` type corresponding to this array
         """

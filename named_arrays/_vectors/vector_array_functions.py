@@ -111,7 +111,7 @@ def array_function_default(
     if initial is not np._NoValue:
         kwargs_base["initial"] = initial
 
-    result = a.type_array()
+    result = a.type_explicit()
     for c in components:
         component = na.as_named_array(components[c])
         where_c = components_where[c]
@@ -167,7 +167,7 @@ def array_function_percentile_like(
         keepdims=keepdims,
     )
 
-    result = a.type_array()
+    result = a.type_explicit()
     for c in components:
         component = na.as_named_array(components[c])
         shape_c = na.broadcast_shapes(component.shape, shape_base)
@@ -220,7 +220,7 @@ def array_function_arg_reduce(
 
     result = dict()
     for ax in axes_result:
-        result[ax] = a.type_array()
+        result[ax] = a.type_explicit()
         for c in components:
             result[ax].components[c] = components_result[c].get(ax, None)
 
@@ -249,7 +249,7 @@ def array_function_fft_like(
         for c in components
     }
 
-    result = a.type_array()
+    result = a.type_explicit()
     for c in components:
         result.components[c] = func(
             a=components[c],
@@ -278,7 +278,7 @@ def array_function_fftn_like(
 
     shape_base = {ax: shape_a[ax] for ax in axes}
 
-    result = a.type_array()
+    result = a.type_explicit()
     for c in components:
         component = na.as_named_array(components[c])
         result.components[c] = func(
@@ -306,7 +306,7 @@ def broadcast_to(
 ) -> na.AbstractExplicitVectorArray:
     components = array.components
     components_result = {c: na.broadcast_to(array=components[c], shape=shape) for c in components}
-    return array.type_array.from_components(components_result)
+    return array.type_explicit.from_components(components_result)
 
 
 @implements(np.transpose)
@@ -316,7 +316,7 @@ def transpose(
 ) -> na.AbstractExplicitVectorArray:
 
     components = a.broadcasted.components
-    return a.type_array.from_components({c: np.transpose(a=components[c], axes=axes) for c in components})
+    return a.type_explicit.from_components({c: np.transpose(a=components[c], axes=axes) for c in components})
 
 
 @implements(np.moveaxis)
@@ -347,13 +347,13 @@ def moveaxis(
             source=tuple(src_and_dest[0] for src_and_dest in source_and_destination),
             destination=tuple(src_and_dest[1] for src_and_dest in source_and_destination),
         )
-    return a.type_array.from_components(components_result)
+    return a.type_explicit.from_components(components_result)
 
 
 @implements(np.reshape)
 def reshape(a: na.AbstractVectorArray, newshape: dict[str, int]) -> na.AbstractExplicitVectorArray:
     components = a.broadcasted.components
-    return a.type_array.from_components({c: np.reshape(a=components[c], newshape=newshape) for c in components})
+    return a.type_explicit.from_components({c: np.reshape(a=components[c], newshape=newshape) for c in components})
 
 
 @implements(np.linalg.inv)
@@ -378,7 +378,7 @@ def array_function_stack_like(
             vector_prototype = array
             break
 
-    arrays = [vector_prototype.type_array.from_scalar(a) if not isinstance(a, na.AbstractVectorArray) else a
+    arrays = [vector_prototype.type_explicit.from_scalar(a) if not isinstance(a, na.AbstractVectorArray) else a
               for a in arrays]
     shape = na.shape_broadcasted(*arrays)
     arrays = [a.broadcast_to(shape) for a in arrays]
@@ -386,7 +386,7 @@ def array_function_stack_like(
     components_arrays = [a.components for a in arrays]
 
     if out is None:
-        components_out = vector_prototype.type_array.from_scalar(out).components
+        components_out = vector_prototype.type_explicit.from_scalar(out).components
     else:
         components_out = out.components
 
@@ -401,7 +401,7 @@ def array_function_stack_like(
         )
 
     if out is None:
-        return vector_prototype.type_array.from_components(components_result)
+        return vector_prototype.type_explicit.from_components(components_result)
     else:
         return out
 
@@ -433,7 +433,7 @@ def sort(
 
     shape_base = {ax: shape_a[ax] for ax in axis}
 
-    result = a.type_array()
+    result = a.type_explicit()
     for c in components:
         component = na.as_named_array(components[c])
         if any(ax in axis for ax in component.axes):
@@ -472,7 +472,7 @@ def argsort(
 
     shape_base = {ax: shape_a[ax] for ax in axis}
 
-    result = {ax: a.type_array() for ax in shape_a}
+    result = {ax: a.type_explicit() for ax in shape_a}
     for c in components:
         component = na.as_named_array(components[c])
         if any(ax in axis for ax in component.axes):
@@ -504,7 +504,7 @@ def unravel_index(
         for ax in result_c:
             result[ax][c] = result_c[ax]
 
-    result = {ax: indices.type_array.from_components(result[ax]) for ax in result}
+    result = {ax: indices.type_explicit.from_components(result[ax]) for ax in result}
     return result
 
 
@@ -624,7 +624,7 @@ def nan_to_num(
         )
 
     if copy:
-        return x.type_array.from_components(components_result)
+        return x.type_explicit.from_components(components_result)
     else:
         if not isinstance(x, na.AbstractExplicitArray):
             raise ValueError("can't write to an array that is not an instance of `named_array.AbstractExplictArray`")

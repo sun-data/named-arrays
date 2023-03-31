@@ -114,7 +114,7 @@ class AbstractScalarArray(
         return AbstractScalarArray
 
     @property
-    def type_array(self: Self) -> Type[ScalarArray]:
+    def type_explicit(self: Self) -> Type[ScalarArray]:
         return ScalarArray
 
     @property

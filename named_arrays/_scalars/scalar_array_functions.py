@@ -91,7 +91,7 @@ def array_function_default(
 
     if out is not None:
         if not isinstance(out, na.ScalarArray):
-            raise ValueError(f"`out` should be `None` or an instance of `{a.type_array}`, got `{type(out)}`")
+            raise ValueError(f"`out` should be `None` or an instance of `{a.type_explicit}`, got `{type(out)}`")
         axes_ndarray = out.axes
         if not keepdims:
             axes_ndarray = axes_ndarray + tuple(ax for ax in shape if ax not in out.axes)

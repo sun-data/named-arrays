@@ -51,7 +51,7 @@ class AbstractCartesian2dVectorArray(
         return AbstractCartesian2dVectorArray
 
     @property
-    def type_array(self: Self) -> Type[Cartesian2dVectorArray]:
+    def type_explicit(self: Self) -> Type[Cartesian2dVectorArray]:
         return Cartesian2dVectorArray
 
     @property

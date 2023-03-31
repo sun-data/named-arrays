@@ -47,7 +47,7 @@ def array_function_default(
 
     if out is not None:
         if not isinstance(out, na.UncertainScalarArray):
-            raise ValueError(f"`out` must be `None or an instance of `{a.type_array}`, got `{type(out)}`")
+            raise ValueError(f"`out` must be `None or an instance of `{a.type_explicit}`, got `{type(out)}`")
         kwargs_nominal["out"] = out.nominal
         kwargs_distribution["out"] = out.distribution
     else:
@@ -116,7 +116,7 @@ def array_function_percentile_like(
 
     if out is not None:
         if not isinstance(out, na.UncertainScalarArray):
-            raise ValueError(f"`out` must be an instance of `{a.type_array}`, got `{type(out)}`")
+            raise ValueError(f"`out` must be an instance of `{a.type_explicit}`, got `{type(out)}`")
         kwargs_nominal["out"] = out.nominal
         kwargs_distribution["out"] = out.distribution
     else:

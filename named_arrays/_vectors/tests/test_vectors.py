@@ -94,24 +94,24 @@ class AbstractTestAbstractVectorArray(
                 if isinstance(item[ax], na.AbstractArray) and item[ax].type_array_abstract == array.type_array_abstract:
                     components_item_ax = item[ax].components
                 else:
-                    components_item_ax = array.type_array.from_scalar(item[ax]).components
+                    components_item_ax = array.type_explicit.from_scalar(item[ax]).components
                 for c in components:
                     components_item[c][ax] = components_item_ax[c]
 
         else:
             if not item.type_array_abstract == array.type_array_abstract:
-                components_item = array.type_array.from_scalar(item).components
+                components_item = array.type_explicit.from_scalar(item).components
             else:
                 components_item = item.components
                 item_accumulated = True
                 for c in components_item:
                     item_accumulated = item_accumulated & components_item[c]
-                components_item = item.type_array.from_scalar(item_accumulated).components
+                components_item = item.type_explicit.from_scalar(item_accumulated).components
 
         for c in components:
             components_expected[c] = na.as_named_array(components[c])[components_item[c]]
 
-        result_expected = array.type_array.from_components(components_expected)
+        result_expected = array.type_explicit.from_components(components_expected)
 
         result = array[item]
 
@@ -218,7 +218,7 @@ class AbstractTestAbstractVectorArray(
 
 
                 try:
-                    result_expected = array.type_array()
+                    result_expected = array.type_explicit()
                     for c in components:
                         component = na.as_named_array(array.components[c]).broadcast_to(shape)
                         result_expected.components[c] = func(component, **kwargs_components[c])
@@ -276,7 +276,7 @@ class AbstractTestAbstractVectorArray(
                     )
 
                 try:
-                    result_expected = array.type_array()
+                    result_expected = array.type_explicit()
                     for c in components:
                         component = na.as_named_array(array.components[c]).broadcast_to(shape)
                         result_expected.components[c] = func(component, **kwargs_components[c])
@@ -318,7 +318,7 @@ class AbstractTestAbstractVectorArray(
 
                 result = func(array, axis=axis)
 
-                result_expected = array.type_array()
+                result_expected = array.type_explicit()
                 for c in array.components:
                     result_expected.components[c] = func(array.broadcasted.components[c], axis=axis)
 
@@ -354,7 +354,7 @@ class AbstractTestAbstractVectorArray(
 
                 result = func(array, axes=axes, s=s)
 
-                result_expected = array.type_array()
+                result_expected = array.type_explicit()
                 for c in array.components:
                     result_expected.components[c] = func(
                         array.broadcasted.components[c],
@@ -387,7 +387,7 @@ class AbstractTestAbstractVectorArray(
             components_broadcasted = array_broadcasted.components
 
             if axis_normalized:
-                result_expected = array.type_array()
+                result_expected = array.type_explicit()
                 for c in components_broadcasted:
                     result_expected.components[c] = np.sort(components_broadcasted[c], axis=axis_normalized)
             else:
@@ -400,7 +400,7 @@ class AbstractTestAbstractVectorArray(
             components = array.components
 
             components_expected = {c: np.nan_to_num(components[c], copy=copy) for c in components}
-            result_expected = array.type_array.from_components(components_expected)
+            result_expected = array.type_explicit.from_components(components_expected)
 
             if not copy and isinstance(array, na.AbstractImplicitArray):
                 with pytest.raises(ValueError, match=r"can\'t write to an array that is not an instance of .*"):

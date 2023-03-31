@@ -39,7 +39,7 @@ class AbstractUncertainScalarArray(
     axis_distribution: ClassVar[str] = "_distribution"
 
     @property
-    def type_array(self) -> Type[UncertainScalarArray]:
+    def type_explicit(self) -> Type[UncertainScalarArray]:
         return UncertainScalarArray
 
     @property
@@ -340,7 +340,7 @@ class AbstractUncertainScalarArray(
                         o_distribution = o.distribution if isinstance(o.distribution, types) else None
                     else:
                         raise ValueError(
-                            f"`out` must be `None` or an instance of `{self.type_array}`, "
+                            f"`out` must be `None` or an instance of `{self.type_explicit}`, "
                             f"got {tuple(type(x) for x in out)}"
                         )
                 else:

@@ -30,7 +30,7 @@ class AbstractCartesianVectorArray(
 ):
     @property
     @abc.abstractmethod
-    def type_array(self: Self) -> Type[AbstractExplicitCartesianVectorArray]:
+    def type_explicit(self: Self) -> Type[AbstractExplicitCartesianVectorArray]:
         pass
 
     @property
@@ -46,7 +46,7 @@ class AbstractCartesianVectorArray(
     def __mul__(self: Self, other: na.ArrayLike | u.Unit) -> AbstractExplicitCartesianVectorArray:
         if isinstance(other, u.UnitBase):
             components = self.components
-            result = self.type_array()
+            result = self.type_explicit()
             for c in components:
                 result.components[c] = components[c] * other
             return result
@@ -56,7 +56,7 @@ class AbstractCartesianVectorArray(
     def __lshift__(self: Self, other: na.ArrayLike | u.UnitBase) -> AbstractExplicitCartesianVectorArray:
         if isinstance(other, u.UnitBase):
             components= self.components
-            result = self.type_array()
+            result = self.type_explicit()
             for c in components:
                 result.components[c] = components[c] << other
             return result
@@ -66,7 +66,7 @@ class AbstractCartesianVectorArray(
     def __truediv__(self: Self, other: na.ArrayLike | u.UnitBase) -> AbstractExplicitCartesianVectorArray:
         if isinstance(other, u.UnitBase):
             components = self.components
-            result = self.type_array()
+            result = self.type_explicit()
             for c in components:
                 result.components[c] = components[c] / other
             return result
@@ -136,7 +136,7 @@ class AbstractCartesianVectorArray(
                 component_result = (component_result, )
             for i in range(function.nout):
                 components_result[i][c] = component_result[i]
-        result = list(self.type_array.from_components(components_result[i]) for i in range(function.nout))
+        result = list(self.type_explicit.from_components(components_result[i]) for i in range(function.nout))
 
         for i in range(function.nout):
             if out[i] is not None:
@@ -193,15 +193,15 @@ class AbstractCartesianVectorUniformRandomSample(
     def explicit(self) -> AbstractExplicitCartesianVectorArray:
         start = self.start
         if not isinstance(start, na.AbstractVectorArray):
-            start = self.type_array.from_scalar(start)
+            start = self.type_explicit.from_scalar(start)
 
         stop = self.stop
         if not isinstance(stop, na.AbstractVectorArray):
-            stop = self.type_array.from_scalar(stop)
+            stop = self.type_explicit.from_scalar(stop)
 
         seed = self.seed
 
-        result = self.type_array()
+        result = self.type_explicit()
         components_start = start.components
         components_stop = stop.components
 
@@ -236,15 +236,15 @@ class AbstractCartesianVectorNormalRandomSample(
     def explicit(self) -> AbstractExplicitCartesianVectorArray:
         center = self.center
         if not isinstance(center, na.AbstractVectorArray):
-            center = self.type_array.from_scalar(center)
+            center = self.type_explicit.from_scalar(center)
 
         width = self.width
         if not isinstance(width, na.AbstractVectorArray):
-            width = self.type_array.from_scalar(width)
+            width = self.type_explicit.from_scalar(width)
 
         seed = self.seed
 
-        result = self.type_array()
+        result = self.type_explicit()
         components_center = center.components
         components_width = width.components
 
@@ -278,13 +278,13 @@ class AbstractCartesianVectorArrayRange(
     def explicit(self) -> AbstractExplicitCartesianVectorArray:
         start = self.start
         if not isinstance(start, na.AbstractVectorArray):
-            start = self.type_array.from_scalar(start)
+            start = self.type_explicit.from_scalar(start)
 
         stop = self.stop
         if not isinstance(stop, na.AbstractVectorArray):
-            stop = self.type_array.from_scalar(stop)
+            stop = self.type_explicit.from_scalar(stop)
 
-        result = self.type_array()
+        result = self.type_explicit()
         components_start = start.components
         components_stop = stop.components
 

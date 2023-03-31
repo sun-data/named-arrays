@@ -35,7 +35,7 @@ class AbstractVectorArray(
 
     @property
     @abc.abstractmethod
-    def type_array(self: Self) -> Type[AbstractExplicitVectorArray]:
+    def type_explicit(self: Self) -> Type[AbstractExplicitVectorArray]:
         pass
 
     @property
@@ -74,7 +74,7 @@ class AbstractVectorArray(
                 components_result[c] = components[c].centers
             else:
                 components_result[c] = components[c]
-        return self.type_array.from_components(components_result)
+        return self.type_explicit.from_components(components_result)
 
     def astype(
             self: Self,
@@ -102,7 +102,7 @@ class AbstractVectorArray(
             subok=subok,
             copy=copy,
         )
-        return self.type_array.from_components({c: components[c].astype(dtype=dtype[c], **kwargs) for c in components})
+        return self.type_explicit.from_components({c: components[c].astype(dtype=dtype[c], **kwargs) for c in components})
 
     def to(self: Self, unit: u.UnitBase | dict[str, None | u.UnitBase]) -> AbstractExplicitVectorArray:
         components = self.components
@@ -118,11 +118,11 @@ class AbstractVectorArray(
                 components_result[c] = components_c.to(unit[c])
             else:
                 components_result[c] = components[c]
-        return self.type_array.from_components(components_result)
+        return self.type_explicit.from_components(components_result)
 
     def add_axes(self: Self, axes: str | Sequence[str]) -> AbstractExplicitVectorArray:
         components = self.components
-        return self.type_array.from_components({c: na.add_axes(components[c], axes) for c in components})
+        return self.type_explicit.from_components({c: na.add_axes(components[c], axes) for c in components})
 
     def combine_axes(
             self: Self,
@@ -146,7 +146,7 @@ class AbstractVectorArray(
                 axis_new=axis_new
             )
 
-        return self.type_array.from_components(components_result)
+        return self.type_explicit.from_components(components_result)
 
     def _getitem(
             self: Self,
@@ -171,9 +171,9 @@ class AbstractVectorArray(
                 components_item = item.components
                 for c in components_item:
                     item_accumulated = item_accumulated & components_item[c]
-                item = self.type_array.from_scalar(item_accumulated)
+                item = self.type_explicit.from_scalar(item_accumulated)
             elif isinstance(item, na.AbstractScalar):
-                item = self.type_array.from_scalar(item)
+                item = self.type_explicit.from_scalar(item)
             else:
                 return NotImplemented
 
@@ -189,13 +189,13 @@ class AbstractVectorArray(
                     if item[ax].type_array_abstract == self.type_array_abstract:
                         item[ax] = item[ax].explicit
                     elif isinstance(item[ax], na.AbstractScalar):
-                        item[ax] = self.type_array.from_scalar(item[ax])
+                        item[ax] = self.type_explicit.from_scalar(item[ax])
                     else:
                         return NotImplemented
                 elif isinstance(item[ax], (int, slice)):
-                    item[ax] = self.type_array.from_scalar(item[ax])
+                    item[ax] = self.type_explicit.from_scalar(item[ax])
                 elif item[ax] is None:
-                    item[ax] = self.type_array.from_scalar(item[ax])
+                    item[ax] = self.type_explicit.from_scalar(item[ax])
                 else:
                     return NotImplemented
 
@@ -209,7 +209,7 @@ class AbstractVectorArray(
             else:
                 components_result[c] = components[c][na.as_named_array(item.components[c])]
 
-        return self.type_array.from_components(components_result)
+        return self.type_explicit.from_components(components_result)
 
     def _getitem_reversed(
             self: Self,
@@ -219,7 +219,7 @@ class AbstractVectorArray(
         if array.type_array_abstract == self.type_array_abstract:
             pass
         elif isinstance(array, na.ScalarArray):
-            array = self.type_array.from_scalar(array)
+            array = self.type_explicit.from_scalar(array)
         else:
             return NotImplemented
         return array._getitem(item)
@@ -367,7 +367,7 @@ class AbstractExplicitVectorArray(
                 components_result[c] = components[c].explicit
             else:
                 components_result[c] = components[c]
-        return self.type_array.from_components(components_result)
+        return self.type_explicit.from_components(components_result)
 
 
 @dataclasses.dataclass(eq=False, repr=False)
