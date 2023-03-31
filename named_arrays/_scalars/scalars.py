@@ -1136,20 +1136,6 @@ class ScalarLinearSpace(
                 axis=self.axis,
             )
 
-#
-# @dataclasses.dataclass(eq=False, repr=False)
-# class _RandomSpaceMixin(_SpaceMixin):
-#
-#     seed: typ.Optional[int] = None
-#
-#     def __post_init__(self):
-#         if self.seed is None:
-#             self.seed = random.randint(0, 10 ** 12)
-#
-#     @property
-#     def _rng(self: _RandomSpaceMixinT) -> np.random.Generator:
-#         return np.random.default_rng(seed=self.seed)
-
 
 @dataclasses.dataclass(eq=False, repr=False)
 class ScalarStratifiedRandomSpace(
