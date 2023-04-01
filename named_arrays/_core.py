@@ -22,6 +22,7 @@ __all__ = [
     'indices',
     'flatten_axes',
     'axis_normalized',
+    'explicit',
     'AbstractArray',
     'ArrayLike',
     'AbstractExplicitArray',
@@ -190,6 +191,26 @@ def axis_normalized(
     else:
         result = tuple(axis)
     return result
+
+
+def explicit(value: Any | AbstractArray):
+    """
+    Converts an array to its explicit version if possible.
+
+    Parameters
+    ----------
+    value
+        any value or an instance of :class:`AbstractArray`
+
+    Returns
+    -------
+        If an instance of :class:`AbstractArray`, returns :attr:`AbstractArray.explicit` otherwise just returns the
+        input value.
+    """
+    if isinstance(value, AbstractArray):
+        return value.explicit
+    else:
+        return value
 
 
 @dataclasses.dataclass(eq=False, repr=False)
