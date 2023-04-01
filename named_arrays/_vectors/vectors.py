@@ -400,7 +400,7 @@ class AbstractVectorUniformRandomSample(
 ):
     start: StartT = dataclasses.MISSING
     stop: StopT = dataclasses.MISSING
-    shape_random: dict[str, int] = None
+    shape_random: None | dict[str, int] = None
     seed: None | int = None
 
     @property
