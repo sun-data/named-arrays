@@ -825,12 +825,29 @@ class ScalarUniformRandomSample(
 
     @property
     def explicit(self: Self) -> ScalarArray:
+
         start = self.start
-        if not isinstance(start, na.AbstractArray):
+        if isinstance(start, na.AbstractArray):
+            if isinstance(start, na.AbstractScalarArray):
+                pass
+            else:
+                raise TypeError(
+                    f"if `start` is an instance of `AbstractArray`, it must be an instance of `AbstractScalarArray`, "
+                    f"got {type(start)}"
+                )
+        else:
             start = ScalarArray(start)
 
         stop = self.stop
-        if not isinstance(stop, na.AbstractArray):
+        if isinstance(stop, na.AbstractArray):
+            if isinstance(stop, na.AbstractScalarArray):
+                pass
+            else:
+                raise TypeError(
+                    f"if `stop` is an instance of `AbstractArray`, it must be an instance of `AbstractScalarArray`, "
+                    f"got {type(stop)}"
+                )
+        else:
             stop = ScalarArray(stop)
 
         shape_random = self.shape_random if self.shape_random is not None else dict()
