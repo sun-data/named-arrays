@@ -464,7 +464,7 @@ class AbstractVectorNormalRandomSample(
 ):
     center: CenterT = dataclasses.MISSING
     width: WidthT = dataclasses.MISSING
-    shape_random: dict[str, int] = None
+    shape_random: None | dict[str, int] = None
     seed: None | int = None
 
     @property
