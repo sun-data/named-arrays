@@ -895,11 +895,27 @@ class ScalarNormalRandomSample(
     @property
     def explicit(self: Self) -> ScalarArray:
         center = self.center
-        if not isinstance(center, na.AbstractArray):
+        if isinstance(center, na.AbstractArray):
+            if isinstance(center, na.AbstractScalarArray):
+                pass
+            else:
+                raise TypeError(
+                    f"if `center` is an instance of `AbstractArray` it must be an instance of `AbstractScalarArray`, "
+                    f"got `{type(center)}`"
+                )
+        else:
             center = ScalarArray(center)
 
         width = self.width
-        if not isinstance(width, na.AbstractArray):
+        if isinstance(width, na.AbstractArray):
+            if isinstance(width, na.AbstractScalarArray):
+                pass
+            else:
+                raise TypeError(
+                    f"if `width` is an instance of `AbstractArray` it must be an instance of `AbstractScalarArray`, "
+                    f"got `{type(width)}`"
+                )
+        else:
             width = ScalarArray(width)
 
         shape_random = self.shape_random if self.shape_random is not None else dict()
