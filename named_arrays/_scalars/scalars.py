@@ -851,7 +851,7 @@ class ScalarUniformRandomSample(
             stop = ScalarArray(stop)
 
         shape_random = self.shape_random if self.shape_random is not None else dict()
-        shape = na.shape_broadcasted(start, stop) | shape_random
+        shape = na.broadcast_shapes(start.shape, stop.shape, shape_random)
 
         start = start.ndarray_aligned(shape)
         stop = stop.ndarray_aligned(shape)
@@ -919,7 +919,7 @@ class ScalarNormalRandomSample(
             width = ScalarArray(width)
 
         shape_random = self.shape_random if self.shape_random is not None else dict()
-        shape = na.shape_broadcasted(center, width) | shape_random
+        shape = na.broadcast_shapes(center.shape, width.shape, shape_random)
 
         center = center.ndarray_aligned(shape)
         width = width.ndarray_aligned(shape)
@@ -975,7 +975,7 @@ class ScalarPoissonRandomSample(
             center = ScalarArray(center)
 
         shape_random = self.shape_random if self.shape_random is not None else dict()
-        shape = na.shape_broadcasted(center) | shape_random
+        shape = na.broadcast_shapes(center.shape, shape_random)
 
         center = center.ndarray_aligned(shape)
 
