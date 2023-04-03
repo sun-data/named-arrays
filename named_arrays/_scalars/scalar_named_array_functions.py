@@ -18,6 +18,23 @@ def _implements(function: Callable):
     return decorator
 
 
+class _ScalarTypeError(TypeError):
+    pass
+
+
+def _normalize(a: float | u.Quantity | na.AbstractScalarArray) -> na.AbstractScalarArray:
+
+    if isinstance(a, na.AbstractArray):
+        if isinstance(a, na.AbstractScalarArray):
+            result = a
+        else:
+            raise _ScalarTypeError
+    else:
+        result = na.ScalarArray(a)
+
+    return result
+
+
 @_implements(na.random.uniform)
 def random_uniform(
         start: float | u.Quantity | na.AbstractScalarArray,
@@ -26,25 +43,11 @@ def random_uniform(
         seed: None | int = None,
 ) -> None | na.ScalarArray:
 
-    if isinstance(start, na.AbstractArray):
-        if isinstance(start, na.AbstractScalarArray):
-            pass
-        else:
-            return NotImplemented
-    elif start is None:
-        return None
-    else:
-        start = na.ScalarArray(start)
-
-    if isinstance(stop, na.AbstractArray):
-        if isinstance(stop, na.AbstractScalarArray):
-            pass
-        else:
-            return NotImplemented
-    elif stop is None:
-        return None
-    else:
-        stop = na.ScalarArray(stop)
+    try:
+        start = _normalize(start)
+        stop = _normalize(stop)
+    except _ScalarTypeError:
+        return NotImplemented
 
     shape_random = shape_random if shape_random is not None else dict()
     shape = na.broadcast_shapes(start.shape, stop.shape, shape_random)
