@@ -10,10 +10,13 @@ import astropy.units as u
 import named_arrays as na
 
 __all__ = [
+    'UncertainScalarStartT',
+    'UncertainScalarStopT',
     'AbstractUncertainScalarArray',
     'UncertainScalarArray',
     'UniformUncertainScalarArray',
     'NormalUncertainScalarArray',
+    'UncertainScalarUniformRandomSample',
 ]
 
 NominalArrayT = TypeVar(
@@ -25,6 +28,8 @@ DistributionArrayT = TypeVar(
     bound=None | float | complex | np.ndarray | u.Quantity | na.AbstractScalarArray,
 )
 WidthT = TypeVar('WidthT', bound=int | float | np.ndarray | u.Quantity | na.AbstractScalarArray)
+UncertainScalarStartT = TypeVar("UncertainScalarStartT", bound=float | u.Quantity | na.AbstractScalar)
+UncertainScalarStopT = TypeVar("UncertainScalarStopT", bound=float | u.Quantity | na.AbstractScalar)
 
 _axis_distribution_default = "_distribution"
 _num_distribution_default = 11
@@ -88,11 +93,6 @@ class AbstractUncertainScalarArray(
     @property
     def unit(self: Self) -> None | u.Unit:
         return na.unit(self.nominal)
-
-    @property
-    @abc.abstractmethod
-    def explicit(self) -> UncertainScalarArray[na.ScalarArray, na.ScalarArray]:
-        pass
 
     def astype(
             self,
@@ -425,6 +425,18 @@ class AbstractUncertainScalarArray(
 
         return NotImplemented
 
+    def __named_array_function__(self, func, *args, **kwargs):
+        result = super().__named_array_function__(func, *args, **kwargs)
+        if result is not NotImplemented:
+            return result
+
+        from . import uncertainties_named_array_functions
+
+        if func in uncertainties_named_array_functions.HANDLED_FUNCTIONS:
+            return uncertainties_named_array_functions.HANDLED_FUNCTIONS[func](*args, **kwargs)
+
+        return NotImplemented
+
     @property
     def broadcasted(self) -> na.UncertainScalarArray:
         a = self.explicit
@@ -528,7 +540,26 @@ class AbstractImplicitUncertainScalarArray(
     AbstractUncertainScalarArray,
     na.AbstractImplicitArray,
 ):
-    pass
+
+    def _attr_normalized(self, name: str) -> UncertainScalarArray:
+
+        attr = getattr(self, name)
+
+        if isinstance(attr, na.AbstractArray):
+            if isinstance(attr, na.AbstractScalar):
+                if isinstance(attr, na.AbstractUncertainScalarArray):
+                    result = attr
+                else:
+                    result = UncertainScalarArray(attr, attr)
+            else:
+                raise TypeError(
+                    f"if `{name}` is an instance of `AbstractArray`, it must be an instance of `AbstractScalar`, "
+                    f"got {type(attr)}"
+                )
+        else:
+            result = UncertainScalarArray(attr, attr)
+
+        return result
 
 
 @dataclasses.dataclass(eq=False, repr=False)
@@ -594,3 +625,28 @@ class NormalUncertainScalarArray(
     def centers(self) -> Self:
         return self
 
+
+@dataclasses.dataclass(eq=False, repr=False)
+class AbstractUncertainScalarRandomSample(
+    AbstractImplicitUncertainScalarArray,
+    na.AbstractRandomSample,
+):
+    @property
+    def nominal(self) -> float | u.Quantity | na.AbstractScalarArray:
+        return self.explicit.nominal
+
+    @property
+    def distribution(self) -> na.AbstractScalarArray:
+        return self.explicit.distribution
+
+    @property
+    def num_distribution(self) -> int:
+        return self.explicit.num_distribution
+
+
+@dataclasses.dataclass(eq=False, repr=False)
+class UncertainScalarUniformRandomSample(
+    AbstractUncertainScalarRandomSample,
+    na.AbstractUniformRandomSample[UncertainScalarStartT, UncertainScalarStopT],
+):
+    pass

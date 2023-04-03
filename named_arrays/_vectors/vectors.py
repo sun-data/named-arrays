@@ -25,6 +25,9 @@ __all__ = [
     'AbstractVectorGeometricSpace',
 ]
 
+VectorStartT = TypeVar('VectorStartT', bound="float | complex | u.Quantity | na.AbstractScalar | AbstractVectorArray")
+VectorStopT = TypeVar('VectorStopT', bound="float | complex | u.Quantity | na.AbstractScalar | AbstractVectorArray")
+
 
 @dataclasses.dataclass(eq=False, repr=False)
 class AbstractVectorArray(
@@ -65,11 +68,6 @@ class AbstractVectorArray(
         components = self.components
         components = {c: na.value(components[c]) for c in components}
         return self.type_explicit.from_components(components)
-
-    @property
-    @abc.abstractmethod
-    def explicit(self: Self) -> AbstractExplicitVectorArray:
-        pass
 
     @property
     def centers(self: Self) -> AbstractExplicitVectorArray:
@@ -308,6 +306,18 @@ class AbstractVectorArray(
 
         return NotImplemented
 
+    def __named_array_function__(self, func, *args, **kwargs):
+        result = super().__named_array_function__(func, *args, **kwargs)
+        if result is not NotImplemented:
+            return result
+
+        from . import vector_named_array_functions
+
+        if func in vector_named_array_functions.HANDLED_FUNCTIONS:
+            return vector_named_array_functions.HANDLED_FUNCTIONS[func](*args, **kwargs)
+
+        return NotImplemented
+
     @property
     def broadcasted(self: Self) -> Self:
         a = self.explicit
@@ -385,6 +395,25 @@ class AbstractImplicitVectorArray(
     def components(self) -> dict[str, na.ArrayLike]:
         return self.explicit.components
 
+    def _attr_normalized(self, name: str) -> AbstractExplicitVectorArray:
+
+        attr = getattr(self, name)
+
+        if isinstance(attr, na.AbstractArray):
+            if attr.type_abstract == self.type_abstract:
+                result = attr
+            elif isinstance(attr, na.AbstractScalar):
+                result = self.type_explicit.from_scalar(attr)
+            else:
+                raise ValueError(
+                    f"if `{name}` is an instance of `AbstractArray` it must be an instance of `{self.type_abstract}` "
+                    f"or `AbstractScalar`, got {type(attr)}"
+                )
+        else:
+            result = self.type_explicit.from_scalar(attr)
+
+        return result
+
 
 @dataclasses.dataclass(eq=False, repr=False)
 class AbstractVectorRandomSample(
@@ -401,61 +430,9 @@ StopT = TypeVar('StopT', bound=float | complex | u.Quantity | na.AbstractScalar 
 @dataclasses.dataclass(eq=False, repr=False)
 class AbstractVectorUniformRandomSample(
     AbstractVectorRandomSample,
-    na.AbstractUniformRandomSample,
-    Generic[StartT, StopT]
+    na.AbstractUniformRandomSample[VectorStartT, VectorStopT],
 ):
-    start: StartT = dataclasses.MISSING
-    stop: StopT = dataclasses.MISSING
-    shape_random: None | dict[str, int] = None
-    seed: None | int = None
-
-    @property
-    def explicit(self) -> AbstractExplicitVectorArray:
-
-        start = self.start
-        if isinstance(start, na.AbstractArray):
-            if start.type_abstract == self.type_abstract:
-                pass
-            elif isinstance(start, na.AbstractScalar):
-                start = self.type_explicit.from_scalar(start)
-            else:
-                raise ValueError(
-                    f"`start` must either be an instance of {float}, {u.Quantity}, {na.AbstractScalar},"
-                    f" or {self.type_abstract}, got {type(start)}"
-                )
-        else:
-            start = self.type_explicit.from_scalar(start)
-
-        stop = self.stop
-        if isinstance(stop, na.AbstractArray):
-            if stop.type_abstract == self.type_abstract:
-                pass
-            elif isinstance(stop, na.AbstractScalar):
-                stop = self.type_explicit.from_scalar(stop)
-            else:
-                raise ValueError(
-                    f"`stop` must either be an instance of {float}, {u.Quantity}, {na.AbstractScalar},"
-                    f" or {self.type_abstract}, got {type(stop)}"
-                )
-        else:
-            stop = self.type_explicit.from_scalar(stop)
-
-        seed = self.seed
-
-        result = self.type_explicit()
-        components_start = start.components
-        components_stop = stop.components
-
-        for c in result.components:
-            result.components[c] = na.ScalarUniformRandomSample(
-                start=components_start[c],
-                stop=components_stop[c],
-                shape_random=self.shape_random,
-                seed=seed,
-            ).explicit
-            seed += 1
-
-        return result
+    pass
 
 
 CenterT = TypeVar('CenterT', bound=float | complex | u.Quantity | na.AbstractScalar | AbstractVectorArray)

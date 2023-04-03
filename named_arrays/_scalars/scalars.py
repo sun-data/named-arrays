@@ -10,6 +10,8 @@ import astropy.units as u
 import named_arrays as na
 
 __all__ = [
+    'ScalarStartT',
+    'ScalarStopT',
     'as_named_array',
     'AbstractScalar',
     'AbstractScalarArray',
@@ -31,6 +33,8 @@ __all__ = [
 NDArrayT = TypeVar('NDArrayT', bound=npt.ArrayLike)
 StartT = TypeVar('StartT', bound='ScalarLike')
 StopT = TypeVar('StopT', bound='ScalarLike')
+ScalarStartT = TypeVar('ScalarStartT', bound='ScalarLike')
+ScalarStopT = TypeVar('ScalarStopT', bound='ScalarLike')
 CenterT = TypeVar('CenterT', bound='ScalarLike')
 WidthT = TypeVar('WidthT', bound='ScalarLike')
 StartExponentT = TypeVar('StartExponentT', bound='ScalarLike')
@@ -482,6 +486,18 @@ class AbstractScalarArray(
 
         return NotImplemented
 
+    def __named_array_function__(self, func, *args, **kwargs):
+        result = super().__named_array_function__(func, *args, **kwargs)
+        if result is not NotImplemented:
+            return result
+
+        from . import scalar_named_array_functions
+
+        if func in scalar_named_array_functions.HANDLED_FUNCTIONS:
+            return scalar_named_array_functions.HANDLED_FUNCTIONS[func](*args, **kwargs)
+
+        return NotImplemented
+
     def matrix_multiply(
             self: Self,
             other: AbstractScalar,
@@ -810,6 +826,23 @@ class AbstractImplicitScalarArray(
     def unit(self: Self) -> None | u.Unit:
         return self.explicit.unit
 
+    def _attr_normalized(self, name: str) -> ScalarArray:
+
+        attr = getattr(self, name)
+
+        if isinstance(attr, na.AbstractArray):
+            if isinstance(attr, na.AbstractScalarArray):
+                result = attr
+            else:
+                raise TypeError(
+                    f"if `{name}` is an instance of `AbstractArray`, it must be an instance of `AbstractScalarArray`, "
+                    f"got {type(attr)}"
+                )
+        else:
+            result = ScalarArray(attr)
+
+        return result
+
 
 @dataclasses.dataclass(eq=False, repr=False)
 class AbstractScalarRandomSample(
@@ -822,70 +855,9 @@ class AbstractScalarRandomSample(
 @dataclasses.dataclass(eq=False, repr=False)
 class ScalarUniformRandomSample(
     AbstractScalarRandomSample,
-    na.AbstractUniformRandomSample,
-    Generic[StartT, StopT],
+    na.AbstractUniformRandomSample[ScalarStartT, ScalarStopT],
 ):
-    start: StartT = dataclasses.MISSING
-    stop: StopT = dataclasses.MISSING
-    shape_random: dict[str, int] = None
-    seed: None | int = None
-
-    @property
-    def explicit(self: Self) -> ScalarArray:
-
-        start = self.start
-        if isinstance(start, na.AbstractArray):
-            if isinstance(start, na.AbstractScalarArray):
-                pass
-            else:
-                raise TypeError(
-                    f"if `start` is an instance of `AbstractArray`, it must be an instance of `AbstractScalarArray`, "
-                    f"got {type(start)}"
-                )
-        else:
-            start = ScalarArray(start)
-
-        stop = self.stop
-        if isinstance(stop, na.AbstractArray):
-            if isinstance(stop, na.AbstractScalarArray):
-                pass
-            else:
-                raise TypeError(
-                    f"if `stop` is an instance of `AbstractArray`, it must be an instance of `AbstractScalarArray`, "
-                    f"got {type(stop)}"
-                )
-        else:
-            stop = ScalarArray(stop)
-
-        shape_random = self.shape_random if self.shape_random is not None else dict()
-        shape = na.broadcast_shapes(start.shape, stop.shape, shape_random)
-
-        start = start.ndarray_aligned(shape)
-        stop = stop.ndarray_aligned(shape)
-
-        unit = None
-        if isinstance(start, u.Quantity):
-            unit = start.unit
-            start = start.value
-            stop = stop.to(unit).value
-
-        value = self._rng.uniform(
-            low=start,
-            high=stop,
-            size=tuple(shape.values()),
-        )
-
-        if unit is not None:
-            value = value << unit
-
-        return ScalarArray(
-            ndarray=value,
-            axes=tuple(shape.keys())
-        )
-
-    @property
-    def centers(self: Self) -> Self:
-        return self
+    pass
 
 
 @dataclasses.dataclass(eq=False, repr=False)

@@ -1,10 +1,12 @@
 from __future__ import annotations
-from typing import Sequence, overload, Type
+from typing import Sequence, overload, Type, Any, Callable
+import functools
 import numpy as np
 import astropy.units as u
 import named_arrays as na
 
 __all__ = [
+    '_named_array_function',
     'ndim',
     'shape',
     'broadcast_to',
@@ -12,6 +14,32 @@ __all__ = [
     'concatenate',
     'add_axes',
 ]
+
+
+def _is_subclass(a: Any, b: Any):
+    if type(a) == type(b):
+        return 0
+    elif isinstance(a, type(b)):
+        return 1
+    elif isinstance(b, type(a)):
+        return -1
+    else:
+        return 0
+
+
+def _named_array_function(func: Callable, *args, **kwargs):
+    arrays_args = tuple(arg for arg in args if isinstance(arg, na.AbstractArray))
+    arrays_kwargs = tuple(kwargs[k] for k in kwargs if isinstance(kwargs[k], na.AbstractArray))
+    arrays = arrays_args + arrays_kwargs
+
+    arrays = sorted(arrays, key=functools.cmp_to_key(_is_subclass))
+
+    for array in arrays:
+        res = array.__named_array_function__(func, *args, **kwargs)
+        if res is not NotImplemented:
+            return res
+
+    raise TypeError("all types returned `NotImplemented`")
 
 
 def ndim(a: na.AbstractArray) -> int:

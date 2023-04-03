@@ -48,6 +48,10 @@ __all__ = [
 QuantityLike = Union[int, float, complex, np.ndarray, u.Quantity]
 
 
+StartT = TypeVar("StartT", bound="QuantityLike | AbstractArray")
+StopT = TypeVar("StopT", bound="QuantityLike | AbstractArray")
+
+
 def get_dtype(
         value: bool | int | float | complex | str | np.ndarray | AbstractArray,
 ) -> np.dtype:
@@ -598,6 +602,12 @@ class AbstractArray(
 
         return NotImplemented
 
+    def __named_array_function__(self, func, *args, **kwargs):
+        """
+        Method used to dispatch custom named array functions
+        """
+        return NotImplemented
+
     def broadcast_to(
             self: Self,
             shape: dict[str, int],
@@ -894,6 +904,12 @@ class AbstractImplicitArray(
     def shape(self: Self) -> dict[str, int]:
         return self.explicit.shape
 
+    @abc.abstractmethod
+    def _attr_normalized(self, name: str) -> AbstractExplicitArray:
+        """
+        Similar to :func:`getattr`, but normalizes it to an instance of :class:`AbstractExplicitArray`
+        """
+
 
 @dataclasses.dataclass(eq=False, repr=False)
 class AbstractRandomMixin(
@@ -990,8 +1006,29 @@ class AbstractRandomSample(
 class AbstractUniformRandomSample(
     AbstractRangeMixin,
     AbstractRandomSample,
+    Generic[StartT, StopT],
 ):
-    pass
+    start: StartT = dataclasses.MISSING
+    stop: StopT = dataclasses.MISSING
+    shape_random: None | dict[str, int] = None
+    seed: None | int = None
+
+    @property
+    def explicit(self) -> AbstractExplicitArray:
+
+        start = self._attr_normalized("start")
+        stop = self._attr_normalized("stop")
+
+        return na.random.uniform(
+            start=start,
+            stop=stop,
+            shape_random=self.shape_random,
+            seed=self.seed,
+        )
+
+    @property
+    def centers(self: Self) -> Self:
+        return self
 
 
 @dataclasses.dataclass
