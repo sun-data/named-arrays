@@ -42,7 +42,7 @@ extensions = [
 autosummary_generate = True  # Turn on sphinx.ext.autosummary
 autosummary_imported_members = True
 # autoclass_content = 'both'
-# autodoc_typehints = "description"
+autodoc_typehints = "description"
 
 # autosummary_filename_map = {
 #     'kgpy.optics.Surface': 'kgpy.optics.Surface_cls',
