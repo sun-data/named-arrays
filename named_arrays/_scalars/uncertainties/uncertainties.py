@@ -554,8 +554,8 @@ class UniformUncertainScalarArray(
     @property
     def explicit(self) -> UncertainScalarArray:
         return UncertainScalarArray(
-            nominal=na.as_named_array(self.nominal).explicit,
-            distribution=na.as_named_array(self.distribution).explicit,
+            nominal=na.explicit(self.nominal),
+            distribution=na.explicit(self.distribution),
         )
 
     @property
@@ -586,8 +586,8 @@ class NormalUncertainScalarArray(
     @property
     def explicit(self) -> UncertainScalarArray:
         return UncertainScalarArray(
-            nominal=na.as_named_array(self.nominal).explicit,
-            distribution=na.as_named_array(self.distribution).explicit,
+            nominal=na.explicit(self.nominal),
+            distribution=na.explicit(self.distribution),
         )
 
     @property
