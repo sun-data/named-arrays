@@ -444,10 +444,10 @@ class UncertainScalarArray(
     distribution: DistributionArrayT = dataclasses.MISSING
 
     def __post_init__(self):
-        if self.axis_distribution not in na.shape(self.distribution):
+        if self.axis_distribution in na.shape(self.nominal):
             raise ValueError(
-                f"`axis_distribution`, '{self.axis_distribution}' not in `distribution` array with "
-                f"shape {na.shape(self.distribution)}"
+                f"`axis_distribution`, '{self.axis_distribution}' should not be in `nominal` array with "
+                f"shape {na.shape(self.nominal)}"
             )
 
     @classmethod
