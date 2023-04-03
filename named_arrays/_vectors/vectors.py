@@ -61,6 +61,12 @@ class AbstractVectorArray(
         return self.components
 
     @property
+    def value(self) -> na.AbstractExplicitVectorArray:
+        components = self.components
+        components = {c: na.value(components[c]) for c in components}
+        return self.type_explicit.from_components(components)
+
+    @property
     @abc.abstractmethod
     def explicit(self: Self) -> AbstractExplicitVectorArray:
         pass

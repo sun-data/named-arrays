@@ -174,6 +174,12 @@ class AbstractTestAbstractArray(
         size = array.size
         assert isinstance(size, int)
 
+    def test_value(self, array: na.AbstractArray):
+        result = array.value
+        assert isinstance(result, array.type_abstract)
+        assert isinstance(result + 1, array.type_abstract)
+
+
     def test_array(self, array: na.AbstractArray):
         assert isinstance(array.explicit, na.AbstractExplicitArray)
 

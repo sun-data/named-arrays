@@ -79,6 +79,13 @@ class AbstractUncertainScalarArray(
         )
 
     @property
+    def value(self) -> UncertainScalarArray:
+        return self.type_explicit(
+            nominal=na.value(self.nominal),
+            distribution=na.value(self.distribution),
+        )
+
+    @property
     def unit(self: Self) -> None | u.Unit:
         return na.unit(self.nominal)
 

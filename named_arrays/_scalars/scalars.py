@@ -127,6 +127,13 @@ class AbstractScalarArray(
         built-in python type such as a :class:`int`, :class:`float`, or :class:`bool`
         """
 
+    @property
+    def value(self: Self) -> ScalarArray:
+        return self.type_explicit(
+            ndarray=na.value(self.ndarray),
+            axes=self.axes,
+        )
+
     def astype(
             self: Self,
             dtype: str | np.dtype | Type,

@@ -13,6 +13,7 @@ import named_arrays as na
 __all__ = [
     'QuantityLike',
     'get_dtype',
+    'value',
     'unit',
     'unit_normalized',
     'type_array',
@@ -76,6 +77,27 @@ def get_dtype(
     else:
         return np.array(value).dtype
 
+
+def value(a: float | u.Quantity | AbstractArray):
+    """
+    Remove the units (if they exist) from the input.
+
+    Parameters
+    ----------
+    a
+        A numeric value that may or may not have associated units
+
+    Returns
+    -------
+        The same numeric value, but guaranteed to be dimensionless.
+    """
+
+    if isinstance(a, AbstractArray):
+        return a.value
+    elif isinstance(a, u.Quantity):
+        return a.value
+    else:
+        return a
 
 def unit(
         value: float | complex | np.ndarray | u.UnitBase | u.Quantity | AbstractArray
@@ -285,6 +307,13 @@ class AbstractArray(
     def size(self: Self) -> int:
         """
         Total number of elements in the array. Equivalent to :attr:`numpy.ndarray.size`
+        """
+
+    @property
+    @abc.abstractmethod
+    def value(self: Self) -> Self:
+        """
+        Returns a new array with its units removed, if they exist
         """
 
     @property
@@ -856,6 +885,10 @@ class AbstractImplicitArray(
     @property
     def size(self: Self) -> int:
         return self.explicit.size
+
+    @property
+    def value(self: Self) -> Self:
+        return self.explicit.value
 
     @property
     def shape(self: Self) -> dict[str, int]:
