@@ -261,6 +261,7 @@ def _cartesian_2d_normal_random_samples() -> list[na.Cartesian2dVectorNormalRand
     ]
     widths = [
         10,
+        na.UniformUncertainScalarArray(10, width=1, num_distribution=_num_distribution),
         na.Cartesian2dVectorArray(x=10, y=11),
         na.Cartesian2dVectorArray(
             x=na.ScalarLinearSpace(10, 11, axis='x', num=_num_x),

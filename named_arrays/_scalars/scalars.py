@@ -863,69 +863,9 @@ class ScalarUniformRandomSample(
 @dataclasses.dataclass(eq=False, repr=False)
 class ScalarNormalRandomSample(
     AbstractScalarRandomSample,
-    na.AbstractNormalRandomSample,
-    Generic[CenterT, WidthT],
+    na.AbstractNormalRandomSample[CenterT, WidthT],
 ):
-    center: CenterT = dataclasses.MISSING
-    width: WidthT = dataclasses.MISSING
-    shape_random: None | dict[str, int] = None
-    seed: None | int = None
-
-    @property
-    def explicit(self: Self) -> ScalarArray:
-        center = self.center
-        if isinstance(center, na.AbstractArray):
-            if isinstance(center, na.AbstractScalarArray):
-                pass
-            else:
-                raise TypeError(
-                    f"if `center` is an instance of `AbstractArray` it must be an instance of `AbstractScalarArray`, "
-                    f"got `{type(center)}`"
-                )
-        else:
-            center = ScalarArray(center)
-
-        width = self.width
-        if isinstance(width, na.AbstractArray):
-            if isinstance(width, na.AbstractScalarArray):
-                pass
-            else:
-                raise TypeError(
-                    f"if `width` is an instance of `AbstractArray` it must be an instance of `AbstractScalarArray`, "
-                    f"got `{type(width)}`"
-                )
-        else:
-            width = ScalarArray(width)
-
-        shape_random = self.shape_random if self.shape_random is not None else dict()
-        shape = na.broadcast_shapes(center.shape, width.shape, shape_random)
-
-        center = center.ndarray_aligned(shape)
-        width = width.ndarray_aligned(shape)
-
-        unit = None
-        if isinstance(center, u.Quantity):
-            unit = center.unit
-            center = center.value
-            width = width.to(unit).value
-
-        value = self._rng.normal(
-            loc=center,
-            scale=width,
-            size=tuple(shape.values()),
-        )
-
-        if unit is not None:
-            value = value << unit
-
-        return ScalarArray(
-            ndarray=value,
-            axes=tuple(shape.keys())
-        )
-
-    @property
-    def centers(self: Self) -> Self:
-        return self
+    pass
 
 
 @dataclasses.dataclass(eq=False, repr=False)

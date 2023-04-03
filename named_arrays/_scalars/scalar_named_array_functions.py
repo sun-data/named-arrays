@@ -88,3 +88,58 @@ def random_uniform(
         ndarray=value,
         axes=tuple(shape.keys())
     )
+
+
+@_implements(na.random.normal)
+def random_normal(
+        center: float | u.Quantity | na.AbstractScalarArray,
+        width: float | u.Quantity | na.AbstractScalarArray,
+        shape_random: None | dict[str, int] = None,
+        seed: None | int = None,
+) -> None | na.ScalarArray:
+
+    try:
+        center = _normalize(center)
+        width = _normalize(width)
+    except _ScalarTypeError:
+        return NotImplemented
+
+    shape_random = shape_random if shape_random is not None else dict()
+    shape = na.broadcast_shapes(center.shape, width.shape, shape_random)
+
+    center = center.ndarray_aligned(shape)
+    width = width.ndarray_aligned(shape)
+
+    if isinstance(center, u.Quantity):
+        unit = center.unit
+        center = center.value
+        if isinstance(width, u.Quantity):
+            width = width.to_value(unit)
+        else:
+            width = (width << u.dimensionless_unscaled).to_value(unit)
+    else:
+        if isinstance(width, u.Quantity):
+            unit = width.unit
+            center = (center << u.dimensionless_unscaled).to_value(unit)
+            width = width.value
+        else:
+            unit = None
+
+    if seed is None:
+        normal = np.random.normal
+    else:
+        normal = np.random.default_rng(seed).normal
+
+    value = normal(
+        loc=center,
+        scale=width,
+        size=tuple(shape.values()),
+    )
+
+    if unit is not None:
+        value = value << unit
+
+    return na.ScalarArray(
+        ndarray=value,
+        axes=tuple(shape.keys())
+    )

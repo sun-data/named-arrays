@@ -738,3 +738,44 @@ class TestUncertainScalarUniformRandomSample(
     named_arrays.tests.test_core.AbstractTestAbstractUniformRandomSample,
 ):
     pass
+
+
+def _uncertain_scalar_normal_random_samples() -> tuple[na.UncertainScalarNormalRandomSample, ...]:
+
+    centers = (
+        na.UniformUncertainScalarArray(
+            na.ScalarLinearSpace(0, 1, axis='x', num=_num_x),
+            width=0.2,
+            num_distribution=_num_distribution,
+        ),
+    )
+    widths = (
+        2,
+        na.ScalarArray(2),
+        na.ScalarLinearSpace(2, 3, axis='x', num=_num_x),
+        na.UniformUncertainScalarArray(
+            na.ScalarLinearSpace(2, 3, axis='x', num=_num_x),
+            width=0.1,
+            num_distribution=_num_distribution,
+        ),
+    )
+    units = (1, u.mm)
+    arrays = tuple(
+        na.UncertainScalarNormalRandomSample(
+            center=center * unit,
+            width=width * unit,
+            shape_random=dict(y=_num_y),
+        )
+        for center in centers
+        for width in widths
+        for unit in units
+    )
+    return arrays
+
+
+@pytest.mark.parametrize("array", _uncertain_scalar_normal_random_samples())
+class TestUncertainScalarNormalmRandomSample(
+    AbstractTestAbstractUncertainScalarRandomSample,
+    named_arrays.tests.test_core.AbstractTestAbstractNormalRandomSample,
+):
+    pass

@@ -50,6 +50,8 @@ QuantityLike = Union[int, float, complex, np.ndarray, u.Quantity]
 
 StartT = TypeVar("StartT", bound="QuantityLike | AbstractArray")
 StopT = TypeVar("StopT", bound="QuantityLike | AbstractArray")
+CenterT = TypeVar("CenterT", bound="QuantityLike | AbstractArray")
+WidthT = TypeVar("WidthT", bound="QuantityLike | AbstractArray")
 
 
 def get_dtype(
@@ -1035,8 +1037,29 @@ class AbstractUniformRandomSample(
 class AbstractNormalRandomSample(
     AbstractSymmetricRangeMixin,
     AbstractRandomSample,
+    Generic[CenterT, WidthT],
 ):
-    pass
+    center: CenterT = dataclasses.MISSING
+    width: WidthT = dataclasses.MISSING
+    shape_random: None | dict[str, int] = None
+    seed: None | int = None
+
+    @property
+    def explicit(self) -> AbstractExplicitArray:
+        center = self._attr_normalized("center")
+        width = self._attr_normalized("width")
+
+        return na.random.normal(
+            center=center,
+            width=width,
+            shape_random=self.shape_random,
+            seed=self.seed,
+        )
+
+    @property
+    def centers(self: Self) -> Self:
+        return self
+
 
 @dataclasses.dataclass
 class AbstractPoissonRandomSample(

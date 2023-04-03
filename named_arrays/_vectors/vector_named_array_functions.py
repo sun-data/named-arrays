@@ -84,3 +84,33 @@ def random_uniform(
 
     return prototype.type_explicit.from_components(components)
 
+
+@_implements(na.random.normal)
+def random_normal(
+        center: float | u.Quantity | na.AbstractScalar | na.AbstractVectorArray,
+        width: float | u.Quantity | na.AbstractScalar | na.AbstractVectorArray,
+        shape_random: None | dict[str, int] = None,
+        seed: None | int = None,
+) -> na.AbstractExplicitVectorArray:
+
+    try:
+        prototype = _prototype(center, width)
+        center = _normalize(center, prototype)
+        width = _normalize(width, prototype)
+    except _VectorTypeError:
+        return NotImplemented
+
+    components_center = center.components
+    components_width = width.components
+    components_seed = {c: seed + 100 * i for i, c in enumerate(components_center)}
+    components = {
+        c: na.random.normal(
+            center=components_center[c],
+            width=components_width[c],
+            shape_random=shape_random,
+            seed=components_seed[c],
+        )
+        for c in components_center
+    }
+
+    return prototype.type_explicit.from_components(components)

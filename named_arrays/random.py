@@ -12,6 +12,8 @@ __all__ = [
 
 RandomStartT = TypeVar("RandomStartT", bound="float | complex | u.Quantity | na.AbstractArray")
 RandomStopT = TypeVar("RandomStopT", bound="float | complex | u.Quantity | na.AbstractArray")
+RandomCenterT = TypeVar("RandomCenterT", bound="float | complex | u.Quantity | na.AbstractArray")
+RandomWidthT = TypeVar("RandomWidthT", bound="float | complex | u.Quantity | na.AbstractArray")
 
 
 def uniform(
@@ -51,3 +53,42 @@ def uniform(
         shape_random=shape_random,
         seed=seed,
     )
+
+
+def normal(
+        center: RandomCenterT,
+        width: RandomWidthT,
+        shape_random: dict[str, int] = None,
+        seed: None | int = None
+) -> RandomCenterT | RandomWidthT:
+    """
+    Draw samples from a normal distribution
+
+    Parameters
+    ----------
+    center
+        The center of the distribution.
+    width
+        The width of the distribution.
+    shape_random
+        Additional dimensions to be broadcast against :attr:`center` and :attr:`width`
+    seed
+        Seed for the random number generator, can be provided for repeatability.
+
+    See Also
+    --------
+    :func:`numpy.random.normal` : Equivalent numpy function
+
+    :class:`named_arrays.ScalarNormalRandomSample` : Implicit array version of this function for scalars
+
+    :class:`named_arrays.UncertainScalarNormalRandomSample` : Implicit array version of this function for uncertain
+        scalars
+    """
+    return na._named_array_function(
+        func=normal,
+        center=na.as_named_array(center),
+        width=na.as_named_array(width),
+        shape_random=shape_random,
+        seed=seed,
+    )
+

@@ -17,6 +17,7 @@ __all__ = [
     'UniformUncertainScalarArray',
     'NormalUncertainScalarArray',
     'UncertainScalarUniformRandomSample',
+    'UncertainScalarNormalRandomSample',
 ]
 
 NominalArrayT = TypeVar(
@@ -30,6 +31,8 @@ DistributionArrayT = TypeVar(
 WidthT = TypeVar('WidthT', bound=int | float | np.ndarray | u.Quantity | na.AbstractScalarArray)
 UncertainScalarStartT = TypeVar("UncertainScalarStartT", bound=float | u.Quantity | na.AbstractScalar)
 UncertainScalarStopT = TypeVar("UncertainScalarStopT", bound=float | u.Quantity | na.AbstractScalar)
+UncertainScalarCenterT = TypeVar("UncertainScalarCenterT", bound=float | u.Quantity | na.AbstractScalar)
+UncertainScalarWidthT = TypeVar("UncertainScalarWidthT", bound=float | u.Quantity | na.AbstractScalar)
 
 _axis_distribution_default = "_distribution"
 _num_distribution_default = 11
@@ -648,5 +651,13 @@ class AbstractUncertainScalarRandomSample(
 class UncertainScalarUniformRandomSample(
     AbstractUncertainScalarRandomSample,
     na.AbstractUniformRandomSample[UncertainScalarStartT, UncertainScalarStopT],
+):
+    pass
+
+
+@dataclasses.dataclass(eq=False, repr=False)
+class UncertainScalarNormalRandomSample(
+    AbstractUncertainScalarRandomSample,
+    na.AbstractNormalRandomSample[UncertainScalarCenterT, UncertainScalarWidthT],
 ):
     pass
