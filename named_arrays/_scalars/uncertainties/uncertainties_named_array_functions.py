@@ -1,11 +1,15 @@
 from typing import Callable
 import astropy.units as u
 import named_arrays as na
+import named_arrays._scalars.scalar_named_array_functions
 
 __all__ = [
+    "RANDOM_FUNCTIONS",
     "HANDLED_FUNCTIONS",
+    "random",
 ]
 
+RANDOM_FUNCTIONS = named_arrays._scalars.scalar_named_array_functions.RANDOM_FUNCTIONS
 HANDLED_FUNCTIONS = dict()
 
 
@@ -36,61 +40,31 @@ def _normalize(a: float | u.Quantity | na.AbstractScalar):
     return result
 
 
-@_implements(na.random.uniform)
-def random_uniform(
-        start: float | u.Quantity | na.AbstractScalar,
-        stop: float | u.Quantity | na.AbstractScalar,
+def random(
+        func: Callable,
+        *args: float | u.Quantity | na.AbstractScalar,
         shape_random: None | dict[str, int] = None,
         seed: None | int = None,
+        **kwargs: float | u.Quantity | na.AbstractScalar,
 ) -> na.UncertainScalarArray:
 
     try:
-        start = _normalize(start)
-        stop = _normalize(stop)
+        args = tuple(_normalize(arg) for arg in args)
+        kwargs = {k: _normalize(kwargs[k]) for k in kwargs}
     except _UncertainScalarTypeError:
         return NotImplemented
 
     return na.UncertainScalarArray(
-        nominal=na.random.uniform(
-            start=na.as_named_array(start.nominal),
-            stop=na.as_named_array(stop.nominal),
+        nominal=func(
+            *tuple(arg.nominal for arg in args),
             shape_random=shape_random,
             seed=seed,
+            **{k: kwargs[k].nominal for k in kwargs},
         ),
-        distribution=na.random.uniform(
-            start=start.distribution,
-            stop=stop.distribution,
-            shape_random=shape_random,
-            seed=seed + 1,
-        ),
-    )
-
-
-@_implements(na.random.normal)
-def random_normal(
-        center: float | u.Quantity | na.AbstractScalar,
-        width: float | u.Quantity | na.AbstractScalar,
-        shape_random: None | dict[str, int] = None,
-        seed: None | int = None,
-) -> na.UncertainScalarArray:
-
-    try:
-        center = _normalize(center)
-        width = _normalize(width)
-    except _UncertainScalarTypeError:
-        return NotImplemented
-
-    return na.UncertainScalarArray(
-        nominal=na.random.normal(
-            center=na.as_named_array(center.nominal),
-            width=na.as_named_array(width.nominal),
+        distribution=func(
+            *tuple(arg.distribution for arg in args),
             shape_random=shape_random,
             seed=seed,
-        ),
-        distribution=na.random.normal(
-            center=center.distribution,
-            width=width.distribution,
-            shape_random=shape_random,
-            seed=seed + 1,
-        ),
+            **{k: kwargs[k].distribution for k in kwargs},
+        )
     )

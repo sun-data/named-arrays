@@ -313,6 +313,9 @@ class AbstractVectorArray(
 
         from . import vector_named_array_functions
 
+        if func in vector_named_array_functions.RANDOM_FUNCTIONS:
+            return vector_named_array_functions.random(func=func, *args, **kwargs)
+
         if func in vector_named_array_functions.HANDLED_FUNCTIONS:
             return vector_named_array_functions.HANDLED_FUNCTIONS[func](*args, **kwargs)
 

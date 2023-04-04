@@ -1022,8 +1022,8 @@ class AbstractUniformRandomSample(
         stop = self._attr_normalized("stop")
 
         return na.random.uniform(
-            start=start,
-            stop=stop,
+            low=start,
+            high=stop,
             shape_random=self.shape_random,
             seed=self.seed,
         )
@@ -1050,8 +1050,8 @@ class AbstractNormalRandomSample(
         width = self._attr_normalized("width")
 
         return na.random.normal(
-            center=center,
-            width=width,
+            loc=center,
+            scale=width,
             shape_random=self.shape_random,
             seed=self.seed,
         )

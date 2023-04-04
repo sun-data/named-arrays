@@ -1,14 +1,18 @@
 from typing import TypeVar, Callable
 import astropy.units as u
 import named_arrays as na
+import named_arrays._scalars.scalar_named_array_functions
 
 __all__ = [
     "VectorPrototypeT",
+    "RANDOM_FUNCTIONS",
     "HANDLED_FUNCTIONS",
+    "random"
 ]
 
 VectorPrototypeT = TypeVar("VectorPrototypeT", bound=na.AbstractVectorArray)
 
+RANDOM_FUNCTIONS = named_arrays._scalars.scalar_named_array_functions.RANDOM_FUNCTIONS
 HANDLED_FUNCTIONS = dict()
 
 
@@ -54,63 +58,33 @@ def _normalize(
     return result
 
 
-@_implements(na.random.uniform)
-def random_uniform(
-        start: float | u.Quantity | na.AbstractScalar | na.AbstractVectorArray,
-        stop: float | u.Quantity | na.AbstractScalar | na.AbstractVectorArray,
+def random(
+        func: Callable,
+        *args: float | u.Quantity |na.AbstractScalar | na.AbstractVectorArray,
         shape_random: None | dict[str, int] = None,
         seed: None | int = None,
-) -> na.AbstractExplicitVectorArray:
-
+        **kwargs: float | u.Quantity |na.AbstractScalar | na.AbstractVectorArray,
+):
     try:
-        prototype = _prototype(start, stop)
-        start = _normalize(start, prototype)
-        stop = _normalize(stop, prototype)
+        prototype = _prototype(*args, *kwargs.values())
+        args = tuple(_normalize(arg, prototype) for arg in args)
+        kwargs = {k: _normalize(kwargs[k], prototype) for k in kwargs}
     except _VectorTypeError:
         return NotImplemented
 
-    components_start = start.components
-    components_stop = stop.components
-    components_seed = {c: seed + 100 * i for i, c in enumerate(components_start)}
+    components_prototype = prototype.components
+
+    components_args = {c: tuple(arg.components[c] for arg in args) for c in components_prototype}
+    components_kwargs = {c: {k: kwargs[k].components[c] for k in kwargs} for c in components_prototype}
+
     components = {
-        c: na.random.uniform(
-            start=components_start[c],
-            stop=components_stop[c],
+        c: func(
+            *components_args[c],
             shape_random=shape_random,
-            seed=components_seed[c],
+            seed=seed,
+            **components_kwargs[c],
         )
-        for c in components_start
-    }
-
-    return prototype.type_explicit.from_components(components)
-
-
-@_implements(na.random.normal)
-def random_normal(
-        center: float | u.Quantity | na.AbstractScalar | na.AbstractVectorArray,
-        width: float | u.Quantity | na.AbstractScalar | na.AbstractVectorArray,
-        shape_random: None | dict[str, int] = None,
-        seed: None | int = None,
-) -> na.AbstractExplicitVectorArray:
-
-    try:
-        prototype = _prototype(center, width)
-        center = _normalize(center, prototype)
-        width = _normalize(width, prototype)
-    except _VectorTypeError:
-        return NotImplemented
-
-    components_center = center.components
-    components_width = width.components
-    components_seed = {c: seed + 100 * i for i, c in enumerate(components_center)}
-    components = {
-        c: na.random.normal(
-            center=components_center[c],
-            width=components_width[c],
-            shape_random=shape_random,
-            seed=components_seed[c],
-        )
-        for c in components_center
+        for c in prototype.components
     }
 
     return prototype.type_explicit.from_components(components)

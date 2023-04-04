@@ -493,6 +493,9 @@ class AbstractScalarArray(
 
         from . import scalar_named_array_functions
 
+        if func in scalar_named_array_functions.RANDOM_FUNCTIONS:
+            return scalar_named_array_functions.random(func=func, *args, **kwargs)
+
         if func in scalar_named_array_functions.HANDLED_FUNCTIONS:
             return scalar_named_array_functions.HANDLED_FUNCTIONS[func](*args, **kwargs)
 

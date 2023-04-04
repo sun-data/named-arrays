@@ -4,32 +4,32 @@ import astropy.units as u
 import named_arrays as na
 
 __all__ = [
-    "RandomStartT",
-    "RandomStopT",
+    "RandomLowT",
+    "RandomHighT",
     "uniform",
 ]
 
 
-RandomStartT = TypeVar("RandomStartT", bound="float | complex | u.Quantity | na.AbstractArray")
-RandomStopT = TypeVar("RandomStopT", bound="float | complex | u.Quantity | na.AbstractArray")
+RandomLowT = TypeVar("RandomLowT", bound="float | complex | u.Quantity | na.AbstractArray")
+RandomHighT = TypeVar("RandomHighT", bound="float | complex | u.Quantity | na.AbstractArray")
 RandomCenterT = TypeVar("RandomCenterT", bound="float | complex | u.Quantity | na.AbstractArray")
 RandomWidthT = TypeVar("RandomWidthT", bound="float | complex | u.Quantity | na.AbstractArray")
 
 
 def uniform(
-        start: RandomStartT,
-        stop: RandomStopT,
+        low: RandomLowT,
+        high: RandomHighT,
         shape_random: dict[str, int] = None,
         seed: None | int = None
-) -> RandomStartT | RandomStopT:
+) -> RandomLowT | RandomHighT:
     """
     Draw samples from a uniform distribution
 
     Parameters
     ----------
-    start
+    low
         Lower boundary of the output
-    stop
+    high
         Upper boundary of the output
     shape_random
         Additional dimensions to be broadcast against :attr:`start` and :attr:`stop`
@@ -48,16 +48,16 @@ def uniform(
 
     return na._named_array_function(
         func=uniform,
-        start=na.as_named_array(start),
-        stop=na.as_named_array(stop),
+        low=na.as_named_array(low),
+        high=na.as_named_array(high),
         shape_random=shape_random,
         seed=seed,
     )
 
 
 def normal(
-        center: RandomCenterT,
-        width: RandomWidthT,
+        loc: RandomCenterT,
+        scale: RandomWidthT,
         shape_random: dict[str, int] = None,
         seed: None | int = None
 ) -> RandomCenterT | RandomWidthT:
@@ -66,9 +66,9 @@ def normal(
 
     Parameters
     ----------
-    center
+    loc
         The center of the distribution.
-    width
+    scale
         The width of the distribution.
     shape_random
         Additional dimensions to be broadcast against :attr:`center` and :attr:`width`
@@ -86,9 +86,8 @@ def normal(
     """
     return na._named_array_function(
         func=normal,
-        center=na.as_named_array(center),
-        width=na.as_named_array(width),
+        loc=na.as_named_array(loc),
+        scale=na.as_named_array(scale),
         shape_random=shape_random,
         seed=seed,
     )
-
