@@ -18,6 +18,7 @@ __all__ = [
     'NormalUncertainScalarArray',
     'UncertainScalarUniformRandomSample',
     'UncertainScalarNormalRandomSample',
+    'UncertainScalarPoissionRandomSample',
 ]
 
 NominalArrayT = TypeVar(
@@ -662,5 +663,13 @@ class UncertainScalarUniformRandomSample(
 class UncertainScalarNormalRandomSample(
     AbstractUncertainScalarRandomSample,
     na.AbstractNormalRandomSample[UncertainScalarCenterT, UncertainScalarWidthT],
+):
+    pass
+
+
+@dataclasses.dataclass(eq=False, repr=False)
+class UncertainScalarPoissionRandomSample(
+    AbstractUncertainScalarRandomSample,
+    na.AbstractPoissonRandomSample[UncertainScalarCenterT],
 ):
     pass

@@ -1064,14 +1064,25 @@ class AbstractNormalRandomSample(
 @dataclasses.dataclass
 class AbstractPoissonRandomSample(
     AbstractRandomSample,
+    Generic[CenterT],
 ):
+    center: CenterT = dataclasses.MISSING
+    shape_random: None | dict[str, int] = None
+    seed: None | int = None
 
     @property
-    @abc.abstractmethod
-    def center(self: Self) -> ArrayLike:
-        """
-        Center value of the range.
-        """
+    def explicit(self) -> AbstractExplicitArray:
+        center = self._attr_normalized("center")
+
+        return na.random.poisson(
+            lam=center,
+            shape_random=self.shape_random,
+            seed=self.seed,
+        )
+
+    @property
+    def centers(self: Self) -> Self:
+        return self
 
 
 @dataclasses.dataclass(eq=False, repr=False)

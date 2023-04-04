@@ -218,7 +218,7 @@ class AbstractTestAbstractUncertainScalarArray(
             elif ufunc in [np.log1p]:
                 kwargs["where"] = array >= (-1 * unit)
             elif ufunc in [np.arcsin, np.arccos, np.arctanh]:
-                kwargs["where"] = ((-1 * unit) <= array) & (array <= (1 * unit))
+                kwargs["where"] = ((-1 * unit) < array) & (array < (1 * unit))
             elif ufunc in [np.arccosh]:
                 kwargs["where"] = array >= (1 * unit)
             elif ufunc in [np.reciprocal]:
@@ -777,5 +777,35 @@ def _uncertain_scalar_normal_random_samples() -> tuple[na.UncertainScalarNormalR
 class TestUncertainScalarNormalmRandomSample(
     AbstractTestAbstractUncertainScalarRandomSample,
     named_arrays.tests.test_core.AbstractTestAbstractNormalRandomSample,
+):
+    pass
+
+
+def _uncertain_scalar_poisson_random_samples() -> tuple[na.UncertainScalarPoissionRandomSample, ...]:
+
+    centers = (
+        na.UniformUncertainScalarArray(2, width=0.1, num_distribution=_num_distribution),
+        na.UniformUncertainScalarArray(
+            na.ScalarLinearSpace(2, 3, axis='x', num=_num_x),
+            width=0.1,
+            num_distribution=_num_distribution,
+        ),
+    )
+    units = (1, u.mm)
+    arrays = tuple(
+        na.UncertainScalarPoissionRandomSample(
+            center=center * unit,
+            shape_random=dict(y=_num_y),
+        )
+        for center in centers
+        for unit in units
+    )
+    return arrays
+
+
+@pytest.mark.parametrize("array", _uncertain_scalar_poisson_random_samples())
+class TestUncertainScalarPoissonRandomSample(
+    AbstractTestAbstractUncertainScalarRandomSample,
+    named_arrays.tests.test_core.AbstractTestAbstractPoissonRandomSample,
 ):
     pass

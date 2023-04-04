@@ -874,54 +874,9 @@ class ScalarNormalRandomSample(
 @dataclasses.dataclass(eq=False, repr=False)
 class ScalarPoissonRandomSample(
     AbstractScalarRandomSample,
-    na.AbstractPoissonRandomSample,
-    Generic[CenterT],
+    na.AbstractPoissonRandomSample[CenterT],
 ):
-    center: CenterT = dataclasses.MISSING
-    shape_random: None | dict[str, int] = None
-    seed: None | int = None
-
-    @property
-    def explicit(self: Self) -> ScalarArray:
-
-        center = self.center
-        if isinstance(center, na.AbstractArray):
-            if isinstance(center, na.AbstractScalarArray):
-                pass
-            else:
-                raise TypeError(
-                    f"if `center` is an instance of `AbstractArray` it must be an instance of `AbstractScalarArray`, "
-                    f"got `{type(center)}`"
-                )
-        else:
-            center = ScalarArray(center)
-
-        shape_random = self.shape_random if self.shape_random is not None else dict()
-        shape = na.broadcast_shapes(center.shape, shape_random)
-
-        center = center.ndarray_aligned(shape)
-
-        unit = None
-        if isinstance(center, u.Quantity):
-            unit = center.unit
-            center = center.value
-
-        value = self._rng.poisson(
-            lam=center,
-            size=tuple(shape.values()),
-        )
-
-        if unit is not None:
-            value = value << unit
-
-        return ScalarArray(
-            ndarray=value,
-            axes=tuple(shape.keys())
-        )
-
-    @property
-    def centers(self: Self) -> Self:
-        return self
+    pass
 
 
 @dataclasses.dataclass(eq=False, repr=False)

@@ -12,6 +12,7 @@ __all__ = [
 RANDOM_FUNCTIONS = (
     na.random.uniform,
     na.random.normal,
+    na.random.poisson,
 )
 HANDLED_FUNCTIONS = dict()
 

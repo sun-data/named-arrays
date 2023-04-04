@@ -7,6 +7,8 @@ __all__ = [
     "RandomLowT",
     "RandomHighT",
     "uniform",
+    "normal",
+    "poisson",
 ]
 
 
@@ -88,6 +90,40 @@ def normal(
         func=normal,
         loc=na.as_named_array(loc),
         scale=na.as_named_array(scale),
+        shape_random=shape_random,
+        seed=seed,
+    )
+
+
+def poisson(
+        lam: RandomCenterT,
+        shape_random: dict[str, int] = None,
+        seed: None | int = None
+) -> RandomCenterT:
+    """
+    Draw samples from a Poisson distribution
+
+    Parameters
+    ----------
+    lam
+        Expected number of events
+    shape_random
+        Additional dimensions to be broadcast against :attr:`center` and :attr:`width`
+    seed
+        Seed for the random number generator, can be provided for repeatability.
+
+    See Also
+    --------
+    :func:`numpy.random.poisson` : Equivalent numpy function
+
+    :class:`named_arrays.ScalarPoissonlRandomSample` : Implicit array version of this function for scalars
+
+    :class:`named_arrays.UncertainScalarPoissonRandomSample` : Implicit array version of this function for uncertain
+        scalars
+    """
+    return na._named_array_function(
+        func=poisson,
+        lam=na.as_named_array(lam),
         shape_random=shape_random,
         seed=seed,
     )
