@@ -72,11 +72,13 @@ def random(
 
     if unit is not None:
         args = tuple(
-            arg if isinstance(arg, u.Quantity) else (arg << u.dimensionless_unscaled).to(unit)
+            arg.value if isinstance(arg, u.Quantity)
+            else (arg << u.dimensionless_unscaled).to_value(unit)
             for arg in args
         )
         kwargs = {
-            k: kwargs[k] if isinstance(kwargs[k], u.Quantity) else (kwargs[k] << u.dimensionless_unscaled).to(unit)
+            k: kwargs[k].value if isinstance(kwargs[k], u.Quantity)
+            else (kwargs[k] << u.dimensionless_unscaled).to_value(unit)
             for k in kwargs
         }
 
