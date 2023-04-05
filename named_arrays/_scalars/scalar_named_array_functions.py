@@ -42,6 +42,33 @@ def _normalize(a: float | u.Quantity | na.AbstractScalarArray) -> na.AbstractSca
     return result
 
 
+@_implements(na.arange)
+def arange(
+        start: float | complex | u.Quantity | na.AbstractArray,
+        stop: float | complex | u.Quantity | na.AbstractArray,
+        axis: str | na.AbstractArray,
+        step: int | na.AbstractArray = 1,
+) -> na.ScalarArray:
+
+    start = _normalize(start)
+    stop = _normalize(stop)
+
+    if start.size > 1:
+        raise ValueError(f"`start` must have only one element, got shape {start.shape}")
+
+    if stop.size > 1:
+        raise ValueError(f"`stop` must have only one element, got shape {stop.shape}")
+
+    return na.ScalarArray(
+        ndarray=np.arange(
+            start=start.ndarray,
+            stop=stop.ndarray,
+            step=step,
+        ),
+        axes=(axis,),
+    )
+
+
 def random(
         func: Callable,
         *args: float | u.Quantity | na.AbstractScalarArray,

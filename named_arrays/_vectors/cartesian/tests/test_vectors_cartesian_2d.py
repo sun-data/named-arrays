@@ -294,7 +294,34 @@ class AbstractTestAbstractParameterizedCartesian2dVectorArray(
     pass
 
 
-@pytest.mark.skip
+
+def _cartesian_2d_vector_array_ranges() -> tuple[na.Cartesian2dVectorArrayRange, ...]:
+    starts = (
+        0,
+        na.Cartesian2dVectorArray(0, 1),
+    )
+    stops = (
+        5,
+        na.Cartesian2dVectorArray(5, 5)
+    )
+    axes = (
+        na.Cartesian2dVectorArray('x', 'y'),
+    )
+    _num = na.Cartesian2dVectorArray(_num_x, _num_y)
+    return tuple(
+        na.Cartesian2dVectorArrayRange(
+            start=start,
+            stop=stop,
+            axis=axis,
+            step=(stop - start) / _num,
+        )
+        for start in starts
+        for stop in stops
+        for axis in axes
+    )
+
+
+@pytest.mark.parametrize("array", _cartesian_2d_vector_array_ranges())
 class TestCartesian2dVectorArrayRange(
     AbstractTestAbstractParameterizedCartesian2dVectorArray,
     test_vectors_cartesian.AbstractTestAbstractCartesianVectorArrayRange,

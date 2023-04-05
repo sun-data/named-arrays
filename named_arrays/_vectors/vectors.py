@@ -461,7 +461,7 @@ class AbstractParameterizedVectorArray(
 @dataclasses.dataclass(eq=False, repr=False)
 class AbstractVectorArrayRange(
     AbstractParameterizedVectorArray,
-    na.AbstractArrayRange,
+    na.AbstractArrayRange[StartT, StopT],
 ):
     pass
 

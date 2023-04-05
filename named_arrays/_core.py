@@ -1122,8 +1122,32 @@ class AbstractArrayRange(
     AbstractLinearParameterizedArrayMixin,
     AbstractRangeMixin,
     AbstractParameterizedArray,
+    Generic[StartT, StopT]
 ):
-    pass
+    start: StartT = dataclasses.MISSING
+    stop: StopT = dataclasses.MISSING
+    axis: str | na.AbstractArray= dataclasses.MISSING
+    step: int | float | na.AbstractArray = 1
+
+    @property
+    def explicit(self: Self) -> AbstractExplicitArray:
+        start = self._attr_normalized("start")
+        stop = self._attr_normalized("stop")
+
+        return na.arange(
+            start=start,
+            stop=stop,
+            axis=self.axis,
+            step=self.step,
+        )
+
+    @property
+    def centers(self: Self) -> Self:
+        return self
+
+    @property
+    def num(self: Self) -> int:
+        return np.ceil((self.stop - self.start) / self.step).astype(int)
 
 
 @dataclasses.dataclass(eq=False, repr=False)

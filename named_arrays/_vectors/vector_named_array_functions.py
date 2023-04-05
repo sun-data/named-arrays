@@ -58,6 +58,38 @@ def _normalize(
     return result
 
 
+@_implements(na.arange)
+def arange(
+        start: float | complex | u.Quantity | na.AbstractScalar | na.AbstractVectorArray,
+        stop: float | complex | u.Quantity | na.AbstractScalar | na.AbstractVectorArray,
+        axis: str | na.AbstractVectorArray,
+        step: int | na.AbstractVectorArray = 1,
+):
+    prototype = _prototype(start, stop, axis, step)
+
+    start = _normalize(start, prototype)
+    stop = _normalize(stop, prototype)
+    axis = _normalize(axis, prototype)
+    step = _normalize(step, prototype)
+
+    components_start = start.components
+    components_stop = stop.components
+    components_axis = axis.components
+    components_step = step.components
+
+    components = {
+        c: na.arange(
+            start=components_start[c],
+            stop=components_stop[c],
+            axis=components_axis[c],
+            step=components_step[c],
+        )
+        for c in components_start
+    }
+
+    return prototype.type_explicit.from_components(components)
+
+
 def random(
         func: Callable,
         *args: float | u.Quantity |na.AbstractScalar | na.AbstractVectorArray,

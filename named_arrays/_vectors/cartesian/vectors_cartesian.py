@@ -209,27 +209,9 @@ class AbstractParameterizedCartesianVectorArray(
 @dataclasses.dataclass(eq=False, repr=False)
 class AbstractCartesianVectorArrayRange(
     AbstractParameterizedCartesianVectorArray,
-    na.AbstractVectorArrayRange,
-    Generic[StartT, StopT]
+    na.AbstractVectorArrayRange[StartT, StopT],
 ):
-    @property
-    def explicit(self) -> AbstractExplicitCartesianVectorArray:
-        start = self.start
-        if not isinstance(start, na.AbstractVectorArray):
-            start = self.type_explicit.from_scalar(start)
-
-        stop = self.stop
-        if not isinstance(stop, na.AbstractVectorArray):
-            stop = self.type_explicit.from_scalar(stop)
-
-        result = self.type_explicit()
-        components_start = start.components
-        components_stop = stop.components
-
-        # for c in result.components:
-        #     result.components[c] = na.
-        #
-        # return
+    pass
 
 
 @dataclasses.dataclass(eq=False, repr=False)

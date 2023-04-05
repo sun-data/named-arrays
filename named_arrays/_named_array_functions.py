@@ -7,6 +7,7 @@ import named_arrays as na
 
 __all__ = [
     '_named_array_function',
+    'arange',
     'ndim',
     'shape',
     'broadcast_to',
@@ -40,6 +41,41 @@ def _named_array_function(func: Callable, *args, **kwargs):
             return res
 
     raise TypeError("all types returned `NotImplemented`")
+
+
+def arange(
+        start: float | complex | u.Quantity | na.AbstractArray,
+        stop: float | complex | u.Quantity | na.AbstractArray,
+        axis: str | na.AbstractArray,
+        step: int | na.AbstractArray = 1,
+) -> na.AbstractExplicitArray:
+    """
+    Redefined version of :func:`numpy.arange` with an ``axis`` parameter.
+
+    Parameters
+    ----------
+    start
+        starting value of the sequence
+    stop
+        ending value of the sequence
+    axis
+        name of the new sequence axis
+    step
+        step size between consecutive elements of the sequence
+
+    See Also
+    --------
+    :func:`numpy.arange` : Equivalent numpy function
+
+    :class:`named_arrays.ScalarArrayRange` : Implicit array version of this function for scalars
+    """
+    return _named_array_function(
+        func=arange,
+        start=na.as_named_array(start),
+        stop=na.as_named_array(stop),
+        axis=axis,
+        step=step,
+    )
 
 
 def ndim(a: na.AbstractArray) -> int:

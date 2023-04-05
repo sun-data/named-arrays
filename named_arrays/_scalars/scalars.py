@@ -890,8 +890,7 @@ class AbstractParameterizedScalarArray(
 @dataclasses.dataclass(eq=False, repr=False)
 class ScalarArrayRange(
     AbstractParameterizedScalarArray,
-    na.AbstractArrayRange,
-    Generic[StartT, StopT],
+    na.AbstractArrayRange[ScalarStartT, ScalarStopT],
 ):
     """
     An :class:`AbstractScalarArray` over the range [:attr:`start`, :attr:`stop`) incremented by :attr:`step`.
@@ -917,29 +916,7 @@ class ScalarArrayRange(
     For the above, and more complicated uses, it is recommended to use :class:`ScalarLinearSpace` instead.  See numpy
     documentation of :func:`numpy.arange` for more info.
     """
-    start: StartT = dataclasses.MISSING
-    stop: StopT = dataclasses.MISSING
-    axis: str = dataclasses.MISSING
-    step: int = 1
-
-    @property
-    def explicit(self: Self) -> ScalarArray:
-        return ScalarArray(
-            ndarray=np.arange(
-                start=self.start,
-                stop=self.stop,
-                step=self.step,
-            ),
-            axes=(self.axis, ),
-        )
-
-    @property
-    def centers(self: Self) -> Self:
-        return self
-
-    @property
-    def num(self: Self) -> int:
-        return int(np.ceil((self.stop - self.start) / self.step))
+    pass
 
 
 @dataclasses.dataclass(eq=False, repr=False)

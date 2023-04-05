@@ -208,10 +208,11 @@ def array_function_arg_reduce(
     for c in components:
         component = na.as_named_array(components[c])
         shape_c = component.shape
-        if shape_c:
+        axis_c = tuple(ax for ax in axis_normalized if ax in shape_c)
+        if axis_c:
             components_result[c] = func(
                 a=component,
-                axis=tuple(ax for ax in axis_normalized if ax in shape_c),
+                axis=axis_c,
             )
         else:
             components_result[c] = dict()
