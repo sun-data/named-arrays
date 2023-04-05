@@ -361,9 +361,9 @@ class AbstractTestAbstractScalarArray(
             result_ndarray = ufunc(array.ndarray, **kwargs_ndarray)
 
             if ufunc.nout == 1:
-                out = 0 * result
+                out = 0 * np.nan_to_num(result)
             else:
-                out = tuple(0 * r for r in result)
+                out = tuple(0 * np.nan_to_num(r) for r in result)
 
             result_out = ufunc(array, out=out, **kwargs)
 
