@@ -9,6 +9,8 @@ import named_arrays as na
 
 
 __all__ = [
+    'VectorPrototypeT',
+    'VectorTypeError',
     'AbstractVectorArray',
     'AbstractScalarOrVectorArray',
     'AbstractExplicitVectorArray',
@@ -25,8 +27,43 @@ __all__ = [
     'AbstractVectorGeometricSpace',
 ]
 
+VectorPrototypeT = TypeVar("VectorPrototypeT", bound="AbstractVectorArray")
 VectorStartT = TypeVar('VectorStartT', bound="float | complex | u.Quantity | na.AbstractScalar | AbstractVectorArray")
 VectorStopT = TypeVar('VectorStopT', bound="float | complex | u.Quantity | na.AbstractScalar | AbstractVectorArray")
+
+
+class VectorTypeError(TypeError):
+    pass
+
+
+def _prototype(*arrays: float | u.Quantity | na.AbstractArray) -> na.AbstractVectorArray:
+
+    for array in arrays:
+        if isinstance(array, na.AbstractVectorArray):
+            return array
+
+    raise VectorTypeError
+
+
+def _normalize(
+        a: float | u.Quantity | na.AbstractScalar | na.AbstractVectorArray,
+        prototype: VectorPrototypeT,
+) -> VectorPrototypeT:
+
+    if isinstance(a, na.AbstractArray):
+        if isinstance(a, na.AbstractVectorArray):
+            if a.type_abstract == prototype.type_abstract:
+                result = a
+            else:
+                raise VectorTypeError
+        elif isinstance(a, na.AbstractScalar):
+            result = prototype.type_explicit.from_scalar(a)
+        else:
+            raise VectorTypeError
+    else:
+        result = prototype.type_explicit.from_scalar(a)
+
+    return result
 
 
 @dataclasses.dataclass(eq=False, repr=False)
