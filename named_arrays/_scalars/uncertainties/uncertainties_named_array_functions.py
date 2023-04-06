@@ -2,6 +2,7 @@ from typing import Callable
 import astropy.units as u
 import named_arrays as na
 import named_arrays._scalars.scalar_named_array_functions
+from . import uncertainties
 
 __all__ = [
     "RANDOM_FUNCTIONS",
@@ -21,25 +22,6 @@ def _implements(function: Callable):
     return decorator
 
 
-class _UncertainScalarTypeError(TypeError):
-    pass
-
-
-def _normalize(a: float | u.Quantity | na.AbstractScalar):
-    if isinstance(a, na.AbstractArray):
-        if isinstance(a, na.AbstractScalar):
-            if isinstance(a, na.AbstractUncertainScalarArray):
-                result = a
-            else:
-                result = na.UncertainScalarArray(a, a)
-        else:
-            return _UncertainScalarTypeError
-    else:
-        result = na.UncertainScalarArray(a, a)
-
-    return result
-
-
 def random(
         func: Callable,
         *args: float | u.Quantity | na.AbstractScalar,
@@ -49,9 +31,9 @@ def random(
 ) -> na.UncertainScalarArray:
 
     try:
-        args = tuple(_normalize(arg) for arg in args)
-        kwargs = {k: _normalize(kwargs[k]) for k in kwargs}
-    except _UncertainScalarTypeError:
+        args = tuple(uncertainties._normalize(arg) for arg in args)
+        kwargs = {k: uncertainties._normalize(kwargs[k]) for k in kwargs}
+    except na.UncertainScalarTypeError:
         return NotImplemented
 
     return na.UncertainScalarArray(

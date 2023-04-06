@@ -12,6 +12,7 @@ import named_arrays as na
 __all__ = [
     'UncertainScalarStartT',
     'UncertainScalarStopT',
+    'UncertainScalarTypeError',
     'AbstractUncertainScalarArray',
     'UncertainScalarArray',
     'UniformUncertainScalarArray',
@@ -37,6 +38,25 @@ UncertainScalarWidthT = TypeVar("UncertainScalarWidthT", bound=float | u.Quantit
 
 _axis_distribution_default = "_distribution"
 _num_distribution_default = 11
+
+
+class UncertainScalarTypeError(TypeError):
+    pass
+
+
+def _normalize(a: float | u.Quantity | na.AbstractScalar):
+    if isinstance(a, na.AbstractArray):
+        if isinstance(a, na.AbstractScalar):
+            if isinstance(a, na.AbstractUncertainScalarArray):
+                result = a
+            else:
+                result = na.UncertainScalarArray(a, a)
+        else:
+            return UncertainScalarTypeError
+    else:
+        result = na.UncertainScalarArray(a, a)
+
+    return result
 
 
 @dataclasses.dataclass(eq=False, repr=False)
