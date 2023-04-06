@@ -12,6 +12,7 @@ import named_arrays as na
 __all__ = [
     'ScalarStartT',
     'ScalarStopT',
+    'ScalarTypeError',
     'as_named_array',
     'AbstractScalar',
     'AbstractScalarArray',
@@ -40,6 +41,23 @@ WidthT = TypeVar('WidthT', bound='ScalarLike')
 StartExponentT = TypeVar('StartExponentT', bound='ScalarLike')
 StopExponentT = TypeVar('StopExponentT', bound='ScalarLike')
 BaseT = TypeVar('BaseT', bound='ScalarLike')
+
+
+class ScalarTypeError(TypeError):
+    pass
+
+
+def _normalize(a: float | u.Quantity | na.AbstractScalarArray) -> na.AbstractScalarArray:
+
+    if isinstance(a, na.AbstractArray):
+        if isinstance(a, na.AbstractScalarArray):
+            result = a
+        else:
+            raise ScalarTypeError
+    else:
+        result = na.ScalarArray(a)
+
+    return result
 
 
 def as_named_array(value: bool | int | float | complex | str | u.Quantity | na.AbstractArray):

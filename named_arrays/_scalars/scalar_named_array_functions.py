@@ -2,6 +2,7 @@ from typing import Callable, TypeVar
 import numpy as np
 import astropy.units as u
 import named_arrays as na
+from . import scalars
 
 __all__ = [
     "RANDOM_FUNCTIONS",
@@ -25,23 +26,6 @@ def _implements(function: Callable):
     return decorator
 
 
-class _ScalarTypeError(TypeError):
-    pass
-
-
-def _normalize(a: float | u.Quantity | na.AbstractScalarArray) -> na.AbstractScalarArray:
-
-    if isinstance(a, na.AbstractArray):
-        if isinstance(a, na.AbstractScalarArray):
-            result = a
-        else:
-            raise _ScalarTypeError
-    else:
-        result = na.ScalarArray(a)
-
-    return result
-
-
 @_implements(na.arange)
 def arange(
         start: float | complex | u.Quantity | na.AbstractArray,
@@ -50,8 +34,8 @@ def arange(
         step: int | na.AbstractArray = 1,
 ) -> na.ScalarArray:
 
-    start = _normalize(start)
-    stop = _normalize(stop)
+    start = scalars._normalize(start)
+    stop = scalars._normalize(stop)
 
     if start.size > 1:
         raise ValueError(f"`start` must have only one element, got shape {start.shape}")
@@ -78,9 +62,9 @@ def random(
 ) -> na.ScalarArray:
 
     try:
-        args = tuple(_normalize(arg) for arg in args)
-        kwargs = {k: _normalize(kwargs[k]) for k in kwargs}
-    except _ScalarTypeError:
+        args = tuple(scalars._normalize(arg) for arg in args)
+        kwargs = {k: scalars._normalize(kwargs[k]) for k in kwargs}
+    except na.ScalarTypeError:
         return NotImplemented
 
     if shape_random is None:
