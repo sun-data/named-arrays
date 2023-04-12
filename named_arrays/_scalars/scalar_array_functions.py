@@ -3,6 +3,7 @@ from typing import Sequence, Callable, Type
 import numpy as np
 import astropy.units as u
 import named_arrays as na
+from . import scalars
 
 __all__ = [
     'DEFAULT_FUNCTIONS',
@@ -13,6 +14,11 @@ __all__ = [
     'HANDLED_FUNCTIONS',
 ]
 
+SEQUENCE_FUNCTIONS = [
+    np.linspace,
+    np.logspace,
+    np.geomspace,
+]
 DEFAULT_FUNCTIONS = [
     np.ndim,
     np.min,
@@ -65,6 +71,39 @@ FFTN_LIKE_FUNCTIONS = [
     np.fft.irfftn,
 ]
 HANDLED_FUNCTIONS = dict()
+
+
+def array_function_sequence(
+        func: Callable,
+        *args: float | u.Quantity | na.AbstractScalarArray,
+        axis: str,
+        num: int = 50,
+        endpoint: bool = True,
+        dtype: None | type | np.dtype = None,
+        **kwargs: float | u.Quantity | na.AbstractScalarArray,
+):
+    try:
+        args = tuple(scalars._normalize(arg) for arg in args)
+        kwargs = {k: scalars._normalize(kwargs[k]) for k in kwargs}
+    except na.ScalarTypeError:
+        return NotImplemented
+
+    shape = na.shape_broadcasted(*args, *kwargs.values())
+
+    args = tuple(arg.ndarray_aligned(shape) for arg in args)
+    kwargs = {k: kwargs[k].ndarray_aligned(shape) for k in kwargs}
+
+    return na.ScalarArray(
+        ndarray=func(
+            *args,
+            num=num,
+            endpoint=endpoint,
+            dtype=dtype,
+            axis=~0,
+            **kwargs,
+        ),
+        axes=tuple(shape) + (axis, ),
+    )
 
 
 def array_function_default(

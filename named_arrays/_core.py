@@ -12,6 +12,8 @@ import named_arrays as na
 
 __all__ = [
     'QuantityLike',
+    'StartT',
+    'StopT',
     'get_dtype',
     'value',
     'unit',
@@ -47,11 +49,15 @@ __all__ = [
 
 QuantityLike = Union[int, float, complex, np.ndarray, u.Quantity]
 
-
+AxisT = TypeVar("AxisT", bound="str | AbstractArray")
+NumT = TypeVar("NumT", bound="int | AbstractArray")
 StartT = TypeVar("StartT", bound="QuantityLike | AbstractArray")
 StopT = TypeVar("StopT", bound="QuantityLike | AbstractArray")
 CenterT = TypeVar("CenterT", bound="QuantityLike | AbstractArray")
 WidthT = TypeVar("WidthT", bound="QuantityLike | AbstractArray")
+StartExponentT = TypeVar("StartExponentT", bound="QuantityLike | AbstractArray")
+StopExponentT = TypeVar("StopExponentT", bound="QuantityLike | AbstractArray")
+BaseT = TypeVar("BaseT", bound="QuantityLike | AbstractArray")
 
 
 def get_dtype(
@@ -1166,8 +1172,28 @@ class AbstractSpace(
 class AbstractLinearSpace(
     AbstractLinearParameterizedArrayMixin,
     AbstractRangeMixin,
-    AbstractSpace
+    AbstractSpace,
+    Generic[StartT, StopT, AxisT, NumT],
 ):
+    start: StartT = dataclasses.MISSING
+    stop: StopT = dataclasses.MISSING
+    axis: AxisT = dataclasses.MISSING
+    num: NumT = 11
+    endpoint: bool = True
+
+    @property
+    def explicit(self: Self) -> AbstractExplicitArray:
+        return na.linspace(
+            start=self._attr_normalized("start"),
+            stop=self._attr_normalized("stop"),
+            axis=self.axis,
+            num=self.num,
+            endpoint=self.endpoint
+        )
+
+    @property
+    def centers(self: Self) -> Self:
+        return self
 
     @property
     def step(self: Self) -> AbstractArray:
@@ -1180,37 +1206,63 @@ class AbstractLinearSpace(
 @dataclasses.dataclass(eq=False, repr=False)
 class AbstractStratifiedRandomSpace(
     AbstractRandomMixin,
-    AbstractLinearSpace,
+    AbstractLinearSpace[StartT, StopT, AxisT, NumT],
 ):
-    pass
+    seed: None | int = None
+
+    @property
+    def explicit(self: Self) -> AbstractExplicitArray:
+        result = self.centers
+
+        step_size = self.step
+
+        delta = na.random.uniform(
+            low=-step_size / 2,
+            high=step_size / 2,
+            shape_random=result.shape,
+            seed=self.seed,
+        )
+
+        return result + delta
+
+    @property
+    def centers(self: Self) -> AbstractExplicitArray:
+        return na.linspace(
+            start=self._attr_normalized("start"),
+            stop=self._attr_normalized("stop"),
+            num=self.num,
+            endpoint=self.endpoint,
+            axis=self.axis,
+        )
 
 
 @dataclasses.dataclass(eq=False, repr=False)
 class AbstractLogarithmicSpace(
     AbstractRangeMixin,
     AbstractSpace,
+    Generic[StartExponentT, StopExponentT, BaseT, AxisT, NumT]
 ):
+    start_exponent: StartExponentT = dataclasses.MISSING
+    stop_exponent: StopExponentT = dataclasses.MISSING
+    base: BaseT = dataclasses.MISSING
+    axis: AxisT = dataclasses.MISSING
+    num: NumT = 11
+    endpoint: bool = True
 
     @property
-    @abc.abstractmethod
-    def start_exponent(self: Self) -> ArrayLike:
-        """
-        Exponent of the starting value of the sequence.
-        """
+    def explicit(self: Self) -> AbstractExplicitArray:
+        return na.logspace(
+            start=self._attr_normalized("start_exponent"),
+            stop=self._attr_normalized("stop_exponent"),
+            axis=self.axis,
+            num=self.num,
+            endpoint=self.endpoint,
+            base=self.base,
+        )
 
     @property
-    @abc.abstractmethod
-    def stop_exponent(self: Self) -> ArrayLike:
-        """
-        Exponent of the ending value of the sequence.
-        """
-
-    @property
-    @abc.abstractmethod
-    def base(self: Self) -> ArrayLike:
-        """
-        Base which is exponentiated by :attr:`start_exponent` and :attr:`stop_exponent`.
-        """
+    def centers(self: Self) -> Self:
+        return self
 
     @property
     def start(self: Self) -> ArrayLike:
@@ -1225,5 +1277,24 @@ class AbstractLogarithmicSpace(
 class AbstractGeometricSpace(
     AbstractRangeMixin,
     AbstractSpace,
+    Generic[StartT, StopT, AxisT, NumT]
 ):
-    pass
+    start: StartT = dataclasses.MISSING
+    stop: StopT = dataclasses.MISSING
+    axis: AxisT = dataclasses.MISSING
+    num: NumT = 11
+    endpoint: bool = True
+
+    @property
+    def explicit(self: Self) -> AbstractExplicitArray:
+        return na.geomspace(
+            start=self._attr_normalized("start"),
+            stop=self._attr_normalized("stop"),
+            axis=self.axis,
+            num=self.num,
+            endpoint=self.endpoint,
+        )
+
+    @property
+    def centers(self: Self) -> Self:
+        return self

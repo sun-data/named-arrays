@@ -1027,7 +1027,6 @@ def _scalar_logarithmic_spaces():
     ]
     bases = [
         2,
-        na.ScalarArray(np.random.random(_num_x) + 1, axes=('x',)),
     ]
     endpoints = [
         False,

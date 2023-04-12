@@ -484,6 +484,9 @@ class AbstractScalarArray(
 
         from . import scalar_array_functions
 
+        if func in scalar_array_functions.SEQUENCE_FUNCTIONS:
+            return scalar_array_functions.array_function_sequence(func, *args, **kwargs)
+
         if func in scalar_array_functions.DEFAULT_FUNCTIONS:
             return scalar_array_functions.array_function_default(func, *args, **kwargs)
 
@@ -948,8 +951,7 @@ class AbstractScalarSpace(
 @dataclasses.dataclass(eq=False, repr=False)
 class ScalarLinearSpace(
     AbstractScalarSpace,
-    na.AbstractLinearSpace,
-    Generic[StartT, StopT],
+    na.AbstractLinearSpace[StartT, StopT, str, int],
 ):
     """
     An evenly spaced :class:`ScalarArray` ranging from start to stop with num elements.
@@ -974,35 +976,6 @@ class ScalarLinearSpace(
         wavelength = (1240 * u.eV * u.nm / photon_energy).to(u.nm)
         print(wavelength)
     """
-    start: StartT = dataclasses.MISSING
-    stop: StopT = dataclasses.MISSING
-    axis: str = dataclasses.MISSING
-    num: int = 11
-    endpoint: bool = True
-
-    @property
-    def explicit(self: Self) -> ScalarArray:
-        start = self.start
-        if not isinstance(start, AbstractScalar):
-            start = ScalarArray(start)
-        stop = self.stop
-        if not isinstance(stop, AbstractScalar):
-            stop = ScalarArray(stop)
-        shape = na.shape_broadcasted(start, stop)
-        return ScalarArray(
-            ndarray=np.linspace(
-                start=start.ndarray_aligned(shape),
-                stop=stop.ndarray_aligned(shape),
-                num=self.num,
-                endpoint=self.endpoint,
-                axis=~0,
-            ),
-            axes=tuple(shape.keys()) + (self.axis, )
-        )
-
-    @property
-    def centers(self: Self) -> Self:
-        return self
 
     # def index(
     #         self: ScalarLinearSpaceT,
@@ -1054,110 +1027,22 @@ class ScalarLinearSpace(
 @dataclasses.dataclass(eq=False, repr=False)
 class ScalarStratifiedRandomSpace(
     ScalarLinearSpace[StartT, StopT],
-    na.AbstractStratifiedRandomSpace,
+    na.AbstractStratifiedRandomSpace[StartT, StopT, str, int],
 ):
-    seed: None | int = None
-
-    @property
-    def explicit(self: Self) -> ScalarArray:
-        result = self.centers
-
-        step_size = self.step
-
-        delta = ScalarUniformRandomSample(
-            start=-step_size / 2,
-            stop=step_size / 2,
-            shape_random=result.shape,
-            seed=self.seed,
-        )
-
-        return result + delta
-
-    @property
-    def centers(self: Self) -> ScalarLinearSpace:
-        return ScalarLinearSpace(
-            start=self.start,
-            stop=self.stop,
-            num=self.num,
-            endpoint=self.endpoint,
-            axis=self.axis,
-        )
+    pass
 
 
 @dataclasses.dataclass(eq=False, repr=False)
 class ScalarLogarithmicSpace(
     AbstractScalarSpace,
-    na.AbstractLogarithmicSpace,
-    Generic[StartExponentT, StopExponentT, BaseT]
+    na.AbstractLogarithmicSpace[StartExponentT, StopExponentT, BaseT, str, int],
 ):
-    start_exponent: StartExponentT = dataclasses.MISSING
-    stop_exponent: StopExponentT = dataclasses.MISSING
-    base: BaseT = dataclasses.MISSING
-    axis: str = dataclasses.MISSING
-    num: int = 11
-    endpoint: bool = True
-
-    @property
-    def explicit(self: Self) -> ScalarArray:
-        start_exponent = self.start_exponent
-        if not isinstance(start_exponent, AbstractScalar):
-            start_exponent = ScalarArray(start_exponent)
-        stop_exponent = self.stop_exponent
-        if not isinstance(stop_exponent, AbstractScalar):
-            stop_exponent = ScalarArray(stop_exponent)
-        base = self.base
-        if not isinstance(base, AbstractScalar):
-            base = ScalarArray(base)
-        shape = na.shape_broadcasted(start_exponent, stop_exponent, base)
-        return ScalarArray(
-            ndarray=np.logspace(
-                start=start_exponent.ndarray_aligned(shape),
-                stop=stop_exponent.ndarray_aligned(shape),
-                num=self.num,
-                endpoint=self.endpoint,
-                base=base.ndarray_aligned(shape | {self.axis: 1}),
-                axis=~0,
-            ),
-            axes=tuple(shape.keys()) + (self.axis, )
-        )
-
-    @property
-    def centers(self: Self) -> Self:
-        return self
+    pass
 
 
 @dataclasses.dataclass(eq=False, repr=False)
 class ScalarGeometricSpace(
     AbstractScalarSpace,
-    na.AbstractGeometricSpace,
-    Generic[StartT, StopT],
+    na.AbstractGeometricSpace[StartT, StopT, str, int],
 ):
-    start: StartT = dataclasses.MISSING
-    stop: StopT = dataclasses.MISSING
-    axis: str = dataclasses.MISSING
-    num: int = 11
-    endpoint: bool = True
-
-    @property
-    def explicit(self: Self) -> ScalarArray:
-        start = self.start
-        if not isinstance(start, AbstractScalar):
-            start = ScalarArray(start)
-        stop = self.stop
-        if not isinstance(stop, AbstractScalar):
-            stop = ScalarArray(stop)
-        shape = na.shape_broadcasted(start, stop)
-        return ScalarArray(
-            ndarray=np.geomspace(
-                start=start.ndarray_aligned(shape),
-                stop=stop.ndarray_aligned(shape),
-                num=self.num,
-                endpoint=self.endpoint,
-                axis=~0,
-            ),
-            axes=tuple(shape.keys()) + (self.axis, )
-        )
-
-    @property
-    def centers(self: Self) -> Self:
-        return self
+    pass

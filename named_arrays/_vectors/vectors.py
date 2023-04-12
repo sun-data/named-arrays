@@ -320,6 +320,9 @@ class AbstractVectorArray(
 
         from . import vector_array_functions
 
+        if func in  vector_array_functions.SEQUENCE_FUNCTIONS:
+            return vector_array_functions.array_function_sequence(func, *args, **kwargs)
+
         if func in vector_array_functions.DEFAULT_FUNCTIONS:
             return vector_array_functions.array_function_default(func, *args, **kwargs)
 

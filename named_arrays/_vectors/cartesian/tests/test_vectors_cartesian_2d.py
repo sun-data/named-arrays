@@ -335,30 +335,39 @@ class AbstractTestAbstractCartesian2dVectorSpace(
 ):
     pass
 
-@pytest.mark.skip
+
+def _cartesian_2d_vector_linear_spaces() -> tuple[na.Cartesian2dVectorLinearSpace, ...]:
+    starts = (
+        0,
+        na.Cartesian2dVectorArray(0, 1),
+    )
+    stops = (
+        5,
+        na.Cartesian2dVectorArray(5, 5)
+    )
+    axes = (
+        na.Cartesian2dVectorArray('x', 'y'),
+    )
+    nums = (
+        na.Cartesian2dVectorArray(_num_x, _num_y),
+    )
+    return tuple(
+        na.Cartesian2dVectorLinearSpace(
+            start=start,
+            stop=stop,
+            axis=axis,
+            num=num,
+        )
+        for start in starts
+        for stop in stops
+        for axis in axes
+        for num in nums
+    )
+
+
+@pytest.mark.parametrize("array", _cartesian_2d_vector_linear_spaces())
 class TestCartesian2dVectorLinearSpace(
     AbstractTestAbstractCartesian2dVectorSpace,
     test_vectors_cartesian.AbstractTestAbstractCartesianVectorLinearSpace,
-):
-    pass
-
-@pytest.mark.skip
-class TestCartesian2dVectorStratifiedRandomSpace(
-    TestCartesian2dVectorLinearSpace,
-    test_vectors_cartesian.AbstractTestAbstractCartesianVectorStratifiedRandomSpace,
-):
-    pass
-
-@pytest.mark.skip
-class TestCartesian2dVectorLogarithmicSpace(
-    AbstractTestAbstractCartesian2dVectorSpace,
-    test_vectors_cartesian.AbstractTestAbstractCartesianVectorLogarithmicSpace,
-):
-    pass
-
-@pytest.mark.skip
-class TestCartesian2dVectorGeometricSpace(
-    AbstractTestAbstractCartesian2dVectorSpace,
-    test_vectors_cartesian.AbstractTestAbstractCartesianVectorGeometricSpace,
 ):
     pass

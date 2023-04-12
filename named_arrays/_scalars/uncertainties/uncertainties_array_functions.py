@@ -3,8 +3,10 @@ import numpy as np
 import astropy.units as u
 import named_arrays as na
 import named_arrays._scalars.scalar_array_functions
+from . import uncertainties
 
 __all__ = [
+    'SEQUENCE_FUNCTIONS',
     'DEFAULT_FUNCTIONS',
     'PERCENTILE_LIKE_FUNCTIONS',
     'ARG_REDUCE_FUNCTIONS',
@@ -14,6 +16,7 @@ __all__ = [
     'HANDLED_FUNCTIONS',
 ]
 
+SEQUENCE_FUNCTIONS = named_arrays._scalars.scalar_array_functions.SEQUENCE_FUNCTIONS
 DEFAULT_FUNCTIONS = named_arrays._scalars.scalar_array_functions.DEFAULT_FUNCTIONS
 PERCENTILE_LIKE_FUNCTIONS = named_arrays._scalars.scalar_array_functions.PERCENTILE_LIKE_FUNCTIONS
 ARG_REDUCE_FUNCTIONS = named_arrays._scalars.scalar_array_functions.ARG_REDUCE_FUNCTIONS
@@ -21,6 +24,43 @@ FFT_LIKE_FUNCTIONS = named_arrays._scalars.scalar_array_functions.FFT_LIKE_FUNCT
 FFTN_LIKE_FUNCTIONS = named_arrays._scalars.scalar_array_functions.FFTN_LIKE_FUNCTIONS
 STACK_LIKE_FUNCTIONS = [np.stack, np.concatenate]
 HANDLED_FUNCTIONS = dict()
+
+
+def array_function_sequence(
+        func: Callable,
+        *args: float | u.Quantity | na.AbstractScalarArray | na.AbstractUncertainScalarArray,
+        axis: str,
+        num: int = 50,
+        endpoint: bool = True,
+        dtype: None | type | np.dtype = None,
+        **kwargs: float | u.Quantity | na.AbstractScalarArray,
+) -> na.AbstractUncertainScalarArray:
+
+    try:
+        args = tuple(uncertainties._normalize(arg) for arg in args)
+        kwargs = {k: uncertainties._normalize(kwargs[k]) for k in kwargs}
+    except na.ScalarTypeError:
+        return NotImplemented
+
+    return na.UncertainScalarArray(
+        nominal=func(
+            *tuple(na.as_named_array(arg.nominal) for arg in args),
+            axis=axis,
+            num=num,
+            endpoint=endpoint,
+            dtype=dtype,
+            **{k: na.as_named_array(kwargs[k].nominal) for k in kwargs},
+        ),
+        distribution=func(
+            *tuple(na.as_named_array(arg.distribution) for arg in args),
+            axis=axis,
+            num=num,
+            endpoint=endpoint,
+            dtype=dtype,
+            **{k: na.as_named_array(kwargs[k].distribution) for k in kwargs},
+        ),
+    )
+
 
 def array_function_default(
         func: Callable,

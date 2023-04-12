@@ -20,6 +20,12 @@ __all__ = [
     'UncertainScalarUniformRandomSample',
     'UncertainScalarNormalRandomSample',
     'UncertainScalarPoissionRandomSample',
+    'AbstractParameterizedUncertainScalarArray',
+    'AbstractUncertainScalarSpace',
+    'UncertainScalarLinearSpace',
+    'UncertainScalarStratifiedRandomSpace',
+    'UncertainScalarLogarithmicSpace',
+    'UncertainScalarGeometricSpace',
 ]
 
 NominalArrayT = TypeVar(
@@ -426,6 +432,9 @@ class AbstractUncertainScalarArray(
 
         from . import uncertainties_array_functions
 
+        if func in uncertainties_array_functions.SEQUENCE_FUNCTIONS:
+            return uncertainties_array_functions.array_function_sequence(func, *args, **kwargs)
+
         if func in uncertainties_array_functions.DEFAULT_FUNCTIONS:
             return uncertainties_array_functions.array_function_default(func, *args, **kwargs)
 
@@ -691,5 +700,63 @@ class UncertainScalarNormalRandomSample(
 class UncertainScalarPoissionRandomSample(
     AbstractUncertainScalarRandomSample,
     na.AbstractPoissonRandomSample[UncertainScalarCenterT],
+):
+    pass
+
+
+@dataclasses.dataclass(eq=False, repr=False)
+class AbstractParameterizedUncertainScalarArray(
+    AbstractImplicitUncertainScalarArray,
+    na.AbstractParameterizedArray,
+):
+    @property
+    def nominal(self) -> float | u.Quantity | na.AbstractScalarArray:
+        return self.explicit.nominal
+
+    @property
+    def distribution(self) -> na.AbstractScalarArray:
+        return self.explicit.distribution
+
+    @property
+    def num_distribution(self) -> int:
+        return self.explicit.num_distribution
+
+
+@dataclasses.dataclass(eq=False, repr=False)
+class AbstractUncertainScalarSpace(
+    AbstractParameterizedUncertainScalarArray,
+    na.AbstractSpace,
+):
+    pass
+
+
+@dataclasses.dataclass(eq=False, repr=False)
+class UncertainScalarLinearSpace(
+    AbstractUncertainScalarSpace,
+    na.AbstractLinearSpace,
+):
+    pass
+
+
+@dataclasses.dataclass(eq=False, repr=False)
+class UncertainScalarStratifiedRandomSpace(
+    UncertainScalarLinearSpace,
+    na.AbstractStratifiedRandomSpace,
+):
+    pass
+
+
+@dataclasses.dataclass(eq=False, repr=False)
+class UncertainScalarLogarithmicSpace(
+    AbstractUncertainScalarSpace,
+    na.AbstractLogarithmicSpace,
+):
+    pass
+
+
+@dataclasses.dataclass(eq=False, repr=False)
+class UncertainScalarGeometricSpace(
+    AbstractUncertainScalarSpace,
+    na.AbstractGeometricSpace,
 ):
     pass

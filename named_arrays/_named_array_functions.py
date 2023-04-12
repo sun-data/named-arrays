@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Sequence, overload, Type, Any, Callable
+from typing import Sequence, overload, Type, Any, Callable, TypeVar
 import functools
 import numpy as np
 import astropy.units as u
@@ -8,6 +8,9 @@ import named_arrays as na
 __all__ = [
     '_named_array_function',
     'arange',
+    'linspace',
+    'logspace',
+    'geomspace',
     'ndim',
     'shape',
     'broadcast_to',
@@ -15,6 +18,10 @@ __all__ = [
     'concatenate',
     'add_axes',
 ]
+
+AxisT = TypeVar("AxisT", bound="str | na.AbstractArray")
+NumT = TypeVar("NumT", bound="int | na.AbstractArray")
+BaseT = TypeVar("BaseT", bound="int | na.AbstractArray")
 
 
 def _is_subclass(a: Any, b: Any):
@@ -75,6 +82,142 @@ def arange(
         stop=na.as_named_array(stop),
         axis=axis,
         step=step,
+    )
+
+
+def linspace(
+        start: na.StartT,
+        stop: na.StopT,
+        axis: AxisT,
+        num: NumT = 50,
+        endpoint: bool = True,
+        dtype: None | type | np.dtype = None,
+) -> na.StartT | na.StopT | AxisT | NumT:
+    """
+    Create an array of evenly-spaced numbers between :attr:`start` and :attr:`stop`
+
+    Parameters
+    ----------
+    start
+        The starting value of the sequence
+    stop
+        The last value of the sequence, unless :attr:`endpoint` is :class:`False`
+    axis
+        The name of the new axis corresponding to the sequence
+    num
+        Number of values in the sequence
+    endpoint
+        Flag controlling whether :attr:`stop` should be included in the sequence.
+    dtype
+        :class:`numpy.dtype` of the result
+
+    See Also
+    --------
+    :func:`numpy.linspace` :  Corresponding numpy function.
+
+    :class:`named_arrays.ScalarLinearSpace` : Corresponding implicit scalar array.
+
+    :class:`named_arrays.UncertainScalarLinearSpace`: Corresponding implicit uncertain scalar array.
+    """
+    return np.linspace(
+        start=na.as_named_array(start),
+        stop=stop,
+        axis=axis,
+        num=num,
+        endpoint=endpoint,
+        dtype=dtype,
+    )
+
+
+def logspace(
+        start: na.StartT,
+        stop: na.StopT,
+        axis: AxisT,
+        num: NumT = 50,
+        endpoint: bool = True,
+        base: BaseT = 10,
+        dtype: None | type | np.dtype = None,
+) -> na.StartT | na.StopT | AxisT | NumT:
+    """
+    Create an array of evenly-spaced numbers on a log scale between :attr:`start` and :attr:`stop`
+
+    Parameters
+    ----------
+    start
+        The starting value of the sequence
+    stop
+        The last value of the sequence, unless :attr:`endpoint` is :class:`False`
+    axis
+        The name of the new axis corresponding to the sequence
+    num
+        Number of values in the sequence
+    endpoint
+        Flag controlling whether :attr:`stop` should be included in the sequence.
+    base
+        The base of the logarithm
+    dtype
+        :class:`numpy.dtype` of the result
+
+    See Also
+    --------
+    :func:`numpy.logspace` :  Corresponding numpy function.
+
+    :class:`named_arrays.ScalarLogarithmicSpace` : Corresponding implicit scalar array.
+
+    :class:`named_arrays.UncertainScalarLogarithmicSpace`: Corresponding implicit uncertain scalar array.
+    """
+    return np.logspace(
+        start=na.as_named_array(start),
+        stop=stop,
+        axis=axis,
+        num=num,
+        endpoint=endpoint,
+        base=base,
+        dtype=dtype,
+    )
+
+
+def geomspace(
+        start: na.StartT,
+        stop: na.StopT,
+        axis: AxisT,
+        num: NumT = 50,
+        endpoint: bool = True,
+        dtype: None | type | np.dtype = None,
+) -> na.StartT | na.StopT | AxisT | NumT:
+    """
+    Create an array of a geometric progression of numbers between :attr:`start` and :attr:`stop`
+
+    Parameters
+    ----------
+    start
+        The starting value of the sequence
+    stop
+        The last value of the sequence, unless :attr:`endpoint` is :class:`False`
+    axis
+        The name of the new axis corresponding to the sequence
+    num
+        Number of values in the sequence
+    endpoint
+        Flag controlling whether :attr:`stop` should be included in the sequence.
+    dtype
+        :class:`numpy.dtype` of the result
+
+    See Also
+    --------
+    :func:`numpy.geomspace` :  Corresponding numpy function.
+
+    :class:`named_arrays.ScalarGeometricSpace` : Corresponding implicit scalar array.
+
+    :class:`named_arrays.UncertainScalarGeometricSpace`: Corresponding implicit uncertain scalar array.
+    """
+    return np.geomspace(
+        start=na.as_named_array(start),
+        stop=stop,
+        axis=axis,
+        num=num,
+        endpoint=endpoint,
+        dtype=dtype,
     )
 
 

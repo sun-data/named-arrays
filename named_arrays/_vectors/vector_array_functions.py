@@ -2,8 +2,11 @@ from typing import Callable, Sequence, Type
 import numpy as np
 import astropy.units as u
 import named_arrays as na
+import named_arrays._scalars.scalar_array_functions
+from . import vectors
 
 __all__ = [
+    'SEQUENCE_FUNCTIONS',
     'DEFAULT_FUNCTIONS',
     'PERCENTILE_LIKE_FUNCTIONS',
     'ARG_REDUCE_FUNCTIONS',
@@ -14,6 +17,7 @@ __all__ = [
 ]
 
 
+SEQUENCE_FUNCTIONS = named_arrays._scalars.scalar_array_functions.SEQUENCE_FUNCTIONS
 DEFAULT_FUNCTIONS = [
     np.ndim,
     np.min,
@@ -70,6 +74,45 @@ STACK_LIKE_FUNCTIONS = [
     np.concatenate,
 ]
 HANDLED_FUNCTIONS = dict()
+
+
+def array_function_sequence(
+        func: Callable,
+        *args: float | u.Quantity | na.AbstractScalar | na.AbstractVectorArray,
+        axis: str | na.AbstractVectorArray,
+        num: int | na.AbstractVectorArray = 50,
+        endpoint: bool = True,
+        dtype: None | type | np.dtype = None,
+        **kwargs: float | u.Quantity | na.AbstractScalar | na.AbstractVectorArray,
+) -> na.AbstractVectorArray:
+
+    try:
+        prototype = vectors._prototype(*args, *kwargs.values())
+        args = tuple(vectors._normalize(arg, prototype) for arg in args)
+        axis = vectors._normalize(axis, prototype)
+        num = vectors._normalize(num, prototype)
+        kwargs = {k: vectors._normalize(kwargs[k], prototype) for k in kwargs}
+    except na.VectorTypeError:
+        return NotImplemented
+
+    components_args = tuple(arg.components for arg in args)
+    components_axis = axis.components
+    components_num = num.components
+    components_kwargs = {k: kwargs[k].components for k in kwargs}
+
+    components = {
+        c: func(
+            *tuple(na.as_named_array(components_arg[c]) for components_arg in components_args),
+            axis=components_axis[c],
+            num=components_num[c],
+            endpoint=endpoint,
+            dtype=dtype,
+            **{k: na.as_named_array(components_kwargs[k][c]) for k in components_kwargs},
+        )
+        for c in prototype.components
+    }
+
+    return prototype.type_explicit.from_components(components)
 
 
 def array_function_default(

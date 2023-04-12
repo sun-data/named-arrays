@@ -809,3 +809,67 @@ class TestUncertainScalarPoissonRandomSample(
     named_arrays.tests.test_core.AbstractTestAbstractPoissonRandomSample,
 ):
     pass
+
+
+
+class AbstractTestAbstractParameterizedUncertainScalarArray(
+    AbstractTestAbstractImplicitUncertainScalarArray,
+    named_arrays.tests.test_core.AbstractTestAbstractParameterizedArray,
+):
+    pass
+
+
+class TestUncertainScalarLinearSpace(
+    AbstractTestAbstractUncertainScalarRandomSample,
+    named_arrays.tests.test_core.AbstractTestAbstractPoissonRandomSample,
+):
+    pass
+
+
+class AbstractTestAbstractScalarSpace(
+    AbstractTestAbstractParameterizedUncertainScalarArray,
+    named_arrays.tests.test_core.AbstractTestAbstractSpace,
+):
+    pass
+
+
+def _uncertain_scalar_linear_spaces() -> tuple[na.UncertainScalarLinearSpace, ...]:
+
+    starts = (
+        na.UniformUncertainScalarArray(
+            na.ScalarLinearSpace(0, 1, axis='x', num=_num_x),
+            width=0.2,
+            num_distribution=_num_distribution,
+        ),
+    )
+    stops = (
+        2,
+        na.ScalarArray(2),
+        na.ScalarLinearSpace(2, 3, axis='x', num=_num_x),
+        na.UniformUncertainScalarArray(
+            na.ScalarLinearSpace(2, 3, axis='x', num=_num_x),
+            width=0.1,
+            num_distribution=_num_distribution,
+        ),
+    )
+    units = (1, u.mm)
+    arrays = tuple(
+        na.UncertainScalarLinearSpace(
+            start=start * unit,
+            stop=stop * unit,
+            axis='y',
+            num=_num_y,
+        )
+        for start in starts
+        for stop in stops
+        for unit in units
+    )
+    return arrays
+
+
+@pytest.mark.parametrize("array", _uncertain_scalar_linear_spaces())
+class TestUncertainScalarLinearSpace(
+    AbstractTestAbstractScalarSpace,
+    named_arrays.tests.test_core.AbstractTestAbstractLinearSpace,
+):
+    pass
