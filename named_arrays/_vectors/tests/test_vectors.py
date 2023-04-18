@@ -422,44 +422,6 @@ class AbstractTestAbstractVectorArray(
         for component in components:
             assert components[component].shape == shape
 
-    def test_ptp(
-            self,
-            array: na.AbstractVectorArray,
-    ):
-        super().test_ptp(array=array)
-        if any(np.issubdtype(na.get_dtype(array.entries[e]), bool) for e in array.entries):
-            with pytest.raises(TypeError, match='numpy boolean subtract, .*'):
-                array.ptp()
-            return
-
-        assert np.all(array.ptp() == np.ptp(array))
-
-    def test_all(
-            self,
-            array: na.AbstractVectorArray,
-    ):
-        super().test_all(array=array)
-        entries = array.entries
-        if any(na.unit(entries[e]) is not None for e in entries):
-            with pytest.raises(TypeError, match="no implementation found for .*"):
-                array.all()
-            return
-
-        assert np.all(array.all() == np.all(array))
-
-    def test_any(
-            self,
-            array: na.AbstractVectorArray,
-    ):
-        super().test_any(array=array)
-        entries = array.entries
-        if any(na.unit(entries[e]) is not None for e in entries):
-            with pytest.raises(TypeError, match="no implementation found for .*"):
-                array.any()
-            return
-
-        assert np.all(array.any() == np.any(array))
-
 
 class AbstractTestAbstractExplicitVectorArray(
     AbstractTestAbstractVectorArray,

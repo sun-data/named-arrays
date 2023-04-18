@@ -856,12 +856,20 @@ class AbstractTestAbstractArray(
     ):
         assert np.array_equal(array.sum(), np.sum(array))
 
-    @abc.abstractmethod
     def test_ptp(
             self,
             array: na.AbstractArray,
     ):
-        pass
+        try:
+            result_expected = np.ptp(array)
+        except Exception as e:
+            with pytest.raises(type(e)):
+                array.ptp()
+            return
+
+        result = array.ptp()
+
+        assert np.all(result == result_expected)
 
     def test_mean(
             self,
@@ -883,19 +891,35 @@ class AbstractTestAbstractArray(
         kwargs = dict(method='closest_observation')
         assert np.array_equal(array.percentile(q, **kwargs), np.percentile(array, q, **kwargs))
 
-    @abc.abstractmethod
     def test_all(
             self,
             array: na.AbstractArray,
     ):
-        pass
+        try:
+            result_expected = np.all(array)
+        except Exception as e:
+            with pytest.raises(type(e)):
+                array.all()
+            return
 
-    @abc.abstractmethod
+        result = array.all()
+
+        assert np.all(result == result_expected)
+
     def test_any(
             self,
             array: na.AbstractArray
     ):
-        pass
+        try:
+            result_expected = np.any(array)
+        except Exception as e:
+            with pytest.raises(type(e)):
+                array.any()
+            return
+
+        result = array.any()
+
+        assert np.all(result == result_expected)
 
     def test_rms(
             self,

@@ -144,42 +144,6 @@ class AbstractTestAbstractScalar(
             assert np.all(result == result_out)
             assert result_out is out
 
-    def test_ptp(
-            self,
-            array: na.AbstractScalar,
-    ):
-        super().test_ptp(array=array)
-        if np.issubdtype(array.dtype, bool):
-            with pytest.raises(TypeError, match='numpy boolean subtract, .*'):
-                array.ptp()
-            return
-
-        assert np.all(array.ptp() == np.ptp(array))
-
-    def test_all(
-            self,
-            array: na.AbstractScalar,
-    ):
-        super().test_all(array=array)
-        if array.unit is not None:
-            with pytest.raises(TypeError, match="no implementation found for .*"):
-                array.all()
-            return
-
-        assert np.all(array.all() == np.all(array))
-
-    def test_any(
-            self,
-            array: na.AbstractScalar,
-    ):
-        super().test_any(array=array)
-        if array.unit is not None:
-            with pytest.raises(TypeError, match="no implementation found for .*"):
-                array.any()
-            return
-
-        assert np.all(array.any() == np.any(array))
-
 
 class AbstractTestAbstractScalarArray(
     AbstractTestAbstractScalar,
