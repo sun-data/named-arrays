@@ -259,7 +259,7 @@ class AbstractVectorArray(
     ):
         if array.type_abstract == self.type_abstract:
             pass
-        elif isinstance(array, na.ScalarArray):
+        elif isinstance(array, na.AbstractArray):
             array = self.type_explicit.from_scalar(array)
         else:
             return NotImplemented
