@@ -405,6 +405,9 @@ class AbstractScalarArray(
         if result is not NotImplemented:
             return result
 
+        if function is np.matmul:
+            return NotImplemented
+
         nout = function.nout
 
         kwargs_ndarray = kwargs.copy()

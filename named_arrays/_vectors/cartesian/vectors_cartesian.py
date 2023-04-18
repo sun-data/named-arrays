@@ -85,6 +85,9 @@ class AbstractCartesianVectorArray(
         if result is not NotImplemented:
             return result
 
+        if function is np.matmul:
+            return NotImplemented
+
         components = self.components
 
         components_inputs = []
