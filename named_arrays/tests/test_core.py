@@ -596,6 +596,12 @@ class AbstractTestAbstractArray(
             ):
                 pass
 
+        def test_copyto(self, array: na.AbstractArray):
+            dst = 0 * array
+            np.copyto(dst=dst, src=array)
+            assert np.all(array == dst)
+
+
         @pytest.mark.parametrize(
             argnames='shape',
             argvalues=[

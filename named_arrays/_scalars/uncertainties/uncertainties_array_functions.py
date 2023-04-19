@@ -299,6 +299,55 @@ def implements(numpy_function: Callable):
     return decorator
 
 
+@implements(np.copyto)
+def copyto(
+        dst: na.UncertainScalarArray,
+        src: na.AbstractScalarArray | na.AbstractUncertainScalarArray,
+        casting: str = "same_kind",
+        where: bool | na.AbstractScalarArray | na.AbstractUncertainScalarArray = True,
+):
+    if not isinstance(dst, na.UncertainScalarArray):
+        return NotImplemented
+
+    if isinstance(src, na.AbstractArray):
+        if isinstance(src, na.AbstractScalar):
+            if isinstance(src, na.AbstractScalarArray):
+                src_nominal = src_distribution = src
+            elif isinstance(src, na.AbstractUncertainScalarArray):
+                src_nominal = src.nominal
+                src_distribution = src.distribution
+            else:
+                return NotImplemented
+        else:
+            return NotImplemented
+    else:
+        src_nominal = src_distribution = src
+
+    if isinstance(where, na.AbstractArray):
+        if isinstance(where, na.AbstractScalar):
+            if isinstance(where, na.AbstractScalarArray):
+                where_nominal = where_distribution = where
+            elif isinstance(src, na.AbstractUncertainScalarArray):
+                where_nominal = src.nominal
+                where_distribution = src.distribution
+            else:
+                return NotImplemented
+        else:
+            return NotImplemented
+    else:
+        where_nominal = where_distribution = where
+
+    try:
+        np.copyto(dst=dst.nominal, src=src_nominal, casting=casting, where=where_nominal)
+    except TypeError:
+        dst.nominal = src_nominal
+
+    try:
+        np.copyto(dst=dst.distribution, src=src_distribution, casting=casting, where=where_distribution)
+    except TypeError:
+        dst.distribution = src_distribution
+
+
 @implements(np.broadcast_to)
 def broadcast_to(
         array: na.AbstractUncertainScalarArray,

@@ -331,6 +331,46 @@ def implements(numpy_function: Callable):
     return decorator
 
 
+@implements(np.copyto)
+def copyto(
+        dst: na.ScalarArray,
+        src: na.AbstractScalarArray,
+        casting: str = "same_kind",
+        where: bool | na.AbstractScalarArray = True,
+):
+
+    if not isinstance(dst, na.ScalarArray):
+        return NotImplemented
+
+    shape = dst.shape
+
+    if isinstance(src, na.AbstractArray):
+        if isinstance(src, na.AbstractScalarArray):
+            src_ndarray = src.ndarray_aligned(shape)
+        else:
+            return NotImplemented
+    else:
+        src_ndarray = src
+
+    if isinstance(where, na.AbstractArray):
+        if isinstance(where, na.AbstractScalarArray):
+            where_ndarray = where.ndarray_aligned(shape)
+        else:
+            return NotImplemented
+    else:
+        where_ndarray = where
+
+    try:
+        np.copyto(
+            dst=dst.ndarray,
+            src=src_ndarray,
+            casting=casting,
+            where=where_ndarray,
+        )
+    except TypeError:
+        dst.ndarray = src.ndarray
+
+
 @implements(np.broadcast_to)
 def broadcast_to(
         array: na.AbstractScalarArray,
