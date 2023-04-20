@@ -52,6 +52,13 @@ class AbstractFunctionArray(
         return FunctionArray
 
     @property
+    def value(self) -> FunctionArray:
+        return self.type_explicit(
+            inputs=self.inputs,
+            outputs=self.outputs.value,
+        )
+
+    @property
     def centers(self) -> FunctionArray:
         return self.type_explicit(
             inputs=self.inputs.centers,
@@ -84,6 +91,13 @@ class AbstractFunctionArray(
             outputs=self.outputs.to(unit),
         )
 
+    @property
+    def length(self) -> FunctionArray:
+        return self.type_explicit(
+            inputs=self.inputs,
+            outputs=self.outputs.length,
+        )
+
     def add_axes(self, axes: str | Sequence[str]) -> FunctionArray:
         return self.type_explicit(
             inputs=self.inputs,
@@ -112,26 +126,69 @@ class AbstractFunctionArray(
 
     def _getitem(
             self,
-            item: dict[str, int | slice | na.AbstractArray] | na.AbstractArray,
+            item: dict[str, int | slice | na.AbstractArray] | na.AbstractFunctionArray,
     ) -> FunctionArray:
 
+        array = self.explicit
+        inputs = array.inputs
+        outputs = array.outputs
+
+        shape = array.shape
+        shape_inputs = inputs.shape
+        shape_outputs = outputs.shape
+
+        if isinstance(item, na.AbstractFunctionArray):
+            if np.any(item.inputs != self.inputs):
+                raise ValueError("boolean advanced index does not have the same inputs as the array")
+
+            item_inputs = item.outputs
+            item_outputs = item.outputs
+
+            shape_item_inputs = item_inputs.shape
+            shape_item_outputs = item_outputs.shape
+
+        elif isinstance(item, dict):
+
+            item_inputs = dict()
+            item_outputs = dict()
+            for ax in item:
+                item_ax = item[ax]
+                if isinstance(item_ax, na.AbstractFunctionArray):
+                    item_inputs[ax] = item_ax.inputs
+                    item_outputs[ax] = item_ax.outputs
+                else:
+                    item_inputs[ax] = item_outputs[ax] = item_ax
+
+            shape_item_inputs = {ax: shape[ax] for ax in item_inputs if ax in shape}
+            shape_item_outputs = {ax: shape[ax] for ax in item_outputs if ax in shape}
+
+        else:
+            return NotImplemented
+
+        inputs = na.broadcast_to(inputs, na.broadcast_shapes(shape_inputs, shape_item_inputs))
+        outputs = na.broadcast_to(outputs, na.broadcast_shapes(shape_outputs, shape_item_outputs))
+
         return self.type_explicit(
-            inputs=self.inputs[item],
-            outputs=self.outputs[item],
+            inputs=inputs[item_inputs],
+            outputs=outputs[item_outputs],
         )
 
     def _getitem_reversed(
             self,
             array: na.AbstractArray,
-            item: dict[str, int | slice | na.AbstractArray] | na.AbstractArray
+            item: dict[str, int | slice | na.AbstractArray] | na.AbstractFunctionArray
     ):
-        return NotImplemented
+        if isinstance(array, (na.AbstractScalar, na.AbstractVectorArray)):
+            array = na.FunctionArray(array, array)
+        else:
+            return NotImplemented
+        return array._getitem(item)
 
     def __bool__(self) -> bool:
         result = super().__bool__()
         return result and bool(self.outputs)
 
-    def __mul__(self, other: na.ArrayLike | u.UnitBase):
+    def __mul__(self, other: na.ArrayLike | u.UnitBase) -> FunctionArray:
         if isinstance(other, u.UnitBase):
             return self.type_explicit(
                 inputs=self.inputs,
@@ -140,7 +197,7 @@ class AbstractFunctionArray(
         else:
             return super().__mul__(other)
 
-    def __lshift__(self, other: na.ArrayLike | u.UnitBase):
+    def __lshift__(self, other: na.ArrayLike | u.UnitBase) -> FunctionArray:
         if isinstance(other, u.UnitBase):
             return self.type_explicit(
                 inputs=self.inputs,
@@ -149,7 +206,7 @@ class AbstractFunctionArray(
         else:
             return super().__lshift__(other)
 
-    def __truediv__(self, other: na.ArrayLike | u.UnitBase):
+    def __truediv__(self, other: na.ArrayLike | u.UnitBase) -> FunctionArray:
         if isinstance(other, u.UnitBase):
             return self.type_explicit(
                 inputs=self.inputs,
@@ -206,9 +263,9 @@ class AbstractFunctionArray(
         result = self.type_explicit(
             inputs=inputs,
             outputs=np.matmul(
-                x1=outputs_1,
-                x2=outputs_2,
-                out=out.outputs if out is not None else outputs_2,
+                outputs_1,
+                outputs_2,
+                out=out.outputs if out is not None else out,
                 **kwargs,
             )
         )
@@ -230,6 +287,8 @@ class AbstractFunctionArray(
         if result is not NotImplemented:
             return result
 
+        nout = function.nout
+
         inputs_inputs = []
         inputs_outputs = []
         for inp in inputs:
@@ -238,7 +297,10 @@ class AbstractFunctionArray(
                     inputs_inputs.append(inp.inputs)
                     inputs_outputs.append(inp.outputs)
                 else:
-                    return NotImplemented
+                    if not inp.shape:
+                        inputs_outputs.append(inp)
+                    else:
+                        return NotImplemented
             else:
                 inputs_outputs.append(inp)
 
@@ -248,13 +310,26 @@ class AbstractFunctionArray(
 
         if "out" in kwargs:
             out = kwargs.pop("out")
-            if not isinstance(out, self.type_explicit):
-                raise ValueError(f"`out` must be an instance of {self.type_explicit}")
-            if np.any(out.inputs != inputs_inputs[0]):
-                raise InputValueError(f"`out.inputs` must match the rest of the inputs")
-            kwargs["out"] = out.outputs
+            outputs_out = list()
+            for o in out:
+                if o is not None:
+                    if isinstance(o, self.type_explicit):
+                        outputs_o = o.outputs
+                    else:
+                        raise ValueError(
+                            f"each element of `out` must be an instance of {self.type_explicit}, got {type(o)}"
+                        )
+                else:
+                    outputs_o = None
+                outputs_out.append(outputs_o)
+            if nout == 1:
+                outputs_out = outputs_out[0]
+            else:
+                outputs_out = tuple(outputs_out)
+
+            kwargs["out"] = outputs_out
         else:
-            out = None
+            out = (None, ) * nout
 
         if "where" in kwargs:
             where = kwargs.pop("where")
@@ -268,13 +343,27 @@ class AbstractFunctionArray(
             else:
                 kwargs["where"] = where
 
-        result = self.type_explicit(
-            inputs=inputs_inputs[0],
-            outputs=getattr(function, method)(*inputs_outputs, **kwargs)
+        inputs_result = inputs_inputs[0]
+        outputs_result = getattr(function, method)(*inputs_outputs, **kwargs)
+
+        if nout == 1:
+            outputs_result = (outputs_result, )
+
+        result = list(
+            self.type_explicit(inputs=inputs_result, outputs=outputs_result[i])
+            for i in range(nout)
         )
 
-        if out is not None:
-            result = out
+        for i in range(nout):
+            if out[i] is not None:
+                out[i].inputs = result[i].inputs
+                out[i].outputs = result[i].outputs
+                result[i] = out[i]
+
+        if nout == 1:
+            result = result[0]
+        else:
+            result = tuple(result)
 
         return result
 
@@ -285,10 +374,31 @@ class AbstractFunctionArray(
             args: tuple,
             kwargs: dict[str, Any],
     ):
-        pass
+        result = super().__array_function__(func=func, types=types, args=args, kwargs=kwargs)
+        if result is not NotImplemented:
+            return result
+
+        from . import function_array_functions
+
+        if func in function_array_functions.DEFAULT_FUNCTIONS:
+            return function_array_functions.array_function_default(func, *args, **kwargs)
+
+        if func in function_array_functions.PERCENTILE_LIKE_FUNCTIONS:
+            return function_array_functions.array_function_percentile_like(func, *args, **kwargs)
+
+        if func in function_array_functions.ARG_REDUCE_FUNCTIONS:
+            return function_array_functions.array_function_arg_reduce(func, *args, **kwargs)
+
+        if func in function_array_functions.STACK_LIKE_FUNCTIONS:
+            return function_array_functions.array_function_stack_like(func, *args, **kwargs)
+
+        if func in function_array_functions.HANDLED_FUNCTIONS:
+            return function_array_functions.HANDLED_FUNCTIONS[func](*args, **kwargs)
+
+        return NotImplemented
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(eq=False, repr=False)
 class FunctionArray(
     AbstractFunctionArray,
     na.AbstractExplicitArray,
@@ -328,17 +438,3 @@ class FunctionArray(
     @property
     def explicit(self) -> FunctionArray:
         return self
-
-    @property
-    def value(self) -> FunctionArray:
-        return FunctionArray(
-            inputs=self.inputs,
-            outputs=self.outputs.value,
-        )
-
-    @property
-    def length(self) -> FunctionArray:
-        return FunctionArray(
-            inputs=self.inputs,
-            outputs=self.outputs.length,
-        )
