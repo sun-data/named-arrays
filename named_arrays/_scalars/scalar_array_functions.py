@@ -487,10 +487,13 @@ def concatenate(
         casting: str = "same_kind",
 ) -> na.ScalarArray:
 
-    arrays = [na.ScalarArray(arr) if not isinstance(arr, na.AbstractArray) else arr for arr in arrays]
+    arrays = [na.ScalarArray(arr) if not isinstance(arr, na.AbstractArray) else arr.explicit for arr in arrays]
     for array in arrays:
         if not isinstance(array, na.AbstractScalarArray):
             return NotImplemented
+
+    if any(axis not in array.shape for array in arrays):
+        raise ValueError(f"axis '{axis}' must be present in all the input arrays, got {[a.axes for a in arrays]}")
 
     shapes = []
     for array in arrays:
