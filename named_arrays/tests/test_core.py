@@ -669,10 +669,6 @@ class AbstractTestAbstractArray(
             assert result.size == array.size
             assert result.axes == tuple(newshape.keys())
 
-        def test_linalg_inv(self, array: na.AbstractArray):
-            with pytest.raises(NotImplementedError):
-                np.linalg.inv(array)
-
         @pytest.mark.parametrize('axis', ['y', 'z'])
         @pytest.mark.parametrize('use_out', [False, True])
         def test_stack(

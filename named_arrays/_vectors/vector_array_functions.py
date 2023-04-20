@@ -450,13 +450,6 @@ def reshape(a: na.AbstractVectorArray, newshape: dict[str, int]) -> na.AbstractE
     return a.type_explicit.from_components({c: np.reshape(a=components[c], newshape=newshape) for c in components})
 
 
-@implements(np.linalg.inv)
-def linalg_inv(a: na.AbstractVectorArray,):
-    raise NotImplementedError(
-        "np.linalg.inv not supported for instances of 'named_arrays.AbstractVectorArray'"
-    )
-
-
 def array_function_stack_like(
         func: Callable,
         arrays: Sequence[bool | int | float | complex | str | u.Quantity | na.AbstractScalar | na.AbstractVectorArray],

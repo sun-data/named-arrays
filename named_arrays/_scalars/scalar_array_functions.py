@@ -435,13 +435,6 @@ def reshape(a: na.AbstractScalarArray, newshape: dict[str, int]) -> na.ScalarArr
     )
 
 
-@implements(np.linalg.inv)
-def linalg_inv(a: na.AbstractScalarArray,):
-    raise NotImplementedError(
-        "np.linalg.inv not supported, use 'named_arrays.AbstractScalarArray.matrix_inverse()' instead"
-    )
-
-
 @implements(np.stack)
 def stack(
         arrays: Sequence[bool | int | float | complex | str | u.Quantity | na.AbstractScalarArray],
