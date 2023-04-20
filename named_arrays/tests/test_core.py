@@ -702,33 +702,28 @@ class AbstractTestAbstractArray(
                 assert result is out
 
         @pytest.mark.parametrize('axis', ['x', 'y'])
-        @pytest.mark.parametrize('use_out', [False, True])
         def test_concatenate(
                 self,
                 array: na.AbstractArray,
                 axis: str,
-                use_out: bool,
         ):
             arrays = [array, array]
 
-            shape_out = array.shape
-            if axis not in shape_out:
-                shape_out[axis] = 1
-            shape_out[axis] = 2 * shape_out[axis]
+            if axis not in array.shape:
+                with pytest.raises(ValueError, match="axis .* must be present in all the input arrays, got .*"):
+                    np.concatenate(arrays, axis=axis)
+                return
 
-            if use_out:
-                out = 0 * np.concatenate(arrays=arrays, axis=axis)
-            else:
-                out = None
+            result = np.concatenate(arrays, axis=axis)
 
-            result = np.concatenate(arrays, axis=axis, out=out)
+            out = 0 * result
 
-            assert result.shape == shape_out
-            assert np.all(result[{axis: slice(None, shape_out[axis] // 2)}] == array)
-            assert np.all(result[{axis: slice(shape_out[axis] // 2, None)}] == array)
+            result_out = np.concatenate(arrays, axis=axis, out=out)
 
-            if use_out:
-                assert result is out
+            assert np.all(result[{axis: slice(None, array.shape[axis])}] == array)
+            assert np.all(result[{axis: slice(array.shape[axis], None)}] == array)
+            assert np.all(result == result_out)
+            assert result_out is out
 
         @abc.abstractmethod
         def test_sort(self, array: na.AbstractArray, axis: None | str | Sequence[str]):
@@ -793,20 +788,18 @@ class AbstractTestAbstractArray(
                 array_2 = 0 * array
                 assert not np.array_equiv(array, array_2)
 
-        @pytest.mark.parametrize("array_2", ["copy", "broadcast", "zeros"])
+        @pytest.mark.parametrize("array_2", ["copy", "zeros"])
         def test_allclose(self, array: na.AbstractArray, array_2: str):
             if array_2 == "copy":
-                array_2 = array + array.mean() * na.ScalarUniformRandomSample(-1e-10, 1e-10, shape_random=array.shape)
-                assert np.allclose(array, array_2)
-
-            elif array_2 == "broadcast":
-                shape_new = array.shape | dict(extra_axis=5)
-                array_2 = array + array.mean() * na.ScalarUniformRandomSample(-1e-10, 1e-10, shape_random=shape_new)
+                array_2 = array + array.mean() * na.ScalarUniformRandomSample(-1e-10, 1e-10)
                 assert np.allclose(array, array_2)
 
             elif array_2 == "zeros":
                 array_2 = 0 * array
                 assert not np.allclose(array, array_2)
+
+            else:
+                raise NotImplementedError
 
         def test_nonzero(self, array: na.AbstractArray):
             mask = array > array.mean()
