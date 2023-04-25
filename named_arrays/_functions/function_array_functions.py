@@ -129,7 +129,7 @@ def array_function_default(
 def array_function_percentile_like(
         func: Callable,
         a: na.AbstractFunctionArray,
-        q: float | u.Quantity |  na.AbstractArray,
+        q: float | u.Quantity | na.AbstractArray,
         axis: None | str | Sequence[str] = None,
         out: None | na.FunctionArray = None,
         overwrite_input: bool = False,
@@ -138,7 +138,12 @@ def array_function_percentile_like(
 ) -> na.FunctionArray:
 
     a = a.explicit
+    inputs = a.inputs
+    outputs = a.outputs
+
     shape = a.shape
+    shape_inputs = a.inputs.shape
+    shape_outputs = a.outputs.shape
 
     axis_normalized = na.axis_normalized(a, axis)
 
@@ -148,10 +153,13 @@ def array_function_percentile_like(
                 f"the `axis` argument, {axis}, must be `None` or a subset of the shape of `a`, {shape}"
             )
 
-    shape_inputs = a.inputs.shape
-    shape_outputs = a.outputs.shape
-
     shape_base = {ax: shape[ax] for ax in axis_normalized}
+
+    kwargs = dict(
+        overwrite_input=overwrite_input,
+        method=method,
+        keepdims=keepdims,
+    )
 
     if isinstance(out, na.AbstractFunctionArray):
         inputs_out = out.inputs
@@ -159,21 +167,26 @@ def array_function_percentile_like(
     else:
         inputs_out = outputs_out = out
 
-    inputs_result = np.mean(
-        a=a.inputs,
-        axis=tuple(ax for ax in axis_normalized if ax in shape_inputs),
-        out=inputs_out,
-        keepdims=keepdims,
-    )
+    if keepdims:
+        if inputs_out is not None:
+            np.copyto(src=inputs, dst=inputs_out)
+            inputs_result = inputs_out
+        else:
+            inputs_result = inputs
+    else:
+        inputs_result = np.mean(
+            a=na.broadcast_to(inputs, na.broadcast_shapes(shape_inputs, shape_base)),
+            axis=axis_normalized,
+            out=inputs_out,
+            keepdims=keepdims,
+        )
 
     outputs_result = func(
-        a=a.outputs,
+        a=na.broadcast_to(outputs, na.broadcast_shapes(shape_outputs, shape_base)),
         q=q,
-        axis=tuple(ax for ax in axis_normalized if ax in shape_outputs),
+        axis=axis_normalized,
         out=outputs_out,
-        overwrite_input=overwrite_input,
-        method=method,
-        keepdims=keepdims,
+        **kwargs,
     )
 
     if out is None:

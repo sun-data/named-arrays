@@ -427,7 +427,22 @@ class AbstractTestAbstractFunctionArray(
             named_arrays.tests.test_core.AbstractTestAbstractArray.TestArrayFunctions.TestPercentileLikeFunctions,
         ):
 
-            @pytest.mark.skip
+            @pytest.mark.parametrize(
+                argnames='q',
+                argvalues=[
+                    .25,
+                    25 * u.percent,
+                    na.ScalarLinearSpace(.25, .75, axis='q', num=3, endpoint=True),
+                    na.UncertainScalarArray(
+                        nominal=25 * u.percent,
+                        distribution=na.ScalarNormalRandomSample(
+                            center=25 * u.percent,
+                            width=1 * u.percent,
+                            shape_random=dict(_distribution=_num_distribution)
+                        )
+                    )
+                ]
+            )
             def test_percentile_like_functions(
                     self,
                     func: Callable,
@@ -436,7 +451,37 @@ class AbstractTestAbstractFunctionArray(
                     axis: None | str | Sequence[str],
                     keepdims: bool,
             ):
-                pass
+
+                array_broadcasted = na.broadcast_to(array, array.shape)
+
+                kwargs = dict()
+                kwargs_output = dict()
+
+                try:
+                    outputs_expected = func(
+                        a=array_broadcasted.outputs,
+                        q=q,
+                        axis=axis,
+                        keepdims=keepdims,
+                        **kwargs_output,
+                    )
+                    if keepdims:
+                        inputs_expected = array_broadcasted.inputs
+                    else:
+                        inputs_expected = np.mean(
+                            a=array_broadcasted.inputs,
+                            axis=axis,
+                            keepdims=keepdims,
+                        )
+                except Exception as e:
+                    with pytest.raises(type(e)):
+                        func(array, q=q, axis=axis, keepdims=keepdims, **kwargs)
+                    return
+
+                result = func(array, q=q, axis=axis, keepdims=keepdims, **kwargs)
+
+                assert np.all(result.inputs == inputs_expected)
+                assert np.all(result.outputs == outputs_expected)
 
         @pytest.mark.skip
         class TestArgReductionFunctions(
