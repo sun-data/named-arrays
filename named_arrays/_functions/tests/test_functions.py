@@ -420,8 +420,14 @@ class AbstractTestAbstractFunctionArray(
 
                 result = func(array, axis=axis, keepdims=keepdims, **kwargs)
 
+                out = 0 * result
+                out.inputs = 0 * out.inputs
+                result_out = func(array, axis=axis, out=out, keepdims=keepdims, **kwargs)
+
                 assert np.all(result.inputs == inputs_expected)
                 assert np.all(result.outputs == outputs_expected)
+                assert np.all(result == result_out)
+                assert result_out is out
 
         class TestPercentileLikeFunctions(
             named_arrays.tests.test_core.AbstractTestAbstractArray.TestArrayFunctions.TestPercentileLikeFunctions,
