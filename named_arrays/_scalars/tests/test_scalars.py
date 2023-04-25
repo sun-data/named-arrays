@@ -490,18 +490,18 @@ class AbstractTestAbstractScalarArray(
                 assert np.allclose(result, result_out)
                 assert result_out is out
 
-        @pytest.mark.parametrize(
-            argnames='q',
-            argvalues=[
-                .25,
-                25 * u.percent,
-                na.ScalarLinearSpace(.25, .75, axis='q', num=3, endpoint=True),
-            ]
-        )
         class TestPercentileLikeFunctions(
             AbstractTestAbstractScalar.TestArrayFunctions.TestPercentileLikeFunctions
         ):
 
+            @pytest.mark.parametrize(
+                argnames='q',
+                argvalues=[
+                    .25,
+                    25 * u.percent,
+                    na.ScalarLinearSpace(.25, .75, axis='q', num=3, endpoint=True),
+                ]
+            )
             def test_percentile_like_functions(
                     self,
                     func: Callable,
@@ -555,6 +555,44 @@ class AbstractTestAbstractScalarArray(
                 assert np.all(result.ndarray == result_ndarray)
                 assert np.allclose(result, result_out)
                 assert result_out is out
+
+            @pytest.mark.parametrize(
+                argnames="q",
+                argvalues=[
+                    na.UncertainScalarArray(
+                        nominal=25 * u.percent,
+                        distribution=na.ScalarNormalRandomSample(
+                            center=25 * u.percent,
+                            width=1 * u.percent,
+                            shape_random=dict(_distribution=_num_distribution)
+                        )
+                    ),
+                    na.NormalUncertainScalarArray(
+                        nominal=na.ScalarLinearSpace(25 * u.percent, 75 * u.percent, axis='y', num=_num_y),
+                        width=1 * u.percent,
+                        num_distribution=_num_distribution,
+                    )
+                ]
+            )
+            def test_percentile_like_functions_q_uncertain(
+                    self,
+                    func: Callable,
+                    array: na.AbstractScalarArray,
+                    q: float | u.Quantity | na.AbstractArray,
+                    axis: None | str | Sequence[str],
+                    keepdims: bool,
+            ):
+                from named_arrays._scalars.uncertainties.tests.test_uncertainties import (
+                    AbstractTestAbstractUncertainScalarArray
+                )
+                other = AbstractTestAbstractUncertainScalarArray.TestArrayFunctions.TestPercentileLikeFunctions()
+                other.test_percentile_like_functions(
+                    func=func,
+                    array=array,
+                    q=q,
+                    axis=axis,
+                    keepdims=keepdims,
+                )
 
         class TestFFTLikeFunctions(
             AbstractTestAbstractScalar.TestArrayFunctions.TestFFTLikeFunctions

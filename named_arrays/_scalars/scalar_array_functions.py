@@ -183,7 +183,14 @@ def array_function_percentile_like(
         keepdims: bool = False,
 ) -> na.ScalarArray:
 
-    a = a.explicit
+    if isinstance(a, na.AbstractArray):
+        if isinstance(a, na.AbstractScalarArray):
+            a = a.explicit
+        else:
+            return NotImplemented
+    else:
+        a = na.ScalarArray(a)
+
     axes_a = a.axes
 
     axis_normalized = na.axis_normalized(a, axis=axis)
@@ -195,7 +202,14 @@ def array_function_percentile_like(
                 f"got {axis} for `axis`, but `{a.axes} for `a.axes`"
             )
 
-    q = q.explicit if isinstance(q, na.AbstractArray) else na.ScalarArray(q)
+    if isinstance(q, na.AbstractArray):
+        if isinstance(q, na.AbstractScalarArray):
+            q = q.explicit
+        else:
+            return NotImplemented
+    else:
+        q = na.ScalarArray(q)
+
     axes_q = q.axes
 
     axis_union = set(a.axes) & set(q.axes)

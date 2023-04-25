@@ -131,7 +131,7 @@ def array_function_default(
 
 def array_function_percentile_like(
         func: Callable,
-        a: na.AbstractUncertainScalarArray,
+        a: float | u.Quantity | na.AbstractScalarArray | na.AbstractUncertainScalarArray,
         q: float | u.Quantity | na.AbstractScalarArray | na.AbstractUncertainScalarArray,
         axis: None | str | Sequence[str] = None,
         out: None | na.ScalarArray = None,
@@ -139,20 +139,51 @@ def array_function_percentile_like(
         method: str = np._NoValue,
         keepdims: bool = False,
 ):
-    a = a.broadcasted
-    shape_a = a.shape
+    if isinstance(a, na.AbstractArray):
+        if isinstance(a, na.AbstractScalar):
+            if isinstance(a, na.AbstractScalarArray):
+                a = na.UncertainScalarArray(a, a)
+            elif isinstance(a, na.AbstractUncertainScalarArray):
+                pass
+            else:
+                return NotImplemented
+        else:
+            return NotImplemented
+    else:
+        a = na.UncertainScalarArray(a, a)
 
-    if isinstance(q, na.AbstractUncertainScalarArray):
-        q_nominal = q.nominal
-        q_distribution = q.distribution
+    if isinstance(q, na.AbstractArray):
+        if isinstance(q, na.AbstractScalar):
+            if isinstance(q, na.AbstractScalarArray):
+                q_nominal = q_distribution = q
+            elif isinstance(q, na.AbstractUncertainScalarArray):
+                q_nominal = q.nominal
+                q_distribution = q.distribution
+            else:
+                return NotImplemented
+        else:
+            return NotImplemented
     else:
         q_nominal = q_distribution = q
+
+    shape_a = a.shape
+
+    axis_normalized = na.axis_normalized(a, axis)
+
+    if axis is not None:
+        if not set(axis_normalized).issubset(shape_a):
+            raise ValueError(
+                f"the `axis` argument must be `None` or a subset of `a.axes`, "
+                f"got {axis} for `axis`, but `{a.axes} for `a.axes`"
+            )
+
+    shape_base = {ax: shape_a[ax] for ax in axis_normalized}
 
     kwargs = dict()
     kwargs_nominal = dict()
     kwargs_distribution = dict()
 
-    kwargs["axis"] = tuple(shape_a.keys()) if axis is None else axis
+    kwargs["axis"] = axis_normalized
 
     if out is not None:
         if not isinstance(out, na.UncertainScalarArray):
@@ -171,8 +202,16 @@ def array_function_percentile_like(
     kwargs_nominal = kwargs | kwargs_nominal
     kwargs_distribution = kwargs | kwargs_distribution
 
-    result_nominal = func(a.nominal, q_nominal, **kwargs_nominal)
-    result_distribution = func(a.distribution, q_distribution, **kwargs_distribution)
+    result_nominal = func(
+        a=na.broadcast_to(a.nominal, na.broadcast_shapes(na.shape(a.nominal), shape_base)),
+        q=q_nominal,
+        **kwargs_nominal,
+    )
+    result_distribution = func(
+        a=na.broadcast_to(a.distribution, na.broadcast_shapes(na.shape(a.distribution), shape_base)),
+        q=q_distribution,
+        **kwargs_distribution,
+    )
 
     if out is None:
         result = na.UncertainScalarArray(
