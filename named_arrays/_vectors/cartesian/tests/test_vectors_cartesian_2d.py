@@ -80,13 +80,8 @@ def _cartesian2d_arrays_2():
     return arrays
 
 
-class AbstractTestAbstractCartesian2dVectorArray(
-    test_vectors_cartesian.AbstractTestAbstractCartesianVectorArray,
-):
-
-    @pytest.mark.parametrize(
-        argnames='item',
-        argvalues=[
+def _cartesian2d_items() -> list[na.AbstractArray | dict[str, int, slice, na.AbstractArray]]:
+    return [
             dict(y=0),
             dict(y=slice(0, 1)),
             dict(y=na.ScalarArrayRange(0, 2, axis='y')),
@@ -123,6 +118,14 @@ class AbstractTestAbstractCartesian2dVectorArray(
                 y=na.ScalarLinearSpace(0, 1, axis='y', num=_num_y) > 0.5,
             ),
         ]
+
+class AbstractTestAbstractCartesian2dVectorArray(
+    test_vectors_cartesian.AbstractTestAbstractCartesianVectorArray,
+):
+
+    @pytest.mark.parametrize(
+        argnames='item',
+        argvalues=_cartesian2d_items()
     )
     def test__getitem__(
             self,

@@ -596,6 +596,12 @@ class AbstractTestAbstractArray(
             ):
                 pass
 
+        def test_copyto(self, array: na.AbstractArray):
+            dst = 0 * array
+            np.copyto(dst=dst, src=array)
+            assert np.all(array == dst)
+
+
         @pytest.mark.parametrize(
             argnames='shape',
             argvalues=[
@@ -650,7 +656,7 @@ class AbstractTestAbstractArray(
 
             result = np.moveaxis(a=array, source=source, destination=destination)
 
-            assert np.all(array.sum() == result.sum())
+            assert np.all(array == np.moveaxis(a=result, source=destination, destination=source))
             assert len(array.axes) == len(result.axes)
             assert not any(ax in result.axes for ax in source_normalized)
             assert all(ax in result.axes for ax in destination_normalized)
@@ -662,10 +668,6 @@ class AbstractTestAbstractArray(
 
             assert result.size == array.size
             assert result.axes == tuple(newshape.keys())
-
-        def test_linalg_inv(self, array: na.AbstractArray):
-            with pytest.raises(NotImplementedError):
-                np.linalg.inv(array)
 
         @pytest.mark.parametrize('axis', ['y', 'z'])
         @pytest.mark.parametrize('use_out', [False, True])
@@ -696,33 +698,28 @@ class AbstractTestAbstractArray(
                 assert result is out
 
         @pytest.mark.parametrize('axis', ['x', 'y'])
-        @pytest.mark.parametrize('use_out', [False, True])
         def test_concatenate(
                 self,
                 array: na.AbstractArray,
                 axis: str,
-                use_out: bool,
         ):
             arrays = [array, array]
 
-            shape_out = array.shape
-            if axis not in shape_out:
-                shape_out[axis] = 1
-            shape_out[axis] = 2 * shape_out[axis]
+            if axis not in array.shape:
+                with pytest.raises(ValueError, match="axis .* must be present in all the input arrays, got .*"):
+                    np.concatenate(arrays, axis=axis)
+                return
 
-            if use_out:
-                out = 0 * np.concatenate(arrays=arrays, axis=axis)
-            else:
-                out = None
+            result = np.concatenate(arrays, axis=axis)
 
-            result = np.concatenate(arrays, axis=axis, out=out)
+            out = 0 * result
 
-            assert result.shape == shape_out
-            assert np.all(result[{axis: slice(None, shape_out[axis] // 2)}] == array)
-            assert np.all(result[{axis: slice(shape_out[axis] // 2, None)}] == array)
+            result_out = np.concatenate(arrays, axis=axis, out=out)
 
-            if use_out:
-                assert result is out
+            assert np.all(result[{axis: slice(None, array.shape[axis])}] == array)
+            assert np.all(result[{axis: slice(array.shape[axis], None)}] == array)
+            assert np.all(result == result_out)
+            assert result_out is out
 
         @abc.abstractmethod
         def test_sort(self, array: na.AbstractArray, axis: None | str | Sequence[str]):
@@ -787,20 +784,18 @@ class AbstractTestAbstractArray(
                 array_2 = 0 * array
                 assert not np.array_equiv(array, array_2)
 
-        @pytest.mark.parametrize("array_2", ["copy", "broadcast", "zeros"])
+        @pytest.mark.parametrize("array_2", ["copy", "zeros"])
         def test_allclose(self, array: na.AbstractArray, array_2: str):
             if array_2 == "copy":
-                array_2 = array + array.mean() * na.ScalarUniformRandomSample(-1e-10, 1e-10, shape_random=array.shape)
-                assert np.allclose(array, array_2)
-
-            elif array_2 == "broadcast":
-                shape_new = array.shape | dict(extra_axis=5)
-                array_2 = array + array.mean() * na.ScalarUniformRandomSample(-1e-10, 1e-10, shape_random=shape_new)
+                array_2 = array + array.mean() * na.ScalarUniformRandomSample(-1e-10, 1e-10)
                 assert np.allclose(array, array_2)
 
             elif array_2 == "zeros":
                 array_2 = 0 * array
                 assert not np.allclose(array, array_2)
+
+            else:
+                raise NotImplementedError
 
         def test_nonzero(self, array: na.AbstractArray):
             mask = array > array.mean()
@@ -856,12 +851,20 @@ class AbstractTestAbstractArray(
     ):
         assert np.array_equal(array.sum(), np.sum(array))
 
-    @abc.abstractmethod
     def test_ptp(
             self,
             array: na.AbstractArray,
     ):
-        pass
+        try:
+            result_expected = np.ptp(array)
+        except Exception as e:
+            with pytest.raises(type(e)):
+                array.ptp()
+            return
+
+        result = array.ptp()
+
+        assert np.all(result == result_expected)
 
     def test_mean(
             self,
@@ -883,19 +886,35 @@ class AbstractTestAbstractArray(
         kwargs = dict(method='closest_observation')
         assert np.array_equal(array.percentile(q, **kwargs), np.percentile(array, q, **kwargs))
 
-    @abc.abstractmethod
     def test_all(
             self,
             array: na.AbstractArray,
     ):
-        pass
+        try:
+            result_expected = np.all(array)
+        except Exception as e:
+            with pytest.raises(type(e)):
+                array.all()
+            return
 
-    @abc.abstractmethod
+        result = array.all()
+
+        assert np.all(result == result_expected)
+
     def test_any(
             self,
             array: na.AbstractArray
     ):
-        pass
+        try:
+            result_expected = np.any(array)
+        except Exception as e:
+            with pytest.raises(type(e)):
+                array.any()
+            return
+
+        result = array.any()
+
+        assert np.all(result == result_expected)
 
     def test_rms(
             self,

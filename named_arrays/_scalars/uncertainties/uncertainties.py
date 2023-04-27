@@ -551,7 +551,8 @@ class UncertainScalarArray(
     @property
     def shape(self) -> dict[str, int]:
         shape = self.shape_distribution
-        shape.pop(self.axis_distribution)
+        if self.axis_distribution in shape:
+            shape.pop(self.axis_distribution)
         return shape
 
     @property

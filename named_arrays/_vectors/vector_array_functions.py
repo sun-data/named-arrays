@@ -343,6 +343,56 @@ def implements(numpy_function: Callable):
     return decorator
 
 
+@implements(np.copyto)
+def copyto(
+        dst: na.AbstractExplicitVectorArray,
+        src: na.AbstractScalar | na.AbstractVectorArray,
+        casting: str = "same_kind",
+        where: bool | na.AbstractScalar | na.AbstractVectorArray = True,
+) -> None:
+    if not isinstance(dst, na.AbstractExplicitVectorArray):
+        return NotImplemented
+
+    components_dst = dst.components
+
+    if isinstance(src, na.AbstractArray):
+        if isinstance(src, na.AbstractVectorArray):
+            if src.type_abstract == dst.type_abstract:
+                components_src = src.components
+            else:
+                return NotImplemented
+        elif isinstance(src, na.AbstractScalar):
+            components_src = {c: src for c in components_dst}
+        else:
+            return NotImplemented
+    else:
+        components_src = {c: src for c in components_dst}
+
+    if isinstance(where, na.AbstractArray):
+        if isinstance(where, na.AbstractVectorArray):
+            if where.type_abstract == where.type_explicit:
+                components_where = where.components
+            else:
+                return NotImplemented
+        elif isinstance(where, na.AbstractScalar):
+            components_where = {c: where for c in components_dst}
+        else:
+            return NotImplemented
+    else:
+        components_where = {c: where for c in components_dst}
+
+    for c in components_dst:
+        try:
+            np.copyto(
+                dst=components_dst[c],
+                src=components_src[c],
+                casting=casting,
+                where=components_where[c],
+            )
+        except TypeError:
+            components_dst[c] = components_src[c]
+
+
 @implements(np.broadcast_to)
 def broadcast_to(
         array: na.AbstractVectorArray,
@@ -398,13 +448,6 @@ def moveaxis(
 def reshape(a: na.AbstractVectorArray, newshape: dict[str, int]) -> na.AbstractExplicitVectorArray:
     components = a.broadcasted.components
     return a.type_explicit.from_components({c: np.reshape(a=components[c], newshape=newshape) for c in components})
-
-
-@implements(np.linalg.inv)
-def linalg_inv(a: na.AbstractVectorArray,):
-    raise NotImplementedError(
-        "np.linalg.inv not supported for instances of 'named_arrays.AbstractVectorArray'"
-    )
 
 
 def array_function_stack_like(

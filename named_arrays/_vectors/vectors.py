@@ -259,7 +259,7 @@ class AbstractVectorArray(
     ):
         if array.type_abstract == self.type_abstract:
             pass
-        elif isinstance(array, na.ScalarArray):
+        elif isinstance(array, na.AbstractArray):
             array = self.type_explicit.from_scalar(array)
         else:
             return NotImplemented
@@ -291,21 +291,33 @@ class AbstractVectorArray(
 
         out = out[0]
 
-        if isinstance(x1, AbstractVectorArray) and isinstance(x2, AbstractVectorArray):
-            if x1.type_abstract == x2.type_abstract:
-                components_x1 = x1.broadcasted.components
-                components_x2 = x2.broadcasted.components
-                result = 0
-                for c in components_x1:
-                    component_x1 = na.as_named_array(components_x1[c])
-                    component_x2 = na.as_named_array(components_x2[c])
-                    result = np.add(result, np.matmul(component_x1, component_x2), out=out)
-                return result
+        if isinstance(x1, AbstractVectorArray):
+            if isinstance(x2, na.AbstractVectorArray):
+                if x1.type_abstract == x2.type_abstract:
+                    components_x1 = x1.broadcasted.components
+                    components_x2 = x2.broadcasted.components
+                    result = 0
+                    for c in components_x1:
+                        component_x1 = na.as_named_array(components_x1[c])
+                        component_x2 = na.as_named_array(components_x2[c])
+                        result = np.add(result, np.matmul(component_x1, component_x2), out=out)
+                else:
+                    result = NotImplemented
+            elif isinstance(na.as_named_array(x2), na.ScalarArray):
+                result = np.multiply(x1, x2, out=out, **kwargs)
             else:
-                return NotImplemented
+                result = NotImplemented
+
+        elif isinstance(na.as_named_array(x1), na.ScalarArray):
+            if isinstance(x2, na.AbstractVectorArray):
+                result = np.multiply(x1, x2, out=out, **kwargs)
+            else:
+                result = NotImplemented
 
         else:
-            return np.multiply(x1, x2, out=out, **kwargs)
+            result = NotImplemented
+
+        return result
 
     def __array_function__(
             self: Self,

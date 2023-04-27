@@ -9,3 +9,4 @@ from ._vectors.cartesian.vectors_cartesian_2d import *
 from ._matrices.matrices import *
 from ._matrices.cartesian.matrices_cartesian import *
 from ._matrices.cartesian.matrices_cartesian_2d import *
+from ._functions.functions import *

@@ -461,6 +461,12 @@ class AbstractTestAbstractUncertainScalarArray(
                     keepdims=keepdims,
                 )
 
+                array_normalized = array
+                if isinstance(array, na.AbstractArray):
+                    if isinstance(array, na.AbstractScalar):
+                        if isinstance(array, na.AbstractScalarArray):
+                            array_normalized = na.UncertainScalarArray(array, array)
+
                 kwargs = dict(
                     q=q,
                     axis=axis,
@@ -482,8 +488,8 @@ class AbstractTestAbstractUncertainScalarArray(
                     kwargs_distribution["axis"] = axis_normalized
 
                 try:
-                    result_nominal = func(array.broadcasted.nominal, **kwargs_nominal)
-                    result_distribution = func(array.broadcasted.distribution, **kwargs_distribution)
+                    result_nominal = func(array_normalized.broadcasted.nominal, **kwargs_nominal)
+                    result_distribution = func(array_normalized.broadcasted.distribution, **kwargs_distribution)
                 except (ValueError, TypeError) as e:
                     with pytest.raises(type(e)):
                         func(array, **kwargs)

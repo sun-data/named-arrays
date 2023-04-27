@@ -183,7 +183,14 @@ def array_function_percentile_like(
         keepdims: bool = False,
 ) -> na.ScalarArray:
 
-    a = a.explicit
+    if isinstance(a, na.AbstractArray):
+        if isinstance(a, na.AbstractScalarArray):
+            a = a.explicit
+        else:
+            return NotImplemented
+    else:
+        a = na.ScalarArray(a)
+
     axes_a = a.axes
 
     axis_normalized = na.axis_normalized(a, axis=axis)
@@ -195,7 +202,14 @@ def array_function_percentile_like(
                 f"got {axis} for `axis`, but `{a.axes} for `a.axes`"
             )
 
-    q = q.explicit if isinstance(q, na.AbstractArray) else na.ScalarArray(q)
+    if isinstance(q, na.AbstractArray):
+        if isinstance(q, na.AbstractScalarArray):
+            q = q.explicit
+        else:
+            return NotImplemented
+    else:
+        q = na.ScalarArray(q)
+
     axes_q = q.axes
 
     axis_union = set(a.axes) & set(q.axes)
@@ -331,6 +345,46 @@ def implements(numpy_function: Callable):
     return decorator
 
 
+@implements(np.copyto)
+def copyto(
+        dst: na.ScalarArray,
+        src: na.AbstractScalarArray,
+        casting: str = "same_kind",
+        where: bool | na.AbstractScalarArray = True,
+):
+
+    if not isinstance(dst, na.ScalarArray):
+        return NotImplemented
+
+    shape = dst.shape
+
+    if isinstance(src, na.AbstractArray):
+        if isinstance(src, na.AbstractScalarArray):
+            src_ndarray = src.ndarray_aligned(shape)
+        else:
+            return NotImplemented
+    else:
+        src_ndarray = src
+
+    if isinstance(where, na.AbstractArray):
+        if isinstance(where, na.AbstractScalarArray):
+            where_ndarray = where.ndarray_aligned(shape)
+        else:
+            return NotImplemented
+    else:
+        where_ndarray = where
+
+    try:
+        np.copyto(
+            dst=dst.ndarray,
+            src=src_ndarray,
+            casting=casting,
+            where=where_ndarray,
+        )
+    except TypeError:
+        dst.ndarray = src.ndarray
+
+
 @implements(np.broadcast_to)
 def broadcast_to(
         array: na.AbstractScalarArray,
@@ -395,13 +449,6 @@ def reshape(a: na.AbstractScalarArray, newshape: dict[str, int]) -> na.ScalarArr
     )
 
 
-@implements(np.linalg.inv)
-def linalg_inv(a: na.AbstractScalarArray,):
-    raise NotImplementedError(
-        "np.linalg.inv not supported, use 'named_arrays.AbstractScalarArray.matrix_inverse()' instead"
-    )
-
-
 @implements(np.stack)
 def stack(
         arrays: Sequence[bool | int | float | complex | str | u.Quantity | na.AbstractScalarArray],
@@ -454,10 +501,13 @@ def concatenate(
         casting: str = "same_kind",
 ) -> na.ScalarArray:
 
-    arrays = [na.ScalarArray(arr) if not isinstance(arr, na.AbstractArray) else arr for arr in arrays]
+    arrays = [na.ScalarArray(arr) if not isinstance(arr, na.AbstractArray) else arr.explicit for arr in arrays]
     for array in arrays:
         if not isinstance(array, na.AbstractScalarArray):
             return NotImplemented
+
+    if any(axis not in array.shape for array in arrays):
+        raise ValueError(f"axis '{axis}' must be present in all the input arrays, got {[a.axes for a in arrays]}")
 
     shapes = []
     for array in arrays:
