@@ -440,6 +440,93 @@ class AbstractExplicitVectorArray(
                 components_result[c] = components[c]
         return self.type_explicit.from_components(components_result)
 
+    def __setitem__(
+            self,
+            item: dict[str, int | slice | AbstractScalarOrVectorArray] | AbstractScalarOrVectorArray,
+            value: AbstractScalarOrVectorArray,
+    ):
+        components_self = self.components
+
+        if isinstance(item, na.AbstractArray):
+            if isinstance(item, na.AbstractVectorArray):
+                if item.type_abstract == self.type_abstract:
+                    components_item = item.components
+                else:
+                    raise TypeError(
+                        f"if `item` is an instance of `{na.AbstractVectorArray.__name__}`, "
+                        f"`item.type_abstract`, `{item.type_abstract}`, "
+                        f"should be equal to `self.type_abstract`, `{self.type_abstract}`"
+                    )
+            elif isinstance(item, na.AbstractScalar):
+                components_item = {c: item for c in components_self}
+            else:
+                raise TypeError(
+                    f"if `item` is an instance of `{na.AbstractArray.__name__}`, "
+                    f"it must be an instance of `{na.AbstractVectorArray.__name__}` "
+                    f"or `{na.AbstractScalar.__name__}`, got `{type(item)}`"
+                )
+
+        elif isinstance(item, dict):
+
+            components_item = {c: dict() for c in components_self}
+
+            for axis in item:
+                item_axis = item[axis]
+                if isinstance(item_axis, na.AbstractArray):
+                    if isinstance(item_axis, na.AbstractVectorArray):
+                        if item_axis.type_abstract == self.type_abstract:
+                            components_item_axis = item_axis.components
+                            for c in components_item:
+                                components_item[c][axis] = components_item_axis[c]
+                        else:
+                            raise TypeError(
+                                f"if `item['{axis}']` is an instance of `{na.AbstractVectorArray.__name__}`, "
+                                f"`item['{axis}'].type_abstract`, `{item_axis.type_abstract}`, "
+                                f"should be equal to `self.type_abstract`, `{self.type_abstract}`"
+                            )
+                    elif isinstance(item_axis, na.AbstractScalar):
+                        for c in components_item:
+                            components_item[c][axis] = item_axis
+                    else:
+                        raise TypeError(
+                            f"if `item['{axis}']` is an instance of `{na.AbstractArray.__name__}`, "
+                            f"it must be an instance of `{na.AbstractVectorArray.__name__}` "
+                            f"or `{na.AbstractScalar.__name__}`, got `{type(item_axis)}`"
+                        )
+                else:
+                    for c in components_item:
+                        components_item[c][axis] = item_axis
+
+        else:
+            raise TypeError(
+                f"`item` must be an instance of `{na.AbstractArray.__name__}` or {dict.__name__}, "
+                f"got `{type(item)}`"
+            )
+
+        if isinstance(value, na.AbstractArray):
+            if isinstance(value, na.AbstractVectorArray):
+                if value.type_abstract == self.type_abstract:
+                    components_value = value.components
+                else:
+                    raise TypeError(
+                        f"if `value` is an instance of `{na.AbstractVectorArray.__name__}`, "
+                        f"`value.type_abstract`, `{value.type_abstract}`, "
+                        f"must be equal to `self.type_abstract`, `{self.type_abstract}`"
+                    )
+            elif isinstance(value, na.AbstractScalar):
+                components_value = {c: value for c in components_self}
+            else:
+                raise TypeError(
+                    f"if `value` is an instance of `{na.AbstractArray.__name__}`, "
+                    f"it must be an instance of `{na.AbstractVectorArray.__name__}` "
+                    f"or `{na.AbstractScalar.__name__}`, got `{type(value)}`"
+                )
+        else:
+            components_value = {c: value for c in components_self}
+
+        for c in components_self:
+            components_self[c][components_item[c]] = components_value[c]
+
 
 @dataclasses.dataclass(eq=False, repr=False)
 class AbstractImplicitVectorArray(

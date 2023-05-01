@@ -617,7 +617,37 @@ class TestUncertainScalarArray(
     AbstractTestAbstractUncertainScalarArray,
     named_arrays.tests.test_core.AbstractTestAbstractExplicitArray
 ):
-    pass
+
+    @pytest.mark.parametrize(
+        argnames="item",
+        argvalues=[
+            dict(y=0),
+            dict(x=0, y=0),
+            dict(y=slice(None)),
+            dict(y=na.ScalarArrayRange(0, _num_y, axis='y')),
+            dict(x=na.ScalarArrayRange(0, _num_x, axis='x'), y=na.ScalarArrayRange(0, _num_y, axis='y')),
+            na.ScalarArray.ones(shape=dict(y=_num_y), dtype=bool),
+        ],
+    )
+    @pytest.mark.parametrize(
+        argnames="value",
+        argvalues=[
+            0,
+            na.ScalarUniformRandomSample(-5, 5, dict(y=_num_y)),
+            na.UncertainScalarUniformRandomSample(
+                start=na.UniformUncertainScalarArray(-5, 0, num_distribution=_num_distribution),
+                stop=5,
+                shape_random=dict(y=_num_y),
+            )
+        ]
+    )
+    def test__setitem__(
+            self,
+            array: na.ScalarArray,
+            item: dict[str, int | slice | na.ScalarArray] | na.ScalarArray,
+            value: float | na.ScalarArray
+    ):
+        super().test__setitem__(array=array, item=item, value=value)
 
 
 class TestUncertainScalarArrayCreation(
