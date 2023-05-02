@@ -941,7 +941,7 @@ class AbstractTestAbstractExplicitArray(
             item: dict[str, int | slice | na.AbstractArray] | na.AbstractArray,
             value: na.AbstractArray
     ):
-        result = na.broadcast_to(array, array.shape).astype(float)
+        result = na.broadcast_to(array, array.shape).astype(float).copy()
 
         if isinstance(item, na.AbstractArray):
             if not set(item.shape).issubset(array.axes):
@@ -974,7 +974,9 @@ class AbstractTestAbstractExplicitArray(
                         return
 
         try:
-            value + result[item]
+            value_0 = na.as_named_array(value).reshape(dict(dummy=-1))[dict(dummy=0)]
+            result_0 = result.reshape(dict(dummy=-1))[dict(dummy=0)]
+            value_0 + result_0
         except u.UnitConversionError as e:
             with pytest.raises((TypeError, u.UnitConversionError)):
                 result[item] = value

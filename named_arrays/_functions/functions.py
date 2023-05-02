@@ -437,4 +437,60 @@ class FunctionArray(
 
     @property
     def explicit(self) -> FunctionArray:
-        return self
+        return self.type_explicit(
+            inputs=self.inputs.explicit,
+            outputs=self.outputs.explicit,
+        )
+
+    def __setitem__(
+            self,
+            item: dict[str, int | slice | na.AbstractScalar | na.AbstractFunctionArray] | na.AbstractFunctionArray,
+            value: float | u.Quantity | na.FunctionArray,
+    ):
+
+        if isinstance(item, na.AbstractFunctionArray):
+            if np.any(item.inputs != self.inputs):
+                raise ValueError("boolean advanced index does not have the same inputs as the array")
+
+            item_inputs = item.outputs
+            item_outputs = item.outputs
+
+        elif isinstance(item, dict):
+
+            item_inputs = dict()
+            item_outputs = dict()
+            for ax in item:
+                item_ax = item[ax]
+                if isinstance(item_ax, na.AbstractFunctionArray):
+                    item_inputs[ax] = item_ax.inputs
+                    item_outputs[ax] = item_ax.outputs
+                else:
+                    item_inputs[ax] = item_outputs[ax] = item_ax
+        else:
+            raise TypeError(
+                f"`item` must be an instance of `{dict.__name__}`, or `{na.AbstractFunctionArray.__name__}`, "
+                f"got `{type(item)}`"
+            )
+
+        if isinstance(value, na.AbstractArray):
+            if isinstance(value, na.AbstractFunctionArray):
+                value_inputs = value.inputs
+                value_outputs = value.outputs
+            else:
+                if value.shape:
+                    raise ValueError(
+                        f"if `value` is an instance of `{na.AbstractArray.__name__}`, "
+                        f"but not an instance of `{na.AbstractFunctionArray.__name__}`, "
+                        f"`value.shape` should be empty, got {value.shape}"
+                    )
+                else:
+                    value_inputs = None
+                    value_outputs = value
+        else:
+            value_inputs = None
+            value_outputs = value
+
+
+        if value_inputs is not None:
+            self.inputs[item_inputs] = value_inputs
+        self.outputs[item_outputs] = value_outputs
