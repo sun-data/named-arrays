@@ -571,6 +571,84 @@ class UncertainScalarArray(
     def centers(self) -> Self:
         return self
 
+    def __setitem__(
+            self,
+            item: dict[str, int | slice | na.AbstractScalar] | na.AbstractScalar,
+            value: int | float | u.Quantity | na.AbstractScalar,
+    ):
+        shape_self = self.shape
+
+        if isinstance(item, na.AbstractArray):
+
+            item = item.explicit
+            if not set(item.shape).issubset(shape_self):
+                raise ValueError(
+                    f"if `item` is an instance of `{na.AbstractArray.__name__}`, "
+                    f"`item.axes`, {item.axes}, should be a subset of `self.axes`, {self.axes}"
+                )
+
+            if isinstance(item, na.AbstractUncertainScalarArray):
+                item_nominal = item.nominal
+                item_distribution = item.distribution
+            elif isinstance(item, na.AbstractScalarArray):
+                item_nominal = item_distribution = item
+            else:
+                raise TypeError(
+                    f"if `item` is an instance of `{na.AbstractArray.__name__}`, "
+                    f"it must be an instance of `{na.AbstractScalar.__name__}`, "
+                    f"got `{type(item)}`"
+                )
+        elif isinstance(item, dict):
+
+            if not set(item).issubset(shape_self):
+                raise ValueError(
+                    f"if `item` is a `{dict.__name__}`, the keys in `item`, {tuple(item)}, "
+                    f"must be a subset of `self.axes`, {self.axes}"
+                )
+
+            item_nominal = dict()
+            item_distribution = dict()
+            for axis in item:
+                item_axis = item[axis]
+                if isinstance(item_axis, na.AbstractArray):
+                    if isinstance(item_axis, na.AbstractUncertainScalarArray):
+                        item_nominal[axis] = item_axis.nominal
+                        item_distribution[axis] = item_axis.distribution
+                    elif isinstance(item_axis, na.AbstractScalarArray):
+                        item_nominal[axis] = item_distribution[axis] = item_axis
+                    else:
+                        raise TypeError(
+                            f"if a value in `item` is an instance of `{na.AbstractArray.__name__}`, "
+                            f"it must be an instance of `{na.AbstractScalar.__name__}`, "
+                            f"got `{type(item_axis)}`"
+                        )
+                else:
+                    item_nominal[axis] = item_distribution[axis] = item_axis
+
+        else:
+            raise TypeError(
+                f"`item` must be an instance of `{na.AbstractArray.__name__}` or {dict.__name__}, "
+                f"got `{type(item)}`"
+            )
+
+        if isinstance(value, na.AbstractArray):
+            if isinstance(value, na.AbstractUncertainScalarArray):
+                value_nominal = value.nominal
+                value_distribution = value.distribution
+            elif isinstance(value, na.AbstractScalarArray):
+                value_nominal = value_distribution = value
+            else:
+                raise TypeError(
+                    f"if `value` is an instance of `{na.AbstractArray.__name__}`, "
+                    f"it must be an instance of `{na.AbstractScalar.__name__}`, "
+                    f"got {type(value)}"
+                )
+        else:
+            value_nominal = value_distribution = value
+
+        self.nominal[item_nominal] = value_nominal
+        self.distribution[item_distribution] = value_distribution
+
 
 @dataclasses.dataclass(eq=False, repr=False)
 class AbstractImplicitUncertainScalarArray(

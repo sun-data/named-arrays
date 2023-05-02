@@ -572,4 +572,35 @@ class TestFunctionArray(
     AbstractTestAbstractFunctionArray,
     named_arrays.tests.test_core.AbstractTestAbstractExplicitArray,
 ):
-    pass
+
+    @pytest.mark.parametrize(
+        argnames="item",
+        argvalues=[
+            dict(y=0),
+            dict(x=0, y=0),
+            dict(y=slice(None)),
+            dict(y=na.ScalarArrayRange(0, _num_y, axis='y')),
+            dict(x=na.ScalarArrayRange(0, _num_x, axis='x'), y=na.ScalarArrayRange(0, _num_y, axis='y')),
+            na.FunctionArray(
+                inputs=na.ScalarLinearSpace(0, 1, axis='y', num=_num_y),
+                outputs=na.ScalarArray.ones(shape=dict(y=_num_y), dtype=bool),
+            )
+        ]
+    )
+    @pytest.mark.parametrize(
+        argnames="value",
+        argvalues=[
+            0,
+            na.FunctionArray(
+                inputs=na.ScalarLinearSpace(0, 1, axis='y', num=_num_y),
+                outputs=na.ScalarUniformRandomSample(-5, 5, dict(y=_num_y)),
+            )
+        ]
+    )
+    def test__setitem__(
+            self,
+            array: na.AbstractArray,
+            item: dict[str, int | slice | na.ScalarArray] | na.AbstractFunctionArray,
+            value: float | u.Quantity | na.AbstractScalar | na.AbstractVectorArray,
+    ):
+        super().test__setitem__(array=array.explicit, item=item, value=value)

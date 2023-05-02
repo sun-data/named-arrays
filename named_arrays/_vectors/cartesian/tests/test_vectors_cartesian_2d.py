@@ -193,7 +193,40 @@ class TestCartesian2dVectorArray(
     AbstractTestAbstractCartesian2dVectorArray,
     test_vectors_cartesian.AbstractTestAbstractExplicitCartesianVectorArray,
 ):
-    pass
+
+    @pytest.mark.parametrize(
+        argnames="item",
+        argvalues=[
+            dict(y=0),
+            dict(x=0, y=0),
+            dict(y=slice(None)),
+            dict(y=na.ScalarArrayRange(0, _num_y, axis='y')),
+            dict(x=na.ScalarArrayRange(0, _num_x, axis='x'), y=na.ScalarArrayRange(0, _num_y, axis='y')),
+            dict(
+                y=na.Cartesian2dVectorArray(
+                    x=na.ScalarArrayRange(0, _num_y, axis='y'),
+                    y=na.ScalarArrayRange(0, _num_y, axis='y'),
+                )
+            ),
+            na.ScalarArray.ones(shape=dict(y=_num_y), dtype=bool),
+            na.Cartesian2dVectorArray.ones(shape=dict(y=_num_y), dtype=bool)
+        ],
+    )
+    @pytest.mark.parametrize(
+        argnames="value",
+        argvalues=[
+            0,
+            na.ScalarUniformRandomSample(-5, 5, dict(y=_num_y)),
+            na.Cartesian2dVectorUniformRandomSample(-5, 5, shape_random=dict(y=_num_y)),
+        ]
+    )
+    def test__setitem__(
+            self,
+            array: na.ScalarArray,
+            item: dict[str, int | slice | na.ScalarArray] | na.ScalarArray,
+            value: float | na.ScalarArray
+    ):
+        super().test__setitem__(array=array, item=item, value=value)
 
 
 class TestCartesian2dVectorArrayCreation(

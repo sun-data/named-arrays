@@ -804,35 +804,84 @@ class ScalarArray(
 
     def __setitem__(
             self: Self,
-            key: dict[str, int | slice | AbstractScalar] | AbstractScalar,
-            value: int | float | u.Quantity | AbstractScalar,
+            item: dict[str, int | slice | AbstractScalarArray] | AbstractScalarArray,
+            value: int | float | u.Quantity | AbstractScalarArray,
     ) -> None:
 
-        if not isinstance(value, AbstractScalar):
+        shape_self = self.shape
+
+        if isinstance(value, na.AbstractArray):
+            if isinstance(value, na.AbstractScalarArray):
+                value = value.explicit
+            else:
+                raise TypeError(
+                    f"if `value` is an instance of `AbstractArray`, it must be an instance of `AbstractScalarArray`, "
+                    f"got {type(value)}"
+                )
+        else:
             value = ScalarArray(value)
 
-        if isinstance(key, ScalarArray):
-            shape = self.shape_broadcasted(key)
-            self.ndarray_aligned(shape)[key.ndarray_aligned(shape)] = value.ndarray
+        if isinstance(item, AbstractScalarArray):
 
-        else:
-            key_casted = cast(dict[str, Union[int, slice, AbstractScalar]], key)
+            item = item.explicit
+            shape_item = item.shape
+
+            if not set(item.shape).issubset(shape_self):
+                raise ValueError(
+                    f"if `item` is an instance of `{na.AbstractArray.__name__}`, "
+                    f"`item.axes`, {item.axes}, should be a subset of `self.axes`, {self.axes}"
+                )
+
+            if shape_item:
+                axis_new = item.axes_flattened
+            else:
+                axis_new = "boolean"
+
+            axes_untouched = tuple(ax for ax in shape_self if ax not in shape_item)
+            axes_value = (axis_new, ) + axes_untouched
+            axes_self = tuple(shape_item) + axes_untouched
+
+            self.ndarray_aligned(axes_self)[item.ndarray] = value.ndarray_aligned(axes_value)
+
+        elif isinstance(item, dict):
+
+            if not set(item).issubset(shape_self):
+                raise ValueError(
+                    f"if `item` is a `{dict.__name__}`, the keys in `item`, {tuple(item)}, "
+                    f"must be a subset of `self.axes`, {self.axes}"
+                )
+
+            item_advanced = {ax: item[ax] for ax in item if na.shape(item[ax])}
+
+            shape_advanced = na.shape_broadcasted(*item_advanced.values())
+
+            axes_self = tuple(shape_advanced) + tuple(ax for ax in shape_self if ax not in shape_advanced)
+            axes_value = list(axes_self)
+
             index = [slice(None)] * self.ndim   # type: list[Union[int, slice, AbstractScalar]]
-            axes = list(self.axes)
-            for axis in key_casted:
-                item_axis = key_casted[axis]
-                if isinstance(item_axis, int):
-                    axes.remove(axis)
-                if isinstance(item_axis, ScalarArray):
-                    item_axis = item_axis.ndarray_aligned(self.shape_broadcasted(item_axis))
-                index[self.axes.index(axis)] = item_axis
+            for axis in item:
+                item_axis = item[axis]
+                if isinstance(item_axis, na.AbstractScalarArray):
+                    item_axis = item_axis.ndarray_aligned(shape_advanced)
+                elif isinstance(item_axis, slice):
+                    pass
+                elif isinstance(item_axis, int):
+                    if axis in value.shape:
+                        raise ValueError(f"`value` has an axis, '{axis}', that is set to an `int` in `item`")
+                    axes_value.remove(axis)
+                else:
+                    raise TypeError(
+                        f"if `item` is a `{dict}`, all its values must be an instance of an `{int}`, a `{slice}`,"
+                        f"or an {na.AbstractScalarArray.__name__}, got {type(item_axis).__name__} for key '{axis}'"
+                    )
+                index[axes_self.index(axis)] = item_axis
 
             if value.shape:
-                value = value.ndarray_aligned({axis: 1 for axis in axes})
+                value = value.ndarray_aligned(axes_value)
             else:
                 value = value.ndarray
 
-            self.ndarray[tuple(index)] = value
+            self.ndarray_aligned(axes_self)[tuple(index)] = value
 
 
 @dataclasses.dataclass(eq=False, repr=False)

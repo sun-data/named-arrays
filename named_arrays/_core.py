@@ -887,6 +887,14 @@ class AbstractExplicitArray(
             A new array of ones with the specified shape and data type
         """
 
+    @abc.abstractmethod
+    def __setitem__(
+            self,
+            item,
+            value,
+    ) -> None:
+        pass
+
 
 @dataclasses.dataclass(eq=False, repr=False)
 class AbstractImplicitArray(

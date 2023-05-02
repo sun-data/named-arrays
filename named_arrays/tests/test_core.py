@@ -933,7 +933,57 @@ class AbstractTestAbstractArray(
 class AbstractTestAbstractExplicitArray(
     AbstractTestAbstractArray,
 ):
-    pass
+
+    @abc.abstractmethod
+    def test__setitem__(
+            self,
+            array: na.AbstractArray,
+            item: dict[str, int | slice | na.AbstractArray] | na.AbstractArray,
+            value: na.AbstractArray
+    ):
+        result = na.broadcast_to(array, array.shape).astype(float).copy()
+
+        if isinstance(item, na.AbstractArray):
+            if not set(item.shape).issubset(array.axes):
+                with pytest.raises(
+                    expected_exception=ValueError,
+                    match="if `item` is an instance of .*, `item.axes`, .*, "
+                          "should be a subset of `self.axes`, .*"
+                ):
+                    result[item] = value
+                return
+
+        elif isinstance(item, dict):
+            if not set(item).issubset(array.axes):
+                with pytest.raises(
+                    expected_exception=ValueError,
+                    match="if `item` is a .*, the keys in `item`, .*, "
+                          "must be a subset of `self.axes`, .*"
+                ):
+                    result[item] = value
+                return
+
+            for axis in item:
+                if isinstance(item[axis], int):
+                    if axis in na.shape(value):
+                        with pytest.raises(
+                            expected_exception=ValueError,
+                            match="`value` has an axis, .*, that is set to an `int` in `item`"
+                        ):
+                            result[item] = value
+                        return
+
+        try:
+            value_0 = na.as_named_array(value).reshape(dict(dummy=-1))[dict(dummy=0)]
+            result_0 = result.reshape(dict(dummy=-1))[dict(dummy=0)]
+            value_0 + result_0
+        except u.UnitConversionError as e:
+            with pytest.raises((TypeError, u.UnitConversionError)):
+                result[item] = value
+            return
+
+        result[item] = value
+        assert np.all(result[item] == value)
 
 
 @pytest.mark.parametrize('shape', [dict(x=3), dict(x=4, y=5)])
