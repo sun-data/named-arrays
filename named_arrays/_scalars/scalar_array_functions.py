@@ -78,6 +78,29 @@ FFTN_LIKE_FUNCTIONS = [
 HANDLED_FUNCTIONS = dict()
 
 
+def array_function_array_creation_like(
+        func: Callable,
+        prototype: na.AbstractScalarArray,
+        dtype: None | type | np.dtype = None,
+        order: str = "K",
+        subok: bool = True,
+        shape: dict[str, int] = None,
+):
+    if shape is None:
+        shape = prototype.shape
+
+    return prototype.type_explicit(
+        ndarray=func(
+            prototype.ndarray,
+            dtype=dtype,
+            order=order,
+            subok=subok,
+            shape=tuple(shape.values()),
+        ),
+        axes=tuple(shape.keys()),
+    )
+
+
 def array_function_sequence(
         func: Callable,
         *args: float | u.Quantity | na.AbstractScalarArray,
