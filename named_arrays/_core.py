@@ -833,59 +833,6 @@ ArrayLike = Union[QuantityLike, AbstractArray]
 class AbstractExplicitArray(
     AbstractArray,
 ):
-    @classmethod
-    @abc.abstractmethod
-    def empty(cls: Type[Self], shape: dict[str, int], dtype: Type = float) -> Self:
-        """
-        Create a new empty array
-
-        Parameters
-        ----------
-        shape
-            shape of the new array
-        dtype
-            data type of the new array
-
-        Returns
-        -------
-            A new empty array with the specified shape and data type
-        """
-
-    @classmethod
-    @abc.abstractmethod
-    def zeros(cls: Type[Self], shape: dict[str, int], dtype: Type = float) -> Self:
-        """
-        Create a new array of zeros
-
-        Parameters
-        ----------
-        shape
-            shape of the new array
-        dtype
-            data type of the new array
-
-        Returns
-        -------
-            A new array of zeros with the specified shape and data type
-        """
-
-    @classmethod
-    @abc.abstractmethod
-    def ones(cls: Type[Self], shape: dict[str, int], dtype: Type = float) -> Self:
-        """
-        Create a new array of ones
-
-        Parameters
-        ----------
-        shape
-            shape of the new array
-        dtype
-            data type of the new array
-
-        Returns
-        -------
-            A new array of ones with the specified shape and data type
-        """
 
     @abc.abstractmethod
     def __setitem__(

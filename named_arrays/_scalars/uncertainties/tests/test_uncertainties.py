@@ -650,15 +650,6 @@ class TestUncertainScalarArray(
         super().test__setitem__(array=array, item=item, value=value)
 
 
-class TestUncertainScalarArrayCreation(
-    named_arrays.tests.test_core.AbstractTestAbstractExplicitArrayCreation,
-):
-
-    @property
-    def type_array(self) -> Type[na.UncertainScalarArray]:
-        return na.UncertainScalarArray
-
-
 class AbstractTestAbstractImplicitUncertainScalarArray(
     AbstractTestAbstractUncertainScalarArray,
     named_arrays.tests.test_core.AbstractTestAbstractImplicitArray,

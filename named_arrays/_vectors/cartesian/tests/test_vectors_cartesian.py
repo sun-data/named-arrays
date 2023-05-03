@@ -200,12 +200,6 @@ class AbstractTestAbstractExplicitCartesianVectorArray(
     pass
 
 
-class AbstractTestAbstractExplicitCartesianVectorArrayCreation(
-    named_arrays._vectors.tests.test_vectors.AbstractTestAbstractExplicitVectorArrayCreation,
-):
-    pass
-
-
 class AbstractTestAbstractImplicitCartesianVectorArray(
     AbstractTestAbstractCartesianVectorArray,
     named_arrays._vectors.tests.test_vectors.AbstractTestAbstractImplicitVectorArray,

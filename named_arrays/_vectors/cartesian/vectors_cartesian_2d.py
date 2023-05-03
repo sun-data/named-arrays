@@ -75,45 +75,6 @@ class Cartesian2dVectorArray(
     ) -> Cartesian2dVectorArray:
         return cls(x=scalar, y=scalar)
 
-    @classmethod
-    def empty(
-            cls: Type[Self],
-            shape: dict[str, int],
-            dtype: Type | np.dtype | dict[str, Type | np.dtype] = float,
-    ) -> Self:
-        if not isinstance(dtype, dict):
-            dtype = dict(x=dtype, y=dtype)
-        return cls(
-            x=na.ScalarArray.empty(shape=shape, dtype=dtype['x']),
-            y=na.ScalarArray.empty(shape=shape, dtype=dtype['y']),
-        )
-
-    @classmethod
-    def zeros(
-            cls: Type[Self],
-            shape: dict[str, int],
-            dtype: Type | np.dtype | dict[str, Type | np.dtype] = float,
-    ) -> Self:
-        if not isinstance(dtype, dict):
-            dtype = dict(x=dtype, y=dtype)
-        return cls(
-            x=na.ScalarArray.zeros(shape=shape, dtype=dtype['x']),
-            y=na.ScalarArray.zeros(shape=shape, dtype=dtype['y']),
-        )
-
-    @classmethod
-    def ones(
-            cls: Type[Self],
-            shape: dict[str, int],
-            dtype: Type | np.dtype | dict[str, Type | np.dtype] = float,
-    ) -> Self:
-        if not isinstance(dtype, dict):
-            dtype = dict(x=dtype, y=dtype)
-        return cls(
-            x=na.ScalarArray.ones(shape=shape, dtype=dtype['x']),
-            y=na.ScalarArray.ones(shape=shape, dtype=dtype['y']),
-        )
-
 
 @dataclasses.dataclass(eq=False, repr=False)
 class AbstractImplicitCartesian2dVectorArray(

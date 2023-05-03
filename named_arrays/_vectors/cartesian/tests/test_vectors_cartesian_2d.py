@@ -209,7 +209,7 @@ class TestCartesian2dVectorArray(
                 )
             ),
             na.ScalarArray.ones(shape=dict(y=_num_y), dtype=bool),
-            na.Cartesian2dVectorArray.ones(shape=dict(y=_num_y), dtype=bool)
+            np.ones_like(na.Cartesian2dVectorArray(), dtype=bool, shape=dict(y=_num_y)),
         ],
     )
     @pytest.mark.parametrize(
@@ -227,14 +227,6 @@ class TestCartesian2dVectorArray(
             value: float | na.ScalarArray
     ):
         super().test__setitem__(array=array, item=item, value=value)
-
-
-class TestCartesian2dVectorArrayCreation(
-    test_vectors_cartesian.AbstractTestAbstractExplicitCartesianVectorArrayCreation,
-):
-    @property
-    def type_array(self) -> Type[na.Cartesian2dVectorArray]:
-        return na.Cartesian2dVectorArray
 
 
 class AbstractTestAbstractImplicitCartesian2dVectorArray(

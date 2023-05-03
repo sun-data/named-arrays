@@ -501,48 +501,6 @@ class UncertainScalarArray(
                 f"shape {na.shape(self.nominal)}"
             )
 
-    @classmethod
-    def empty(
-            cls: Type[Self],
-            shape: dict[str, int],
-            dtype: Type = float,
-            axis_distribution: str = _axis_distribution_default,
-            num_distribution: int = _num_distribution_default,
-    ) -> Self:
-        shape_distribution = shape | {axis_distribution: num_distribution}
-        return UncertainScalarArray(
-            nominal=na.ScalarArray.empty(shape=shape, dtype=dtype),
-            distribution=na.ScalarArray.empty(shape=shape_distribution, dtype=dtype),
-        )
-
-    @classmethod
-    def zeros(
-            cls: Type[Self],
-            shape: dict[str, int],
-            dtype: Type = float,
-            axis_distribution: str = _axis_distribution_default,
-            num_distribution: int = _num_distribution_default,
-    ) -> Self:
-        shape_distribution = shape | {axis_distribution: num_distribution}
-        return UncertainScalarArray(
-            nominal=na.ScalarArray.zeros(shape=shape, dtype=dtype),
-            distribution=na.ScalarArray.zeros(shape=shape_distribution, dtype=dtype),
-        )
-
-    @classmethod
-    def ones(
-            cls: Type[Self],
-            shape: dict[str, int],
-            dtype: Type = float,
-            axis_distribution: str = _axis_distribution_default,
-            num_distribution: int = _num_distribution_default,
-    ) -> Self:
-        shape_distribution = shape | {axis_distribution: num_distribution}
-        return UncertainScalarArray(
-            nominal=na.ScalarArray.ones(shape=shape, dtype=dtype),
-            distribution=na.ScalarArray.ones(shape=shape_distribution, dtype=dtype),
-        )
-
     @property
     def num_distribution(self: Self) -> int:
         return self.distribution.shape[self.axis_distribution]

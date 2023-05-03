@@ -407,18 +407,6 @@ class FunctionArray(
     inputs: InputsT = dataclasses.MISSING
     outputs: OutputsT = dataclasses.MISSING
 
-    @classmethod
-    def empty(cls, shape: dict[str, int], dtype: Type = float) -> FunctionArray:
-        raise NotImplementedError
-
-    @classmethod
-    def zeros(cls, shape: dict[str, int], dtype: Type = float) -> FunctionArray:
-        raise NotImplementedError
-
-    @classmethod
-    def ones(cls, shape: dict[str, int], dtype: Type = float) -> FunctionArray:
-        raise NotImplementedError
-
     @property
     def axes(self) -> tuple[str, ...]:
         return tuple(self.shape.keys())

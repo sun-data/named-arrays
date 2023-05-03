@@ -791,7 +791,7 @@ class AbstractTestAbstractArray(
 
         def test_unravel_index(self, array: na.AbstractArray):
             indices_raveled = na.ScalarArrayRange(0, array.size, axis='raveled').reshape(array.shape)
-            indices_raveled = indices_raveled * array.type_explicit.ones(shape=dict(), dtype=int)
+            indices_raveled = indices_raveled * np.ones_like(array.value, shape=dict(), dtype=int)
             result = np.unravel_index(
                 indices=indices_raveled,
                 shape=array.shape,
@@ -1025,30 +1025,6 @@ class AbstractTestAbstractExplicitArray(
 
         result[item] = value
         assert np.all(result[item] == value)
-
-
-@pytest.mark.parametrize('shape', [dict(x=3), dict(x=4, y=5)])
-@pytest.mark.parametrize('dtype', [int, float, complex])
-class AbstractTestAbstractExplicitArrayCreation(abc.ABC):
-
-    @property
-    @abc.abstractmethod
-    def type_array(self) -> Type[na.AbstractExplicitArray]:
-        pass
-
-    def test_empty(self, shape: dict[str, int], dtype: Type):
-        result = self.type_array.empty(shape, dtype=dtype)
-        assert result.shape == shape
-
-    def test_zeros(self, shape: dict[str, int], dtype: Type):
-        result = self.type_array.zeros(shape, dtype=dtype)
-        assert result.shape == shape
-        assert np.all(result == 0)
-
-    def test_ones(self, shape: dict[str, int], dtype: Type):
-        result = self.type_array.ones(shape, dtype=dtype)
-        assert result.shape == shape
-        assert np.all(result == 1)
 
 
 class AbstractTestAbstractImplicitArray(

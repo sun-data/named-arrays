@@ -828,27 +828,29 @@ class TestScalarArray(
         super().test__setitem__(array=array, item=item, value=value)
 
 
-class TestScalarArrayCreation(
-    tests.test_core.AbstractTestAbstractExplicitArrayCreation
-):
+@pytest.mark.parametrize('shape', [dict(x=3), dict(x=4, y=5)])
+@pytest.mark.parametrize('dtype', [int, float, complex])
+class TestScalarArrayCreation:
 
     @property
     def type_array(self) -> Type[na.ScalarArray]:
         return na.ScalarArray
 
     def test_empty(self, shape: dict[str, int], dtype: Type):
-        super().test_empty(shape=shape, dtype=dtype)
         result = self.type_array.empty(shape, dtype=dtype)
+        assert result.shape == shape
         assert result.dtype == dtype
 
     def test_zeros(self, shape: dict[str, int], dtype: Type):
-        super().test_zeros(shape=shape, dtype=dtype)
         result = self.type_array.zeros(shape, dtype=dtype)
+        assert result.shape == shape
+        assert np.all(result == 0)
         assert result.dtype == dtype
 
     def test_ones(self, shape: dict[str, int], dtype: Type):
-        super().test_ones(shape=shape, dtype=dtype)
         result = self.type_array.ones(shape, dtype=dtype)
+        assert result.shape == shape
+        assert np.all(result == 1)
         assert result.dtype == dtype
 
 

@@ -430,33 +430,6 @@ class AbstractTestAbstractExplicitVectorArray(
     pass
 
 
-class AbstractTestAbstractExplicitVectorArrayCreation(
-    named_arrays.tests.test_core.AbstractTestAbstractExplicitArrayCreation,
-):
-    @property
-    @abc.abstractmethod
-    def type_array(self) -> Type[na.AbstractExplicitVectorArray]:
-        pass
-
-    def test_empty(self, shape: dict[str, int], dtype: Type):
-        super().test_empty(shape=shape, dtype=dtype)
-        result = self.type_array.empty(shape, dtype=dtype)
-        for c in result.components:
-            assert result.components[c].dtype == dtype
-
-    def test_zeros(self, shape: dict[str, int], dtype: Type):
-        super().test_zeros(shape=shape, dtype=dtype)
-        result = self.type_array.zeros(shape, dtype=dtype)
-        for c in result.components:
-            assert result.components[c].dtype == dtype
-
-    def test_ones(self, shape: dict[str, int], dtype: Type):
-        super().test_ones(shape=shape, dtype=dtype)
-        result = self.type_array.ones(shape, dtype=dtype)
-        for c in result.components:
-            assert result.components[c].dtype == dtype
-
-
 class AbstractTestAbstractImplicitVectorArray(
     AbstractTestAbstractVectorArray,
     named_arrays.tests.test_core.AbstractTestAbstractImplicitArray,
