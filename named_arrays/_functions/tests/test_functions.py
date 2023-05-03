@@ -348,6 +348,12 @@ class AbstractTestAbstractFunctionArray(
         named_arrays.tests.test_core.AbstractTestAbstractArray.TestArrayFunctions
     ):
 
+        @pytest.mark.xfail
+        class TestArrayCreationLikeFunctions(
+            named_arrays.tests.test_core.AbstractTestAbstractArray.TestArrayFunctions.TestArrayCreationLikeFunctions
+        ):
+            pass
+
         @pytest.mark.parametrize(
             argnames='where',
             argvalues=[

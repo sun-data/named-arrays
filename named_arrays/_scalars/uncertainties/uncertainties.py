@@ -432,6 +432,9 @@ class AbstractUncertainScalarArray(
 
         from . import uncertainties_array_functions
 
+        if func in uncertainties_array_functions.ARRAY_CREATION_LIKE_FUNCTIONS:
+            return uncertainties_array_functions.array_function_array_creation_like(func, *args, **kwargs)
+
         if func in uncertainties_array_functions.SEQUENCE_FUNCTIONS:
             return uncertainties_array_functions.array_function_sequence(func, *args, **kwargs)
 

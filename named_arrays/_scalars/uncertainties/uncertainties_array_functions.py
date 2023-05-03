@@ -6,6 +6,7 @@ import named_arrays._scalars.scalar_array_functions
 from . import uncertainties
 
 __all__ = [
+    'ARRAY_CREATION_LIKE_FUNCTIONS',
     'SEQUENCE_FUNCTIONS',
     'DEFAULT_FUNCTIONS',
     'PERCENTILE_LIKE_FUNCTIONS',
@@ -16,6 +17,7 @@ __all__ = [
     'HANDLED_FUNCTIONS',
 ]
 
+ARRAY_CREATION_LIKE_FUNCTIONS = named_arrays._scalars.scalar_array_functions.ARRAY_CREATION_LIKE_FUNCTIONS
 SEQUENCE_FUNCTIONS = named_arrays._scalars.scalar_array_functions.SEQUENCE_FUNCTIONS
 DEFAULT_FUNCTIONS = named_arrays._scalars.scalar_array_functions.DEFAULT_FUNCTIONS
 PERCENTILE_LIKE_FUNCTIONS = named_arrays._scalars.scalar_array_functions.PERCENTILE_LIKE_FUNCTIONS
@@ -24,6 +26,39 @@ FFT_LIKE_FUNCTIONS = named_arrays._scalars.scalar_array_functions.FFT_LIKE_FUNCT
 FFTN_LIKE_FUNCTIONS = named_arrays._scalars.scalar_array_functions.FFTN_LIKE_FUNCTIONS
 STACK_LIKE_FUNCTIONS = [np.stack, np.concatenate]
 HANDLED_FUNCTIONS = dict()
+
+
+def array_function_array_creation_like(
+        func: Callable,
+        prototype: na.AbstractUncertainScalarArray,
+        dtype: None | type | np.dtype = None,
+        order: str = "K",
+        subok: bool = True,
+        shape: dict[str, int] = None,
+):
+    prototype = prototype.explicit
+
+    if shape is not None:
+        shape_distribution = shape | {prototype.axis_distribution: prototype.num_distribution}
+    else:
+        shape_distribution = None
+
+    return prototype.type_explicit(
+        nominal=func(
+            na.as_named_array(prototype.nominal),
+            dtype=dtype,
+            order=order,
+            subok=subok,
+            shape=shape,
+        ),
+        distribution=func(
+            na.as_named_array(prototype.distribution),
+            dtype=dtype,
+            order=order,
+            subok=subok,
+            shape=shape_distribution,
+        ),
+    )
 
 
 def array_function_sequence(

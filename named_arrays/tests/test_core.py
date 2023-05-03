@@ -444,6 +444,47 @@ class AbstractTestAbstractArray(
     class TestArrayFunctions(abc.ABC):
 
         @pytest.mark.parametrize(
+            argnames="func",
+            argvalues=[
+                np.empty_like,
+                np.zeros_like,
+                np.ones_like,
+            ]
+        )
+        @pytest.mark.parametrize(
+            argnames="shape",
+            argvalues=[
+                None,
+                dict(y=num_y),
+                dict(x=num_x, y=num_y)
+            ]
+        )
+        @pytest.mark.parametrize("dtype", [None, int, float])
+        class TestArrayCreationLikeFunctions(abc.ABC):
+
+            def test_array_creation_like_functions(
+                    self,
+                    func: Callable,
+                    array: na.AbstractArray,
+                    shape: dict[str, int],
+                    dtype: type
+            ):
+                result = func(array, dtype=dtype, shape=shape)
+
+                if shape is None:
+                    shape_normalized = array.shape
+                else:
+                    shape_normalized = shape
+
+                assert result.shape == shape_normalized
+                assert type(result) == array.type_explicit
+
+                if func is np.zeros_like:
+                    assert np.all(result.value == 0)
+                elif func is np.ones_like:
+                    assert np.all(result.value == 1)
+
+        @pytest.mark.parametrize(
             argnames='func',
             argvalues=[
                 np.all,

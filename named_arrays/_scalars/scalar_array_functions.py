@@ -6,6 +6,7 @@ import named_arrays as na
 from . import scalars
 
 __all__ = [
+    'ARRAY_CREATION_LIKE_FUNCTIONS',
     'DEFAULT_FUNCTIONS',
     'PERCENTILE_LIKE_FUNCTIONS',
     'ARG_REDUCE_FUNCTIONS',
@@ -13,7 +14,11 @@ __all__ = [
     'FFTN_LIKE_FUNCTIONS',
     'HANDLED_FUNCTIONS',
 ]
-
+ARRAY_CREATION_LIKE_FUNCTIONS = [
+    np.empty_like,
+    np.zeros_like,
+    np.ones_like,
+]
 SEQUENCE_FUNCTIONS = [
     np.linspace,
     np.logspace,

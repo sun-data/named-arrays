@@ -6,6 +6,7 @@ import named_arrays._scalars.scalar_array_functions
 from . import vectors
 
 __all__ = [
+    'ARRAY_CREATION_LIKE_FUNCTIONS',
     'SEQUENCE_FUNCTIONS',
     'DEFAULT_FUNCTIONS',
     'PERCENTILE_LIKE_FUNCTIONS',
@@ -16,7 +17,7 @@ __all__ = [
     'STACK_LIKE_FUNCTIONS',
 ]
 
-
+ARRAY_CREATION_LIKE_FUNCTIONS = named_arrays._scalars.scalar_array_functions.ARRAY_CREATION_LIKE_FUNCTIONS
 SEQUENCE_FUNCTIONS = named_arrays._scalars.scalar_array_functions.SEQUENCE_FUNCTIONS
 DEFAULT_FUNCTIONS = [
     np.ndim,
@@ -74,6 +75,30 @@ STACK_LIKE_FUNCTIONS = [
     np.concatenate,
 ]
 HANDLED_FUNCTIONS = dict()
+
+
+def array_function_array_creation_like(
+        func: Callable,
+        prototype: na.AbstractVectorArray,
+        dtype: None | type | np.dtype = None,
+        order: str = "K",
+        subok: bool = True,
+        shape: dict[str, int] = None,
+) -> na.AbstractVectorArray:
+
+    components = prototype.components
+
+    components_result = dict()
+    for c in components:
+        components_result[c] = func(
+            na.as_named_array(components[c]),
+            dtype=dtype,
+            order=order,
+            subok=subok,
+            shape=shape,
+        )
+
+    return prototype.type_explicit.from_components(components_result)
 
 
 def array_function_sequence(
