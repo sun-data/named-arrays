@@ -9,7 +9,6 @@ import named_arrays._scalars.tests.test_scalars
 __all__ = [
     'AbstractTestAbstractUncertainScalarArray',
     'TestUncertainScalarArray',
-    'TestUncertainScalarArrayCreation',
     'AbstractTestAbstractImplicitUncertainScalarArray',
     'TestUniformUncertainScalarArray',
     'TestNormalUncertainScalarArray',

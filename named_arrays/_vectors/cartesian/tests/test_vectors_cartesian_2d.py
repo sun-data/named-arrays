@@ -9,7 +9,6 @@ from . import test_vectors_cartesian
 __all__ = [
     'AbstractTestAbstractCartesian2dVectorArray',
     'TestCartesian2dVectorArray',
-    'TestCartesian2dVectorArrayCreation',
     'AbstractTestAbstractImplicitCartesian2dVectorArray',
     'AbstractTestAbstractCartesian2dVectorRandomSample',
     'TestCartesian2dVectorUniformRandomSample',

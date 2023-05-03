@@ -7,7 +7,6 @@ import named_arrays._vectors.tests.test_vectors
 __all__ = [
     'AbstractTestAbstractMatrixArray',
     'AbstractTestAbstractExplicitMatrixArray',
-    'AbstractTestAbstractExplicitMatrixArrayCreation',
     'AbstractTestAbstractImplicitMatrixArray',
     'AbstractTestAbstractMatrixRandomSample',
     'AbstractTestAbstractMatrixUniformRandomSample',
@@ -89,12 +88,6 @@ class AbstractTestAbstractMatrixArray(
 class AbstractTestAbstractExplicitMatrixArray(
     AbstractTestAbstractMatrixArray,
     named_arrays._vectors.tests.test_vectors.AbstractTestAbstractExplicitVectorArray,
-):
-    pass
-
-
-class AbstractTestAbstractExplicitMatrixArrayCreation(
-    named_arrays._vectors.tests.test_vectors.AbstractTestAbstractExplicitVectorArrayCreation,
 ):
     pass
 
