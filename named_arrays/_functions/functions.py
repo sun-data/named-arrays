@@ -2,6 +2,8 @@ from __future__ import annotations
 from typing import TypeVar, Generic, Type, ClassVar, Sequence, Callable, Collection, Any
 import abc
 import dataclasses
+
+import astropy.visualization
 import numpy as np
 import astropy.units as u
 import named_arrays as na
@@ -329,7 +331,7 @@ class AbstractFunctionArray(
 
             kwargs["out"] = outputs_out
         else:
-            out = (None, ) * nout
+            out = (None,) * nout
 
         if "where" in kwargs:
             where = kwargs.pop("where")
@@ -347,7 +349,7 @@ class AbstractFunctionArray(
         outputs_result = getattr(function, method)(*inputs_outputs, **kwargs)
 
         if nout == 1:
-            outputs_result = (outputs_result, )
+            outputs_result = (outputs_result,)
 
         result = list(
             self.type_explicit(inputs=inputs_result, outputs=outputs_result[i])
@@ -396,6 +398,162 @@ class AbstractFunctionArray(
             return function_array_functions.HANDLED_FUNCTIONS[func](*args, **kwargs)
 
         return NotImplemented
+
+    def pcolormesh(
+            self,
+            axs,
+            input_component_x,
+            input_component_y,
+            input_component_row=None,
+            input_component_column=None,
+            index=None,
+            output_component_color=None,
+            **kwargs,
+    ):
+        """
+        Plot a :class:`FunctionArray` via :func:`matplotlib.pyplot.pcolormesh`.
+
+        :func:`FunctionArray.pcolormesh` takes in an axes object, or array of axes objects, along with components to
+        be plotted along the x and y plot axes (:attr:`input_component_x` and :attr:`input_component_y`). Additional
+        components can be tiled along subplot row/column and are specified in :attr:`input_component_row` and
+        :attr:`input_component_column`.
+
+        .. jupyter-execute::
+
+            import named_arrays as na
+            import numpy as np
+            import astropy.units as u
+            import matplotlib.pyplot as plt
+
+            position = na.Cartesian2dVectorLinearSpace(
+                start = -10,
+                stop = 10,
+                axis = na.Cartesian2dVectorArray(
+                    x = 'position_x',
+                    y = 'position_y',
+                ),
+                num = 21,
+            ) * u.m
+
+            x_width = 5*u.m
+            y_width = 2*u.m
+            velocity = 1 * u.m/u.s
+            time = na.ScalarLinearSpace(
+                start = 0 * u.s,
+                stop = 3 * u.s,
+                num = 4,
+                axis = 'time'
+            )
+
+            intensity = np.exp(- (((position.x + velocity*time)/x_width) ** 2 + ((position.y+2*velocity*time)/y_width)** 2))
+
+            scene = na.FunctionArray(
+                inputs=position,
+                outputs=intensity * u.DN,
+            )
+
+
+            fig, axs = plt.subplots(
+                nrows = scene.outputs.shape['time'],
+                squeeze=False,
+                sharex=True,
+                subplot_kw=dict(aspect='equal'),
+            )
+            scene.pcolormesh(
+                axs=axs,
+                input_component_x='x',
+                input_component_y='y',
+                input_component_row='time',
+            )
+
+
+
+        """
+
+        if axs.ndim == 1:
+            if input_component_row is not None:
+                axs = axs[..., None]
+            if input_component_column is not None:
+                axs = axs[None, ...]
+
+        axs = na.ScalarArray(
+            ndarray=axs,
+            axes=('row', 'column')
+        )
+
+        if index is None:
+            index = dict()
+
+        with astropy.visualization.quantity_support():
+            for index_subplot in axs.ndindex():
+
+                index_final = index.copy()
+                if input_component_row is not None:
+                    index_final[input_component_row] = index_subplot['row']
+                if input_component_column is not None:
+                    index_final[input_component_column] = index_subplot['column']
+
+
+                inp = self[index_final].inputs
+
+                inp_x = inp.components[input_component_x].ndarray
+                inp_y = inp.components[input_component_y].ndarray
+
+                out = self[index_final].outputs
+                if output_component_color is not None:
+                    out = out.components[output_component_color]
+
+                ax = axs[index_subplot].ndarray
+                ax.pcolormesh(
+                    inp_x,
+                    inp_y,
+                    out.ndarray,
+                    shading='nearest',
+                    **kwargs,
+                )
+
+                if index_subplot['row'] == axs.shape['row'] - 1:
+                    if isinstance(inp_x, u.Quantity):
+                        ax.set_xlabel(f'{input_component_x} ({inp_x.unit})')
+                    else:
+                        ax.set_xlabel(f'{input_component_x}')
+                else:
+                    ax.set_xlabel(None)
+
+                if index_subplot['column'] == 0:
+                    if isinstance(inp_y, u.Quantity):
+                        ax.set_ylabel(f'{input_component_y} ({inp_y.unit})')
+                    else:
+                        ax.set_ylabel(f'{input_component_y}')
+                else:
+                    ax.set_ylabel(None)
+
+                if input_component_column is not None:
+                    if input_component_column in inp.components:
+                        if index_subplot['row'] == 0:
+                            inp_column = inp.components[input_component_column]
+                            ax.text(
+                                x=0.5,
+                                y=1.01,
+                                s=f'{inp_column.mean().array.value:0.03f} {inp_column.unit:latex_inline}',
+                                transform=ax.transAxes,
+                                ha='center',
+                                va='bottom'
+                            )
+
+                if input_component_row is not None:
+                    if input_component_row in inp.components:
+                        if index_subplot['column'] == axs.shape['column'] - 1:
+                            inp_row = inp.components[input_component_row]
+                            ax.text(
+                                x=1.01,
+                                y=0.5,
+                                s=f'{inp_row.mean().array.value:0.03f} {inp_row.unit:latex_inline}',
+                                transform=ax.transAxes,
+                                va='center',
+                                ha='left',
+                                rotation=-90,
+                            )
 
 
 @dataclasses.dataclass(eq=False, repr=False)
@@ -477,7 +635,6 @@ class FunctionArray(
         else:
             value_inputs = None
             value_outputs = value
-
 
         if value_inputs is not None:
             self.inputs[item_inputs] = value_inputs
