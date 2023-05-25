@@ -2,10 +2,9 @@ from __future__ import annotations
 from typing import TypeVar, Generic, Type, ClassVar, Sequence, Callable, Collection, Any
 import abc
 import dataclasses
-
-import astropy.visualization
 import numpy as np
 import astropy.units as u
+import astropy.visualization
 import named_arrays as na
 
 __all__ = [
@@ -401,14 +400,14 @@ class AbstractFunctionArray(
 
     def pcolormesh(
             self,
-            axs,
-            input_component_x,
-            input_component_y,
-            input_component_row=None,
-            input_component_column=None,
-            index=None,
-            output_component_color=None,
-            **kwargs,
+            axs: np.ndarray,
+            input_component_x: str,
+            input_component_y: str,
+            input_component_row: None | str = None,
+            input_component_column: None | str = None,
+            index: None | dict[str, int] = None,
+            output_component_color: None | str = None,
+            **kwargs: Any,
     ):
         """
         Plot a :class:`FunctionArray` via :func:`matplotlib.pyplot.pcolormesh`.
@@ -426,35 +425,33 @@ class AbstractFunctionArray(
             import matplotlib.pyplot as plt
 
             position = na.Cartesian2dVectorLinearSpace(
-                start = -10,
-                stop = 10,
-                axis = na.Cartesian2dVectorArray(
-                    x = 'position_x',
-                    y = 'position_y',
+                start=-10,
+                stop=10,
+                axis=na.Cartesian2dVectorArray(
+                    x='position_x',
+                    y='position_y',
                 ),
-                num = 21,
+                num=21,
             ) * u.m
 
-            x_width = 5*u.m
-            y_width = 2*u.m
+            x_width = 5 * u.m
+            y_width = 2 * u.m
             velocity = 1 * u.m/u.s
             time = na.ScalarLinearSpace(
-                start = 0 * u.s,
-                stop = 3 * u.s,
-                num = 4,
-                axis = 'time'
+                start=0 * u.s,
+                stop=3 * u.s,
+                num=4,
+                axis='time'
             )
 
-            intensity = np.exp(- (((position.x + velocity*time)/x_width) ** 2 + ((position.y+2*velocity*time)/y_width)** 2))
-
+            intensity = np.exp(-(((position.x + velocity*time)/x_width) ** 2 + ((position.y + 2*velocity*time)/y_width)** 2))
             scene = na.FunctionArray(
                 inputs=position,
                 outputs=intensity * u.DN,
             )
 
-
             fig, axs = plt.subplots(
-                nrows = scene.outputs.shape['time'],
+                nrows=scene.outputs.shape['time'],
                 squeeze=False,
                 sharex=True,
                 subplot_kw=dict(aspect='equal'),
@@ -465,16 +462,15 @@ class AbstractFunctionArray(
                 input_component_y='y',
                 input_component_row='time',
             )
-
-
-
         """
+
+
 
         if axs.ndim == 1:
             if input_component_row is not None:
-                axs = axs[..., None]
+                axs = axs[..., np.newaxis]
             if input_component_column is not None:
-                axs = axs[None, ...]
+                axs = axs[np.newaxis, ...]
 
         axs = na.ScalarArray(
             ndarray=axs,
@@ -492,7 +488,6 @@ class AbstractFunctionArray(
                     index_final[input_component_row] = index_subplot['row']
                 if input_component_column is not None:
                     index_final[input_component_column] = index_subplot['column']
-
 
                 inp = self[index_final].inputs
 
