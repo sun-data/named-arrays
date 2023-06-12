@@ -8,9 +8,10 @@ import named_arrays as na
 __all__ = [
     'AbstractSpectralVectorSpace',
     'SpectralVectorArray',
-    'AbstractImplicitSpectralVectorArray'
+    'AbstractImplicitSpectralVectorArray',
+    'AbstractParameterizedSpectralVectorArray',
+    'AbstractSpectralVectorSpace',
     'SpectralVectorLinearSpace',
-    'AbstractParameterizedSpectralVectorArray'
 
 ]
 
@@ -19,7 +20,7 @@ WavelengthT = TypeVar("WavelengthT", bound=na.ScalarLike)
 
 @dataclasses.dataclass(eq=False, repr=False)
 class AbstractSpectralVectorArray(
-    na.AbstractVectorArray,
+    na.AbstractCartesianVectorArray,
 ):
 
     @property
@@ -42,22 +43,21 @@ class AbstractSpectralVectorArray(
         return na.SpectralMatrixArray
 
 
-
 @dataclasses.dataclass(eq=False, repr=False)
 class SpectralVectorArray(
     AbstractSpectralVectorArray,
-    na.AbstractExplicitVectorArray,
+    na.AbstractExplicitCartesianVectorArray,
     Generic[WavelengthT],
 ):
+    wavelength: WavelengthT = 0
 
-     wavelength: WavelengthT = 0
+    @classmethod
+    def from_scalar(
+            cls: Type[Self],
+            scalar: na.AbstractScalar,
+    ) -> SpectralVectorArray:
+        return cls(wavelength=scalar)
 
-     @classmethod
-     def from_scalar(
-             cls: Type[Self],
-             scalar: na.AbstractScalar,
-     ) -> SpectralVectorArray:
-         return cls(wavelength=scalar)
 
 @dataclasses.dataclass(eq=False, repr=False)
 class AbstractImplicitSpectralVectorArray(
@@ -69,17 +69,19 @@ class AbstractImplicitSpectralVectorArray(
     def wavelength(self) -> na.ArrayLike:
         return self.explicit.wavelength
 
+
 @dataclasses.dataclass(eq=False, repr=False)
 class AbstractParameterizedSpectralVectorArray(
     AbstractImplicitSpectralVectorArray,
-    na.AbstractParameterizedCartesianVectorArray,
+    na.AbstractParameterizedVectorArray,
 ):
     pass
+
 
 @dataclasses.dataclass(eq=False, repr=False)
 class AbstractSpectralVectorSpace(
     AbstractParameterizedSpectralVectorArray,
-    na.AbstractCartesianVectorSpace,
+    na.AbstractVectorSpace,
 ):
     pass
 
@@ -87,6 +89,6 @@ class AbstractSpectralVectorSpace(
 @dataclasses.dataclass(eq=False, repr=False)
 class SpectralVectorLinearSpace(
     AbstractSpectralVectorSpace,
-    na.AbstractCartesianVectorLinearSpace,
+    na.AbstractVectorLinearSpace,
 ):
     pass
