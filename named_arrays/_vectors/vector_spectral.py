@@ -6,7 +6,7 @@ import dataclasses
 import named_arrays as na
 
 __all__ = [
-    'AbstractSpectralVectorSpace',
+    'AbstractSpectralVectorArray',
     'SpectralVectorArray',
     'AbstractImplicitSpectralVectorArray',
     'AbstractParameterizedSpectralVectorArray',
