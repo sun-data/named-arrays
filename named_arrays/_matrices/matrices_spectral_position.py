@@ -3,38 +3,31 @@ from typing import TypeVar, Generic, Type
 import abc
 import dataclasses
 import named_arrays as na
+import numpy as np
+import astropy.units as u
 
 __all__ = [
-    'AbstractSpectralMatrixArray',
-    'SpectralMatrixArray',
+    'AbstractSpectralPositionMatrixArray',
+    'SpectralPositionMatrixArray',
 ]
-
-WavelengthT = TypeVar('WavelengthT', bound=na.AbstractVectorArray)
 
 
 @dataclasses.dataclass(eq=False, repr=False)
-class AbstractSpectralMatrixArray(
-    na.AbstractCartesianMatrixArray,
-    na.AbstractSpectralVectorArray,
+class AbstractSpectralPositionMatrixArray(
+    na.AbstractSpectralPositionVectorArray,
 ):
-    @property
-    @abc.abstractmethod
-    def wavelength(self) -> na.AbstractVectorArray:
-        """
-        The `wavelength` component of the vector.
-        """
 
     @property
-    def type_abstract(self) -> Type[AbstractSpectralMatrixArray]:
-        return AbstractSpectralMatrixArray
+    def type_abstract(self) -> Type[AbstractSpectralPositionMatrixArray]:
+        return AbstractSpectralPositionMatrixArray
 
     @property
-    def type_explicit(self) -> Type[SpectralMatrixArray]:
-        return SpectralMatrixArray
+    def type_explicit(self) -> Type[SpectralPositionMatrixArray]:
+        return SpectralPositionMatrixArray
 
     @property
-    def type_vector(self) -> Type[na.SpectralVectorArray]:
-        return na.SpectralVectorArray
+    def type_vector(self) -> Type[na.SpectralPositionVectorArray]:
+        return na.SpectralPositionVectorArray
 
     @property
     def determinant(self) -> na.ScalarLike:
@@ -64,10 +57,9 @@ class AbstractSpectralMatrixArray(
 
 
 @dataclasses.dataclass(eq=False, repr=False)
-class SpectralMatrixArray(
-    na.SpectralVectorArray,
-    AbstractSpectralMatrixArray,
+class SpectralPositionMatrixArray(
+    na.SpectralPositionVectorArray,
+    AbstractSpectralPositionMatrixArray,
     na.AbstractExplicitMatrixArray,
-    Generic[WavelengthT],
 ):
     pass

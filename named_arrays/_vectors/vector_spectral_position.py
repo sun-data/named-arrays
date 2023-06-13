@@ -39,7 +39,6 @@ class SpectralPositionVectorArray(
     na.Cartesian2dVectorArray,
 ):
 
-
     @classmethod
     def from_scalar(
             cls: Type[Self],
