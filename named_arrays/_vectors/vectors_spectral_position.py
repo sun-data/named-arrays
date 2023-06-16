@@ -15,8 +15,8 @@ __all__ = [
 
 @dataclasses.dataclass(eq=False, repr=False)
 class AbstractSpectralPositionVectorArray(
+    na.AbstractPositionVectorArray,
     na.AbstractSpectralVectorArray,
-    na.AbstractCartesian2dVectorArray,
 ):
 
     @property
@@ -28,6 +28,11 @@ class AbstractSpectralPositionVectorArray(
         return SpectralPositionVectorArray
 
     @property
+    def cartesian_nd(self):
+        return NotImplementedError
+
+
+    @property
     def type_matrix(self) -> Type[na.SpectralPositionMatrixArray]:
         return na.SpectralPositionMatrixArray
 
@@ -35,8 +40,8 @@ class AbstractSpectralPositionVectorArray(
 @dataclasses.dataclass(eq=False, repr=False)
 class SpectralPositionVectorArray(
     AbstractSpectralPositionVectorArray,
+    na.PositionVectorArray,
     na.SpectralVectorArray,
-    na.Cartesian2dVectorArray,
 ):
 
     @classmethod
@@ -44,14 +49,14 @@ class SpectralPositionVectorArray(
             cls: Type[Self],
             scalar: na.AbstractScalar,
     ) -> SpectralPositionVectorArray:
-        return cls(x=scalar, y=scalar, wavelength=scalar)
+        return cls(wavelength=scalar, position=scalar)
 
 
 @dataclasses.dataclass(eq=False, repr=False)
 class AbstractImplicitSpectralPositionVectorArray(
     AbstractSpectralPositionVectorArray,
+    na.AbstractImplicitPositionVectorArray,
     na.AbstractImplicitSpectralVectorArray,
-    na.AbstractImplicitCartesian2dVectorArray,
 ):
     pass
 
