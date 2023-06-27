@@ -1,0 +1,43 @@
+from __future__ import annotations
+from typing import Type, Sequence
+import dataclasses
+import named_arrays as na
+
+__all__ = [
+    "AbstractCartesianNdVectorArray"
+]
+
+
+@dataclasses.dataclass(eq=False, repr=False)
+class AbstractCartesianNdVectorArray(
+    na.AbstractCartesianVectorArray,
+):
+
+    @property
+    def type_abstract(self) -> Type[AbstractCartesianNdVectorArray]:
+        return AbstractCartesianNdVectorArray
+
+    @property
+    def type_explicit(self) -> Type[CartesianNdVectorArray]:
+        return CartesianNdVectorArray
+
+    @property
+    def type_matrix(self) -> Type[na.CartesianNdMatrixArray]:
+        return na.CartesianNdMatrixArray
+
+
+@dataclasses.dataclass(eq=False, repr=False)
+class CartesianNdVectorArray(
+    AbstractCartesianNdVectorArray,
+    na.AbstractExplicitCartesianVectorArray,
+):
+    components: dict[str, na.ArrayLike]
+
+    @classmethod
+    def from_scalar(
+            cls,
+            scalar: na.ScalarLike,
+            components: Sequence[str],
+    ) -> CartesianNdVectorArray:
+
+        pass
