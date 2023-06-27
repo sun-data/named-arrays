@@ -121,6 +121,12 @@ def array_function_sequence(
     args = tuple(arg.ndarray_aligned(shape) for arg in args)
     kwargs = {k: kwargs[k].ndarray_aligned(shape) for k in kwargs}
 
+    if isinstance(axis, na.AbstractArray):
+        if isinstance(axis, na.AbstractScalarArray):
+            axis = axis.ndarray
+        else:
+            return NotImplemented
+
     return na.ScalarArray(
         ndarray=func(
             *args,
