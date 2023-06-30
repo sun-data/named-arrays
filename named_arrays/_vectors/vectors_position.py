@@ -55,7 +55,11 @@ class PositionVectorArray(
     def from_scalar(
             cls: Type[Self],
             scalar: na.AbstractScalar,
+            like: None | na.AbstractExplicitVectorArray = None,
     ) -> PositionVectorArray:
+        result = super().from_scalar(scalar, like=like)
+        if result is not NotImplemented:
+            return result
         return cls(Position=scalar)
 
 

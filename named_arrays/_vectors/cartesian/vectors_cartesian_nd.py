@@ -4,7 +4,8 @@ import dataclasses
 import named_arrays as na
 
 __all__ = [
-    "AbstractCartesianNdVectorArray"
+    "AbstractCartesianNdVectorArray",
+    "CartesianNdVectorArray"
 ]
 
 
@@ -37,7 +38,20 @@ class CartesianNdVectorArray(
     def from_scalar(
             cls,
             scalar: na.ScalarLike,
-            components: Sequence[str],
+            like: None | na.AbstractExplicitVectorArray = None,
     ) -> CartesianNdVectorArray:
 
-        pass
+        if like is None:
+            raise ValueError("like argument must be specified for CartesianNdArrays")
+
+        result = super().from_scalar(scalar, like=like)
+        if result is not NotImplemented:
+            return result
+        else:
+            raise ValueError("all implementations of from_scalar return NotImplemented")
+
+
+
+    @classmethod
+    def from_components(cls, components: dict[str, na.ArrayLike]) -> na.CartesianNdMatrixArray:
+        return cls(components)

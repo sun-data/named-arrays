@@ -33,12 +33,6 @@ class AbstractCartesianVectorArray(
     def type_explicit(self: Self) -> Type[AbstractExplicitCartesianVectorArray]:
         pass
 
-    @property
-    @abc.abstractmethod
-    def cartesian_nd(self):
-        """
-        Convert cartesian vector to instance of :class:`AbstractCartesianNdVectorArray`
-        """
 
     @property
     def length(self: Self) -> na.AbstractScalar:

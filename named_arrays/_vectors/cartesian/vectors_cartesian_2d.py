@@ -55,10 +55,6 @@ class AbstractCartesian2dVectorArray(
         return Cartesian2dVectorArray
 
     @property
-    def cartesian_nd(self):
-        return NotImplementedError
-
-    @property
     def type_matrix(self) -> Type[na.Cartesian2dMatrixArray]:
         return na.Cartesian2dMatrixArray
 
@@ -77,6 +73,10 @@ class Cartesian2dVectorArray(
             cls: Type[Self],
             scalar: na.AbstractScalar,
     ) -> Cartesian2dVectorArray:
+        result = super().from_scalar(scalar)
+        if result is not NotImplemented:
+            return result
+
         return cls(x=scalar, y=scalar)
 
 

@@ -79,7 +79,10 @@ class AbstractMatrixArray(
             )
         type_matrix = row_prototype.type_matrix
         type_row = self.type_vector
-        result = type_matrix.from_components({c: type_row() for c in row_prototype.components})
+        # row_dict = {c: type_row() for c in row_prototype.components}
+        row_dict = {c: type_row.from_components(dict.fromkeys(row_prototype.components, 0)) for c in
+                    row_prototype.components}
+        result = type_matrix.from_components(row_dict)
 
         for r in rows:
             for c in rows[r].components:
@@ -101,11 +104,29 @@ class AbstractMatrixArray(
         The inverse of this matrix
         """
 
+    @property
+    def cartesian_nd(self):
+        """
+        Convert all cartesian vectors making up the matrix to instances of :class:`AbstractCartesianNdVectorArray`
+        """
+        components_new = dict()
+        components = self.components
+        for c in components:
+            component = components[c]
+
+            if isinstance(component, na.AbstractMatrixArray):
+                for c2 in component.components:
+                    components_new[f"{c}_{c2}"] = component.components[c2].cartesian_nd
+            else:
+                components_new[c] = component.cartesian_nd
+
+        return na.CartesianNdMatrixArray(components_new)
+
     def __array_matmul__(
             self,
             x1: na.ArrayLike,
             x2: na.ArrayLike,
-            out: tuple[None | na.AbstractExplicitArray] = (None, ),
+            out: tuple[None | na.AbstractExplicitArray] = (None,),
             **kwargs,
     ) -> na.AbstractExplicitArray:
 

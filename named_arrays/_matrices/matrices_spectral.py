@@ -34,11 +34,6 @@ class AbstractSpectralMatrixArray(
         return SpectralMatrixArray
 
     @property
-    def cartesian_nd(self):
-        return NotImplementedError
-
-
-    @property
     def type_vector(self) -> Type[na.SpectralVectorArray]:
         return na.SpectralVectorArray
 
