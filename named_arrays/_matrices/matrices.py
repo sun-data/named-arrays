@@ -182,6 +182,36 @@ class AbstractExplicitMatrixArray(
     def components(self, value: dict[str, na.AbstractVectorArray]):
         self.__dict__ = value
 
+    @classmethod
+    def from_cartesian_nd(
+            cls: AbstractExplicitMatrixArray,
+            cartesian_nd: na.CartesianNdMatrixArray,
+            like: None | AbstractExplicitMatrixArray = None,
+    ) -> AbstractExplicitMatrixArray:
+
+        if like is None:
+            components_new = cartesian_nd.components
+
+        else:
+            nd_components = cartesian_nd.components
+            components_new = {}
+            components = like.components
+            for c in components:
+
+                component = components[c]
+                if isinstance(component, na.AbstractMatrixArray):
+                    secondary_components = {}
+                    for c2 in component.components:
+                        component2 = component.components[c2]
+                        secondary_components[c2] = component2.type_explicit.from_cartesian_nd(nd_components[f"{c}_{c2}"],
+                                                                                              like=component2)
+
+                    components_new[c] = component.type_explicit.from_components(secondary_components)
+                else:
+                    components_new[c] = component
+
+        return cls.from_components(components_new)
+
 
 @dataclasses.dataclass(eq=False, repr=False)
 class AbstractImplicitMatrixArray(

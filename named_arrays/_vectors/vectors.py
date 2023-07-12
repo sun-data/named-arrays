@@ -434,10 +434,30 @@ class AbstractExplicitVectorArray(
 
     @classmethod
     def from_cartesian_nd(
-            cls: Type[Self],
+            cls: AbstractExplicitVectorArray,
             cartesian_nd: na.CartesianNdVectorArray,
+            like: None | AbstractExplicitVectorArray = None,
     ) -> AbstractExplicitVectorArray:
-        return cls.from_components(cartesian_nd.components)
+
+        if like is None:
+            components_new = cartesian_nd.components
+
+        else:
+            nd_components = cartesian_nd.components
+            components_new = {}
+            components = like.components
+            for c in components:
+
+                component = components[c]
+                if isinstance(component, na.AbstractVectorArray):
+                    secondary_components = {}
+                    for c2 in component.components:
+                        secondary_components[c2] = nd_components[f"{c}_{c2}"]
+                    components_new[c] = component.type_explicit.from_components(secondary_components)
+                else:
+                    components_new[c] = component
+
+        return cls.from_components(components_new)
 
     @property
     def components(self: Self) -> dict[str, na.ArrayLike]:
