@@ -99,7 +99,6 @@ class AbstractVectorArray(
 
         return na.CartesianNdVectorArray(components_new)
 
-
     @property
     @abc.abstractmethod
     def components(self: Self) -> dict[str, na.ArrayLike]:
@@ -131,6 +130,13 @@ class AbstractVectorArray(
             else:
                 components_result[c] = components[c]
         return self.type_explicit.from_components(components_result)
+
+    @property
+    def prototype_vector(self):
+        """
+        Return vector of same type with all components zeroed.
+        """
+        return self.type_explicit.from_components(dict.fromkeys(self.components, 0))
 
     def astype(
             self: Self,
@@ -310,13 +316,14 @@ class AbstractVectorArray(
         if isinstance(x1, AbstractVectorArray):
             if isinstance(x2, na.AbstractVectorArray):
                 if x1.type_abstract == x2.type_abstract:
-                    components_x1 = x1.broadcasted.components
-                    components_x2 = x2.broadcasted.components
+                    components_x1 = x1.cartesian_nd.broadcasted.components
+                    components_x2 = x2.cartesian_nd.broadcasted.components
                     result = 0
                     for c in components_x1:
                         component_x1 = na.as_named_array(components_x1[c])
                         component_x2 = na.as_named_array(components_x2[c])
                         result = np.add(result, np.matmul(component_x1, component_x2), out=out)
+                        # result = x1.type_explicit.from_cartesian_nd(result, like=x1)
                 else:
                     result = NotImplemented
             elif isinstance(na.as_named_array(x2), na.ScalarArray):
@@ -414,8 +421,6 @@ class AbstractExplicitVectorArray(
     ) -> AbstractExplicitVectorArray:
         return cls(**components)
 
-
-
     @classmethod
     @abc.abstractmethod
     def from_scalar(
@@ -455,7 +460,7 @@ class AbstractExplicitVectorArray(
                         secondary_components[c2] = nd_components[f"{c}_{c2}"]
                     components_new[c] = component.type_explicit.from_components(secondary_components)
                 else:
-                    components_new[c] = component
+                    components_new[c] = nd_components[c]
 
         return cls.from_components(components_new)
 
