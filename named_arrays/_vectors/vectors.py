@@ -433,7 +433,7 @@ class AbstractExplicitVectorArray(
         """
 
         if like is not None:
-            return like.from_components({c: scalar for c in like.components})
+            return like.type_explicit.from_components({c: scalar for c in like.components})
         else:
             return NotImplemented
 

@@ -169,8 +169,10 @@ class AbstractMatrixArray(
             if isinstance(component, na.AbstractMatrixArray):
                 for c2 in component.components:
                     components_new[f"{c}_{c2}"] = component.components[c2].cartesian_nd
-            else:
+            elif isinstance(component, na.AbstractVectorArray):
                 components_new[c] = component.cartesian_nd
+            else:
+                components_new[c] = component
 
         return na.CartesianNdMatrixArray(components_new)
 
@@ -181,33 +183,35 @@ class AbstractMatrixArray(
             out: tuple[None | na.AbstractExplicitArray] = (None,),
             **kwargs,
     ) -> na.AbstractExplicitArray:
-        x1 = x1.explicit
-        x2 = x2.explicit
 
         if isinstance(x1, na.AbstractMatrixArray):
-            components_x1 = x1.explicit.cartesian_nd.components
+            components_x1 = x1.cartesian_nd.components
 
             if isinstance(x2, na.AbstractMatrixArray):
+                if x1.type_abstract == x2.type_abstract:
 
-                x2 = x2.matrix_transpose
-                type_row = x2.type_vector
-                components_x2 = x2.cartesian_nd.components
+                    x2 = x2.matrix_transpose
+                    components_x2 = x2.cartesian_nd.components
 
-                result = dict()
-                for r in components_x1:
-                    result[r] = na.CartesianNdVectorArray(
-                        {c: components_x1[r] @ components_x2[c] for c in components_x2}
-                    )
-                print(result)
-                result = x1.from_cartesian_nd(na.CartesianNdMatrixArray(result), like=x1)
+                    result = dict()
+                    for r in components_x1:
+                        result[r] = na.CartesianNdVectorArray(
+                            {c: components_x1[r] @ components_x2[c] for c in components_x2}
+                        )
+                    result = x1.from_cartesian_nd(na.CartesianNdMatrixArray(result), like=x1)
+                else:
+                    result = NotImplemented
 
-            else:
+            elif isinstance(x2, na.AbstractVectorArray):
                 if x1.type_vector().type_abstract == x2.type_abstract:
                     result_components = {r: components_x1[r] @ x2.cartesian_nd for r in components_x1}
                     result = x2.type_explicit.from_cartesian_nd(na.CartesianNdVectorArray(result_components), like=x2)
 
                 else:
                     result = NotImplemented
+            else:
+                result_components = {r: components_x1[r] @ x2 for r in components_x1}
+                result = x1.type_explicit.from_cartesian_nd(na.CartesianNdMatrixArray(result_components), like=x1)
 
         else:
             if isinstance(x2, na.AbstractMatrixArray):
@@ -215,10 +219,14 @@ class AbstractMatrixArray(
                 x2 = x2.matrix_transpose
                 components_x2 = x2.cartesian_nd.components
 
-                component_dict = {c: x1.cartesian_nd @ components_x2[c] for c in components_x2}
-                result = x1.type_explicit.from_cartesian_nd(
-                    na.CartesianNdVectorArray(component_dict), like=x1,
-                )
+                if isinstance(x1, na.AbstractVectorArray):
+                    component_dict = {c: x1.cartesian_nd @ components_x2[c] for c in components_x2}
+                    result = x1.type_explicit.from_cartesian_nd(
+                        na.CartesianNdVectorArray(component_dict), like=x1,
+                    )
+                else:
+                    component_dict = {c: x1 @ components_x2[c] for c in components_x2}
+                    result = x2.type_explicit.from_cartesian_nd(na.CartesianNdMatrixArray(component_dict), like=x2)
 
             else:
                 result = NotImplemented
