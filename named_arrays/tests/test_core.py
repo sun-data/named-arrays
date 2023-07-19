@@ -263,7 +263,12 @@ class AbstractTestAbstractArray(
         assert isinstance(array_copy, na.AbstractArray)
         assert dataclasses.is_dataclass(array_copy)
         for field in dataclasses.fields(array_copy):
-            assert np.all(getattr(array, field.name) == getattr(array_copy, field.name))
+            attr = getattr(array, field.name)
+            attr_copy = getattr(array_copy, field.name)
+            if isinstance(attr, dict):
+                assert [np.all(attr[key] == attr_copy[key] for key in attr.keys())]
+            else:
+                assert np.all(attr == attr_copy)
 
     @abc.abstractmethod
     def test__getitem__(

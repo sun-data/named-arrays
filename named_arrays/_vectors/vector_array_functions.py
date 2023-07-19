@@ -179,7 +179,7 @@ def array_function_default(
     if initial is not np._NoValue:
         kwargs_base["initial"] = initial
 
-    result = a.type_explicit()
+    result = a.prototype_vector
     for c in components:
         component = na.as_named_array(components[c])
         where_c = components_where[c]
@@ -235,7 +235,7 @@ def array_function_percentile_like(
         keepdims=keepdims,
     )
 
-    result = a.type_explicit()
+    result = a.prototype_vector
     for c in components:
         component = na.as_named_array(components[c])
         shape_c = na.broadcast_shapes(component.shape, shape_base)
@@ -289,7 +289,7 @@ def array_function_arg_reduce(
 
     result = dict()
     for ax in axes_result:
-        result[ax] = a.type_explicit()
+        result[ax] = a.prototype_vector
         for c in components:
             result[ax].components[c] = components_result[c].get(ax, None)
 
@@ -318,7 +318,7 @@ def array_function_fft_like(
         for c in components
     }
 
-    result = a.type_explicit()
+    result = a.prototype_vector
     for c in components:
         result.components[c] = func(
             a=components[c],
@@ -347,7 +347,7 @@ def array_function_fftn_like(
 
     shape_base = {ax: shape_a[ax] for ax in axes}
 
-    result = a.type_explicit()
+    result = a.prototype_vector
     for c in components:
         component = na.as_named_array(components[c])
         result.components[c] = func(
@@ -498,7 +498,7 @@ def array_function_stack_like(
     components_arrays = [a.components for a in arrays]
 
     if out is None:
-        components_out = vector_prototype.type_explicit.from_scalar(out).components
+        components_out = vector_prototype.type_explicit.from_scalar(out, like=vector_prototype).components
     else:
         components_out = out.components
 
@@ -545,7 +545,7 @@ def sort(
 
     shape_base = {ax: shape_a[ax] for ax in axis}
 
-    result = a.type_explicit()
+    result = a.prototype_vector
     for c in components:
         component = na.as_named_array(components[c])
         if any(ax in axis for ax in component.axes):
@@ -584,7 +584,7 @@ def argsort(
 
     shape_base = {ax: shape_a[ax] for ax in axis}
 
-    result = {ax: a.type_explicit() for ax in shape_a}
+    result = {ax: a.prototype_vector for ax in shape_a}
     for c in components:
         component = na.as_named_array(components[c])
         if any(ax in axis for ax in component.axes):

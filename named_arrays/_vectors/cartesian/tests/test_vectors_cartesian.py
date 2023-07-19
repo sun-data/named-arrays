@@ -65,7 +65,7 @@ class AbstractTestAbstractCartesianVectorArray(
                 elif ufunc in [np.log1p]:
                     kwargs["where"] = array >= -1
                 elif ufunc in [np.arcsin, np.arccos, np.arctanh]:
-                    kwargs["where"] = (-1< array) & (array < 1)
+                    kwargs["where"] = (-1 < array) & (array < 1)
                 elif ufunc in [np.arccosh]:
                     kwargs["where"] = array >= 1
                 elif ufunc in [np.reciprocal]:
@@ -80,12 +80,12 @@ class AbstractTestAbstractCartesianVectorArray(
                     else:
                         kwargs_components[c][k] = kwargs[k]
 
-            result_expected = tuple(array.type_explicit() for _ in range(ufunc.nout))
+            result_expected = tuple(array.prototype_vector for _ in range(ufunc.nout))
             try:
                 for c in components:
                     result_c = ufunc(components[c], **kwargs_components[c])
                     if ufunc.nout == 1:
-                        result_c = (result_c, )
+                        result_c = (result_c,)
                     for i in range(ufunc.nout):
                         result_expected[i].components[c] = result_c[i]
 
@@ -130,10 +130,10 @@ class AbstractTestAbstractCartesianVectorArray(
                 if isinstance(array_2, na.AbstractVectorArray):
                     array_2_normalized = array_2
                 else:
-                    array_2_normalized = array.type_explicit.from_scalar(array_2)
+                    array_2_normalized = array.type_explicit.from_scalar(array_2, like=array)
             else:
                 if isinstance(array_2, na.AbstractVectorArray):
-                    array_normalized = array_2.type_explicit.from_scalar(array)
+                    array_normalized = array_2.type_explicit.from_scalar(array, like=array_2)
                     array_2_normalized = array_2
                 else:
                     raise ValueError("One of the test arrays should be vectors")
@@ -159,8 +159,7 @@ class AbstractTestAbstractCartesianVectorArray(
                     else:
                         kwargs_components[c][k] = kwargs[k]
 
-
-            result_expected = tuple(array_normalized.type_explicit() for _ in range(ufunc.nout))
+            result_expected = tuple(array_normalized.prototype_vector for _ in range(ufunc.nout))
             try:
                 for c in components:
                     result_c = ufunc(components[c], components_2[c], **kwargs_components[c])

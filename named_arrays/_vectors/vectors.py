@@ -315,9 +315,10 @@ class AbstractVectorArray(
 
         if isinstance(x1, AbstractVectorArray):
             if isinstance(x2, na.AbstractVectorArray):
-                if x1.type_abstract == x2.type_abstract:
-                    components_x1 = x1.cartesian_nd.broadcasted.components
-                    components_x2 = x2.cartesian_nd.broadcasted.components
+                components_x1 = x1.cartesian_nd.broadcasted.components
+                components_x2 = x2.cartesian_nd.broadcasted.components
+
+                if components_x1.keys() == components_x2.keys():
                     result = 0
                     for c in components_x1:
                         component_x1 = na.as_named_array(components_x1[c])
