@@ -82,6 +82,23 @@ class AbstractVectorArray(
         """
 
     @property
+    def matrix(self):
+        new_dict = {}
+        for c in self.components:
+            component = self.components[c]
+            if isinstance(component, AbstractVectorArray):
+                new_dict[c] = component.matrix
+            elif isinstance(component, na.AbstractMatrixArray):
+                return NotImplemented
+            else:
+                new_dict[c] = component
+        return self.type_matrix.from_components(new_dict)
+
+    @property
+    def vector(self):
+        return self
+
+    @property
     def cartesian_nd(self):
         """
         Convert cartesian vector to instance of :class:`AbstractCartesianNdVectorArray`
@@ -92,8 +109,9 @@ class AbstractVectorArray(
 
             component = components[c]
             if isinstance(component, na.AbstractVectorArray):
-                for c2 in component.components:
-                    components_new[f"{c}_{c2}"] = component.components[c2]
+                component2 = component.cartesian_nd.components
+                for c2 in component2:
+                    components_new[f"{c}_{c2}"] = component2[c2]
             else:
                 components_new[c] = component
 
@@ -456,10 +474,10 @@ class AbstractExplicitVectorArray(
 
                 component = components[c]
                 if isinstance(component, na.AbstractVectorArray):
-                    secondary_components = {}
-                    for c2 in component.components:
-                        secondary_components[c2] = nd_components[f"{c}_{c2}"]
-                    components_new[c] = component.type_explicit.from_components(secondary_components)
+                    nd_key_mod = f"{c}_"
+                    sub_dict = {k[len(nd_key_mod):]: v for k, v in nd_components.items() if k.startswith(nd_key_mod)}
+                    components_new[c] = component.type_explicit.from_cartesian_nd(na.CartesianNdMatrixArray(sub_dict),
+                                                                                  like=component)
                 else:
                     components_new[c] = nd_components[c]
 

@@ -41,34 +41,38 @@ class AbstractTestAbstractMatrixArray(
 
         assert np.all(result.matrix_transpose == array)
         assert np.all(result + result == (array + array).matrix_transpose)
-        assert np.all(result @ result == (array @ array).matrix_transpose)
+        if array.prototype_row.cartesian_nd.components.keys() == array.prototype_column.cartesian_nd.components.keys():
+            assert np.all(result @ result == (array @ array).matrix_transpose)
         assert np.all(2 * result == (2 * array).matrix_transpose)
-        assert np.all(result.determinant == array.determinant)
-        assert np.all(result.inverse == (array.inverse).matrix_transpose)
+        if array.is_square:
+            assert np.all(result.determinant == array.determinant)
+            assert np.all(result.inverse == (array.inverse).matrix_transpose)
 
     def test_determinant(self, array: na.AbstractMatrixArray):
-        result = array.determinant
+        if array.is_square:
+            result = array.determinant
 
-        assert isinstance(result, (float, complex, u.Quantity, na.AbstractScalar))
+            assert isinstance(result, (float, complex, u.Quantity, na.AbstractScalar))
 
-        assert np.all((2**2) * result == (2 * array).determinant)
-        assert np.all(result == array.matrix_transpose.determinant)
-        assert np.allclose(result * result, (array @ array).determinant)
-        assert np.allclose(result, 1 / array.inverse.determinant)
+            assert np.all((2**2) * result == (2 * array).determinant)
+            assert np.all(result == array.matrix_transpose.determinant)
+            assert np.allclose(result * result, (array @ array).determinant)
+            assert np.allclose(result, 1 / array.inverse.determinant)
 
     def test_inverse(self, array: na.AbstractMatrixArray):
-        result = array.inverse
+        if array.is_square:
+            result = array.inverse
 
-        assert isinstance(result, na.AbstractMatrixArray)
+            assert isinstance(result, na.AbstractMatrixArray)
 
-        identity = na.Cartesian2dMatrixArray(
-            x=na.Cartesian2dVectorArray(1, 0),
-            y=na.Cartesian2dVectorArray(0, 1),
-        )
+            identity = na.Cartesian2dMatrixArray(
+                x=na.Cartesian2dVectorArray(1, 0),
+                y=na.Cartesian2dVectorArray(0, 1),
+            )
 
-        assert np.allclose(array @ result, identity)
-        assert np.allclose(result.inverse, array)
-        assert np.allclose((2 * array).inverse, result / 2)
+            assert np.allclose(array @ result, identity)
+            assert np.allclose(result.inverse, array)
+            assert np.allclose((2 * array).inverse, result / 2)
 
     class TestMatmul(
         named_arrays._vectors.tests.test_vectors.AbstractTestAbstractVectorArray.TestMatmul
@@ -79,10 +83,17 @@ class AbstractTestAbstractMatrixArray(
                 array: float | u.Quantity | na.AbstractScalar | na.AbstractVectorArray | na.AbstractMatrixArray,
                 array_2: float | u.Quantity | na.AbstractScalar | na.AbstractVectorArray | na.AbstractMatrixArray,
         ):
-            assert np.all(array @ (array_2 + array_2) == array @ array_2 + array @ array_2)
-            assert np.all((array + array) @ array_2 == array @ array_2 + array @ array_2)
-            assert np.all(2 * (array @ array_2) == (2 * array) @ array_2)
-            assert np.all((array @ array_2) * 2 == array @ (array_2 * 2))
+            try:
+                assert np.all(array @ (array_2 + array_2) == array @ array_2 + array @ array_2)
+                assert np.all((array + array) @ array_2 == array @ array_2 + array @ array_2)
+                assert np.all(2 * (array @ array_2) == (2 * array) @ array_2)
+                assert np.all((array @ array_2) * 2 == array @ (array_2 * 2))
+
+            except TypeError:
+                with pytest.raises(TypeError):
+                    array @ array_2
+                return
+
 
 
 class AbstractTestAbstractExplicitMatrixArray(

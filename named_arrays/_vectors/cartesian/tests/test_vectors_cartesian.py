@@ -149,7 +149,7 @@ class AbstractTestAbstractCartesianVectorArray(
                     kwargs["where"] = (array_2 >= 1) & (array >= 0)
                 elif ufunc in [np.divide, np.floor_divide, np.remainder, np.fmod, np.divmod]:
                     kwargs["where"] = array_2 != 0
-            except u.UnitConversionError:
+            except (u.UnitConversionError, TypeError):
                 pass
 
             for c in components:
