@@ -31,7 +31,7 @@ class AbstractTestAbstractMatrixArray(
         assert not array_2.is_consistent
 
     def test_is_square(self, array: na.AbstractMatrixArray):
-        assert array.is_square
+        assert array.is_square == (len(array.prototype_row.entries) == len(array.prototype_column.entries))
 
     def test_matrix_transpose(self, array: na.AbstractMatrixArray):
         result = array.matrix_transpose
@@ -54,7 +54,7 @@ class AbstractTestAbstractMatrixArray(
 
             assert isinstance(result, (float, complex, u.Quantity, na.AbstractScalar))
 
-            assert np.all((2**2) * result == (2 * array).determinant)
+            assert np.all((2 ** 2) * result == (2 * array).determinant)
             assert np.all(result == array.matrix_transpose.determinant)
             assert np.allclose(result * result, (array @ array).determinant)
             assert np.allclose(result, 1 / array.inverse.determinant)
@@ -93,7 +93,6 @@ class AbstractTestAbstractMatrixArray(
                 with pytest.raises(TypeError):
                     array @ array_2
                 return
-
 
 
 class AbstractTestAbstractExplicitMatrixArray(
