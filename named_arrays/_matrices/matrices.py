@@ -70,7 +70,7 @@ class AbstractMatrixArray(
             return False
 
     @property
-    def vector(self):
+    def vector(self) -> na.AbstractExplicitVectorArray:
         new_dict = {}
         for c in self.components:
             component = self.components[c]
@@ -84,12 +84,10 @@ class AbstractMatrixArray(
     def matrix(self):
         return self
 
-
-
     @property
-    def prototype_row(self):
+    def prototype_row(self) -> na.AbstractVectorArray:
         """
-        Return a vector of the same type as each row of the matrix with each component zeroed.
+        Return a vector of the same type as each row of the matrix.
         """
         rows = self.rows
         if not self.is_consistent:
@@ -102,13 +100,12 @@ class AbstractMatrixArray(
         if isinstance(prototype_row, AbstractMatrixArray):
             prototype_row = prototype_row.prototype_row
 
-
         return prototype_row
 
     @property
-    def prototype_column(self):
+    def prototype_column(self) -> na.AbstractMatrixArray:
         """
-        Return a vector of the same type of each column of the matrix with each component zeroed.
+        Return a matrix of the same type as each column of the matrix with each component zeroed.
         """
         column_dict = {}
         for c in self.components:
@@ -135,8 +132,6 @@ class AbstractMatrixArray(
 
         return self.type_explicit.from_components(new_dict)
 
-
-
     @property
     def matrix_transpose(self):
         rows = self.rows
@@ -149,7 +144,6 @@ class AbstractMatrixArray(
 
         row_prototype = self.prototype_row
         column_prototype = self.prototype_column
-
 
         prototype_matrix_transpose = row_prototype.matrix.prototype_matrix(column_prototype.vector)
 
@@ -293,7 +287,7 @@ class AbstractExplicitMatrixArray(
                     nd_key_mod = f"{c}_"
                     sub_dict = {k[len(nd_key_mod):]: v for k, v in nd_components.items() if k.startswith(nd_key_mod)}
                     components_new[c] = component.type_explicit.from_cartesian_nd(na.CartesianNdMatrixArray(sub_dict),
-                                                                                                            like=component)
+                                                                                  like=component)
                 else:
                     components_new[c] = component.type_explicit.from_cartesian_nd(
                         nd_components[c],
