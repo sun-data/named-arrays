@@ -119,7 +119,7 @@ class AbstractTestAbstractCartesianNdVectorArray(
 
     @pytest.mark.parametrize(
         argnames='item',
-        argvalues=_cartesianNd_items()
+        argvalues=_cartesian_nd_items()
     )
     def test__getitem__(
             self,
