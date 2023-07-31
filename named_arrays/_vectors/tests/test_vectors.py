@@ -48,12 +48,7 @@ class AbstractTestAbstractVectorArray(
         array_new = array.astype(dtype)
         for e in array_new.entries:
             entry = array_new.entries[e]
-            if isinstance(entry, na.AbstractVectorArray):
-                for e2 in entry.entries:
-                    entry2 = entry.entries[e2]
-                    assert entry2.dtype == dtype
-            else:
-                entry.dtype == dtype
+            assert entry.dtype == dtype
 
     @pytest.mark.parametrize('unit', [u.mm, u.s])
     def test_to(self, array: na.AbstractVectorArray, unit: None | u.UnitBase):

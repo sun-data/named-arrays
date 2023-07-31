@@ -101,7 +101,7 @@ class AbstractVectorArray(
     @property
     def cartesian_nd(self):
         """
-        Convert cartesian vector to instance of :class:`AbstractCartesianNdVectorArray`
+        Convert `VectorArray` to instance of :class:`AbstractCartesianNdVectorArray`
         """
         components_new = dict()
         components = self.components
@@ -130,7 +130,7 @@ class AbstractVectorArray(
         """
         The scalar entries that compose this object.
         """
-        return self.components
+        return self.cartesian_nd.components
 
     @property
     def value(self) -> na.AbstractExplicitVectorArray:
@@ -342,7 +342,6 @@ class AbstractVectorArray(
                         component_x1 = na.as_named_array(components_x1[c])
                         component_x2 = na.as_named_array(components_x2[c])
                         result = np.add(result, np.matmul(component_x1, component_x2), out=out)
-                        # result = x1.type_explicit.from_cartesian_nd(result, like=x1)
                 else:
                     result = NotImplemented
             elif isinstance(na.as_named_array(x2), na.ScalarArray):
@@ -459,15 +458,15 @@ class AbstractExplicitVectorArray(
     @classmethod
     def from_cartesian_nd(
             cls: AbstractExplicitVectorArray,
-            cartesian_nd: na.CartesianNdVectorArray,
+            array: na.CartesianNdVectorArray,
             like: None | AbstractExplicitVectorArray = None,
     ) -> AbstractExplicitVectorArray:
 
         if like is None:
-            components_new = cartesian_nd.components
+            components_new = array.components
 
         else:
-            nd_components = cartesian_nd.components
+            nd_components = array.components
             components_new = {}
             components = like.components
             for c in components:

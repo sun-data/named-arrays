@@ -73,7 +73,7 @@ def _cartesian_nd_arrays_2():
     return arrays
 
 
-def _cartesianNd_items() -> list[na.AbstractArray | dict[str, int, slice, na.AbstractArray]]:
+def _cartesian_nd_items() -> list[na.AbstractArray | dict[str, int, slice, na.AbstractArray]]:
     return [
         dict(y=0),
         dict(y=slice(0, 1)),

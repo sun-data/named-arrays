@@ -34,8 +34,17 @@ class AbstractMatrixArray(
 
     @property
     def entries(self) -> dict[tuple[str, str], na.ScalarLike]:
-        rows = self.rows
-        return {(r, c): rows[r].components[c] for r in rows for c in rows[r].components}
+        rows = self.cartesian_nd.rows
+        result = {}
+        for r in rows:
+            row = rows[r]
+            if isinstance(row, na.AbstractArray):
+                for c in row.components:
+                    result[(r, c)] = row.components[c]
+            else:
+                result[(r, '')] = row
+
+        return result
 
     @property
     def rows(self) -> dict[str, na.AbstractVectorArray]:
@@ -215,8 +224,10 @@ class AbstractMatrixArray(
                         result[r] = na.CartesianNdVectorArray(
                             {c: components_x1[r] @ components_x2[c] for c in components_x2}
                         )
-                    result = prototype_matrix.from_cartesian_nd(na.CartesianNdMatrixArray(result),
-                                                                like=prototype_matrix)
+                    result = prototype_matrix.from_cartesian_nd(
+                        na.CartesianNdMatrixArray(result),
+                        like=prototype_matrix,
+                    )
                 else:
                     result = NotImplemented
 
@@ -239,9 +250,7 @@ class AbstractMatrixArray(
 
                 if isinstance(x1, na.AbstractVectorArray):
                     component_dict = {c: x1.cartesian_nd @ components_x2[c] for c in components_x2}
-                    result = x1.type_explicit.from_cartesian_nd(
-                        na.CartesianNdVectorArray(component_dict), like=x1,
-                    )
+                    result = x1.type_explicit.from_cartesian_nd(na.CartesianNdVectorArray(component_dict), like=x1)
                 else:
                     component_dict = {c: x1 @ components_x2[c] for c in components_x2}
                     result = x2.type_explicit.from_cartesian_nd(na.CartesianNdMatrixArray(component_dict), like=x2)
@@ -267,17 +276,14 @@ class AbstractExplicitMatrixArray(
         self.__dict__ = value
 
     @classmethod
-    def from_cartesian_nd(
-            cls: AbstractExplicitMatrixArray,
-            cartesian_nd: na.CartesianNdMatrixArray,
-            like: None | AbstractExplicitMatrixArray = None,
-    ) -> AbstractExplicitMatrixArray:
+    def from_cartesian_nd(cls: AbstractExplicitMatrixArray, array: na.CartesianNdMatrixArray,
+                          like: None | AbstractExplicitMatrixArray = None) -> AbstractExplicitMatrixArray:
 
         if like is None:
-            components_new = cartesian_nd.components
+            components_new = array.components
 
         else:
-            nd_components = cartesian_nd.components
+            nd_components = array.components
             components_new = {}
             components = like.components
             for c in components:
@@ -286,12 +292,12 @@ class AbstractExplicitMatrixArray(
                 if isinstance(component, na.AbstractMatrixArray):
                     nd_key_mod = f"{c}_"
                     sub_dict = {k[len(nd_key_mod):]: v for k, v in nd_components.items() if k.startswith(nd_key_mod)}
-                    components_new[c] = component.type_explicit.from_cartesian_nd(na.CartesianNdMatrixArray(sub_dict),
-                                                                                  like=component)
-                else:
                     components_new[c] = component.type_explicit.from_cartesian_nd(
-                        nd_components[c],
-                        like=component)
+                         na.CartesianNdMatrixArray(sub_dict),
+                         like=component,
+                     )
+                else:
+                    components_new[c] = component.type_explicit.from_cartesian_nd(nd_components[c], like=component)
 
         return cls.from_components(components_new)
 

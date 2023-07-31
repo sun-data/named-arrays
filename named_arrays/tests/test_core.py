@@ -266,7 +266,7 @@ class AbstractTestAbstractArray(
             attr = getattr(array, field.name)
             attr_copy = getattr(array_copy, field.name)
             if isinstance(attr, dict):
-                assert [np.all(attr[key] == attr_copy[key] for key in attr.keys())]
+                assert [np.all(attr[key] == attr_copy[key] for key in attr)]
             else:
                 assert np.all(attr == attr_copy)
 
