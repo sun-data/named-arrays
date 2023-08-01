@@ -41,3 +41,10 @@ Homepage = "https://github.com/Kankelborg-Group/named_arrays"
 Documentation = "https://named-arrays.readthedocs.io/en/latest"
 
 [tool.setuptools_scm]
+
+[tool.setuptools]
+packages = [
+    "named_arrays",
+    "named_arrays/py.typed",
+]
+
