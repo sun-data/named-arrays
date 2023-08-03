@@ -94,9 +94,6 @@ class AbstractVectorArray(
                 new_dict[c] = component
         return self.type_matrix.from_components(new_dict)
 
-    @property
-    def vector(self):
-        return self
 
     @property
     def cartesian_nd(self):

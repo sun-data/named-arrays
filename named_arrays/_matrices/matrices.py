@@ -79,22 +79,11 @@ class AbstractMatrixArray(
             return False
 
     @property
-    def vector(self) -> na.AbstractExplicitVectorArray:
-        new_dict = {}
-        for c in self.components:
-            component = self.components[c]
-            if isinstance(component, AbstractMatrixArray):
-                new_dict[c] = component.vector
-            else:
-                new_dict[c] = component
-        return self.type_vector.from_components(new_dict)
-
-    @property
-    def matrix(self):
+    def matrix(self) -> AbstractMatrixArray:
         return self
 
     @property
-    def prototype_row(self) -> na.AbstractVectorArray:
+    def row_prototype(self) -> na.AbstractVectorArray:
         """
         Return a vector of the same type as each row of the matrix.
         """
@@ -107,31 +96,31 @@ class AbstractMatrixArray(
         prototype_row = rows[next(iter(rows))]
 
         if isinstance(prototype_row, AbstractMatrixArray):
-            prototype_row = prototype_row.prototype_row
+            prototype_row = prototype_row.row_prototype
 
         return prototype_row
 
     @property
-    def prototype_column(self) -> na.AbstractMatrixArray:
+    def column_prototype(self) -> na.AbstractMatrixArray:
         """
-        Return a matrix of the same type as each column of the matrix with each component zeroed.
+        Return a vector representing a column of the matrix with each component zeroed.
         """
         column_dict = {}
         for c in self.components:
             component = self.components[c]
             if isinstance(component, AbstractMatrixArray):
-                column_dict[c] = component.prototype_column
+                column_dict[c] = component.column_prototype
             else:
                 column_dict[c] = 0
 
-        return self.type_explicit.from_components(column_dict)
+        return self.type_vector.from_components(column_dict)
 
     def prototype_matrix(self, row: na.AbstractVectorArray = None):
         if row is None:
-            row = self.prototype_row
+            row = self.row_prototype
 
         new_dict = {}
-        components = self.prototype_column.components
+        components = self.column_prototype.matrix.components
         for c in components:
             component = components[c]
             if isinstance(component, AbstractMatrixArray):
@@ -151,10 +140,11 @@ class AbstractMatrixArray(
                 f"{tuple(rows[c].type_abstract for c in rows)}"
             )
 
-        row_prototype = self.prototype_row
-        column_prototype = self.prototype_column
+        new_row = self.column_prototype
+        new_column = self.row_prototype.matrix
+        # new_row = self.matrix_transpose.row_prototype
 
-        prototype_matrix_transpose = row_prototype.matrix.prototype_matrix(column_prototype.vector)
+        prototype_matrix_transpose = new_column.prototype_matrix(new_row)
 
         result = prototype_matrix_transpose.cartesian_nd
         nd_rows = self.cartesian_nd.rows
@@ -212,9 +202,9 @@ class AbstractMatrixArray(
             components_x1 = x1.cartesian_nd.components
 
             if isinstance(x2, na.AbstractMatrixArray):
-                if x1.prototype_row.cartesian_nd.components.keys() == x2.prototype_column.cartesian_nd.components.keys():
+                if x1.row_prototype.cartesian_nd.components.keys() == x2.column_prototype.cartesian_nd.components.keys():
 
-                    prototype_matrix = x1.prototype_matrix(x2.prototype_row)
+                    prototype_matrix = x1.prototype_matrix(x2.row_prototype)
 
                     x2 = x2.matrix_transpose
                     components_x2 = x2.cartesian_nd.components

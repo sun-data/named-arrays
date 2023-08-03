@@ -28,6 +28,26 @@ __all__ = [
 class AbstractTestAbstractVectorArray(
     named_arrays.tests.test_core.AbstractTestAbstractArray,
 ):
+    def test_cartesian_nd(self, array: na.AbstractVectorArray):
+        cartesian_nd = array.cartesian_nd
+        assert isinstance(cartesian_nd, na.AbstractCartesianNdVectorArray)
+        for c in cartesian_nd.components:
+            assert isinstance(na.as_named_array(cartesian_nd.components[c]), na.AbstractScalar)
+
+    def test_from_cartesian_nd(self, array: na.AbstractVectorArray):
+        assert np.all(array.type_explicit.from_cartesian_nd(array.cartesian_nd, like=array) == array)
+
+    def test_matrix(self, array: na.AbstractVectorArray):
+        def _recursive_test(array: na.AbstractMatrixArray):
+            assert isinstance(array, na.AbstractMatrixArray)
+            components = array.components
+            for c in components:
+                component = components[c]
+                if isinstance(component, na.AbstractVectorArray):
+                    _recursive_test(component)
+                else:
+                    assert isinstance(na.as_named_array(component), na.AbstractScalar)
+        _recursive_test(array.matrix)
 
     def test_components(self, array: na.AbstractVectorArray):
         components = array.components

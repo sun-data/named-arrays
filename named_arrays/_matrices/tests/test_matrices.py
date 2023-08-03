@@ -31,7 +31,24 @@ class AbstractTestAbstractMatrixArray(
         assert not array_2.is_consistent
 
     def test_is_square(self, array: na.AbstractMatrixArray):
-        assert array.is_square == (len(array.prototype_row.entries) == len(array.prototype_column.entries))
+        assert array.is_square == (len(array.row_prototype.entries) == len(array.column_prototype.entries))
+
+    def all_vectors(array: na.AbstractVectorArray):
+        """
+        Return True if every component is an instance of `na.AbstractVectorArray`.
+        """
+
+    def test_cartesian_nd(self, array: na.AbstractMatrixArray):
+        cartesian_nd = array.cartesian_nd
+        assert isinstance(cartesian_nd, na.AbstractCartesianNdMatrixArray)
+        for c in cartesian_nd.components:
+            component = cartesian_nd.components[c]
+            assert isinstance(component, na.AbstractCartesianNdVectorArray)
+            for c2 in component.components:
+                assert isinstance(na.as_named_array(component.components[c2]), na.AbstractScalar)
+
+    def test_from_cartesian_nd(self, array: na.AbstractMatrixArray):
+        assert np.all(array.type_explicit.from_cartesian_nd(array.cartesian_nd, like=array) == array)
 
     def test_matrix_transpose(self, array: na.AbstractMatrixArray):
         result = array.matrix_transpose
@@ -41,12 +58,15 @@ class AbstractTestAbstractMatrixArray(
 
         assert np.all(result.matrix_transpose == array)
         assert np.all(result + result == (array + array).matrix_transpose)
-        if array.prototype_row.cartesian_nd.components.keys() == array.prototype_column.cartesian_nd.components.keys():
+        if array.row_prototype.cartesian_nd.components.keys() == array.column_prototype.cartesian_nd.components.keys():
             assert np.all(result @ result == (array @ array).matrix_transpose)
         assert np.all(2 * result == (2 * array).matrix_transpose)
         if array.is_square:
             assert np.all(result.determinant == array.determinant)
             assert np.all(result.inverse == (array.inverse).matrix_transpose)
+
+    def test_matrix(self, array: na.AbstractMatrixArray):
+        assert np.all(array.matrix == array)
 
     def test_determinant(self, array: na.AbstractMatrixArray):
         if array.is_square:
