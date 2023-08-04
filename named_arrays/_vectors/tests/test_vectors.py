@@ -24,9 +24,30 @@ __all__ = [
     'AbstractTestAbstractVectorGeometricSpace',
 ]
 
+
 class AbstractTestAbstractVectorArray(
     named_arrays.tests.test_core.AbstractTestAbstractArray,
 ):
+    def test_cartesian_nd(self, array: na.AbstractVectorArray):
+        cartesian_nd = array.cartesian_nd
+        assert isinstance(cartesian_nd, na.AbstractCartesianNdVectorArray)
+        for c in cartesian_nd.components:
+            assert isinstance(na.as_named_array(cartesian_nd.components[c]), na.AbstractScalar)
+
+    def test_from_cartesian_nd(self, array: na.AbstractVectorArray):
+        assert np.all(array.type_explicit.from_cartesian_nd(array.cartesian_nd, like=array) == array)
+
+    def test_matrix(self, array: na.AbstractVectorArray):
+        def _recursive_test(array: na.AbstractMatrixArray):
+            assert isinstance(array, na.AbstractMatrixArray)
+            components = array.components
+            for c in components:
+                component = components[c]
+                if isinstance(component, na.AbstractVectorArray):
+                    _recursive_test(component)
+                else:
+                    assert isinstance(na.as_named_array(component), na.AbstractScalar)
+        _recursive_test(array.matrix)
 
     def test_components(self, array: na.AbstractVectorArray):
         components = array.components
@@ -46,23 +67,24 @@ class AbstractTestAbstractVectorArray(
         super().test_astype(array=array, dtype=dtype)
         array_new = array.astype(dtype)
         for e in array_new.entries:
-            assert array_new.entries[e].dtype == dtype
+            entry = array_new.entries[e]
+            assert entry.dtype == dtype
 
     @pytest.mark.parametrize('unit', [u.mm, u.s])
     def test_to(self, array: na.AbstractVectorArray, unit: None | u.UnitBase):
         super().test_to(array=array, unit=unit)
-        entries = array.entries
+        entries = array.cartesian_nd.entries
         if all(unit.is_equivalent(na.unit_normalized(entries[e])) for e in entries):
             array_new = array.to(unit)
             assert array_new.type_abstract == array.type_abstract
-            assert all(array_new.entries[e].unit == unit for e in array_new.entries)
+            assert all(array_new.cartesian_nd.entries[e].unit == unit for e in array_new.cartesian_nd.entries)
         else:
             with pytest.raises(u.UnitConversionError):
                 array.to(unit)
 
     def test_length(self, array: na.AbstractVectorArray):
         super().test_length(array=array)
-        entries = array.entries
+        entries = array.cartesian_nd.entries
         entries_iter = iter(entries)
         entry_0 = entries[next(entries_iter)]
         if all(na.unit_normalized(entry_0).is_equivalent(na.unit_normalized(entries[e])) for e in entries_iter):
@@ -94,19 +116,19 @@ class AbstractTestAbstractVectorArray(
                 if isinstance(item[ax], na.AbstractArray) and item[ax].type_abstract == array.type_abstract:
                     components_item_ax = item[ax].components
                 else:
-                    components_item_ax = array.type_explicit.from_scalar(item[ax]).components
+                    components_item_ax = array.type_explicit.from_scalar(item[ax], like=array).components
                 for c in components:
                     components_item[c][ax] = components_item_ax[c]
 
         else:
             if not item.type_abstract == array.type_abstract:
-                components_item = array.type_explicit.from_scalar(item).components
+                components_item = array.type_explicit.from_scalar(item, like=array).components
             else:
                 components_item = item.components
                 item_accumulated = True
                 for c in components_item:
                     item_accumulated = item_accumulated & components_item[c]
-                components_item = item.type_explicit.from_scalar(item_accumulated).components
+                components_item = item.type_explicit.from_scalar(item_accumulated, like=array).components
 
         for c in components:
             components_expected[c] = na.as_named_array(components[c])[components_item[c]]
@@ -119,11 +141,11 @@ class AbstractTestAbstractVectorArray(
         assert np.all(result == result_expected)
 
     def test__bool__(self, array: na.AbstractVectorArray):
-        if array.shape or any(na.unit(array.entries[e]) is not None for e in array.entries):
+        if array.shape or any(na.unit(array.cartesian_nd.entries[e]) is not None for e in array.cartesian_nd.entries):
             with pytest.raises(
-                expected_exception=ValueError,
-                match=r"(Quantity truthiness is ambiguous, .*)"
-                      r"|(The truth value of an array with more than one element is ambiguous. .*)"
+                    expected_exception=ValueError,
+                    match=r"(Quantity truthiness is ambiguous, .*)"
+                          r"|(The truth value of an array with more than one element is ambiguous. .*)"
             ):
                 bool(array)
             return
@@ -143,11 +165,14 @@ class AbstractTestAbstractVectorArray(
 
             try:
                 if isinstance(array, na.AbstractVectorArray) and isinstance(array_2, na.AbstractVectorArray):
-                    components_1 = array.components
-                    components_2 = array_2.components
-                    result_expected = 0
-                    for c in components_1:
-                        result_expected = result_expected + components_1[c] * components_2[c]
+                    components_1 = array.cartesian_nd.components
+                    components_2 = array_2.cartesian_nd.components
+                    if np.all(components_2.keys() == components_1.keys()):
+                        result_expected = 0
+                        for c in components_1:
+                            result_expected = result_expected + components_1[c] * components_2[c]
+                    else:
+                        raise TypeError
                 else:
                     result_expected = np.multiply(array, array_2)
             except (ValueError, TypeError) as e:
@@ -216,9 +241,8 @@ class AbstractTestAbstractVectorArray(
                         if isinstance(kwargs_components[c][k], na.AbstractArray):
                             kwargs_components[c][k] = kwargs_components[c][k].broadcast_to(shape)
 
-
                 try:
-                    result_expected = array.type_explicit()
+                    result_expected = array.prototype_vector
                     for c in components:
                         component = na.as_named_array(array.components[c]).broadcast_to(shape)
                         result_expected.components[c] = func(component, **kwargs_components[c])
@@ -276,7 +300,7 @@ class AbstractTestAbstractVectorArray(
                     )
 
                 try:
-                    result_expected = array.type_explicit()
+                    result_expected = array.prototype_vector
                     for c in components:
                         component = na.as_named_array(array.components[c]).broadcast_to(shape)
                         result_expected.components[c] = func(component, **kwargs_components[c])
@@ -318,7 +342,7 @@ class AbstractTestAbstractVectorArray(
 
                 result = func(array, axis=axis)
 
-                result_expected = array.type_explicit()
+                result_expected = array.prototype_vector
                 for c in array.components:
                     result_expected.components[c] = func(array.broadcasted.components[c], axis=axis)
 
@@ -354,7 +378,7 @@ class AbstractTestAbstractVectorArray(
 
                 result = func(array, axes=axes, s=s)
 
-                result_expected = array.type_explicit()
+                result_expected = array.prototype_vector
                 for c in array.components:
                     result_expected.components[c] = func(
                         array.broadcasted.components[c],
@@ -387,7 +411,7 @@ class AbstractTestAbstractVectorArray(
             components_broadcasted = array_broadcasted.components
 
             if axis_normalized:
-                result_expected = array.type_explicit()
+                result_expected = array.prototype_vector
                 for c in components_broadcasted:
                     result_expected.components[c] = np.sort(components_broadcasted[c], axis=axis_normalized)
             else:

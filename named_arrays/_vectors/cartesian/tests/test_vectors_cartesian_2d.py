@@ -31,6 +31,7 @@ def _cartesian2d_arrays():
     arrays_numeric_x = [
         4,
         na.ScalarUniformRandomSample(-4, 4, shape_random=dict(y=_num_y)),
+        na.Cartesian2dVectorArray(x=2, y=3)
     ]
     units_x = [1, u.mm]
     arrays_numeric_x = [a * unit for a in arrays_numeric_x for unit in units_x]
@@ -42,7 +43,8 @@ def _cartesian2d_arrays():
             nominal=na.ScalarUniformRandomSample(-5, 5, shape_random=dict(x=_num_x, y=_num_y)),
             width=1,
             num_distribution=_num_distribution
-        )
+        ),
+        na.Cartesian2dVectorArray(x=4, y=8)
     ]
     units_y = [1, u.mm]
     arrays_numeric_y = [a * unit for a in arrays_numeric_y for unit in units_y]

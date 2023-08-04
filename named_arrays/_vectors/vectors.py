@@ -7,7 +7,6 @@ import numpy as np
 import astropy.units as u
 import named_arrays as na
 
-
 __all__ = [
     'VectorPrototypeT',
     'VectorTypeError',
@@ -37,7 +36,6 @@ class VectorTypeError(TypeError):
 
 
 def _prototype(*arrays: float | u.Quantity | na.AbstractArray) -> na.AbstractVectorArray:
-
     for array in arrays:
         if isinstance(array, na.AbstractVectorArray):
             return array
@@ -49,7 +47,6 @@ def _normalize(
         a: float | u.Quantity | na.AbstractScalar | na.AbstractVectorArray,
         prototype: VectorPrototypeT,
 ) -> VectorPrototypeT:
-
     if isinstance(a, na.AbstractArray):
         if isinstance(a, na.AbstractVectorArray):
             if a.type_abstract == prototype.type_abstract:
@@ -70,7 +67,6 @@ def _normalize(
 class AbstractVectorArray(
     na.AbstractArray
 ):
-
     __named_array_priority__: ClassVar[float] = 100 * na.AbstractScalarArray.__named_array_priority__
 
     @property
@@ -86,6 +82,40 @@ class AbstractVectorArray(
         """
 
     @property
+    def matrix(self) -> na.AbstractMatrixArray:
+        new_dict = {}
+        for c in self.components:
+            component = self.components[c]
+            if isinstance(component, AbstractVectorArray):
+                new_dict[c] = component.matrix
+            elif isinstance(na.as_named_array(component), na.AbstractScalar):
+                new_dict[c] = component
+            else:
+                raise NotImplementedError
+
+
+        return self.type_matrix.from_components(new_dict)
+
+    @property
+    def cartesian_nd(self) -> na.AbstractCartesianNdVectorArray:
+        """
+        Convert any instance of :class:`AbstractVectorArray` to an instance of :class:`AbstractCartesianNdVectorArray`
+        """
+        components_new = dict()
+        components = self.components
+        for c in components:
+
+            component = components[c]
+            if isinstance(component, na.AbstractVectorArray):
+                component2 = component.cartesian_nd.components
+                for c2 in component2:
+                    components_new[f"{c}_{c2}"] = component2[c2]
+            else:
+                components_new[c] = component
+
+        return na.CartesianNdVectorArray(components_new)
+
+    @property
     @abc.abstractmethod
     def components(self: Self) -> dict[str, na.ArrayLike]:
         """
@@ -98,7 +128,7 @@ class AbstractVectorArray(
         """
         The scalar entries that compose this object.
         """
-        return self.components
+        return self.cartesian_nd.components
 
     @property
     def value(self) -> na.AbstractExplicitVectorArray:
@@ -116,6 +146,13 @@ class AbstractVectorArray(
             else:
                 components_result[c] = components[c]
         return self.type_explicit.from_components(components_result)
+
+    @property
+    def prototype_vector(self) -> na.AbstractExplicitVectorArray:
+        """
+        Return vector of same type with all components zeroed.
+        """
+        return self.type_explicit.from_components(dict.fromkeys(self.components, 0))
 
     def astype(
             self: Self,
@@ -143,7 +180,8 @@ class AbstractVectorArray(
             subok=subok,
             copy=copy,
         )
-        return self.type_explicit.from_components({c: components[c].astype(dtype=dtype[c], **kwargs) for c in components})
+        return self.type_explicit.from_components(
+            {c: components[c].astype(dtype=dtype[c], **kwargs) for c in components})
 
     def to(self: Self, unit: u.UnitBase | dict[str, None | u.UnitBase]) -> AbstractExplicitVectorArray:
         components = self.components
@@ -212,9 +250,9 @@ class AbstractVectorArray(
                 components_item = item.components
                 for c in components_item:
                     item_accumulated = item_accumulated & components_item[c]
-                item = self.type_explicit.from_scalar(item_accumulated)
+                item = self.type_explicit.from_scalar(item_accumulated, like=self)
             elif isinstance(item, na.AbstractScalar):
-                item = self.type_explicit.from_scalar(item)
+                item = self.type_explicit.from_scalar(item, like=self)
             else:
                 return NotImplemented
 
@@ -230,13 +268,13 @@ class AbstractVectorArray(
                     if item[ax].type_abstract == self.type_abstract:
                         item[ax] = item[ax].explicit
                     elif isinstance(item[ax], na.AbstractScalar):
-                        item[ax] = self.type_explicit.from_scalar(item[ax])
+                        item[ax] = self.type_explicit.from_scalar(item[ax], like=self)
                     else:
                         return NotImplemented
                 elif isinstance(item[ax], (int, slice)):
-                    item[ax] = self.type_explicit.from_scalar(item[ax])
+                    item[ax] = self.type_explicit.from_scalar(item[ax], like=self)
                 elif item[ax] is None:
-                    item[ax] = self.type_explicit.from_scalar(item[ax])
+                    item[ax] = self.type_explicit.from_scalar(item[ax], like=self)
                 else:
                     return NotImplemented
 
@@ -260,7 +298,7 @@ class AbstractVectorArray(
         if array.type_abstract == self.type_abstract:
             pass
         elif isinstance(array, na.AbstractArray):
-            array = self.type_explicit.from_scalar(array)
+            array = self.type_explicit.from_scalar(array, like=self)
         else:
             return NotImplemented
         return array._getitem(item)
@@ -276,7 +314,7 @@ class AbstractVectorArray(
             self: Self,
             x1: na.ArrayLike,
             x2: na.ArrayLike,
-            out: tuple[None | na.AbstractExplicitArray] = (None, ),
+            out: tuple[None | na.AbstractExplicitArray] = (None,),
             **kwargs,
     ) -> na.AbstractExplicitArray:
 
@@ -293,9 +331,10 @@ class AbstractVectorArray(
 
         if isinstance(x1, AbstractVectorArray):
             if isinstance(x2, na.AbstractVectorArray):
-                if x1.type_abstract == x2.type_abstract:
-                    components_x1 = x1.broadcasted.components
-                    components_x2 = x2.broadcasted.components
+                components_x1 = x1.cartesian_nd.broadcasted.components
+                components_x2 = x2.cartesian_nd.broadcasted.components
+
+                if components_x1.keys() == components_x2.keys():
                     result = 0
                     for c in components_x1:
                         component_x1 = na.as_named_array(components_x1[c])
@@ -335,7 +374,7 @@ class AbstractVectorArray(
         if func in vector_array_functions.ARRAY_CREATION_LIKE_FUNCTIONS:
             return vector_array_functions.array_function_array_creation_like(func, *args, **kwargs)
 
-        if func in  vector_array_functions.SEQUENCE_FUNCTIONS:
+        if func in vector_array_functions.SEQUENCE_FUNCTIONS:
             return vector_array_functions.array_function_sequence(func, *args, **kwargs)
 
         if func in vector_array_functions.DEFAULT_FUNCTIONS:
@@ -403,10 +442,45 @@ class AbstractExplicitVectorArray(
     def from_scalar(
             cls: Type[Self],
             scalar: na.ScalarLike,
+            like: None | AbstractExplicitVectorArray = None,
     ) -> AbstractExplicitVectorArray:
         """
         Convert a scalar (an instance of :class:`named_arrays.AbstractScalar`) into a vector.
         """
+
+        if like is not None:
+            return like.type_explicit.from_components({c: scalar for c in like.components})
+        else:
+            return NotImplemented
+
+    @classmethod
+    def from_cartesian_nd(
+            cls: AbstractExplicitVectorArray,
+            array: na.CartesianNdVectorArray,
+            like: None | AbstractExplicitVectorArray = None,
+    ) -> AbstractExplicitVectorArray:
+
+        if like is None:
+            components_new = array.components
+
+        else:
+            nd_components = array.components
+            components_new = {}
+            components = like.components
+            for c in components:
+
+                component = components[c]
+                if isinstance(component, na.AbstractVectorArray):
+                    nd_key_mod = f"{c}_"
+                    sub_dict = {k[len(nd_key_mod):]: v for k, v in nd_components.items() if k.startswith(nd_key_mod)}
+                    components_new[c] = component.type_explicit.from_cartesian_nd(
+                        na.CartesianNdMatrixArray(sub_dict),
+                        like=component
+                    )
+                else:
+                    components_new[c] = nd_components[c]
+
+        return cls.from_components(components_new)
 
     @property
     def components(self: Self) -> dict[str, na.ArrayLike]:

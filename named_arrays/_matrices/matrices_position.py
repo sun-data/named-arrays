@@ -34,11 +34,6 @@ class AbstractPositionMatrixArray(
         return PositionMatrixArray
 
     @property
-    def cartesian_nd(self):
-        return NotImplementedError
-
-
-    @property
     def type_vector(self) -> Type[na.PositionVectorArray]:
         return na.PositionVectorArray
 

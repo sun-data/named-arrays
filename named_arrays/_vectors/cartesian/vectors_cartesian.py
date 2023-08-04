@@ -33,17 +33,11 @@ class AbstractCartesianVectorArray(
     def type_explicit(self: Self) -> Type[AbstractExplicitCartesianVectorArray]:
         pass
 
-    @property
-    @abc.abstractmethod
-    def cartesian_nd(self):
-        """
-        Convert cartesian vector to instance of :class:`AbstractCartesianNdVectorArray`
-        """
 
     @property
     def length(self: Self) -> na.AbstractScalar:
         result = 0
-        entries = self.entries
+        entries = self.cartesian_nd.entries
         for e in entries:
             if entries[e] is not None:
                 result = result + np.square(np.abs(entries[e]))
@@ -53,7 +47,7 @@ class AbstractCartesianVectorArray(
     def __mul__(self: Self, other: na.ArrayLike | u.Unit) -> AbstractExplicitCartesianVectorArray:
         if isinstance(other, u.UnitBase):
             components = self.components
-            result = self.type_explicit()
+            result = self.prototype_vector
             for c in components:
                 result.components[c] = components[c] * other
             return result
@@ -63,7 +57,7 @@ class AbstractCartesianVectorArray(
     def __lshift__(self: Self, other: na.ArrayLike | u.UnitBase) -> AbstractExplicitCartesianVectorArray:
         if isinstance(other, u.UnitBase):
             components= self.components
-            result = self.type_explicit()
+            result = self.prototype_vector
             for c in components:
                 result.components[c] = components[c] << other
             return result
@@ -73,7 +67,7 @@ class AbstractCartesianVectorArray(
     def __truediv__(self: Self, other: na.ArrayLike | u.UnitBase) -> AbstractExplicitCartesianVectorArray:
         if isinstance(other, u.UnitBase):
             components = self.components
-            result = self.type_explicit()
+            result = self.prototype_vector
             for c in components:
                 result.components[c] = components[c] / other
             return result

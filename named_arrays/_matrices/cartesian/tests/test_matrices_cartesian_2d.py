@@ -24,7 +24,6 @@ class AbstractTestAbstractCartesian2dMatrixArray(
 
 
 def _cartesian_2d_matrices():
-
     arrays_xx = [
         4,
         na.ScalarUniformRandomSample(-4, 4, shape_random=dict(y=_num_y)),
@@ -56,11 +55,31 @@ def _cartesian_2d_matrices():
         for unit in units
     ]
 
+    matrices.append(
+        na.Cartesian2dMatrixArray(
+            x=na.Cartesian2dMatrixArray(
+                x=na.Cartesian2dMatrixArray(
+                    x=na.Cartesian2dVectorArray(x=1, y=2),
+                    y=na.Cartesian2dVectorArray(x=1, y=2)),
+                y=na.Cartesian2dMatrixArray(
+                    x=na.Cartesian2dVectorArray(x=1, y=2),
+                    y=na.Cartesian2dVectorArray(x=1, y=2)),
+            ),
+            y=na.Cartesian2dMatrixArray(
+                x=na.Cartesian2dMatrixArray(
+                    x=na.Cartesian2dVectorArray(x=1, y=2),
+                    y=na.Cartesian2dVectorArray(x=1, y=2)),
+                y=na.Cartesian2dMatrixArray(
+                    x=na.Cartesian2dVectorArray(x=1, y=2),
+                    y=na.Cartesian2dVectorArray(x=1, y=2)),
+            ),
+        )
+    )
+
     return matrices
 
 
 def _cartesian_2d_matrices_2():
-
     arrays_xx = [
         6,
         na.ScalarUniformRandomSample(-6, 6, shape_random=dict(y=_num_y)),
@@ -104,6 +123,28 @@ def _cartesian_2d_matrices_2():
         for array_yy in arrays_yy
         for unit in units
     ]
+
+    matrices.append(
+        na.Cartesian2dMatrixArray(
+            x=na.Cartesian2dMatrixArray(
+                x=na.Cartesian2dMatrixArray(
+                    x=na.Cartesian2dVectorArray(x=1, y=2),
+                    y=na.Cartesian2dVectorArray(x=1, y=2)),
+                y=na.Cartesian2dMatrixArray(
+                    x=na.Cartesian2dVectorArray(x=1, y=2),
+                    y=na.Cartesian2dVectorArray(x=1, y=2)),
+            ),
+            y=na.Cartesian2dMatrixArray(
+                x=na.Cartesian2dMatrixArray(
+                    x=na.Cartesian2dVectorArray(x=1, y=2),
+                    y=na.Cartesian2dVectorArray(x=1, y=2)),
+                y=na.Cartesian2dMatrixArray(
+                    x=na.Cartesian2dVectorArray(x=1, y=2),
+                    y=na.Cartesian2dVectorArray(x=1, y=2)),
+            ),
+        )
+    )
+
 
     return scalars + matrices
 
@@ -187,8 +228,3 @@ class TestCartesian2dMatrixArray(
         test_matrices_cartesian.AbstractTestAbstractCartesianMatrixArray.TestMatmul
     ):
         pass
-
-
-
-
-
