@@ -267,7 +267,7 @@ class AbstractExplicitMatrixArray(
 
     @classmethod
     def from_cartesian_nd(
-        cls: AbstractExplicitMatrixArray,
+        cls,
         array: na.CartesianNdMatrixArray,
         like: None | AbstractExplicitMatrixArray = None
     ) -> AbstractExplicitMatrixArray:
