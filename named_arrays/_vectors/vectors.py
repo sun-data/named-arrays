@@ -88,10 +88,12 @@ class AbstractVectorArray(
             component = self.components[c]
             if isinstance(component, AbstractVectorArray):
                 new_dict[c] = component.matrix
-            elif isinstance(component, na.AbstractMatrixArray):
-                raise NotImplementedError
-            else:
+            elif isinstance(component, na.AbstractScalar):
                 new_dict[c] = component
+            else:
+                raise NotImplementedError
+
+
         return self.type_matrix.from_components(new_dict)
 
     @property
