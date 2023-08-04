@@ -33,11 +33,6 @@ class AbstractTestAbstractMatrixArray(
     def test_is_square(self, array: na.AbstractMatrixArray):
         assert array.is_square == (len(array.row_prototype.entries) == len(array.column_prototype.entries))
 
-    def all_vectors(array: na.AbstractVectorArray):
-        """
-        Return True if every component is an instance of `na.AbstractVectorArray`.
-        """
-
     def test_cartesian_nd(self, array: na.AbstractMatrixArray):
         cartesian_nd = array.cartesian_nd
         assert isinstance(cartesian_nd, na.AbstractCartesianNdMatrixArray)

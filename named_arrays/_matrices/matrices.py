@@ -33,7 +33,7 @@ class AbstractMatrixArray(
         return super().components
 
     @property
-    def entries(self) -> dict[tuple[str, str], na.ScalarLike]:
+    def entries(self) -> dict[tuple[str, ...], na.ScalarLike]:
         rows = self.cartesian_nd.rows
         result = {}
         for r in rows:
@@ -266,9 +266,11 @@ class AbstractExplicitMatrixArray(
         self.__dict__ = value
 
     @classmethod
-    def from_cartesian_nd(cls: AbstractExplicitMatrixArray,
-                          array: na.CartesianNdMatrixArray,
-                          like: None | AbstractExplicitMatrixArray = None) -> AbstractExplicitMatrixArray:
+    def from_cartesian_nd(
+        cls: AbstractExplicitMatrixArray,
+        array: na.CartesianNdMatrixArray,
+        like: None | AbstractExplicitMatrixArray = None
+    ) -> AbstractExplicitMatrixArray:
 
         if like is None:
             components_new = array.components

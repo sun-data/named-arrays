@@ -98,7 +98,7 @@ class AbstractVectorArray(
     @property
     def cartesian_nd(self) -> na.AbstractCartesianNdVectorArray:
         """
-        Convert `VectorArray` to instance of :class:`AbstractCartesianNdVectorArray`
+        Convert any instance of :class:`AbstractVectorArray` to an instance of :class:`AbstractCartesianNdVectorArray`
         """
         components_new = dict()
         components = self.components

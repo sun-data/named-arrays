@@ -210,7 +210,12 @@ class TestCartesianNdVectorArray(
         argvalues=[
             0,
             na.ScalarUniformRandomSample(-5, 5, dict(y=_num_y)),
-            # na.Cartesian2dVectorUniformRandomSample(-5, 5, shape_random=dict(y=_num_y)),
+            na.CartesianNdVectorArray(
+                dict(
+                    x=na.ScalarUniformRandomSample(-5, 5, shape_random=dict(y=_num_y)),
+                    y=na.ScalarUniformRandomSample(-5, 5, shape_random=dict(y=_num_y))
+                )
+            ),
         ]
     )
     def test__setitem__(
