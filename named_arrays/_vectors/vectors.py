@@ -88,7 +88,7 @@ class AbstractVectorArray(
             component = self.components[c]
             if isinstance(component, AbstractVectorArray):
                 new_dict[c] = component.matrix
-            elif isinstance(component, na.AbstractScalar):
+            elif isinstance(na.as_named_array(component), na.AbstractScalar):
                 new_dict[c] = component
             else:
                 raise NotImplementedError
