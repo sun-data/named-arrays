@@ -36,9 +36,6 @@ class AbstractCartesianVectorArray(
 
     @property
     def length(self: Self) -> na.AbstractScalar:
-        """
-        Return the
-        """
         result = 0
         entries = self.cartesian_nd.entries
         for e in entries:

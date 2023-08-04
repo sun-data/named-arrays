@@ -82,7 +82,7 @@ class AbstractVectorArray(
         """
 
     @property
-    def matrix(self):
+    def matrix(self) -> na.AbstractMatrixArray:
         new_dict = {}
         for c in self.components:
             component = self.components[c]
@@ -96,7 +96,7 @@ class AbstractVectorArray(
 
 
     @property
-    def cartesian_nd(self):
+    def cartesian_nd(self) -> na.AbstractCartesianNdVectorArray:
         """
         Convert `VectorArray` to instance of :class:`AbstractCartesianNdVectorArray`
         """
@@ -147,7 +147,7 @@ class AbstractVectorArray(
         return self.type_explicit.from_components(components_result)
 
     @property
-    def prototype_vector(self):
+    def prototype_vector(self) -> na.AbstractExplicitVectorArray:
         """
         Return vector of same type with all components zeroed.
         """

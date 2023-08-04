@@ -42,7 +42,7 @@ class AbstractMatrixArray(
                 for c in row.components:
                     result[(r, c)] = row.components[c]
             else:
-                result[(r, '')] = row
+                result[(r,)] = row
 
         return result
 
@@ -170,7 +170,7 @@ class AbstractMatrixArray(
         """
 
     @property
-    def cartesian_nd(self):
+    def cartesian_nd(self) -> na.AbstractCartesianNdMatrixArray:
         """
         Convert all cartesian vectors making up the matrix to instances of :class:`AbstractCartesianNdVectorArray`
         """
@@ -266,7 +266,8 @@ class AbstractExplicitMatrixArray(
         self.__dict__ = value
 
     @classmethod
-    def from_cartesian_nd(cls: AbstractExplicitMatrixArray, array: na.CartesianNdMatrixArray,
+    def from_cartesian_nd(cls: AbstractExplicitMatrixArray,
+                          array: na.CartesianNdMatrixArray,
                           like: None | AbstractExplicitMatrixArray = None) -> AbstractExplicitMatrixArray:
 
         if like is None:

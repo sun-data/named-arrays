@@ -41,6 +41,6 @@ class AbstractCartesianNdMatrixArray(
 class CartesianNdMatrixArray(
     na.CartesianNdVectorArray,
     AbstractCartesianNdMatrixArray,
-    na.AbstractExplicitMatrixArray,
+    na.AbstractExplicitCartesianMatrixArray,
 ):
     pass
