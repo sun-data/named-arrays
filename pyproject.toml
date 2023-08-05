@@ -42,9 +42,5 @@ Documentation = "https://named-arrays.readthedocs.io/en/latest"
 
 [tool.setuptools_scm]
 
-[tool.setuptools]
-packages = [
-    "named_arrays",
-    "named_arrays/py.typed",
-]
-
+[tool.setuptools.package-data]
+named_arrays = ["py.typed"]
