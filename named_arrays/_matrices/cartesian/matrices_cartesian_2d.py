@@ -2,11 +2,16 @@ from __future__ import annotations
 from typing import TypeVar, Generic, Type
 import abc
 import dataclasses
+import numpy as np
 import named_arrays as na
 
 __all__ = [
     'AbstractCartesian2dMatrixArray',
     'Cartesian2dMatrixArray',
+    'AbstractImplicitCartesian2dMatrixArray',
+    'Cartesian2dIdentityMatrixArray',
+    'AbstractCartesian2dRotationMatrixArray',
+    'Cartesian2dRotationMatrixArray'
 ]
 
 XT = TypeVar('XT', bound=na.AbstractVectorArray)
@@ -84,4 +89,50 @@ class Cartesian2dMatrixArray(
     pass
 
 
+@dataclasses.dataclass(eq=False, repr=False)
+class AbstractImplicitCartesian2dMatrixArray(
+    na.AbstractImplicitCartesian2dVectorArray,
+    AbstractCartesian2dMatrixArray,
+):
+    pass
 
+
+@dataclasses.dataclass(eq=False, repr=False)
+class Cartesian2dIdentityMatrixArray(
+    AbstractImplicitCartesian2dMatrixArray
+):
+
+    @property
+    def explicit(self):
+        return na.Cartesian2dMatrixArray(
+            x=na.Cartesian2dVectorArray(x=1, y=0),
+            y=na.Cartesian2dVectorArray(x=0, y=1),
+        )
+
+
+@dataclasses.dataclass(eq=False, repr=False)
+class AbstractCartesian2dRotationMatrixArray(
+    AbstractImplicitCartesian2dMatrixArray,
+):
+
+    @property
+    @abc.abstractmethod
+    def angle(self) -> na.ScalarLike:
+        """
+        The angle of the rotation matrix.
+        """
+
+
+@dataclasses.dataclass(eq=False, repr=False)
+class Cartesian2dRotationMatrixArray(
+    AbstractCartesian2dRotationMatrixArray,
+):
+    angle: na.ScalarLike = dataclasses.MISSING
+
+    @property
+    def explicit(self) -> na.Cartesian2dMatrixArray:
+        a = self.angle
+        return na.Cartesian2dMatrixArray(
+            x=na.Cartesian2dVectorArray(x=np.cos(a), y=-np.sin(a)),
+            y=na.Cartesian2dVectorArray(x=np.sin(a), y=np.cos(a)),
+        )
