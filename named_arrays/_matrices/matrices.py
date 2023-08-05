@@ -3,6 +3,7 @@ from typing import Type
 import abc
 import dataclasses
 import named_arrays as na
+import numpy as np
 
 __all__ = [
     'AbstractMatrixArray',
@@ -32,9 +33,18 @@ class AbstractMatrixArray(
         return super().components
 
     @property
-    def entries(self) -> dict[tuple[str, str], na.ScalarLike]:
-        rows = self.rows
-        return {(r, c): rows[r].components[c] for r in rows for c in rows[r].components}
+    def entries(self) -> dict[tuple[str, ...], na.ScalarLike]:
+        rows = self.cartesian_nd.rows
+        result = {}
+        for r in rows:
+            row = rows[r]
+            if isinstance(row, na.AbstractArray):
+                for c in row.components:
+                    result[(r, c)] = row.components[c]
+            else:
+                result[(r,)] = row
+
+        return result
 
     @property
     def rows(self) -> dict[str, na.AbstractVectorArray]:
@@ -48,11 +58,11 @@ class AbstractMatrixArray(
         """
         Check if all the rows of the matrix have the same abstract type.
         """
-        rows = self.rows
+        rows = self.cartesian_nd.rows
         rows_iter = iter(rows)
         try:
-            row_prototype = rows[next(rows_iter)].type_abstract
-            return all(rows[r].type_abstract == row_prototype for r in rows_iter)
+            row_prototype = rows[next(rows_iter)]
+            return all(set(rows[r].components) == set(row_prototype.components) for r in rows_iter)
         except AttributeError:
             return False
 
@@ -62,30 +72,88 @@ class AbstractMatrixArray(
         Check if this matrix has the same number of rows and columns.
         """
         if self.is_consistent:
-            rows = self.rows
+            rows = self.cartesian_nd.rows
             num_rows = len(rows)
             return all(num_rows == len(rows[r].components) for r in rows)
         else:
             return False
 
     @property
-    def matrix_transpose(self):
+    def matrix(self) -> AbstractMatrixArray:
+        return self
+
+    @property
+    def row_prototype(self) -> na.AbstractVectorArray:
+        """
+        Return a vector of the same type as each row of the matrix.
+        """
         rows = self.rows
-        row_prototype = rows[next(iter(rows))]
         if not self.is_consistent:
             raise ValueError(
                 f"matrix rows must all have the same abstract type, got "
                 f"{tuple(rows[c].type_abstract for c in rows)}"
             )
-        type_matrix = row_prototype.type_matrix
-        type_row = self.type_vector
-        result = type_matrix.from_components({c: type_row() for c in row_prototype.components})
+        prototype_row = rows[next(iter(rows))]
 
-        for r in rows:
-            for c in rows[r].components:
-                result.components[c].components[r] = rows[r].components[c]
+        if isinstance(prototype_row, AbstractMatrixArray):
+            prototype_row = prototype_row.row_prototype
 
-        return result
+        return prototype_row
+
+    @property
+    def column_prototype(self) -> na.AbstractMatrixArray:
+        """
+        Return a vector representing a column of the matrix with each component zeroed.
+        """
+        column_dict = {}
+        for c in self.components:
+            component = self.components[c]
+            if isinstance(component, AbstractMatrixArray):
+                column_dict[c] = component.column_prototype
+            else:
+                column_dict[c] = 0
+
+        return self.type_vector.from_components(column_dict)
+
+    def prototype_matrix(self, row: na.AbstractVectorArray = None):
+        if row is None:
+            row = self.row_prototype
+
+        new_dict = {}
+        components = self.column_prototype.matrix.components
+        for c in components:
+            component = components[c]
+            if isinstance(component, AbstractMatrixArray):
+                new_dict[c] = component.prototype_matrix(row)
+            else:
+                new_dict[c] = row
+
+        return self.type_explicit.from_components(new_dict)
+
+    @property
+    def matrix_transpose(self):
+        rows = self.rows
+
+        if not self.is_consistent:
+            raise ValueError(
+                f"matrix rows must all have the same abstract type, got "
+                f"{tuple(rows[c].type_abstract for c in rows)}"
+            )
+
+        new_row = self.column_prototype
+        new_column = self.row_prototype.matrix
+        # new_row = self.matrix_transpose.row_prototype
+
+        prototype_matrix_transpose = new_column.prototype_matrix(new_row)
+
+        result = prototype_matrix_transpose.cartesian_nd
+        nd_rows = self.cartesian_nd.rows
+        for r in nd_rows:
+            for c in nd_rows[r].components:
+                value = nd_rows[r].components[c]
+                result.components[c].components[r] = value
+
+        return prototype_matrix_transpose.from_cartesian_nd(result, like=prototype_matrix_transpose)
 
     @property
     @abc.abstractmethod
@@ -101,45 +169,81 @@ class AbstractMatrixArray(
         The inverse of this matrix
         """
 
+    @property
+    def cartesian_nd(self) -> na.AbstractCartesianNdMatrixArray:
+        """
+        Convert all cartesian vectors making up the matrix to instances of :class:`AbstractCartesianNdVectorArray`
+        """
+        components_new = dict()
+        components = self.components
+        for c in components:
+            component = components[c]
+
+            if isinstance(component, na.AbstractMatrixArray):
+                component2 = component.cartesian_nd.components
+                for c2 in component2:
+                    components_new[f"{c}_{c2}"] = component2[c2]
+            elif isinstance(component, na.AbstractVectorArray):
+                components_new[c] = component.cartesian_nd
+            else:
+                components_new[c] = component
+
+        return na.CartesianNdMatrixArray(components_new)
+
     def __array_matmul__(
             self,
             x1: na.ArrayLike,
             x2: na.ArrayLike,
-            out: tuple[None | na.AbstractExplicitArray] = (None, ),
+            out: tuple[None | na.AbstractExplicitArray] = (None,),
             **kwargs,
     ) -> na.AbstractExplicitArray:
 
         if isinstance(x1, na.AbstractMatrixArray):
-
-            components_x1 = x1.components
+            components_x1 = x1.cartesian_nd.components
 
             if isinstance(x2, na.AbstractMatrixArray):
+                if x1.row_prototype.cartesian_nd.components.keys() == x2.column_prototype.cartesian_nd.components.keys():
 
-                x2 = x2.matrix_transpose
-                type_row = x2.type_vector
-                components_x2 = x2.components
+                    prototype_matrix = x1.prototype_matrix(x2.row_prototype)
 
-                result = dict()
-                for r in components_x1:
-                    result[r] = type_row.from_components(
-                        {c: components_x1[r] @ components_x2[c] for c in components_x2}
+                    x2 = x2.matrix_transpose
+                    components_x2 = x2.cartesian_nd.components
+
+                    result = dict()
+                    for r in components_x1:
+                        result[r] = na.CartesianNdVectorArray(
+                            {c: components_x1[r] @ components_x2[c] for c in components_x2}
+                        )
+                    result = prototype_matrix.from_cartesian_nd(
+                        na.CartesianNdMatrixArray(result),
+                        like=prototype_matrix,
                     )
-                result = x1.type_matrix.from_components(result)
+                else:
+                    result = NotImplemented
 
+            elif isinstance(x2, na.AbstractVectorArray):
+                if x1.type_vector().type_abstract == x2.type_abstract:
+                    result_components = {r: components_x1[r] @ x2.cartesian_nd for r in components_x1}
+                    result = x2.type_explicit.from_cartesian_nd(na.CartesianNdVectorArray(result_components), like=x2)
+
+                else:
+                    result = NotImplemented
             else:
-                result = x1.type_vector.from_components(
-                    {r: components_x1[r] @ x2 for r in components_x1}
-                )
+                result_components = {r: components_x1[r] @ x2 for r in components_x1}
+                result = x1.type_explicit.from_cartesian_nd(na.CartesianNdMatrixArray(result_components), like=x1)
 
         else:
             if isinstance(x2, na.AbstractMatrixArray):
 
                 x2 = x2.matrix_transpose
-                components_x2 = x2.components
+                components_x2 = x2.cartesian_nd.components
 
-                result = x2.type_vector.from_components(
-                    {c: x1 @ components_x2[c] for c in components_x2}
-                )
+                if isinstance(x1, na.AbstractVectorArray):
+                    component_dict = {c: x1.cartesian_nd @ components_x2[c] for c in components_x2}
+                    result = x1.type_explicit.from_cartesian_nd(na.CartesianNdVectorArray(component_dict), like=x1)
+                else:
+                    component_dict = {c: x1 @ components_x2[c] for c in components_x2}
+                    result = x2.type_explicit.from_cartesian_nd(na.CartesianNdMatrixArray(component_dict), like=x2)
 
             else:
                 result = NotImplemented
@@ -160,6 +264,35 @@ class AbstractExplicitMatrixArray(
     @components.setter
     def components(self, value: dict[str, na.AbstractVectorArray]):
         self.__dict__ = value
+
+    @classmethod
+    def from_cartesian_nd(
+        cls,
+        array: na.CartesianNdMatrixArray,
+        like: None | AbstractExplicitMatrixArray = None
+    ) -> AbstractExplicitMatrixArray:
+
+        if like is None:
+            components_new = array.components
+
+        else:
+            nd_components = array.components
+            components_new = {}
+            components = like.components
+            for c in components:
+
+                component = components[c]
+                if isinstance(component, na.AbstractMatrixArray):
+                    nd_key_mod = f"{c}_"
+                    sub_dict = {k[len(nd_key_mod):]: v for k, v in nd_components.items() if k.startswith(nd_key_mod)}
+                    components_new[c] = component.type_explicit.from_cartesian_nd(
+                         na.CartesianNdMatrixArray(sub_dict),
+                         like=component,
+                     )
+                else:
+                    components_new[c] = component.type_explicit.from_cartesian_nd(nd_components[c], like=component)
+
+        return cls.from_components(components_new)
 
 
 @dataclasses.dataclass(eq=False, repr=False)

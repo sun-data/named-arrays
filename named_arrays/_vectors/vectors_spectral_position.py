@@ -28,11 +28,6 @@ class AbstractSpectralPositionVectorArray(
         return SpectralPositionVectorArray
 
     @property
-    def cartesian_nd(self):
-        return NotImplementedError
-
-
-    @property
     def type_matrix(self) -> Type[na.SpectralPositionMatrixArray]:
         return na.SpectralPositionMatrixArray
 
@@ -48,7 +43,11 @@ class SpectralPositionVectorArray(
     def from_scalar(
             cls: Type[Self],
             scalar: na.AbstractScalar,
+            like: None | na.AbstractExplicitVectorArray = None,
     ) -> SpectralPositionVectorArray:
+        result = super().from_scalar(scalar, like=like)
+        if result is not NotImplemented:
+            return result
         return cls(wavelength=scalar, position=scalar)
 
 

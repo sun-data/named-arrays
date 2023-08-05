@@ -45,9 +45,6 @@ class AbstractCartesian2dMatrixArray(
     def type_explicit(self) -> Type[Cartesian2dMatrixArray]:
         return Cartesian2dMatrixArray
 
-    @property
-    def cartesian_nd(self):
-        return NotImplementedError
 
 
     @property

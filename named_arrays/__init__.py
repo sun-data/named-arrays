@@ -8,6 +8,7 @@ from ._vectors.vectors import *
 from ._vectors.cartesian.vectors_cartesian import *
 from ._vectors.cartesian.vectors_cartesian_2d import *
 from ._vectors.cartesian.vectors_cartesian_3d import *
+from ._vectors.cartesian.vectors_cartesian_nd import *
 from ._vectors.vectors_spectral import *
 from ._vectors.vectors_position import *
 from ._vectors.vectors_spectral_position import *
@@ -15,6 +16,7 @@ from ._matrices.matrices import *
 from ._matrices.cartesian.matrices_cartesian import *
 from ._matrices.cartesian.matrices_cartesian_2d import *
 from ._matrices.cartesian.matrices_cartesian_3d import *
+from ._matrices.cartesian.matrices_cartesian_nd import *
 from ._matrices.matrices_spectral import *
 from ._matrices.matrices_position import *
 from ._matrices.matrices_spectral_position import *

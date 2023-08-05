@@ -30,11 +30,6 @@ class AbstractSpectralPositionMatrixArray(
         return na.SpectralPositionVectorArray
 
     @property
-    def cartesian_nd(self):
-        return NotImplementedError
-
-
-    @property
     def determinant(self) -> na.ScalarLike:
         return NotImplementedError
 
