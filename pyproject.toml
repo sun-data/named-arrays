@@ -26,7 +26,6 @@ dynamic = ["version"]
 [project.optional-dependencies]
 test = [
     "pytest",
-    "pytest-xdist",
 ]
 doc = [
     "pytest",

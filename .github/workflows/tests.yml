@@ -31,7 +31,7 @@ jobs:
       - name: Test with pytest
         run: |
           pip install pytest pytest-cov
-          pytest -n auto --doctest-modules --junitxml=junit/test-results.xml --cov=. --cov-report=xml --cov-report=html
+          pytest --doctest-modules --junitxml=junit/test-results.xml --cov=. --cov-report=xml --cov-report=html
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
         with:
