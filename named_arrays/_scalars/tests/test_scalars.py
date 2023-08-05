@@ -794,6 +794,33 @@ class AbstractTestAbstractScalarArray(
             assert result.axes == tuple(shape_broadcasted.keys())
             assert np.all(result.ndarray == result_expected)
 
+    class TestNamedArrayFunctions(
+        tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions
+    ):
+        @pytest.mark.parametrize(
+            argnames="array_2",
+            argvalues=_scalar_arrays_2(),
+        )
+        @pytest.mark.parametrize(
+            argnames="where",
+            argvalues=[
+                np._NoValue,
+                True,
+                na.linspace(0, 1, axis="x", num=_num_x) > 0.5,
+            ]
+        )
+        @pytest.mark.parametrize(
+            argnames="alpha",
+            argvalues=[
+                np._NoValue,
+                na.linspace(0, 1, axis="x", num=_num_x),
+            ]
+        )
+        class TestPltPlotLikeFunctions(
+            tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestPltPlotLikeFunctions,
+        ):
+            pass
+
 
 @pytest.mark.parametrize('array', _scalar_arrays())
 class TestScalarArray(

@@ -422,6 +422,16 @@ class AbstractTestAbstractVectorArray(
         for component in components:
             assert components[component].shape == shape
 
+    class TestNamedArrayFunctions(
+        named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions
+    ):
+
+        @pytest.mark.xfail
+        class TestPltPlotLikeFunctions(
+            named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestPltPlotLikeFunctions
+        ):
+            pass
+
 
 class AbstractTestAbstractExplicitVectorArray(
     AbstractTestAbstractVectorArray,

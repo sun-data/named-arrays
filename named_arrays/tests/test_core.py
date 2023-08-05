@@ -4,6 +4,9 @@ import pytest
 import abc
 import dataclasses
 import numpy as np
+import matplotlib.axes
+import matplotlib.artist
+import matplotlib.pyplot as plt
 import astropy.units as u
 import named_arrays as na
 
@@ -969,6 +972,109 @@ class AbstractTestAbstractArray(
     ):
         assert np.array_equal(array.transpose(), np.transpose(array))
 
+    class TestNamedArrayFunctions(abc.ABC):
+
+        @pytest.mark.parametrize(
+            argnames="func",
+            argvalues=[
+                na.plt.plot,
+            ]
+        )
+        @pytest.mark.parametrize(
+            argnames="ax",
+            argvalues=[
+                np._NoValue,
+                None,
+                plt.subplots()[1],
+                na.plt.subplots(axis_cols="x", ncols=num_x)[1],
+            ]
+        )
+        @pytest.mark.parametrize(
+            argnames="axis",
+            argvalues=[
+                np._NoValue,
+                None,
+                "y",
+            ]
+        )
+        class TestPltPlotLikeFunctions(abc.ABC):
+
+            def test_plt_plot_like(
+                    self,
+                    func: Callable,
+                    array: na.AbstractArray,
+                    array_2: na.ArrayLike,
+                    ax: None | matplotlib.axes.Axes,
+                    axis: None | str,
+                    where: bool | na.AbstractScalar,
+                    alpha: None | str | na.AbstractScalar,
+            ):
+                args = (array, array_2)
+                args = tuple(a for a in args if a is not None)
+
+                kwargs = dict()
+                if ax is not np._NoValue:
+                    kwargs["ax"] = ax
+                if axis is not np._NoValue:
+                    kwargs["axis"] = axis
+                if where is not np._NoValue:
+                    kwargs["where"] = where
+                if alpha is not np._NoValue:
+                    kwargs["alpha"] = alpha
+
+                shape = na.shape_broadcasted(*args)
+
+                axis_normalized = axis
+                if axis_normalized is np._NoValue:
+                    axis_normalized = None
+
+                if axis_normalized is None:
+                    if len(shape) != 1:
+                        with pytest.raises(
+                            expected_exception=ValueError,
+                            match="if `axis` is `None`, the broadcasted shape of .* should have one element"
+                        ):
+                            func(*args, **kwargs)
+                        return
+                    axis_normalized = next(iter(shape))
+
+                shape_orthogonal = {a: shape[a] for a in shape if a != axis_normalized}
+
+                if ax is None or ax is np._NoValue:
+                    ax_normalized = plt.gca()
+                else:
+                    ax_normalized = ax
+                ax_normalized = na.as_named_array(ax_normalized)
+
+                if not set(ax_normalized.shape).issubset(shape_orthogonal):
+                    with pytest.raises(
+                            expected_exception=ValueError,
+                            match="the shape of .* should be a subset of .*"
+                    ):
+                        func(*args, **kwargs)
+                    return
+
+                for k in kwargs:
+                    if not set(na.shape(kwargs[k])).issubset(shape_orthogonal):
+                        with pytest.raises(
+                            expected_exception=ValueError,
+                            match="the shape of .* should be a subset of .*"
+                        ):
+                            func(*args, **kwargs)
+                        return
+
+                result = func(*args, **kwargs)
+
+                assert isinstance(result, na.AbstractArray)
+                assert result.dtype == matplotlib.artist.Artist
+                # for index in result.ndindex():
+                #     if result[index].ndarray is not None:
+                #         assert isinstance(result[index].ndarray, matplotlib.artist.Artist)
+
+
+
+                for index in ax_normalized.ndindex():
+                    assert ax_normalized[index].ndarray.has_data()
 
 
 class AbstractTestAbstractExplicitArray(

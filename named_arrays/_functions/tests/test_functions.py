@@ -572,6 +572,16 @@ class AbstractTestAbstractFunctionArray(
         def test_convolve(self, array: na.AbstractFunctionArray, v: na.AbstractArray, mode: str):
             pass
 
+    class TestNamedArrayFunctions(
+        named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions
+    ):
+
+        @pytest.mark.xfail
+        class TestPltPlotLikeFunctions(
+            named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestPltPlotLikeFunctions
+        ):
+            pass
+
 
 @pytest.mark.parametrize("array", _function_arrays())
 class TestFunctionArray(

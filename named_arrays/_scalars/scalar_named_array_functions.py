@@ -1,11 +1,16 @@
 from typing import Callable, TypeVar
 import numpy as np
+import numpy.typing as npt
+import matplotlib.axes
+import matplotlib.artist
+import matplotlib.pyplot as plt
 import astropy.units as u
 import named_arrays as na
 from . import scalars
 
 __all__ = [
     "RANDOM_FUNCTIONS",
+    "PLT_PLOT_LIKE_FUNCTIONS",
     "HANDLED_FUNCTIONS",
     "random",
 ]
@@ -14,6 +19,9 @@ RANDOM_FUNCTIONS = (
     na.random.uniform,
     na.random.normal,
     na.random.poisson,
+)
+PLT_PLOT_LIKE_FUNCTIONS = (
+    na.plt.plot,
 )
 HANDLED_FUNCTIONS = dict()
 
@@ -112,3 +120,76 @@ def random(
         ndarray=value,
         axes=tuple(shape.keys()),
     )
+
+
+def plt_plot_like(
+        func: Callable,
+        *args: na.AbstractScalarArray,
+        ax: None | matplotlib.axes.Axes | na.ScalarArray[npt.NDArray[matplotlib.axes.Axes]] = None,
+        axis: None | str = None,
+        where: bool | na.AbstractScalarArray = True,
+        **kwargs,
+) -> na.ScalarArray[npt.NDArray[None | matplotlib.artist.Artist]]:
+
+    try:
+        args = tuple(scalars._normalize(arg) for arg in args)
+        where = scalars._normalize(where)
+        kwargs = {k: scalars._normalize(kwargs[k]) for k in kwargs}
+    except na.ScalarTypeError:
+        return NotImplemented
+
+    if ax is None:
+        ax = plt.gca()
+    ax = na.as_named_array(ax)
+
+    shape = na.shape_broadcasted(*args)
+
+    if axis is None:
+        if len(shape) != 1:
+            raise ValueError(
+                f"if `axis` is `None`, the broadcasted shape of `*args`, {shape}, should have one element"
+            )
+        axis = next(iter(shape))
+
+    shape_orthogonal = {a: shape[a] for a in shape if a != axis}
+
+    args = tuple(arg.broadcast_to(shape) for arg in args)
+
+    if not set(ax.shape).issubset(shape_orthogonal):
+        raise ValueError(
+            f"the shape of `ax`, {ax.shape}, "
+            f"should be a subset of the broadcasted shape of `*args` excluding `axis`, {shape_orthogonal}",
+        )
+    ax = ax.broadcast_to(shape_orthogonal)
+
+    if not set(where.shape).issubset(shape_orthogonal):
+        raise ValueError(
+            f"the shape of `where`, {where.shape}, "
+            f"should be a subset of the broadcasted shape of `*args` excluding `axis`, {shape_orthogonal}"
+        )
+    where = where.broadcast_to(shape_orthogonal)
+
+    kwargs_broadcasted = dict()
+    for k in kwargs:
+        kwarg = kwargs[k]
+        if not set(na.shape(kwarg)).issubset(shape_orthogonal):
+            raise ValueError(
+                f"the shape of `{k}`, {na.shape(kwarg)}, "
+                f"should be a subset of the broadcasted shape of `*args` excluding `axis`, {shape_orthogonal}"
+            )
+        kwargs_broadcasted[k] = na.broadcast_to(kwarg, shape_orthogonal)
+    kwargs = kwargs_broadcasted
+
+    result = na.ScalarArray.empty(shape=shape_orthogonal, dtype=object)
+
+    for index in na.ndindex(shape_orthogonal):
+        if where[index]:
+            func_matplotlib = getattr(ax[index].ndarray, func.__name__)
+            args_index = tuple(arg[index].ndarray for arg in args)
+            kwargs_index = {k: kwargs[k][index].ndarray for k in kwargs}
+            result[index] = func_matplotlib(
+                *args_index,
+                **kwargs_index,
+            )[0]
+
+    return result

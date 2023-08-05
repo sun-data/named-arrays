@@ -610,6 +610,33 @@ class AbstractTestAbstractUncertainScalarArray(
             with pytest.raises(ValueError, match="`numpy.convolve` is not supported .*"):
                 np.convolve(array, v=v, mode=mode)
 
+    class TestNamedArrayFunctions(
+        named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions
+    ):
+        @pytest.mark.parametrize(
+            argnames="array_2",
+            argvalues=_uncertain_scalar_arrays_2(),
+        )
+        @pytest.mark.parametrize(
+            argnames="where",
+            argvalues=[
+                np._NoValue,
+                True,
+                na.linspace(0, 1, axis="x", num=_num_x) > 0.5,
+            ]
+        )
+        @pytest.mark.parametrize(
+            argnames="alpha",
+            argvalues=[
+                np._NoValue,
+                na.linspace(0, 1, axis="x", num=_num_x),
+            ]
+        )
+        class TestPltPlotLikeFunctions(
+            named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestPltPlotLikeFunctions,
+        ):
+            pass
+
 
 @pytest.mark.parametrize('array', _uncertain_scalar_arrays())
 class TestUncertainScalarArray(
