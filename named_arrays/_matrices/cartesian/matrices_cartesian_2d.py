@@ -15,8 +15,8 @@ YT = TypeVar('YT', bound=na.AbstractVectorArray)
 
 @dataclasses.dataclass(eq=False, repr=False)
 class AbstractCartesian2dMatrixArray(
-    na.AbstractCartesianMatrixArray,
     na.AbstractCartesian2dVectorArray,
+    na.AbstractCartesianMatrixArray,
 ):
     @property
     @abc.abstractmethod
