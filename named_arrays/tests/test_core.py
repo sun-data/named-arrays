@@ -1014,7 +1014,7 @@ class AbstractTestAbstractArray(
                     where: bool | na.AbstractScalar,
                     alpha: None | str | na.AbstractScalar,
             ):
-                args = (array, array_2)
+                args = (array_2, array)
                 args = tuple(a for a in args if a is not None)
 
                 kwargs = dict()
