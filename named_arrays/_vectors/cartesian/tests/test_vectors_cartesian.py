@@ -7,7 +7,6 @@ import named_arrays._vectors.tests.test_vectors
 __all__ = [
     'AbstractTestAbstractCartesianVectorArray',
     'AbstractTestAbstractExplicitCartesianVectorArray',
-    'AbstractTestAbstractExplicitCartesianVectorArrayCreation',
     'AbstractTestAbstractImplicitCartesianVectorArray',
     'AbstractTestAbstractCartesianVectorRandomSample',
     'AbstractTestAbstractCartesianVectorUniformRandomSample',
