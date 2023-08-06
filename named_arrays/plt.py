@@ -30,30 +30,26 @@ def subplots(
     ----------
     axis_rows
         Name of the axis representing the rows in the subplot grid.
-        If :class:`None`, the ``squeeze`` argument must be :class:`True`.
+        If :obj:`None`, the ``squeeze`` argument must be :class:`True`.
     nrows
         Number of rows in the subplot grid
     axis_cols
         Name of the axis representing the columns in the subplot grid
-        If :class:`None`, the ``squeeze`` argument must be :class:`True`.
+        If :obj:`None`, the ``squeeze`` argument must be :obj:`True`.
     ncols
         Number of columns in the subplot grid
     sharex
-        Controls whether all the :class`matplotlib.axes.Axes` instances share the same :math:`x` axis properties.
+        Controls whether all the :class:`matplotlib.axes.Axes` instances share the same horizontal axis properties.
         See the documentation of :func:`matplotlib.pyplot.subplots` for more information.
     sharey
-        Controls whether all the :class`matplotlib.axes.Axes` instances share the same :math:`y` axis properties.
+        Controls whether all the :class`matplotlib.axes.Axes` instances share the same vertical axis properties.
         See the documentation of :func:`matplotlib.pyplot.subplots` for more information.
     squeeze
-        If :class:`True`, :func:`numpy.squeeze` is called on the result, which removes singleton dimensions from the
+        If :obj:`True`, :func:`numpy.squeeze` is called on the result, which removes singleton dimensions from the
         array.
         See the documentation of :func:`matplotlib.pyplot.subplots` for more information.
     kwargs
         Additional keyword arguments passed to :func:`matplotlib.pyplot.subplots`
-
-    Returns
-    -------
-        The created figure and a named array of matplotlib axes.
     """
 
     axes = (axis_rows, axis_cols)
@@ -79,32 +75,80 @@ def plot(
         **kwargs,
 ) -> na.ScalarArray[npt.NDArray[None | matplotlib.artist.Artist]]:
     """
-    A thin wrapper around :func:`matplotlib.axes.Axes.plot()` for named arrays.
+    A thin wrapper around :meth:`matplotlib.axes.Axes.plot` for named arrays.
 
-    The main difference of this function from :func:`matplotlib.pyplot.plot() is the addition of the ``axis`` parameter
+    The main difference of this function from :func:`matplotlib.pyplot.plot` is the addition of the ``axis`` parameter
     indicating along which axis the lines should be connected.
 
     Parameters
     ----------
     args
-        either `x, y` or `y`, same as `matplotlib.axes.Axes.plot`
+        either ``x, y`` or ``y``, same as :meth:`matplotlib.axes.Axes.plot`
     ax
         The instances of :class:`matplotlib.axes.Axes` to use.
-        If :class:`None`, calls :func:`matplotlib.pyploy.gca` to get the current axes.
-        If an instance of :class:`ScalarArray`, ``ax.shape`` should be a subset of :func:`shape_broadcasted(*args)`
+        If :obj:`None`, calls :func:`matplotlib.pyplot.gca` to get the current axes.
+        If an instance of :class:`named_arrays.ScalarArray`, ``ax.shape`` should be a subset of the broadcasted shape of
+        ``*args``.
     axis
         The name of the axis that the plot lines should be connected along.
-        If :class:`None`, the broadcasted shape of ``args`` should have only one element,
+        If :obj:`None`, the broadcasted shape of ``args`` should have only one element,
         otherwise a :class:`ValueError` is raised.
     where
         A boolean array that selects which elements to plot
     kwargs
-        Additional keyword arguments passed to :class:`matplotlib.axes.Axes.plot()`.
-        These can be instances of :class:`AbstractArray`.
+        Additional keyword arguments passed to :meth:`matplotlib.axes.Axes.plot`.
+        These can be instances of :class:`named_arrays.AbstractArray`.
 
     Returns
     -------
         An array of artists that were plotted
+
+    Examples
+    --------
+
+    Plot a single scalar
+
+    .. jupyter-execute::
+
+        import numpy as np
+        import matplotlib.pyplot as plt
+        import named_arrays as na
+
+        x = na.linspace(0, 2 * np.pi, axis="x",  num=101)
+        y = np.sin(x)
+
+        plt.figure();
+        na.plt.plot(x, y);
+
+    Plot an array of scalars
+
+    .. jupyter-execute::
+
+        z = na.linspace(0, np.pi, axis="z", num=5)
+
+        y = np.sin(x - z)
+
+        plt.figure();
+        na.plt.plot(x, y, axis="x");
+
+    Plot an uncertain scalar
+
+    .. jupyter-execute::
+
+        ux = na.NormalUncertainScalarArray(x, width=0.2)
+        uy = np.sin(ux)
+
+        plt.figure();
+        na.plt.plot(x, uy);
+
+    Broadcast an array of scalars against an array of :class:`matplotlib.axes.Axes`
+
+    .. jupyter-execute::
+
+        fig, ax = na.plt.subplots(axis_rows="z", nrows=z.shape["z"], sharex=True)
+
+        na.plt.plot(x, y, ax=ax, axis="x");
+
     """
     return na._named_array_function(
         plot,
