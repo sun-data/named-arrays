@@ -1036,7 +1036,9 @@ def _scalar_linear_spaces():
 @pytest.mark.parametrize('array', _scalar_linear_spaces())
 class TestScalarLinearSpace(
     AbstractTestAbstractScalarSpace,
+    AbstractTestAbstractScalarArray,
     tests.test_core.AbstractTestAbstractLinearSpace,
+    tests.test_core.AbstractTestAbstractArray,
 ):
     pass
 

@@ -709,6 +709,9 @@ def _uniform_uncertain_scalar_arrays():
 @pytest.mark.parametrize('array', _uniform_uncertain_scalar_arrays())
 class TestUniformUncertainScalarArray(
     AbstractTestAbstractImplicitUncertainScalarArray,
+    AbstractTestAbstractUncertainScalarArray,
+    named_arrays._scalars.tests.test_scalars.AbstractTestAbstractScalar,
+    named_arrays.tests.test_core.AbstractTestAbstractArray,
 ):
     pass
 

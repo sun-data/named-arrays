@@ -4,6 +4,7 @@ import numpy as np
 import astropy.units as u
 import named_arrays as na
 import named_arrays.tests.test_core
+import named_arrays._vectors.tests.test_vectors
 from . import test_vectors_cartesian
 
 __all__ = [
@@ -396,6 +397,10 @@ def _cartesian_2d_vector_linear_spaces() -> tuple[na.Cartesian2dVectorLinearSpac
 @pytest.mark.parametrize("array", _cartesian_2d_vector_linear_spaces())
 class TestCartesian2dVectorLinearSpace(
     AbstractTestAbstractCartesian2dVectorSpace,
+    AbstractTestAbstractCartesian2dVectorArray,
     test_vectors_cartesian.AbstractTestAbstractCartesianVectorLinearSpace,
+    test_vectors_cartesian.AbstractTestAbstractCartesianVectorArray,
+    named_arrays._vectors.tests.test_vectors.AbstractTestAbstractVectorArray,
+    named_arrays.tests.test_core.AbstractTestAbstractArray,
 ):
     pass
