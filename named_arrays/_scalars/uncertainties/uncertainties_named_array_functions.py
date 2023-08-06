@@ -87,7 +87,7 @@ def plt_plot_like(
 
     args = tuple(arg.broadcast_to(shape) for arg in args)
 
-    alpha = max(1 / args[0].num_distribution, 1/255)
+    alpha = max(1 / args[~0].num_distribution, 1/255)
     if "alpha" in kwargs:
         kwargs["alpha"] *= alpha
     else:
