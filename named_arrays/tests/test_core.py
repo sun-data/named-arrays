@@ -1072,11 +1072,6 @@ class AbstractTestAbstractArray(
 
                 assert isinstance(result, na.AbstractArray)
                 assert result.dtype == matplotlib.artist.Artist
-                # for index in result.ndindex():
-                #     if result[index].ndarray is not None:
-                #         assert isinstance(result[index].ndarray, matplotlib.artist.Artist)
-
-
 
                 for index in ax_normalized.ndindex():
                     assert ax_normalized[index].ndarray.has_data()
