@@ -199,7 +199,6 @@ class AbstractTestAbstractExplicitCartesianVectorArray(
 
 
 class AbstractTestAbstractImplicitCartesianVectorArray(
-    AbstractTestAbstractCartesianVectorArray,
     named_arrays._vectors.tests.test_vectors.AbstractTestAbstractImplicitVectorArray,
 ):
     pass

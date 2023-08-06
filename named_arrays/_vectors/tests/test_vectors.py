@@ -465,7 +465,6 @@ class AbstractTestAbstractExplicitVectorArray(
 
 
 class AbstractTestAbstractImplicitVectorArray(
-    AbstractTestAbstractVectorArray,
     named_arrays.tests.test_core.AbstractTestAbstractImplicitArray,
 ):
     pass

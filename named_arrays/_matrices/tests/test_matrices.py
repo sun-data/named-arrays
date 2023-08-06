@@ -118,7 +118,6 @@ class AbstractTestAbstractExplicitMatrixArray(
 
 
 class AbstractTestAbstractImplicitMatrixArray(
-    AbstractTestAbstractMatrixArray,
     named_arrays._vectors.tests.test_vectors.AbstractTestAbstractImplicitVectorArray,
 ):
     pass

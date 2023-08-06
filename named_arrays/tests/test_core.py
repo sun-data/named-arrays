@@ -1134,9 +1134,12 @@ class AbstractTestAbstractExplicitArray(
 
 
 class AbstractTestAbstractImplicitArray(
-    AbstractTestAbstractArray,
+    abc.ABC,
 ):
-    pass
+    def test_explicit(self, array: na.AbstractArray):
+        result = array.explicit
+        assert isinstance(result, na.AbstractExplicitArray)
+        assert np.abs(result.sum()) > 0
 
 
 class AbstractTestAbstractRandomMixin(

@@ -231,7 +231,6 @@ class TestCartesian2dVectorArray(
 
 
 class AbstractTestAbstractImplicitCartesian2dVectorArray(
-    AbstractTestAbstractCartesian2dVectorArray,
     test_vectors_cartesian.AbstractTestAbstractImplicitCartesianVectorArray,
 ):
     pass

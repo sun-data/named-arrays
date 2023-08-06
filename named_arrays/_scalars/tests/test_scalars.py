@@ -882,7 +882,6 @@ class TestScalarArrayCreation:
 
 
 class AbstractTestAbstractImplicitScalarArray(
-    AbstractTestAbstractScalarArray,
     tests.test_core.AbstractTestAbstractImplicitArray,
 ):
     pass

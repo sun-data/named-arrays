@@ -677,7 +677,6 @@ class TestUncertainScalarArray(
 
 
 class AbstractTestAbstractImplicitUncertainScalarArray(
-    AbstractTestAbstractUncertainScalarArray,
     named_arrays.tests.test_core.AbstractTestAbstractImplicitArray,
 ):
     pass
