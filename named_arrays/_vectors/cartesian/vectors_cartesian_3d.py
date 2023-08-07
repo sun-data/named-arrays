@@ -47,10 +47,6 @@ class AbstractCartesian3dVectorArray(
         return Cartesian3dVectorArray
 
     @property
-    def cartesian_nd(self):
-        return NotImplementedError
-
-    @property
     def type_matrix(self) -> Type[na.Cartesian3dMatrixArray]:
         return na.Cartesian3dMatrixArray
 
