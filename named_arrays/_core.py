@@ -61,7 +61,7 @@ StopExponentT = TypeVar("StopExponentT", bound="QuantityLike | AbstractArray")
 BaseT = TypeVar("BaseT", bound="QuantityLike | AbstractArray")
 
 
-def named_array_like(a: Any):
+def named_array_like(a: Any) -> bool:
     """
     Check if an object is compatible with the :mod:`named_arrays` API.
 
@@ -72,15 +72,10 @@ def named_array_like(a: Any):
     a
         Object to be checked for compatibility with the :mod:`named_arrays` API.
 
-    Returns
-    -------
-    out
-        :obj:`True` if ``a.__named_array_function__`` exists, :obj:`False` otherwise.
-
     Examples
     --------
 
-    Instances of `named_arrays.ScalarArray` are compatible with the :mod:`named_arrays` API
+    Instances of :class:`named_arrays.ScalarArray` are compatible with the :mod:`named_arrays` API
 
     .. jupyter-execute::
 
@@ -88,7 +83,7 @@ def named_array_like(a: Any):
 
         na.named_array_like(na.ScalarArray(2))
 
-    But instances of `numpy.ndarray` are not compatible
+    But instances of :class:`numpy.ndarray` are not compatible
 
     .. jupyter-execute::
 
