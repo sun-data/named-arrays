@@ -14,6 +14,7 @@ __all__ = [
     'QuantityLike',
     'StartT',
     'StopT',
+    'named_array_like',
     'get_dtype',
     'value',
     'unit',
@@ -58,6 +59,47 @@ WidthT = TypeVar("WidthT", bound="QuantityLike | AbstractArray")
 StartExponentT = TypeVar("StartExponentT", bound="QuantityLike | AbstractArray")
 StopExponentT = TypeVar("StopExponentT", bound="QuantityLike | AbstractArray")
 BaseT = TypeVar("BaseT", bound="QuantityLike | AbstractArray")
+
+
+def named_array_like(a: Any):
+    """
+    Check if an object is compatible with the :mod:`named_arrays` API.
+
+    If the object has a ``__named_array_function__`` method it is considered compatible.
+
+    Parameters
+    ----------
+    a
+        Object to be checked for compatibility with the :mod:`named_arrays` API.
+
+    Returns
+    -------
+    out
+        :obj:`True` if ``a.__named_array_function__`` exists, :obj:`False` otherwise.
+
+    Examples
+    --------
+
+    Instances of `named_arrays.ScalarArray` are compatible with the :mod:`named_arrays` API
+
+    .. jupyter-execute::
+
+        import named_arrays as na
+
+        na.named_array_like(na.ScalarArray(2))
+
+    But instances of `numpy.ndarray` are not compatible
+
+    .. jupyter-execute::
+
+        import numpy as np
+
+        na.named_array_like(np.empty(3))
+    """
+    if hasattr(a, "__named_array_function__"):
+        return True
+    else:
+        return False
 
 
 def get_dtype(

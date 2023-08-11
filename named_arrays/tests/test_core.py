@@ -134,6 +134,8 @@ class TestIndexingFunctions:
 class AbstractTestAbstractArray(
     abc.ABC,
 ):
+    def test_named_array_like(self, array: na.AbstractArray):
+        assert na.named_array_like(array)
 
     @pytest.mark.parametrize('axis', [None, 'x', ('x', 'y')])
     def test_axis_normalized_function(
