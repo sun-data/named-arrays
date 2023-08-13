@@ -579,8 +579,8 @@ class FunctionArray(
     @property
     def explicit(self) -> FunctionArray:
         return self.type_explicit(
-            inputs=self.inputs.explicit,
-            outputs=self.outputs.explicit,
+            inputs=na.explicit(self.inputs),
+            outputs=na.explicit(self.outputs),
         )
 
     def __setitem__(
