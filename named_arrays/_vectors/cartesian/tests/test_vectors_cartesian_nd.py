@@ -225,3 +225,14 @@ class TestCartesianNdVectorArray(
             value: float | na.ScalarArray
     ):
         super().test__setitem__(array=array, item=item, value=value)
+
+
+@pytest.mark.parametrize("type_array", [na.CartesianNdVectorArray])
+class TestCartesianNdVectorArrayCreation(
+    test_vectors_cartesian.AbstractTestAbstractExplicitCartesianVectorArrayCreation,
+):
+    @pytest.mark.parametrize("like", [None] + _cartesian_nd_arrays())
+    class TestFromScalarArray(
+        test_vectors_cartesian.AbstractTestAbstractExplicitCartesianVectorArrayCreation.TestFromScalarArray,
+    ):
+        pass

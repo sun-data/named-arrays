@@ -464,6 +464,12 @@ class AbstractTestAbstractExplicitVectorArray(
     pass
 
 
+class AbstractTestAbstractExplicitVectorArrayCreation(
+    named_arrays.tests.test_core.AbstractTestAbstractExplicitArrayCreation
+):
+    pass
+
+
 class AbstractTestAbstractImplicitVectorArray(
     named_arrays.tests.test_core.AbstractTestAbstractImplicitArray,
 ):

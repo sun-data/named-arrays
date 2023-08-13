@@ -429,6 +429,32 @@ class AbstractExplicitVectorArray(
     AbstractVectorArray,
     na.AbstractExplicitArray,
 ):
+    @classmethod
+    def from_scalar_array(
+            cls: Type[Self],
+            a: None | float | u.Quantity | na.AbstractArray,
+            like: None | AbstractExplicitVectorArray = None,
+    ) -> AbstractExplicitVectorArray:
+
+        self = super().from_scalar_array(a=a, like=like)
+
+        components_self = dict()
+
+        if like is None:
+            for c in self.components:
+                components_self[c] = a
+        else:
+            components_like = like.components
+            for c in components_like:
+                component_like = components_like[c]
+                if isinstance(component_like, na.AbstractArray):
+                    components_self[c] = component_like.from_scalar_array(a, like=component_like)
+                else:
+                    components_self[c] = a
+
+        self.components = components_self
+
+        return self
 
     @classmethod
     def from_components(

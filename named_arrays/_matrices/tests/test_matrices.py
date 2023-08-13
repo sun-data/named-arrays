@@ -117,6 +117,12 @@ class AbstractTestAbstractExplicitMatrixArray(
     pass
 
 
+class AbstractTestAbstractExplicitMatrixArrayCreation(
+    named_arrays._vectors.tests.test_vectors.AbstractTestAbstractExplicitVectorArrayCreation,
+):
+    pass
+
+
 class AbstractTestAbstractImplicitMatrixArray(
     named_arrays._vectors.tests.test_vectors.AbstractTestAbstractImplicitVectorArray,
 ):

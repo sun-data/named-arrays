@@ -7,6 +7,7 @@ import named_arrays._vectors.tests.test_vectors
 __all__ = [
     'AbstractTestAbstractCartesianVectorArray',
     'AbstractTestAbstractExplicitCartesianVectorArray',
+    'AbstractTestAbstractExplicitCartesianVectorArrayCreation',
     'AbstractTestAbstractImplicitCartesianVectorArray',
     'AbstractTestAbstractCartesianVectorRandomSample',
     'AbstractTestAbstractCartesianVectorUniformRandomSample',
@@ -194,6 +195,12 @@ class AbstractTestAbstractCartesianVectorArray(
 class AbstractTestAbstractExplicitCartesianVectorArray(
     AbstractTestAbstractCartesianVectorArray,
     named_arrays._vectors.tests.test_vectors.AbstractTestAbstractExplicitVectorArray,
+):
+    pass
+
+
+class AbstractTestAbstractExplicitCartesianVectorArrayCreation(
+    named_arrays._vectors.tests.test_vectors.AbstractTestAbstractExplicitVectorArrayCreation
 ):
     pass
 

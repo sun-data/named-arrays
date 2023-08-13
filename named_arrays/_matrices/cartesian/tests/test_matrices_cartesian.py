@@ -27,6 +27,12 @@ class AbstractTestAbstractExplicitCartesianMatrixArray(
     pass
 
 
+class AbstractTestAbstractExplicitCartesianMatrixArrayCreation(
+    named_arrays._matrices.tests.test_matrices.AbstractTestAbstractExplicitMatrixArrayCreation,
+):
+    pass
+
+
 class AbstractTestAbstractImplicitCartesianMatrixArray(
     named_arrays._matrices.tests.test_matrices.AbstractTestAbstractImplicitMatrixArray,
 ):

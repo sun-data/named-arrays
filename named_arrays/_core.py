@@ -870,6 +870,34 @@ ArrayLike = Union[QuantityLike, AbstractArray]
 class AbstractExplicitArray(
     AbstractArray,
 ):
+    @classmethod
+    @abc.abstractmethod
+    def from_scalar_array(
+            cls: type[Self],
+            a: float | u.Quantity | na.AbstractScalarArray,
+            like: None | Self = None,
+    ) -> Self:
+        """
+        Constructs a new version of this array using ``a`` as the underlying data.
+
+        Parameters
+        ----------
+        a
+            Anything that can be coerced into an instance of :class:`named_arrays.AbstractScalarArray`.
+        like
+            Optional reference object.
+            If provided, the result will be defined by this object.
+        """
+        if like is None:
+            return cls()
+        else:
+            if isinstance(like, cls):
+                return type(like)()
+            else:
+                raise TypeError(
+                    f"If `like` is not `None`, it must be an instance of `{cls.__name__}`, "
+                    f"got `{type(like).__name__}`"
+                )
 
     @abc.abstractmethod
     def __setitem__(

@@ -1135,6 +1135,39 @@ class AbstractTestAbstractExplicitArray(
         assert np.all(result[item] == value)
 
 
+class AbstractTestAbstractExplicitArrayCreation(
+    abc.ABC,
+):
+
+    @pytest.mark.parametrize(
+        argnames="a",
+        argvalues=[
+            None,
+            2,
+            2 * u.mm,
+            np.array(2),
+            np.array(2) * u.mm,
+            na.ScalarArray(2),
+            na.ScalarArray(2 * u.mm),
+            na.ScalarLinearSpace(0, 1, axis="y", num=num_y),
+            na.ScalarLinearSpace(0, 1, axis="y", num=num_y) * u.mm,
+        ]
+    )
+    class TestFromScalarArray:
+        @abc.abstractmethod
+        def test_from_scalar_array(
+                self,
+                type_array: type[na.AbstractExplicitArray],
+                a: None | float | u.Quantity | na.AbstractScalar,
+                like: None | na.AbstractArray
+        ):
+            result = type_array.from_scalar_array(a=a, like=na.explicit(like))
+
+            assert isinstance(result, type_array)
+            if like is not None:
+                assert isinstance(result, type(like))
+
+
 class AbstractTestAbstractImplicitArray(
     abc.ABC,
 ):

@@ -620,3 +620,14 @@ class TestFunctionArray(
             value: float | u.Quantity | na.AbstractScalar | na.AbstractVectorArray,
     ):
         super().test__setitem__(array=array.explicit, item=item, value=value)
+
+
+@pytest.mark.parametrize("type_array", [na.FunctionArray])
+class TestFunctionArrayCreation(
+    named_arrays.tests.test_core.AbstractTestAbstractExplicitArrayCreation,
+):
+    @pytest.mark.parametrize("like", [None] + _function_arrays())
+    class TestFromScalarArray(
+        named_arrays.tests.test_core.AbstractTestAbstractExplicitArrayCreation.TestFromScalarArray,
+    ):
+        pass

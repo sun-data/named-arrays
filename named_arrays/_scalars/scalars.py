@@ -746,7 +746,7 @@ class ScalarArray(
         print(radius.mean(axis='position_x'))
     """
 
-    ndarray: NDArrayT = dataclasses.MISSING
+    ndarray: None | NDArrayT = 0
     axes: None | tuple[str, ...] = None
 
     def __post_init__(self: Self):
@@ -758,6 +758,30 @@ class ScalarArray(
             raise ValueError('The number of axis names must match the number of dimensions.')
         if len(self.axes) != len(set(self.axes)):
             raise ValueError(f'Each axis name must be unique, got {self.axes}.')
+
+    @classmethod
+    def from_scalar_array(
+            cls: type[Self],
+            a: float | u.Quantity | na.AbstractScalarArray,
+            like: None | Self = None,
+    ) -> Self:
+
+        self = super().from_scalar_array(a=a, like=like)
+
+        if isinstance(a, na.AbstractArray):
+            if isinstance(a, na.AbstractScalarArray):
+                self.ndarray = a.ndarray
+                self.axes = a.axes
+            else:
+                raise TypeError(
+                    f"If `a` is an instance of `{na.AbstractArray.__name__}`, it must be an instance of "
+                    f"`{na.AbstractScalarArray.__name__}`, got `{type(a).__name__}`."
+                )
+        else:
+            self.ndarray = a
+            self.axes = tuple()
+
+        return self
 
     @classmethod
     def empty(cls: Type[Self], shape: dict[str, int], dtype: Type | np.dtype = float) -> Self:

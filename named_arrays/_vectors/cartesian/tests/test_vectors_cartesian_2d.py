@@ -10,6 +10,7 @@ from . import test_vectors_cartesian
 __all__ = [
     'AbstractTestAbstractCartesian2dVectorArray',
     'TestCartesian2dVectorArray',
+    'TestCartesian2dVectorArrayCreation',
     'AbstractTestAbstractImplicitCartesian2dVectorArray',
     'AbstractTestAbstractCartesian2dVectorRandomSample',
     'TestCartesian2dVectorUniformRandomSample',
@@ -229,6 +230,17 @@ class TestCartesian2dVectorArray(
             value: float | na.ScalarArray
     ):
         super().test__setitem__(array=array, item=item, value=value)
+
+
+@pytest.mark.parametrize("type_array", [na.Cartesian2dVectorArray])
+class TestCartesian2dVectorArrayCreation(
+    test_vectors_cartesian.AbstractTestAbstractExplicitCartesianVectorArrayCreation,
+):
+    @pytest.mark.parametrize("like", [None] + _cartesian2d_arrays())
+    class TestFromScalarArray(
+        test_vectors_cartesian.AbstractTestAbstractExplicitCartesianVectorArrayCreation.TestFromScalarArray,
+    ):
+        pass
 
 
 class AbstractTestAbstractImplicitCartesian2dVectorArray(

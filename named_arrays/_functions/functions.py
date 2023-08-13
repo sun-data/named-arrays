@@ -1,5 +1,6 @@
 from __future__ import annotations
 from typing import TypeVar, Generic, Type, ClassVar, Sequence, Callable, Collection, Any
+from typing_extensions import Self
 import abc
 import dataclasses
 import numpy as np
@@ -557,8 +558,33 @@ class FunctionArray(
     na.AbstractExplicitArray,
     Generic[InputsT, OutputsT],
 ):
-    inputs: InputsT = dataclasses.MISSING
-    outputs: OutputsT = dataclasses.MISSING
+    inputs: InputsT = 0
+    outputs: OutputsT = 0
+
+    @classmethod
+    def from_scalar_array(
+            cls: type[Self],
+            a: float | u.Quantity | na.AbstractScalarArray,
+            like: None | Self = None,
+    ) -> Self:
+
+        self = super().from_scalar_array(a=a, like=like)
+
+        if like is None:
+            self.inputs = a
+            self.outputs = a
+        else:
+            if isinstance(like.inputs, na.AbstractArray):
+                self.inputs = like.inputs.from_scalar_array(a=a, like=like.inputs)
+            else:
+                self.inputs = a
+
+            if isinstance(like.outputs, na.AbstractArray):
+                self.outputs = like.outputs.from_scalar_array(a=a, like=like.outputs)
+            else:
+                self.outputs = a
+
+        return self
 
     @property
     def axes(self) -> tuple[str, ...]:

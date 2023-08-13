@@ -9,6 +9,7 @@ import named_arrays._scalars.tests.test_scalars
 __all__ = [
     'AbstractTestAbstractUncertainScalarArray',
     'TestUncertainScalarArray',
+    'TestUncertainScalarArrayCreation',
     'AbstractTestAbstractImplicitUncertainScalarArray',
     'TestUniformUncertainScalarArray',
     'TestNormalUncertainScalarArray',
@@ -674,6 +675,18 @@ class TestUncertainScalarArray(
             value: float | na.ScalarArray
     ):
         super().test__setitem__(array=array, item=item, value=value)
+
+
+@pytest.mark.parametrize("type_array", [na.UncertainScalarArray])
+class TestUncertainScalarArrayCreation(
+    named_arrays.tests.test_core.AbstractTestAbstractExplicitArrayCreation,
+):
+
+    @pytest.mark.parametrize("like", [None] + _uncertain_scalar_arrays())
+    class TestFromScalarArray(
+        named_arrays.tests.test_core.AbstractTestAbstractExplicitArrayCreation.TestFromScalarArray,
+    ):
+        pass
 
 
 class AbstractTestAbstractImplicitUncertainScalarArray(

@@ -11,6 +11,7 @@ __all__ = [
     'AbstractTestAbstractScalar',
     'AbstractTestAbstractScalarArray',
     'TestScalarArray',
+    'TestScalarArrayCreation',
     'AbstractTestAbstractParameterizedScalarArray',
 ]
 
@@ -855,30 +856,69 @@ class TestScalarArray(
         super().test__setitem__(array=array, item=item, value=value)
 
 
-@pytest.mark.parametrize('shape', [dict(x=3), dict(x=4, y=5)])
-@pytest.mark.parametrize('dtype', [int, float, complex])
-class TestScalarArrayCreation:
+@pytest.mark.parametrize("type_array", [na.ScalarArray])
+class TestScalarArrayCreation(
+    tests.test_core.AbstractTestAbstractExplicitArrayCreation,
+):
 
-    @property
-    def type_array(self) -> Type[na.ScalarArray]:
-        return na.ScalarArray
+    @pytest.mark.parametrize("like", [None] + _scalar_arrays())
+    class TestFromScalarArray(
+        tests.test_core.AbstractTestAbstractExplicitArrayCreation.TestFromScalarArray
+    ):
 
-    def test_empty(self, shape: dict[str, int], dtype: Type):
-        result = self.type_array.empty(shape, dtype=dtype)
-        assert result.shape == shape
-        assert result.dtype == dtype
+        def test_from_scalar_array(
+                self,
+                type_array: type[na.AbstractExplicitArray],
+                a: None | float | u.Quantity | na.AbstractScalar,
+                like: None | na.AbstractArray
+        ):
+            if isinstance(a, na.AbstractArray):
+                if not isinstance(a, na.AbstractScalarArray):
+                    with pytest.raises(TypeError):
+                        type_array.from_scalar_array(a=a, like=like)
+                    return
 
-    def test_zeros(self, shape: dict[str, int], dtype: Type):
-        result = self.type_array.zeros(shape, dtype=dtype)
-        assert result.shape == shape
-        assert np.all(result == 0)
-        assert result.dtype == dtype
+                super().test_from_scalar_array(
+                    type_array=type_array,
+                    a=a,
+                    like=like,
+                )
 
-    def test_ones(self, shape: dict[str, int], dtype: Type):
-        result = self.type_array.ones(shape, dtype=dtype)
-        assert result.shape == shape
-        assert np.all(result == 1)
-        assert result.dtype == dtype
+    @pytest.mark.parametrize('shape', [dict(x=3), dict(x=4, y=5)])
+    @pytest.mark.parametrize('dtype', [int, float, complex])
+    class TestNumpyArrayCreationFunctions:
+
+        def test_empty(
+                self,
+                type_array: type[na.AbstractArray],
+                shape: dict[str, int],
+                dtype: None | type | np.dtype | str,
+        ):
+            result = type_array.empty(shape, dtype=dtype)
+            assert result.shape == shape
+            assert result.dtype == dtype
+
+        def test_zeros(
+                self,
+                type_array: type[na.AbstractArray],
+                shape: dict[str, int],
+                dtype: None | type | np.dtype | str
+        ):
+            result = type_array.zeros(shape, dtype=dtype)
+            assert result.shape == shape
+            assert np.all(result == 0)
+            assert result.dtype == dtype
+
+        def test_ones(
+                self,
+                type_array: type[na.AbstractArray],
+                shape: dict[str, int],
+                dtype: None | type | np.dtype | str
+        ):
+            result = type_array.ones(shape, dtype=dtype)
+            assert result.shape == shape
+            assert np.all(result == 1)
+            assert result.dtype == dtype
 
 
 class AbstractTestAbstractImplicitScalarArray(
