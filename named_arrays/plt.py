@@ -83,7 +83,9 @@ def plot(
     Parameters
     ----------
     args
-        either ``x, y`` or ``y``, same as :meth:`matplotlib.axes.Axes.plot`
+        Same signature as :meth:`matplotlib.axes.Axes.plot`.
+        If ``ax`` is a 2D plot, ``*args`` should be ``y`` or ``x, y``.
+        If ``ax`` is a 3D plot, ``*args`` should be ``x, y`` or ``x, y, z``.
     ax
         The instances of :class:`matplotlib.axes.Axes` to use.
         If :obj:`None`, calls :func:`matplotlib.pyplot.gca` to get the current axes.
