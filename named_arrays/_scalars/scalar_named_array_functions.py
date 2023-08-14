@@ -39,6 +39,52 @@ def _implements(function: Callable):
     return decorator
 
 
+def asarray_like(
+        func: Callable,
+        a: None | float | u.Quantity | na.AbstractScalarArray,
+        dtype: None | type | np.dtype = None,
+        order: None | str = None,
+        *,
+        like: None | na.AbstractScalarArray = None,
+) -> None | na.ScalarArray:
+
+    func_numpy = getattr(np, func.__name__)
+
+    if isinstance(a, na.AbstractArray):
+        if isinstance(a, na.AbstractScalarArray):
+            a_ndarray = a.ndarray
+            a_axes = a.axes
+        else:
+            return NotImplemented
+    else:
+        a_ndarray = a
+        a_axes = None
+
+    if isinstance(like, na.AbstractArray):
+        if isinstance(like, na.AbstractScalarArray):
+            like_ndarray = like.ndarray
+            type_like = like.type_explicit
+        else:
+            return NotImplemented
+    else:
+        like_ndarray = like
+        type_like = na.ScalarArray
+
+    if isinstance(like_ndarray, u.Quantity):
+        like_ndarray = like_ndarray.value
+    like_ndarray = func_numpy(like_ndarray)
+
+    return type_like(
+        ndarray=func_numpy(
+            a=a_ndarray,
+            dtype=dtype,
+            order=order,
+            like=like_ndarray,
+        ),
+        axes=a_axes,
+    )
+
+
 @_implements(na.arange)
 def arange(
         start: float | complex | u.Quantity | na.AbstractArray,
