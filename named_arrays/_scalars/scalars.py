@@ -520,6 +520,9 @@ class AbstractScalarArray(
 
         from . import scalar_named_array_functions
 
+        if func in scalar_named_array_functions.ASARRAY_LIKE_FUNCTIONS:
+            return scalar_named_array_functions.asarray_like(func=func, *args, **kwargs)
+
         if func in scalar_named_array_functions.RANDOM_FUNCTIONS:
             return scalar_named_array_functions.random(func=func, *args, **kwargs)
 

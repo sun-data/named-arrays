@@ -407,6 +407,9 @@ class AbstractVectorArray(
 
         from . import vector_named_array_functions
 
+        if func in vector_named_array_functions.ASARRAY_LIKE_FUNCTIONS:
+            return vector_named_array_functions.asarray_like(func=func, *args, **kwargs)
+
         if func in vector_named_array_functions.RANDOM_FUNCTIONS:
             return vector_named_array_functions.random(func=func, *args, **kwargs)
 

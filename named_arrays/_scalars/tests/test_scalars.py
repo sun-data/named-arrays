@@ -427,6 +427,38 @@ class AbstractTestAbstractScalarArray(
         AbstractTestAbstractScalar.TestArrayFunctions,
     ):
 
+        @pytest.mark.parametrize("array_2", _scalar_arrays_2())
+        class TestAsArrayLikeFunctions(
+            AbstractTestAbstractScalar.TestArrayFunctions.TestAsArrayLikeFunctions,
+        ):
+
+            def test_asarray_like_functions(
+                    self,
+                    func: Callable,
+                    array: None | float | u.Quantity | na.AbstractArray,
+                    array_2: None | float | u.Quantity | na.AbstractArray,
+            ):
+                a = array
+                like = array_2
+
+                if a is None:
+                    assert func(a, like=like) is None
+                    return
+
+                result = func(a, like=like)
+
+                assert isinstance(result, na.ScalarArray)
+                assert isinstance(result.ndarray, np.ndarray)
+
+                assert np.all(result.value == na.value(a))
+
+                super().test_asarray_like_functions(
+                    func=func,
+                    array=array,
+                    array_2=array_2,
+                )
+
+
         @pytest.mark.parametrize(
             argnames='where',
             argvalues=[
