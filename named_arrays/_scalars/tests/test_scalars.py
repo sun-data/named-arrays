@@ -153,7 +153,7 @@ class AbstractTestAbstractScalarArray(
     def test_ndarray(self, array: na.AbstractScalarArray):
         assert isinstance(array.ndarray, (int, float, complex, str, np.ndarray))
 
-    def test_axes(self, array: na.AbstractArray):
+    def test_axes(self, array: na.AbstractScalarArray):
         super().test_axes(array)
         assert len(array.axes) == np.ndim(array.ndarray)
 
