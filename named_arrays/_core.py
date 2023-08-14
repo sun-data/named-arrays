@@ -208,7 +208,7 @@ def broadcast_shapes(*shapes: dict[str, int]) -> dict[str, int]:
     return result
 
 
-def shape_broadcasted(*arrays: AbstractArray) -> dict[str, int]:
+def shape_broadcasted(*arrays: Any) -> dict[str, int]:
     shapes = [np.shape(array) for array in arrays if isinstance(array, AbstractArray)]
     return broadcast_shapes(*shapes)
 
