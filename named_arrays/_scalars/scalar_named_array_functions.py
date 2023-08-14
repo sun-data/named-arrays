@@ -9,12 +9,17 @@ import named_arrays as na
 from . import scalars
 
 __all__ = [
+    "ASARRAY_LIKE_FUNCTIONS",
     "RANDOM_FUNCTIONS",
     "PLT_PLOT_LIKE_FUNCTIONS",
     "HANDLED_FUNCTIONS",
     "random",
 ]
 
+ASARRAY_LIKE_FUNCTIONS = (
+    na.asarray,
+    na.asanyarray,
+)
 RANDOM_FUNCTIONS = (
     na.random.uniform,
     na.random.normal,

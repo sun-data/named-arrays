@@ -192,6 +192,43 @@ class AbstractTestAbstractVectorArray(
     class TestArrayFunctions(
         named_arrays.tests.test_core.AbstractTestAbstractArray.TestArrayFunctions,
     ):
+        class TestAsArrayLikeFunctions(
+            named_arrays.tests.test_core.AbstractTestAbstractArray.TestArrayFunctions.TestAsArrayLikeFunctions,
+        ):
+            def test_asarray_like_functions(
+                    self,
+                    func: Callable,
+                    array: None | float | u.Quantity | na.AbstractArray,
+                    array_2: None | float | u.Quantity | na.AbstractArray,
+            ):
+                a = array
+                like = array_2
+
+                if a is None:
+                    assert func(a, like=like) is None
+                    return
+
+                if isinstance(a, na.AbstractVectorArray):
+                    if isinstance(like, na.AbstractVectorArray):
+                        if a.type_explicit != like.type_explicit:
+                            with pytest.raises(
+                                    expected_exception=TypeError,
+                                    match="all types returned .*",
+                            ):
+                                func(a, like=like)
+                            return
+
+                result = func(a, like=like)
+
+                assert isinstance(result, na.AbstractExplicitVectorArray)
+                for c in result.components:
+                    assert isinstance(result.components[c], (na.AbstractScalar, na.AbstractVectorArray))
+
+                super().test_asarray_like_functions(
+                    func=func,
+                    array=array,
+                    array_2=array_2,
+                )
 
         class TestReductionFunctions(
             named_arrays.tests.test_core.AbstractTestAbstractArray.TestArrayFunctions.TestReductionFunctions,

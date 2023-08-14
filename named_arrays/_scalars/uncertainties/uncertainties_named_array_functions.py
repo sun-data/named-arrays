@@ -1,4 +1,5 @@
 from typing import Callable
+import numpy as np
 import numpy.typing as npt
 import matplotlib.axes
 import matplotlib.artist
@@ -9,12 +10,14 @@ import named_arrays._scalars.scalar_named_array_functions
 from . import uncertainties
 
 __all__ = [
+    "ASARRAY_LIKE_FUNCTIONS",
     "RANDOM_FUNCTIONS",
     "PLT_PLOT_LIKE_FUNCTIONS",
     "HANDLED_FUNCTIONS",
     "random",
 ]
 
+ASARRAY_LIKE_FUNCTIONS = named_arrays._scalars.scalar_named_array_functions.ASARRAY_LIKE_FUNCTIONS
 RANDOM_FUNCTIONS = named_arrays._scalars.scalar_named_array_functions.RANDOM_FUNCTIONS
 PLT_PLOT_LIKE_FUNCTIONS = named_arrays._scalars.scalar_named_array_functions.PLT_PLOT_LIKE_FUNCTIONS
 HANDLED_FUNCTIONS = dict()
@@ -26,6 +29,56 @@ def _implements(function: Callable):
         HANDLED_FUNCTIONS[function] = func
         return func
     return decorator
+
+
+def asarray_like(
+        func: Callable,
+        a: None | float | u.Quantity | na.AbstractScalarArray | na.AbstractUncertainScalarArray,
+        dtype: None | type | np.dtype = None,
+        order: None | str = None,
+        *,
+        like: None | na.AbstractUncertainScalarArray = None,
+) -> None | na.UncertainScalarArray:
+
+    if isinstance(a, na.AbstractArray):
+        if isinstance(a, na.AbstractUncertainScalarArray):
+            a_nominal = a.nominal
+            a_distribution = a.distribution
+        elif isinstance(a, na.AbstractScalarArray):
+            a_nominal = a_distribution = a
+        else:
+            return NotImplemented
+    else:
+        a_nominal = a_distribution = a
+
+    if isinstance(like, na.AbstractArray):
+        if isinstance(like, na.AbstractUncertainScalarArray):
+            like_nominal = like.nominal
+            like_distribution = like.distribution
+            type_like = like.type_explicit
+        elif isinstance(like, na.AbstractScalarArray):
+            like_nominal = like_distribution = like
+            type_like = na.UncertainScalarArray
+        else:
+            return NotImplemented
+    else:
+        like_nominal = like_distribution = like
+        type_like = na.UncertainScalarArray
+
+    return type_like(
+        nominal=func(
+            a=a_nominal,
+            dtype=dtype,
+            order=order,
+            like=like_nominal,
+        ),
+        distribution=func(
+            a=a_distribution,
+            dtype=dtype,
+            order=order,
+            like=like_distribution,
+        ),
+    )
 
 
 def random(

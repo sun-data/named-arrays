@@ -456,6 +456,36 @@ class AbstractTestAbstractArray(
         @pytest.mark.parametrize(
             argnames="func",
             argvalues=[
+                na.asarray,
+                na.asanyarray,
+            ]
+        )
+        class TestAsArrayLikeFunctions(abc.ABC):
+
+            @abc.abstractmethod
+            def test_asarray_like_functions(
+                    self,
+                    func: Callable,
+                    array: None | float | u.Quantity | na.AbstractArray,
+                    array_2: None | float | u.Quantity | na.AbstractArray,
+            ):
+                pass
+
+            def test_asarray_like_functions_reversed(
+                    self,
+                    func: Callable,
+                    array: None | float | u.Quantity | na.AbstractArray,
+                    array_2: None | float | u.Quantity | na.AbstractArray,
+            ):
+                self.test_asarray_like_functions(
+                    func=func,
+                    array=array_2,
+                    array_2=array,
+                )
+
+        @pytest.mark.parametrize(
+            argnames="func",
+            argvalues=[
                 np.empty_like,
                 np.zeros_like,
                 np.ones_like,

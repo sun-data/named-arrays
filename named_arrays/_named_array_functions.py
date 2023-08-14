@@ -7,6 +7,8 @@ import named_arrays as na
 
 __all__ = [
     '_named_array_function',
+    'asarray',
+    'asanyarray',
     'arange',
     'linspace',
     'logspace',
@@ -19,6 +21,8 @@ __all__ = [
     'add_axes',
 ]
 
+ArrayT = TypeVar("ArrayT")
+LikeT = TypeVar("LikeT", bound="None | na.AbstractArray")
 AxisT = TypeVar("AxisT", bound="str | na.AbstractArray")
 NumT = TypeVar("NumT", bound="int | na.AbstractArray")
 BaseT = TypeVar("BaseT", bound="int | na.AbstractArray")
@@ -48,6 +52,207 @@ def _named_array_function(func: Callable, *args, **kwargs):
             return res
 
     raise TypeError("all types returned `NotImplemented`")
+
+
+def _asarray_like(
+        func: Callable,
+        a: ArrayT,
+        dtype: None | type | np.dtype | str = None,
+        order: None | str = None,
+        *,
+        like: None | LikeT = None,
+) -> ArrayT | LikeT:
+
+    if a is None:
+        return None
+
+    if like is None:
+        like = na.ScalarArray(None)
+    elif not na.named_array_like(like):
+        like = func(like)
+
+    return _named_array_function(
+        func=func,
+        a=a,
+        dtype=dtype,
+        order=order,
+        like=like,
+    )
+
+
+@overload
+def asanyarray(
+        a: ArrayT,
+        dtype: None | type | np.dtype | str = ...,
+        order: None | str = ...,
+        *,
+        like: None = ...
+) -> ArrayT:
+    ...
+
+
+@overload
+def asanyarray(
+        a: ArrayT,
+        dtype: None | type | np.dtype | str = ...,
+        order: None | str = ...,
+        *,
+        like: LikeT = ...
+) -> LikeT:
+    ...
+
+
+def asarray(
+        a: ArrayT,
+        dtype: None | type | np.dtype | str = None,
+        order: None | str = None,
+        *,
+        like: None | LikeT = None,
+) -> ArrayT | LikeT:
+    """
+    Converts the input to use only instances of :class:`numpy.ndarray` as the underlying data.
+
+    This function does not convert an instance of :class:`named_arrays.AbstractArray` to an instance of
+    :class:`numpy.ndarray` like you might expect from the documentation of :func:`numpy.asarray`.
+    Instead, it recursively inspects the input, converting instances of :class:`named_arrays.AbstractImplicitArray`
+    to `named_arrays.AbstractExplicitArray`, and calling :func:`numpy.asarray` on the underlying data.
+
+    Parameters
+    ----------
+    a
+        Input array to be converted
+    dtype
+        Data type of output, usually inferred from the input.
+    order
+        Memory layout. See the documentation of :func:`numpy.asarray` for more information.
+    like
+        Optional reference object.
+        If provided, the result will be defined by this object.
+
+    Returns
+    -------
+    out
+        Standardized interpretation of ``a``, with all the underlying data expressed as instances of
+        :class:`numpy.ndarray`.
+
+    Examples
+    --------
+
+    Standardize a :class:`float`
+
+    .. jupyter-execute::
+
+        import named_arrays as na
+
+        na.asarray(2)
+
+    Standardize a :class:`named_arrays.ScalarArray` of :class:`float`
+
+    .. jupyter-execute::
+
+        na.asarray(na.ScalarArray(2))
+
+    Standardize a :class:`named_arrays.Cartesian2dVectorArray` of :class:`float`
+
+    .. jupyter-execute::
+
+        na.asarray(na.Cartesian2dVectorArray(2, 3))
+
+    See Also
+    --------
+    :func:`numpy.asarray` : Equivalent Numpy function
+    :func:`named_arrays.asanyarray` : Similar to this function, but allows `numpy.ndarray` subclasses to pass through.
+    """
+    return _asarray_like(
+        func=asarray,
+        a=a,
+        dtype=dtype,
+        order=order,
+        like=like,
+    )
+
+
+@overload
+def asanyarray(
+        a: ArrayT,
+        dtype: None | type | np.dtype | str = ...,
+        order: None | str = ...,
+        *,
+        like: None = ...
+) -> ArrayT:
+    ...
+
+
+@overload
+def asanyarray(
+        a: ArrayT,
+        dtype: None | type | np.dtype | str = ...,
+        order: None | str = ...,
+        *,
+        like: LikeT = ...
+) -> LikeT:
+    ...
+
+
+def asanyarray(
+        a: ArrayT,
+        dtype: None | type | np.dtype | str = None,
+        order: None | str = None,
+        *,
+        like: None | LikeT = None,
+) -> ArrayT | LikeT:
+    """
+    Converts the input to use only instances of :class:`numpy.ndarray` subclasses as the underlying data.
+
+    This function does not convert an instance of :class:`named_arrays.AbstractArray` to an instance of a
+    :class:`numpy.ndarray` subclass like you might expect from the documentation of :func:`numpy.asanyarray`.
+    Instead, it recursively inspects the input, converting instances of :class:`named_arrays.AbstractImplicitArray`
+    to `named_arrays.AbstractExplicitArray`, and calling :func:`numpy.asanyarray` on the underlying data.
+
+    Parameters
+    ----------
+    a
+        Input array to be converted
+    dtype
+        Data type of output, usually inferred from the input.
+    order
+        Memory layout. See the documentation of :func:`numpy.asanyarray` for more information.
+    like
+        Optional reference object.
+        If provided, the result will be defined by this object.
+
+    Returns
+    -------
+    out
+        Standardized interpretation of ``a``, with all the underlying data expressed as instances of
+        :class:`numpy.ndarray` subclasses.
+
+    Examples
+    --------
+
+    Standardize an instance of :class:`astropy.units.Quantity`
+
+    .. jupyter-execute::
+
+        import astropy.units as u
+        import named_arrays as na
+
+        na.asanyarray(2 * u.mm)
+
+    See Also
+    --------
+    :func:`numpy.asanyarray` : Equivalent Numpy function
+    :func:`named_arrays.asarray`: Similar to this function but converts instances of :class:`numpy.ndarray` subclasses
+        back to instances of :class:`numpy.ndarray`.
+    """
+
+    return _asarray_like(
+        func=asanyarray,
+        a=a,
+        dtype=dtype,
+        order=order,
+        like=like,
+    )
 
 
 def arange(

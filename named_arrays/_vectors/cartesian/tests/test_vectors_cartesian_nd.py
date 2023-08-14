@@ -143,6 +143,12 @@ class AbstractTestAbstractCartesianNdVectorArray(
     class TestArrayFunctions(
         test_vectors_cartesian.AbstractTestAbstractCartesianVectorArray.TestArrayFunctions
     ):
+        @pytest.mark.parametrize("array_2", _cartesian_nd_arrays_2())
+        class TestAsArrayLikeFunctions(
+            test_vectors_cartesian.AbstractTestAbstractCartesianVectorArray.TestArrayFunctions.TestAsArrayLikeFunctions,
+        ):
+            pass
+
         @pytest.mark.parametrize(
             argnames='where',
             argvalues=[

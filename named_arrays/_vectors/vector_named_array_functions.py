@@ -1,15 +1,18 @@
 from typing import Callable
+import numpy as np
 import astropy.units as u
 import named_arrays as na
 import named_arrays._scalars.scalar_named_array_functions
 from . import vectors
 
 __all__ = [
+    "ASARRAY_LIKE_FUNCTIONS",
     "RANDOM_FUNCTIONS",
     "HANDLED_FUNCTIONS",
     "random"
 ]
 
+ASARRAY_LIKE_FUNCTIONS = named_arrays._scalars.scalar_named_array_functions.ASARRAY_LIKE_FUNCTIONS
 RANDOM_FUNCTIONS = named_arrays._scalars.scalar_named_array_functions.RANDOM_FUNCTIONS
 HANDLED_FUNCTIONS = dict()
 
@@ -20,6 +23,62 @@ def _implements(function: Callable):
         HANDLED_FUNCTIONS[function] = func
         return func
     return decorator
+
+
+def asarray_like(
+        func: Callable,
+        a: float | u.Quantity | na.AbstractScalar | na.AbstractVectorArray,
+        dtype: None | type | np.dtype = None,
+        order: None | str = None,
+        *,
+        like: None | na.AbstractVectorArray = None,
+) -> None | na.AbstractVectorArray:
+
+    if isinstance(a, na.AbstractArray):
+        if isinstance(a, na.AbstractVectorArray):
+            if isinstance(like, na.AbstractArray):
+                if isinstance(like, na.AbstractVectorArray):
+                    if a.type_explicit == like.type_explicit:
+                        components_a = a.components
+                        components_like = like.components
+                        type_like = like.type_explicit
+                    else:
+                        return NotImplemented
+                elif isinstance(like, na.AbstractScalar):
+                    components_a = a.components
+                    components_like = {c: like for c in components_a}
+                    type_like = a.type_explicit
+                else:
+                    return NotImplemented
+            else:
+                components_a = a.components
+                components_like = {c: like for c in components_a}
+                type_like = a.type_explicit
+        elif isinstance(a, na.AbstractScalar):
+            if isinstance(like, na.AbstractVectorArray):
+                components_like = like.components
+                components_a = {c: a for c in components_like}
+                type_like = like.type_explicit
+            else:
+                return NotImplemented
+        else:
+            return NotImplemented
+    else:
+        if isinstance(like, na.AbstractVectorArray):
+            components_like = like.components
+            components_a = {c: a for c in components_like}
+            type_like = like.type_explicit
+        else:
+            return NotImplemented
+
+    return type_like.from_components({
+        c: func(
+            a=components_a[c],
+            dtype=dtype,
+            order=order,
+            like=components_like[c],
+        ) for c in components_like
+    })
 
 
 @_implements(na.arange)

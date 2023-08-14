@@ -399,6 +399,18 @@ class AbstractFunctionArray(
 
         return NotImplemented
 
+    def __named_array_function__(self, func, *args, **kwargs):
+        result = super().__named_array_function__(func, *args, **kwargs)
+        if result is not NotImplemented:
+            return result
+
+        from . import function_named_array_functions
+
+        if func in function_named_array_functions.ASARRAY_LIKE_FUNCTIONS:
+            return function_named_array_functions.asarray_like(func=func, *args, **kwargs)
+
+        return NotImplemented
+
     def pcolormesh(
             self,
             axs: np.ndarray,
