@@ -81,7 +81,7 @@ def _asarray_like(
 
 
 @overload
-def asanyarray(
+def asarray(
         a: ArrayT,
         dtype: None | type | np.dtype | str = ...,
         order: None | str = ...,
@@ -92,7 +92,7 @@ def asanyarray(
 
 
 @overload
-def asanyarray(
+def asarray(
         a: ArrayT,
         dtype: None | type | np.dtype | str = ...,
         order: None | str = ...,
