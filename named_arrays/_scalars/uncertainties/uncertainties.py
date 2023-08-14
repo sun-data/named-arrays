@@ -584,8 +584,7 @@ class UncertainScalarArray(
                 )
 
             if isinstance(item, na.AbstractUncertainScalarArray):
-                item_nominal = item.nominal
-                item_distribution = item.distribution
+                item_nominal = item_distribution = item.nominal & np.all(item.distribution, axis=self.axis_distribution)
             elif isinstance(item, na.AbstractScalarArray):
                 item_nominal = item_distribution = item
             else:
