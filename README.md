@@ -13,7 +13,7 @@ This is not necessary when using a named tensor implementation such as `xarray` 
 ## Installation
 `named_arrays` is available on PyPi and can be installed using pip
 ```bash
-pip install named_arrays
+pip install named-arrays
 ```
 
 ## Examples
@@ -96,13 +96,7 @@ d
 
 
 
-    ScalarLinearSpace(
-        start=0,
-        stop=1,
-        axis='z',
-        num=4,
-        endpoint=True,
-    )
+    ScalarLinearSpace(start=0, stop=1, axis='z', num=4, endpoint=True)
 
 
 
