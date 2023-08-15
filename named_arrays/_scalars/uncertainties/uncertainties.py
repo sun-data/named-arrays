@@ -58,7 +58,7 @@ def _normalize(a: float | u.Quantity | na.AbstractScalar):
             else:
                 result = na.UncertainScalarArray(a, a)
         else:
-            return UncertainScalarTypeError
+            raise UncertainScalarTypeError
     else:
         result = na.UncertainScalarArray(a, a)
 
