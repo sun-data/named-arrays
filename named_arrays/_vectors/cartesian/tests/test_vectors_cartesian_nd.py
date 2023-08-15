@@ -186,6 +186,15 @@ class AbstractTestAbstractCartesianNdVectorArray(
         ):
             pass
 
+    class TestNamedArrayFunctions(
+        test_vectors_cartesian.AbstractTestAbstractCartesianVectorArray.TestNamedArrayFunctions,
+    ):
+        @pytest.mark.xfail(raises=TypeError)
+        class TestPltPlotLikeFunctions(
+            test_vectors_cartesian.AbstractTestAbstractCartesianVectorArray.TestNamedArrayFunctions.TestPltPlotLikeFunctions,
+        ):
+            pass
+
 
 @pytest.mark.parametrize('array', _cartesian_nd_arrays())
 class TestCartesianNdVectorArray(

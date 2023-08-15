@@ -58,6 +58,18 @@ class AbstractCartesian2dVectorArray(
     def type_matrix(self) -> Type[na.Cartesian2dMatrixArray]:
         return na.Cartesian2dMatrixArray
 
+    def __named_array_function__(self, func, *args, **kwargs):
+        result = super().__named_array_function__(func, *args, **kwargs)
+        if result is not NotImplemented:
+            return result
+
+        from . import vector_cartesian_2d_named_array_functions
+
+        if func in vector_cartesian_2d_named_array_functions.PLT_PLOT_LIKE_FUNCTIONS:
+            return vector_cartesian_2d_named_array_functions.plt_plot_like(func, *args, **kwargs)
+
+        return NotImplemented
+
 
 @dataclasses.dataclass(eq=False, repr=False)
 class Cartesian2dVectorArray(

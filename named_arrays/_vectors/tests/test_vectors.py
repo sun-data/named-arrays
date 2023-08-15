@@ -2,6 +2,7 @@ from typing import Type, Callable, Sequence
 import pytest
 import abc
 import numpy as np
+import matplotlib.axes
 import astropy.units as u
 import named_arrays as na
 
@@ -24,6 +25,7 @@ __all__ = [
     'AbstractTestAbstractVectorGeometricSpace',
 ]
 
+_num_x = named_arrays.tests.test_core.num_x
 
 class AbstractTestAbstractVectorArray(
     named_arrays.tests.test_core.AbstractTestAbstractArray,
@@ -487,11 +489,68 @@ class AbstractTestAbstractVectorArray(
         named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions
     ):
 
-        @pytest.mark.xfail
+        @pytest.mark.parametrize("array_2", [None])
+        @pytest.mark.parametrize(
+            argnames="where",
+            argvalues=[
+                np._NoValue,
+                True,
+                na.linspace(0, 1, axis="x", num=_num_x) > 0.5,
+            ]
+        )
+        @pytest.mark.parametrize(
+            argnames="alpha",
+            argvalues=[
+                np._NoValue,
+                na.linspace(0, 1, axis="x", num=_num_x),
+            ]
+        )
         class TestPltPlotLikeFunctions(
             named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestPltPlotLikeFunctions
         ):
-            pass
+            def test_plt_plot_like(
+                    self,
+                    func: Callable,
+                    array: na.AbstractVectorArray,
+                    array_2: None,
+                    ax: None | matplotlib.axes.Axes,
+                    axis: None | str,
+                    where: bool | na.AbstractScalar,
+                    alpha: None | str | na.AbstractScalar,
+            ):
+
+                args = array,
+
+                kwargs = dict()
+                if ax is not np._NoValue:
+                    kwargs["ax"] = ax
+                if axis is not np._NoValue:
+                    kwargs["axis"] = axis
+                if where is not np._NoValue:
+                    kwargs["where"] = where
+                if alpha is not np._NoValue:
+                    kwargs["alpha"] = alpha
+
+                for c in array.components:
+                    if not isinstance(na.as_named_array(array.components[c]), na.AbstractScalar):
+                        with pytest.raises(
+                            expected_exception=TypeError,
+                            match="all types returned .*"
+                        ):
+                            func(*args, **kwargs)
+                        return
+
+                return super().test_plt_plot_like(
+                    func=func,
+                    array=array,
+                    array_2=array_2,
+                    ax=ax,
+                    axis=axis,
+                    where=where,
+                    alpha=alpha,
+                )
+
+
 
 
 class AbstractTestAbstractExplicitVectorArray(

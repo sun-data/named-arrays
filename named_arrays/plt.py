@@ -151,6 +151,15 @@ def plot(
 
         na.plt.plot(x, y, ax=ax, axis="x");
 
+    Plot a 2D Cartesian vector
+
+    .. jupyter-execute::
+
+        v = na.Cartesian2dVectorArray(x, y)
+
+        plt.figure()
+        na.plt.plot(v)
+
     """
     return na._named_array_function(
         plot,
