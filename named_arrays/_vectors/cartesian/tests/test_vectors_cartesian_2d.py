@@ -19,9 +19,6 @@ __all__ = [
     'TestCartesian2dVectorArrayRange',
     'AbstractTestAbstractCartesian2dVectorSpace',
     'TestCartesian2dVectorLinearSpace',
-    'TestCartesian2dVectorStratifiedRandomSpace',
-    'TestCartesian2dVectorLogarithmicSpace',
-    'TestCartesian2dVectorGeometricSpace',
 ]
 
 _num_x = named_arrays.tests.test_core.num_x
