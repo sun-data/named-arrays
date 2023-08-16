@@ -56,7 +56,7 @@ class AbstractTestAbstractVectorArray(
         assert isinstance(components, dict)
         for component in components:
             assert isinstance(component, str)
-            assert isinstance(components[component], (int, float, complex, np.ndarray, na.AbstractArray))
+            assert isinstance(components[component], (int, float, complex, np.generic, np.ndarray, na.AbstractArray))
 
     def test_axes(self, array: na.AbstractVectorArray):
         super().test_axes(array)
@@ -87,15 +87,16 @@ class AbstractTestAbstractVectorArray(
     def test_length(self, array: na.AbstractVectorArray):
         super().test_length(array=array)
         entries = array.cartesian_nd.entries
-        entries_iter = iter(entries)
-        entry_0 = entries[next(entries_iter)]
-        if all(na.unit_normalized(entry_0).is_equivalent(na.unit_normalized(entries[e])) for e in entries_iter):
-            length = array.length
-            assert isinstance(length, (int, float, np.ndarray, na.AbstractScalar))
-            assert np.all(length >= 0)
-        else:
+        try:
+            sum(entries.values())
+        except u.UnitConversionError:
             with pytest.raises(u.UnitConversionError):
                 array.length
+            return
+
+        length = array.length
+        assert isinstance(length, (int, float, np.ndarray, na.AbstractScalar))
+        assert np.all(length >= 0)
 
     def test__getitem__(
             self,

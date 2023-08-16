@@ -65,8 +65,11 @@ class Cartesian3dVectorArray(
     def from_scalar(
             cls: Type[Self],
             scalar: na.AbstractScalar,
+            like: None | na.AbstractExplicitVectorArray = None,
     ) -> Cartesian3dVectorArray:
-        return cls(x=scalar, y=scalar, z=scalar)
+        result = super().from_scalar(scalar, like=like)
+        result.z = scalar
+        return result
 
 
 @dataclasses.dataclass(eq=False, repr=False)
