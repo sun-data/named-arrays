@@ -193,14 +193,6 @@ class AbstractTestAbstractCartesian2dVectorArray(
         ):
             pass
 
-    class TestNamedArrayFunctions(
-        test_vectors_cartesian.AbstractTestAbstractCartesianVectorArray.TestNamedArrayFunctions,
-    ):
-        class TestPltPlotLikeFunctions(
-            test_vectors_cartesian.AbstractTestAbstractCartesianVectorArray.TestNamedArrayFunctions.TestPltPlotLikeFunctions,
-        ):
-            pass
-
 
 @pytest.mark.parametrize('array', _cartesian2d_arrays())
 class TestCartesian2dVectorArray(
