@@ -307,7 +307,8 @@ class AbstractVectorArray(
         result = super().__bool__()
         components = self.components
         for c in components:
-            result = result and bool(components[c])
+            component = bool(components[c])
+            result = result and component
         return result
 
     def __array_matmul__(
