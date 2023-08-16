@@ -155,7 +155,7 @@ def plot(
 
     .. jupyter-execute::
 
-        v = na.Cartesian2dVectorArray(x, y)
+        v = na.Cartesian2dVectorArray(x, np.sin(x))
 
         plt.figure()
         na.plt.plot(v)
