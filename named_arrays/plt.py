@@ -8,6 +8,7 @@ import named_arrays as na
 __all__ = [
     "subplots",
     "plot",
+    "fill",
 ]
 
 
@@ -163,6 +164,52 @@ def plot(
     """
     return na._named_array_function(
         plot,
+        *args,
+        ax=ax,
+        axis=axis,
+        where=where,
+        **kwargs,
+    )
+
+
+def fill(
+        *args: na.AbstractArray,
+        ax: None | matplotlib.axes.Axes | na.ScalarArray[npt.NDArray] = None,
+        axis: None | str = None,
+        where: bool | na.AbstractScalar = True,
+        **kwargs,
+) -> na.ScalarArray[npt.NDArray]:
+    """
+    Plot filled polygons
+
+    This is a thin wrapper around :meth:`matplotlib.axes.Axes.fill` for named arrays.
+
+    The main difference of this function from :func:`matplotlib.pyplot.fill` is the addition of the ``axis`` parameter
+    indicating along which axis the lines should be connected.
+
+    Parameters
+    ----------
+    args
+        Same signature as :meth:`matplotlib.axes.Axes.fill`.
+        If ``ax`` is a 2D plot, ``*args`` should be ``x, y``.
+        If ``ax`` is a 3D plot, ``*args`` should be ``x, y, z``.
+    ax
+        The instances of :class:`matplotlib.axes.Axes` to use.
+        If :obj:`None`, calls :func:`matplotlib.pyplot.gca` to get the current axes.
+        If an instance of :class:`named_arrays.ScalarArray`, ``ax.shape`` should be a subset of the broadcasted shape of
+        ``*args``.
+    axis
+        The name of the axis that the plot lines should be connected along.
+        If :obj:`None`, the broadcasted shape of ``args`` should have only one element,
+        otherwise a :class:`ValueError` is raised.
+    where
+        A boolean array that selects which elements to plot
+    kwargs
+        Additional keyword arguments passed to :meth:`matplotlib.axes.Axes.fill`.
+        These can be instances of :class:`named_arrays.AbstractArray`.
+    """
+    return na._named_array_function(
+        fill,
         *args,
         ax=ax,
         axis=axis,

@@ -27,6 +27,7 @@ RANDOM_FUNCTIONS = (
 )
 PLT_PLOT_LIKE_FUNCTIONS = (
     na.plt.plot,
+    na.plt.fill,
 )
 HANDLED_FUNCTIONS = dict()
 

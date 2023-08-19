@@ -8,6 +8,7 @@ import matplotlib.axes
 import matplotlib.artist
 import matplotlib.pyplot as plt
 import astropy.units as u
+import astropy.visualization
 import named_arrays as na
 
 num_x = 3
@@ -1015,6 +1016,7 @@ class AbstractTestAbstractArray(
             argnames="func",
             argvalues=[
                 na.plt.plot,
+                na.plt.fill,
             ]
         )
         @pytest.mark.parametrize(
@@ -1100,7 +1102,8 @@ class AbstractTestAbstractArray(
                             func(*args, **kwargs)
                         return
 
-                result = func(*args, **kwargs)
+                with astropy.visualization.quantity_support():
+                    result = func(*args, **kwargs)
 
                 assert isinstance(result, na.AbstractArray)
                 assert result.dtype == matplotlib.artist.Artist
