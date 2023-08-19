@@ -140,7 +140,15 @@ def plt_plot_like(
 
     args = tuple(arg.broadcast_to(shape) for arg in args)
 
-    alpha = max(1 / args[~0].num_distribution, 1/255)
+    axis_distribution = args[0].axis_distribution
+    shape_distribution = na.broadcast_shapes(*[arg.shape_distribution for arg in args])
+
+    if axis_distribution in shape_distribution:
+        num_distribution = shape_distribution[axis_distribution]
+    else:
+        num_distribution = 1
+
+    alpha = max(1 / num_distribution, 1/255)
     if "alpha" in kwargs:
         kwargs["alpha"] *= alpha
     else:
