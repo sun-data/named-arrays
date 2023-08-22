@@ -51,7 +51,10 @@ def _named_array_function(func: Callable, *args, **kwargs):
         if res is not NotImplemented:
             return res
 
-    raise TypeError("all types returned `NotImplemented`")
+    raise TypeError(
+        f"all types, {[type(a).__qualname__ for a in arrays]}, returned `NotImplemented` "
+        f"for function `{func.__name__}`"
+    )
 
 
 def _asarray_like(
