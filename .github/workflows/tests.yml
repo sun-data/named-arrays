@@ -13,13 +13,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        array-type: ["tests", "_scalars", "_vectors", "_matrices", "_functions"]
         os: [
           ubuntu-latest,
           windows-latest,
           macOS-latest,
         ]
         python-version: ["3.10", ]
-    name: ${{ matrix.os }}, Python ${{ matrix.python-version }} lint and test
+    name: ${{ matrix.array-type }}, ${{ matrix.os }}, Python ${{ matrix.python-version }} lint and test
     steps:
       - uses: actions/checkout@v2
       - name: Set up Python ${{ matrix.python-version }}
@@ -35,7 +36,7 @@ jobs:
       - name: Test with pytest
         run: |
           pip install pytest pytest-cov
-          pytest --doctest-modules --junitxml=junit/test-results.xml --cov=. --cov-report=xml --cov-report=html
+          pytest -c pytest.ini --cov=. --cov-report=xml  named_arrays/${{ matrix.array-type }}
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
         with:
