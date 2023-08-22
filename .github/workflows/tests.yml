@@ -19,7 +19,8 @@ jobs:
           macOS-latest,
         ]
         python-version: ["3.10", ]
-    name: ${{ matrix.os }}, Python ${{ matrix.python-version }} lint and test
+        array-type: ["scalars", "vectors", "matrices", "functions"]
+    name: ${{ matrix.array-type }}, ${{ matrix.os }}, Python ${{ matrix.python-version }} lint and test
     steps:
       - uses: actions/checkout@v2
       - name: Set up Python ${{ matrix.python-version }}
@@ -35,7 +36,7 @@ jobs:
       - name: Test with pytest
         run: |
           pip install pytest pytest-cov
-          pytest --doctest-modules --junitxml=junit/test-results.xml --cov=. --cov-report=xml --cov-report=html
+          pytest -cov=. --cov-report=xml  _${{ matrix.array-type }}
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
         with:
