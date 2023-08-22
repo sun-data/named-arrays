@@ -50,6 +50,10 @@ class AbstractCartesian3dVectorArray(
     def type_matrix(self) -> Type[na.Cartesian3dMatrixArray]:
         return na.Cartesian3dMatrixArray
 
+    @property
+    def explicit(self) -> Cartesian3dVectorArray:
+        return super().explicit
+
 
 @dataclasses.dataclass(eq=False, repr=False)
 class Cartesian3dVectorArray(
