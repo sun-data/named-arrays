@@ -216,7 +216,7 @@ class AbstractTestAbstractVectorArray(
                         if a.type_explicit != like.type_explicit:
                             with pytest.raises(
                                     expected_exception=TypeError,
-                                    match="all types returned .*",
+                                    match="all types, .*, returned .* for function .*",
                             ):
                                 func(a, like=like)
                             return
@@ -536,7 +536,7 @@ class AbstractTestAbstractVectorArray(
                     if not isinstance(na.as_named_array(array.components[c]), na.AbstractScalar):
                         with pytest.raises(
                             expected_exception=TypeError,
-                            match="all types returned .*"
+                            match="all types, .*, returned .* for function .*"
                         ):
                             func(*args, **kwargs)
                         return
