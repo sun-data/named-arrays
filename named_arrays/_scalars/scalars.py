@@ -750,7 +750,7 @@ class ScalarArray(
     """
 
     ndarray: None | NDArrayT = 0
-    axes: None | tuple[str, ...] = None
+    axes: None | str | tuple[str, ...] = None
 
     def __post_init__(self: Self):
         if self.axes is None:
