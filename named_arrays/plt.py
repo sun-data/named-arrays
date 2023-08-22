@@ -1,5 +1,7 @@
 from __future__ import annotations
+from typing import Literal
 import matplotlib.axes
+import matplotlib.figure
 import matplotlib.artist
 import matplotlib.pyplot as plt
 import numpy.typing as npt
@@ -13,16 +15,19 @@ __all__ = [
 
 
 def subplots(
-        axis_rows: None | str = None,
+        axis_rows: str = "subplots_row",
         ncols: int = 1,
-        axis_cols: None | str = None,
+        axis_cols: str = "subplots_col",
         nrows: int = 1,
         *,
-        sharex: bool | str = False,
-        sharey: bool | str = False,
+        sharex: bool | Literal["none", "all", "row", "col"] = False,
+        sharey: bool | Literal["none", "all", "row", "col"] = False,
         squeeze: bool = True,
         **kwargs,
-) -> tuple[plt.Figure, na.ScalarArray[npt.NDArray[matplotlib.axes.Axes]]]:
+) -> tuple[
+    matplotlib.figure.Figure,
+    matplotlib.axes.Axes | na.ScalarArray[npt.NDArray],
+]:
     """
     A thin wrapper around :func:`matplotlib.pyplot.subplots()` which allows for
     providing axis names to the rows and columns.
@@ -31,7 +36,7 @@ def subplots(
     ----------
     axis_rows
         Name of the axis representing the rows in the subplot grid.
-        If :obj:`None`, the ``squeeze`` argument must be :class:`True`.
+        If :obj:`None`, the ``squeeze`` argument must be :obj:`True`.
     nrows
         Number of rows in the subplot grid
     axis_cols
@@ -53,8 +58,10 @@ def subplots(
         Additional keyword arguments passed to :func:`matplotlib.pyplot.subplots`
     """
 
-    axes = (axis_rows, axis_cols)
-    axes = tuple(axis for axis in axes if axis is not None)
+    shape = {axis_rows: nrows, axis_cols: ncols}
+
+    if squeeze:
+        shape = {axis: shape[axis] for axis in shape if shape[axis] != 1}
 
     fig, axs = plt.subplots(
         ncols=ncols,
@@ -65,7 +72,7 @@ def subplots(
         **kwargs,
     )
 
-    return fig, na.ScalarArray(axs, axes)
+    return fig, na.ScalarArray(axs, axes=tuple(shape.keys()))
 
 
 def plot(
