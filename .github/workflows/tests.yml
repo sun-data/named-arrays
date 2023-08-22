@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        array-type: ["scalars", "vectors", "matrices", "functions"]
+        array-type: ["tests", "_scalars", "_vectors", "_matrices", "_functions"]
         os: [
           ubuntu-latest,
           windows-latest,
@@ -36,7 +36,7 @@ jobs:
       - name: Test with pytest
         run: |
           pip install pytest pytest-cov
-          pytest -c pytest.ini --cov=. --cov-report=xml  named_arrays/_${{ matrix.array-type }}
+          pytest -c pytest.ini --cov=. --cov-report=xml  named_arrays/${{ matrix.array-type }}
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
         with:
