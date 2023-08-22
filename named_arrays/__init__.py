@@ -1,6 +1,7 @@
 from ._named_array_functions import *
 from . import random
 from . import plt
+from . import optimize
 from ._core import *
 from ._scalars.scalars import *
 from ._scalars.uncertainties.uncertainties import *

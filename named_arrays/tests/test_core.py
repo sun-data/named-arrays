@@ -1111,6 +1111,35 @@ class AbstractTestAbstractArray(
                 for index in ax_normalized.ndindex():
                     assert ax_normalized[index].ndarray.has_data()
 
+        class TestOptimizeRootSecant:
+
+            def test_optimize_root_secant(
+                    self,
+                    array: na.AbstractArray,
+                    coefficient_constant: float | u.Quantity | na.AbstractArray,
+                    coefficient_linear: float | u.Quantity | na.AbstractArray,
+                    coefficient_quadratic: float | u.Quantity | na.AbstractArray,
+            ):
+                a = coefficient_quadratic
+                b = coefficient_linear
+                c = coefficient_constant
+                root_1 = (-b + np.sqrt(np.square(b) - 4 * a * c)) / (2 * a)
+                root_2 = (-b - np.sqrt(np.square(b) - 4 * a * c)) / (2 * a)
+
+                def function(x: na.AbstractArray):
+                    u = na.value(x)
+                    return a * u ** 2 + b * u + c
+
+                result = na.optimize.root_secant(
+                    function=function,
+                    guess=array,
+                )
+
+                equal_1 = np.allclose(na.value(result), root_1)
+                equal_2 = np.allclose(na.value(result), root_2)
+
+                assert np.all(equal_1 | equal_2)
+
 
 class AbstractTestAbstractExplicitArray(
     AbstractTestAbstractArray,

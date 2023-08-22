@@ -245,3 +245,96 @@ def plt_plot_like(
             )[0]
 
     return result
+
+
+@_implements(na.optimize.root_secant)
+def optimize_root_secant(
+        function: Callable[[na.ScalarLike], na.ScalarLike],
+        guess: na.ScalarLike,
+        min_step_size: None | na.ScalarLike = None,
+        max_abs_error: None | na.ScalarLike = None,
+        max_iterations: int = 100,
+        damping: None | float = None,
+        callback: None | Callable[[int, na.ScalarLike, na.ScalarLike, na.ScalarLike], None] = None,
+) -> na.ScalarArray:
+
+    try:
+        guess = scalars._normalize(guess)
+
+        if min_step_size is None:
+            min_step_size = 1e-13
+            if guess.unit is not None:
+                min_step_size = min_step_size * guess.unit
+        min_step_size = scalars._normalize(min_step_size)
+
+        x0 = guess - 10 * min_step_size
+        x1 = guess
+
+        f0 = function(x0)
+        f0 = scalars._normalize(f0)
+
+        if max_abs_error is None:
+            max_abs_error = 1e-13
+            if f0.unit is not None:
+                max_abs_error = max_abs_error * f0.unit
+        max_abs_error = scalars._normalize(max_abs_error)
+
+    except scalars.ScalarTypeError:
+        return NotImplemented
+
+    if na.shape(max_abs_error):
+        raise ValueError(f"argument `max_abs_error` should have an empty shape, got {na.shape(max_abs_error)}")
+
+    shape = na.shape_broadcasted(f0, guess, min_step_size)
+
+    converged = na.broadcast_to(0 * na.value(f0), shape=shape).astype(bool)
+
+    x1 = na.broadcast_to(x1, shape).astype(float)
+
+    for i in range(max_iterations):
+
+
+        f1 = function(x1)
+
+        if callback is not None:
+            callback(i, x1, f1, converged)
+
+        if max_abs_error is not None:
+            converged |= np.abs(f1) < max_abs_error
+
+        dx = x1 - x0
+
+        converged |= np.abs(dx) < np.abs(min_step_size)
+
+        if np.all(converged):
+            return x1
+
+        active = ~converged
+
+        df = f1 - f0
+
+        if np.any(df == 0, where=active):
+            raise ValueError("stationary point detected")
+
+        dx_active = dx[active]
+        f0_active = f0[active]
+        f1_active = f1[active]
+
+        df_active = f1_active - f0_active
+        if np.any(df_active == 0):
+            raise ValueError("stationary point detected")
+
+        jacobian = df_active / dx_active
+
+        correction = f1_active / jacobian
+        if damping is not None:
+            correction = damping * correction
+
+        x2 = x1.copy()
+        x2[active] -= correction
+
+        x0 = x1
+        x1 = x2
+        f0 = f1
+
+    raise ValueError("Max iterations exceeded")

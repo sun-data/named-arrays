@@ -551,7 +551,11 @@ class AbstractTestAbstractVectorArray(
                     alpha=alpha,
                 )
 
-
+        @pytest.mark.xfail
+        class TestOptimizeRootSecant(
+            named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestOptimizeRootSecant,
+        ):
+            pass
 
 
 class AbstractTestAbstractExplicitVectorArray(

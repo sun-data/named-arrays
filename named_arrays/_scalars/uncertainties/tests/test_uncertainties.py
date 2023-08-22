@@ -673,6 +673,26 @@ class AbstractTestAbstractUncertainScalarArray(
         ):
             pass
 
+        @pytest.mark.parametrize(
+            argnames="coefficient_constant",
+            argvalues=[
+                400 - 1,
+                na.linspace(300, 400, axis="coeff_0", num=6) - 1,
+            ],
+        )
+        @pytest.mark.parametrize(
+            argnames="coefficient_linear",
+            argvalues=[-40],
+        )
+        @pytest.mark.parametrize(
+            argnames="coefficient_quadratic",
+            argvalues=[1],
+        )
+        class TestOptimizeRootSecant(
+            named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestOptimizeRootSecant,
+        ):
+            pass
+
 
 @pytest.mark.parametrize('array', _uncertain_scalar_arrays())
 class TestUncertainScalarArray(

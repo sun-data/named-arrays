@@ -612,6 +612,12 @@ class AbstractTestAbstractFunctionArray(
         ):
             pass
 
+        @pytest.mark.xfail
+        class TestOptimizeRootSecant(
+            named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestOptimizeRootSecant,
+        ):
+            pass
+
 
 @pytest.mark.parametrize("array", _function_arrays())
 class TestFunctionArray(
