@@ -21,7 +21,7 @@ RandomWidthT = TypeVar("RandomWidthT", bound="float | complex | u.Quantity | na.
 def uniform(
         low: RandomLowT,
         high: RandomHighT,
-        shape_random: dict[str, int] = None,
+        shape_random: None | dict[str, int] = None,
         seed: None | int = None
 ) -> RandomLowT | RandomHighT:
     """
@@ -60,7 +60,7 @@ def uniform(
 def normal(
         loc: RandomCenterT,
         scale: RandomWidthT,
-        shape_random: dict[str, int] = None,
+        shape_random: None | dict[str, int] = None,
         seed: None | int = None
 ) -> RandomCenterT | RandomWidthT:
     """
@@ -97,7 +97,7 @@ def normal(
 
 def poisson(
         lam: RandomCenterT,
-        shape_random: dict[str, int] = None,
+        shape_random: None | dict[str, int] = None,
         seed: None | int = None
 ) -> RandomCenterT:
     """
