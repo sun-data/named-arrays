@@ -36,7 +36,7 @@ jobs:
       - name: Test with pytest
         run: |
           pip install pytest pytest-cov
-          pytest -cov=. --cov-report=xml  named_arrays/_${{ matrix.array-type }}
+          pytest -vvl -c pytest.ini --cov=. --cov-report=xml  named_arrays/_${{ matrix.array-type }}
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
         with:
