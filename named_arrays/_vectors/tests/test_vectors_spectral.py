@@ -165,7 +165,7 @@ def _spectral_linear_spaces() -> list[na.SpectralVectorLinearSpace]:
 
 
 @pytest.mark.parametrize("array", _spectral_linear_spaces())
-class TestSpectralVectorlinearSpace(
+class TestSpectralVectorLinearSpace(
     AbstractTestAbstractSpectralVectorSpace,
     test_vectors_cartesian.AbstractTestAbstractCartesianVectorLinearSpace,
 ):
