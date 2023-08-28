@@ -5,37 +5,38 @@ import dataclasses
 import named_arrays as na
 
 __all__ = [
-    'AbstractSpectralPositionVectorArray',
-    'SpectralPositionVectorArray',
-    'AbstractImplicitSpectralPositionVectorArray',
-    'AbstractParameterizedSpectralPositionVectorArray',
-    'AbstractSpectralPositionVectorSpace',
-    'SpectralPositionVectorLinearSpace',
+    'AbstractSpectralPositionalVectorArray',
+    'SpectralPositionalVectorArray',
+    'AbstractImplicitSpectralPositionalVectorArray',
+    'AbstractParameterizedSpectralPositionalVectorArray',
+    'AbstractSpectralPositionalVectorSpace',
+    'SpectralPositionalVectorLinearSpace',
 ]
 
+
 @dataclasses.dataclass(eq=False, repr=False)
-class AbstractSpectralPositionVectorArray(
-    na.AbstractPositionVectorArray,
+class AbstractSpectralPositionalVectorArray(
+    na.AbstractPositionalVectorArray,
     na.AbstractSpectralVectorArray,
 ):
 
     @property
     def type_abstract(self) -> Type[na.AbstractArray]:
-        return AbstractSpectralPositionVectorArray
+        return AbstractSpectralPositionalVectorArray
 
     @property
     def type_explicit(self) -> Type[na.AbstractExplicitArray]:
-        return SpectralPositionVectorArray
+        return SpectralPositionalVectorArray
 
     @property
-    def type_matrix(self) -> Type[na.SpectralPositionMatrixArray]:
-        return na.SpectralPositionMatrixArray
+    def type_matrix(self) -> Type[na.SpectralPositionalMatrixArray]:
+        return na.SpectralPositionalMatrixArray
 
 
 @dataclasses.dataclass(eq=False, repr=False)
-class SpectralPositionVectorArray(
-    AbstractSpectralPositionVectorArray,
-    na.PositionVectorArray,
+class SpectralPositionalVectorArray(
+    AbstractSpectralPositionalVectorArray,
+    na.PositionalVectorArray,
     na.SpectralVectorArray,
 ):
 
@@ -44,7 +45,7 @@ class SpectralPositionVectorArray(
             cls: Type[Self],
             scalar: na.AbstractScalar,
             like: None | na.AbstractExplicitVectorArray = None,
-    ) -> SpectralPositionVectorArray:
+    ) -> SpectralPositionalVectorArray:
         result = super().from_scalar(scalar, like=like)
         if result is not NotImplemented:
             return result
@@ -52,33 +53,33 @@ class SpectralPositionVectorArray(
 
 
 @dataclasses.dataclass(eq=False, repr=False)
-class AbstractImplicitSpectralPositionVectorArray(
-    AbstractSpectralPositionVectorArray,
-    na.AbstractImplicitPositionVectorArray,
+class AbstractImplicitSpectralPositionalVectorArray(
+    AbstractSpectralPositionalVectorArray,
+    na.AbstractImplicitPositionalVectorArray,
     na.AbstractImplicitSpectralVectorArray,
 ):
     pass
 
 
 @dataclasses.dataclass(eq=False, repr=False)
-class AbstractParameterizedSpectralPositionVectorArray(
-    AbstractImplicitSpectralPositionVectorArray,
+class AbstractParameterizedSpectralPositionalVectorArray(
+    AbstractImplicitSpectralPositionalVectorArray,
     na.AbstractParameterizedVectorArray,
 ):
     pass
 
 
 @dataclasses.dataclass(eq=False, repr=False)
-class AbstractSpectralPositionVectorSpace(
-    AbstractParameterizedSpectralPositionVectorArray,
+class AbstractSpectralPositionalVectorSpace(
+    AbstractParameterizedSpectralPositionalVectorArray,
     na.AbstractVectorSpace,
 ):
     pass
 
 
 @dataclasses.dataclass(eq=False, repr=False)
-class SpectralPositionVectorLinearSpace(
-    AbstractSpectralPositionVectorSpace,
+class SpectralPositionalVectorLinearSpace(
+    AbstractSpectralPositionalVectorSpace,
     na.AbstractVectorLinearSpace,
 ):
     pass

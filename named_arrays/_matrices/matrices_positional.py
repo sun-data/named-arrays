@@ -6,17 +6,17 @@ import named_arrays as na
 import numpy as np
 
 __all__ = [
-    'AbstractPositionMatrixArray',
-    'PositionMatrixArray',
+    'AbstractPositionalMatrixArray',
+    'PositionalMatrixArray',
 ]
 
 PositionT = TypeVar('PositionT', bound=na.AbstractVectorArray)
 
 
 @dataclasses.dataclass(eq=False, repr=False)
-class AbstractPositionMatrixArray(
+class AbstractPositionalMatrixArray(
     na.AbstractCartesianMatrixArray,
-    na.AbstractPositionVectorArray,
+    na.AbstractPositionalVectorArray,
 ):
     @property
     @abc.abstractmethod
@@ -26,16 +26,16 @@ class AbstractPositionMatrixArray(
         """
 
     @property
-    def type_abstract(self) -> Type[AbstractPositionMatrixArray]:
-        return AbstractPositionMatrixArray
+    def type_abstract(self) -> Type[AbstractPositionalMatrixArray]:
+        return AbstractPositionalMatrixArray
 
     @property
-    def type_explicit(self) -> Type[PositionMatrixArray]:
-        return PositionMatrixArray
+    def type_explicit(self) -> Type[PositionalMatrixArray]:
+        return PositionalMatrixArray
 
     @property
-    def type_vector(self) -> Type[na.PositionVectorArray]:
-        return na.PositionVectorArray
+    def type_vector(self) -> Type[na.PositionalVectorArray]:
+        return na.PositionalVectorArray
 
     @property
     def determinant(self) -> na.ScalarLike:
@@ -47,9 +47,9 @@ class AbstractPositionMatrixArray(
 
 
 @dataclasses.dataclass(eq=False, repr=False)
-class PositionMatrixArray(
-    na.PositionVectorArray,
-    AbstractPositionMatrixArray,
+class PositionalMatrixArray(
+    na.PositionalVectorArray,
+    AbstractPositionalMatrixArray,
     na.AbstractExplicitMatrixArray,
     Generic[PositionT],
 ):
