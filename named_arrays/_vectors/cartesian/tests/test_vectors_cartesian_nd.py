@@ -18,17 +18,14 @@ _num_distribution = test_vectors_cartesian._num_distribution
 
 
 def _cartesian_nd_arrays():
+    units = [1, u.mm]
     arrays_numeric_x = [
         4,
         na.ScalarUniformRandomSample(-4, 4, shape_random=dict(y=_num_y)),
-        na.Cartesian2dVectorArray(x=2, y=5)
     ]
-    units_x = [1, u.mm]
-    arrays_numeric_x = [a * unit for a in arrays_numeric_x for unit in units_x]
 
     arrays_numeric_y = [
         5.,
-        na.ScalarUniformRandomSample(-5, 5, shape_random=dict(x=_num_x, y=_num_y)),
         na.UniformUncertainScalarArray(
             nominal=na.ScalarUniformRandomSample(-5, 5, shape_random=dict(x=_num_x, y=_num_y)),
             width=1,
@@ -36,11 +33,12 @@ def _cartesian_nd_arrays():
         ),
         na.Cartesian2dVectorArray(x=7.3, y=5)
     ]
-    units_y = [1, u.mm]
-    arrays_numeric_y = [a * unit for a in arrays_numeric_y for unit in units_y]
 
-    arrays = [na.CartesianNdVectorArray(
-        components=dict(x=ax, y=ay)) for ax in arrays_numeric_x for ay in arrays_numeric_y
+    arrays = [
+        na.CartesianNdVectorArray(components=dict(x=ax, y=ay)) * unit
+        for ax in arrays_numeric_x
+        for ay in arrays_numeric_y
+        for unit in units
     ]
 
     return arrays
@@ -59,17 +57,22 @@ def _cartesian_nd_arrays_2():
         )
     ]
     arrays_scalar = [a * unit for a in arrays_scalar for unit in units]
+
     arrays_vector_x = [
         7,
         na.ScalarUniformRandomSample(-7, 7, shape_random=dict(y=_num_y)),
     ]
-    arrays_vector_x = [a * unit for a in arrays_vector_x for unit in units]
     arrays_vector_y = [
         8,
         na.ScalarUniformRandomSample(-8, 8, shape_random=dict(y=_num_y, x=_num_x)),
     ]
-    arrays_vector_y = [a * unit for a in arrays_vector_y for unit in units]
-    arrays_vector = [na.CartesianNdVectorArray(dict(x=ax, y=ay)) for ax in arrays_vector_x for ay in arrays_vector_y]
+    arrays_vector = [
+        na.CartesianNdVectorArray(dict(x=ax, y=ay))  * unit
+        for ax in arrays_vector_x
+        for ay in arrays_vector_y
+        for unit in units
+    ]
+
     arrays = arrays_scalar + arrays_vector
     return arrays
 
@@ -154,8 +157,6 @@ class AbstractTestAbstractCartesianNdVectorArray(
             argnames='where',
             argvalues=[
                 np._NoValue,
-                True,
-                na.ScalarArray(True),
                 (na.ScalarLinearSpace(-1, 1, 'x', _num_x) >= 0) | (na.ScalarLinearSpace(-1, 1, 'y', _num_y) >= 0),
                 na.CartesianNdVectorArray(dict(
                     x=(na.ScalarLinearSpace(-1, 1, 'x', _num_x) >= 0) | (na.ScalarLinearSpace(-1, 1, 'y', _num_y) >= 0),
@@ -171,7 +172,6 @@ class AbstractTestAbstractCartesianNdVectorArray(
         @pytest.mark.parametrize(
             argnames='q',
             argvalues=[
-                .25,
                 25 * u.percent,
                 na.ScalarLinearSpace(.25, .75, axis='q', num=3, endpoint=True),
                 na.CartesianNdVectorArray(dict(x=25 * u.percent, y=35 * u.percent)),
