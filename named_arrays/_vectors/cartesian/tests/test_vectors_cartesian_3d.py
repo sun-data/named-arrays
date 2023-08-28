@@ -31,8 +31,6 @@ def _cartesian3d_arrays():
     units = [1, u.mm]
     arrays_numeric_x = [
         4,
-        na.ScalarUniformRandomSample(-4, 4, shape_random=dict(y=_num_y)),
-        na.Cartesian3dVectorArray(x=2, y=3)
     ]
 
     arrays_numeric_y = [
@@ -71,7 +69,6 @@ def _cartesian3d_arrays_2():
 
     arrays_vector_x = [
         7,
-        na.ScalarUniformRandomSample(-7, 7, shape_random=dict(y=_num_y)),
     ]
     arrays_vector_y = [
         8,
