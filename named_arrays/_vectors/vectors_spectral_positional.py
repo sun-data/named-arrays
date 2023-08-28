@@ -46,9 +46,6 @@ class SpectralPositionalVectorArray(
             scalar: na.AbstractScalar,
             like: None | na.AbstractExplicitVectorArray = None,
     ) -> SpectralPositionalVectorArray:
-        result = super().from_scalar(scalar, like=like)
-        if result is not NotImplemented:
-            return result
         return cls(wavelength=scalar, position=scalar)
 
 
