@@ -11,9 +11,10 @@ __all__ = [
     'TestCartesianNdVectorArray',
 ]
 
-_num_x = named_arrays.tests.test_core.num_x
-_num_y = named_arrays.tests.test_core.num_y
-_num_distribution = named_arrays.tests.test_core.num_distribution
+_num_x = test_vectors_cartesian._num_x
+_num_y = test_vectors_cartesian._num_y
+_num_z = test_vectors_cartesian._num_z
+_num_distribution = test_vectors_cartesian._num_distribution
 
 
 def _cartesian_nd_arrays():

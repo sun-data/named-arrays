@@ -26,6 +26,10 @@ __all__ = [
 ]
 
 _num_x = named_arrays.tests.test_core.num_x
+_num_y = named_arrays.tests.test_core.num_y
+_num_z = named_arrays.tests.test_core.num_z
+_num_distribution = named_arrays.tests.test_core.num_distribution
+
 
 class AbstractTestAbstractVectorArray(
     named_arrays.tests.test_core.AbstractTestAbstractArray,

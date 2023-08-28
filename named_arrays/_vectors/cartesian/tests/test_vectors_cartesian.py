@@ -21,6 +21,11 @@ __all__ = [
     'AbstractTestAbstractCartesianVectorGeometricSpace',
 ]
 
+_num_x = named_arrays._vectors.tests.test_vectors._num_x
+_num_y = named_arrays._vectors.tests.test_vectors._num_y
+_num_z = named_arrays._vectors.tests.test_vectors._num_z
+_num_distribution = named_arrays._vectors.tests.test_vectors._num_distribution
+
 
 class AbstractTestAbstractCartesianVectorArray(
     named_arrays._vectors.tests.test_vectors.AbstractTestAbstractVectorArray,
