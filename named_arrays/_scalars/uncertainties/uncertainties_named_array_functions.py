@@ -186,8 +186,8 @@ def plt_plot_like(
 def optimize_root_secant(
         function: Callable[[na.ScalarLike], na.ScalarLike],
         guess: na.ScalarLike,
-        min_step_size: None | na.ScalarLike = None,
-        max_abs_error: None | na.ScalarLike = None,
+        min_step_size: na.ScalarLike,
+        max_abs_error: na.ScalarLike,
         max_iterations: int = 100,
         damping: None | float = None,
         callback: None | Callable[[int, na.ScalarLike, na.ScalarLike, na.ScalarLike], None] = None,
@@ -196,10 +196,6 @@ def optimize_root_secant(
     try:
         guess = uncertainties._normalize(guess)
 
-        if min_step_size is None:
-            min_step_size = 1e-13
-            if guess.unit is not None:
-                min_step_size = min_step_size * guess.unit
         min_step_size = uncertainties._normalize(min_step_size)
 
         x0 = guess - 10 * min_step_size
@@ -208,10 +204,6 @@ def optimize_root_secant(
         f0 = function(x0)
         f0 = uncertainties._normalize(f0)
 
-        if max_abs_error is None:
-            max_abs_error = 1e-13
-            if f0.unit is not None:
-                max_abs_error = max_abs_error * f0.unit
         max_abs_error = uncertainties._normalize(max_abs_error)
 
     except uncertainties.UncertainScalarTypeError:
