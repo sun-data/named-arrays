@@ -28,8 +28,8 @@ def root_secant(
         a scalar-valued or vector-valued function to find the root of.
     guess
         an initial guess for the root
-    step_size
-        the step size to use when computing the Jacobian
+    min_step_size
+        Stop iterating if the step size falls below this value
     max_abs_error
         Maximum absolute error between zero and the function value.
         If the function value at the current root guess is below this value,
