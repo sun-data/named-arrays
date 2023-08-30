@@ -194,7 +194,7 @@ def optimize_root_secant(
 ) -> na.UncertainScalarArray:
 
     try:
-        guess = uncertainties._normalize(guess)
+        guess = uncertainties._normalize(guess).astype(float)
 
         min_step_size = uncertainties._normalize(min_step_size)
 
@@ -219,12 +219,12 @@ def optimize_root_secant(
         min_step_size.shape_distribution,
     )
 
-    f0.nominal = na.broadcast_to(f0.nominal, shape)
+    f0 = na.broadcast_to(f0, shape)
     f0.distribution = na.broadcast_to(f0.distribution, shape_distribution)
 
     converged = na.broadcast_to(0 * na.value(f0), shape=shape).astype(bool)
 
-    x1.nominal = na.broadcast_to(x1.nominal, shape)
+    x1 = na.broadcast_to(x1, shape)
     x1.distribution = na.broadcast_to(x1.distribution, shape_distribution)
 
     for i in range(max_iterations):
@@ -270,8 +270,8 @@ def optimize_root_secant(
             correction = damping * correction
 
         x2 = x1.copy()
-        x2.nominal[active.nominal] -= correction.nominal
-        x2.distribution[active.distribution] -= correction.distribution
+        x2.nominal[active.nominal] = x2.nominal[active.nominal] - correction.nominal
+        x2.distribution[active.distribution] = x2.distribution[active.distribution] - correction.distribution
 
         x0 = x1
         x1 = x2
