@@ -221,12 +221,19 @@ def optimize_root_secant(
         raise ValueError(f"argument `max_abs_error` should have an empty shape, got {na.shape(max_abs_error)}")
 
     shape = na.shape_broadcasted(f0, guess, min_step_size)
+    shape_distribution = na.broadcast_shapes(
+        f0.shape_distribution,
+        guess.shape_distribution,
+        min_step_size.shape_distribution,
+    )
 
-    f0 = na.broadcast_to(f0, shape)
+    f0.nominal = na.broadcast_to(f0.nominal, shape)
+    f0.distribution = na.broadcast_to(f0.distribution, shape_distribution)
 
     converged = na.broadcast_to(0 * na.value(f0), shape=shape).astype(bool)
 
-    x1 = na.broadcast_to(x1, shape).astype(float)
+    x1.nominal = na.broadcast_to(x1.nominal, shape)
+    x1.distribution = na.broadcast_to(x1.distribution, shape_distribution)
 
     for i in range(max_iterations):
 
