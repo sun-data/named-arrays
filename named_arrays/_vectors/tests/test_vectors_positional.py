@@ -66,7 +66,7 @@ class AbstractTestAbstractPositionalVectorArray(
         pass
 
     class TestArrayFunctions(
-        test_vectors.AbstractTestAbstractVectorArray.TestArrayFunctions
+        test_vectors_cartesian.AbstractTestAbstractCartesianVectorArray.TestArrayFunctions
     ):
 
         @pytest.mark.parametrize("array_2", _positional_arrays_2())
