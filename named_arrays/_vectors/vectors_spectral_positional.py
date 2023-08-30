@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Type
+from typing import Type, TypeVar
 from typing_extensions import Self
 import dataclasses
 import named_arrays as na
@@ -12,6 +12,9 @@ __all__ = [
     'AbstractSpectralPositionalVectorSpace',
     'SpectralPositionalVectorLinearSpace',
 ]
+
+PositionT = TypeVar("PositionT", bound=na.ArrayLike)
+WavelengthT = TypeVar("WavelengthT", bound=na.ScalarLike)
 
 
 @dataclasses.dataclass(eq=False, repr=False)
@@ -36,8 +39,8 @@ class AbstractSpectralPositionalVectorArray(
 @dataclasses.dataclass(eq=False, repr=False)
 class SpectralPositionalVectorArray(
     AbstractSpectralPositionalVectorArray,
-    na.PositionalVectorArray,
-    na.SpectralVectorArray,
+    na.PositionalVectorArray[PositionT],
+    na.SpectralVectorArray[WavelengthT],
 ):
 
     @classmethod
