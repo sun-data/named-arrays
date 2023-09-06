@@ -120,10 +120,6 @@ class AbstractUncertainScalarArray(
             distribution=na.value(self.distribution),
         )
 
-    @property
-    def unit(self: Self) -> None | u.Unit:
-        return na.unit(self.nominal)
-
     def astype(
             self,
             dtype: str | np.dtype | Type,

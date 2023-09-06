@@ -80,17 +80,17 @@ class AbstractScalar(
         """
 
     @property
-    @abc.abstractmethod
-    def unit(self: Self) -> None | u.UnitBase | dict[str, None | u.UnitBase]:
+    def unit(self: Self) -> None | u.UnitBase:
         """
         Unit associated with the array.
 
         If :attr:`ndarray` is an instance of :class:`astropy.units.Quantity`, return :attr:`astropy.units.Quantity.unit`,
         otherwise return :class:`None`.
         """
+        return na.unit(self)
 
     @property
-    def unit_normalized(self: Self) -> u.UnitBase | dict[str, u.UnitBase]:
+    def unit_normalized(self: Self) -> u.UnitBase:
         """
         Similar to :attr:`unit` but returns :attr:`astropy.units.dimensionless_unscaled` if :attr:`ndarray` is not an
         instance of :class:`astropy.units.Quantity`.
@@ -866,10 +866,6 @@ class ScalarArray(
         return na.get_dtype(self.ndarray)
 
     @property
-    def unit(self: Self) -> None | u.UnitBase:
-        return na.unit(self.ndarray)
-
-    @property
     def explicit(self: Self) -> Self:
         return self
 
@@ -972,10 +968,6 @@ class AbstractImplicitScalarArray(
     @property
     def dtype(self: Self) -> np.dtype:
         return self.explicit.dtype
-
-    @property
-    def unit(self: Self) -> None | u.Unit:
-        return self.explicit.unit
 
     def _attr_normalized(self, name: str) -> ScalarArray:
 

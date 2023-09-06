@@ -113,6 +113,31 @@ def arange(
     return prototype.type_explicit.from_components(components)
 
 
+@_implements(na.unit)
+def unit(a: na.AbstractVectorArray) -> None | u.UnitBase | na.AbstractVectorArray:
+    components = a.components
+    components = {c: na.unit(components[c]) for c in components}
+    iter_components = iter(components)
+    component_0 = components[next(iter_components)]
+    if all(component_0 == components[c] for c in components):
+        return component_0
+    else:
+        components = {c: 1 if components[c] is None else 1 * components[c] for c in components}
+        return a.type_explicit.from_components(components,)
+
+
+@_implements(na.unit_normalized)
+def unit_normalized(a: na.AbstractVectorArray) -> u.UnitBase | na.AbstractVectorArray:
+    components = a.components
+    components = {c: na.unit_normalized(components[c]) for c in components}
+    iter_components = iter(components)
+    component_0 = components[next(iter_components)]
+    if all(component_0 == components[c] for c in components):
+        return component_0
+    else:
+        return a.type_explicit.from_components(components)
+
+
 def random(
         func: Callable,
         *args: float | u.Quantity |na.AbstractScalar | na.AbstractVectorArray,

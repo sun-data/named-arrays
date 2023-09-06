@@ -15,6 +15,8 @@ __all__ = [
     'geomspace',
     'ndim',
     'shape',
+    'unit',
+    'unit_normalized',
     'broadcast_to',
     'stack',
     'concatenate',
@@ -437,6 +439,65 @@ def shape(a: na.ArrayLike) -> dict[str, int]:
     if not isinstance(a, na.AbstractArray):
         a = na.ScalarArray(a)
     return np.shape(a)
+
+
+def unit(a: Any) -> None | u.UnitBase | na.AbstractArray:
+    """
+    Isolate the physical units associated with the given object.
+
+    If the array has no physical units, this function returns :obj:`None`.
+
+    Parameters
+    ----------
+    a
+        object to isolate the units of
+
+    See Also
+    --------
+    :func:`unit_normalized` : version of this function that returns :obj:`astropy.units.dimensionless_unscaled`
+        instead of :obj:`None` if there is no unit associated with the given object
+    """
+    if isinstance(a, u.UnitBase):
+        return a
+    elif isinstance(a, u.Quantity):
+        return a.unit
+    elif isinstance(a, na.AbstractArray):
+        return na._named_array_function(
+            func=unit,
+            a=a,
+        )
+    else:
+        return None
+
+
+def unit_normalized(a: Any) -> u.UnitBase | na.AbstractArray:
+    """
+    Isolate the physical units associated with a given object, normalizing to dimensionless units
+    if the object does not have associated units.
+
+
+    Parameters
+    ----------
+    a
+        object to isolate the units of
+
+    See Also
+    --------
+    :func:`unit` : version of this function that returns :obj:`None` instead of
+        :obj:`astropy.units.dimensionless_unscaled` if there is no unit associated with the given object.
+
+    """
+    if isinstance(a, u.UnitBase):
+        return a
+    elif isinstance(a, u.Quantity):
+        return a.unit
+    elif isinstance(a, na.AbstractArray):
+        return na._named_array_function(
+            func=unit_normalized,
+            a=a,
+        )
+    else:
+        return u.dimensionless_unscaled
 
 
 @overload

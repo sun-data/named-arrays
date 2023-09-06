@@ -17,8 +17,6 @@ __all__ = [
     'named_array_like',
     'get_dtype',
     'value',
-    'unit',
-    'unit_normalized',
     'type_array',
     'broadcast_shapes',
     'shape_broadcasted',
@@ -147,31 +145,6 @@ def value(a: float | u.Quantity | AbstractArray):
         return a.value
     else:
         return a
-
-def unit(
-        value: float | complex | np.ndarray | u.UnitBase | u.Quantity | AbstractArray
-) -> None | u.UnitBase:
-    if isinstance(value, u.UnitBase):
-        return value
-    elif isinstance(value, u.Quantity):
-        return value.unit
-    elif isinstance(value, AbstractArray):
-        if isinstance(value, na.AbstractScalar):
-            return value.unit
-        else:
-            raise ValueError("non-scalar instances of `na.AbstractArray` may not be represented by a single unit")
-    else:
-        return None
-
-
-def unit_normalized(
-        value: float | complex | np.ndarray | u.UnitBase | u.Quantity | AbstractArray
-) -> u.UnitBase | dict[str, u.UnitBase]:
-    result = unit(value)
-    if result is None:
-        return u.dimensionless_unscaled
-    else:
-        return result
 
 
 def type_array(
