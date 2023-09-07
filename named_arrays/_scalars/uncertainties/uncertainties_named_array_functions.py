@@ -81,6 +81,16 @@ def asarray_like(
     )
 
 
+@_implements(na.unit)
+def unit(a: na.AbstractUncertainScalarArray) -> None | u.UnitBase:
+    return na.unit(a.nominal)
+
+
+@_implements(na.unit_normalized)
+def unit_normalized(a: na.AbstractUncertainScalarArray) -> u.UnitBase:
+    return na.unit_normalized(a.nominal)
+
+
 def random(
         func: Callable,
         *args: float | u.Quantity | na.AbstractScalar,

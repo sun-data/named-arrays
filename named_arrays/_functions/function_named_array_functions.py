@@ -9,6 +9,14 @@ __all__ = [
 ]
 
 ASARRAY_LIKE_FUNCTIONS = named_arrays._scalars.scalar_named_array_functions.ASARRAY_LIKE_FUNCTIONS
+HANDLED_FUNCTIONS = dict()
+
+def _implements(function: Callable):
+    """Register a __named_array_function__ implementation for AbstractScalarArray objects."""
+    def decorator(func):
+        HANDLED_FUNCTIONS[function] = func
+        return func
+    return decorator
 
 
 def asarray_like(
@@ -64,3 +72,13 @@ def asarray_like(
             like=like_outputs,
         ),
     )
+
+
+@_implements(na.unit)
+def unit(a: na.AbstractFunctionArray) -> None | u.UnitBase | na.AbstractArray:
+    return na.unit(a.outputs)
+
+
+@_implements(na.unit_normalized)
+def unit_normalized(a: na.AbstractFunctionArray) -> u.UnitBase | na.AbstractArray:
+    return na.unit_normalized(a.outputs)

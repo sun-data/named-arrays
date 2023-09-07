@@ -113,6 +113,19 @@ def arange(
     )
 
 
+@_implements(na.unit)
+def unit(a: na.AbstractScalarArray) -> None | u.UnitBase:
+    return na.unit(a.ndarray)
+
+
+@_implements(na.unit_normalized)
+def unit_normalized(a: na.AbstractScalarArray) -> u.UnitBase:
+    result = na.unit(a)
+    if result is None:
+        result = u.dimensionless_unscaled
+    return result
+
+
 def random(
         func: Callable,
         *args: float | u.Quantity | na.AbstractScalarArray,
