@@ -1012,6 +1012,15 @@ class AbstractTestAbstractArray(
 
     class TestNamedArrayFunctions(abc.ABC):
 
+        def test_unit(self, array: na.AbstractArray):
+            result = na.unit(array)
+            if result is not None:
+                assert isinstance(result, (u.UnitBase, na.AbstractArray))
+
+        def test_unit_normalized(self, array: na.AbstractArray):
+            result = na.unit_normalized(array)
+            assert isinstance(result, (u.UnitBase, na.AbstractArray))
+
         @pytest.mark.parametrize(
             argnames="func",
             argvalues=[
