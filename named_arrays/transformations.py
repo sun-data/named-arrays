@@ -3,6 +3,7 @@ from typing import TypeVar, Generic, Iterator
 from typing_extensions import Self
 import abc
 import dataclasses
+import astropy.units as u
 import named_arrays as na
 
 __all__ = [
@@ -195,6 +196,19 @@ class Translation(
 
 
 @dataclasses.dataclass(eq=False)
+class Cartesian3dTranslation(
+    AbstractTranslation
+):
+    x: na.ScalarLike = 0 * u.mm
+    y: na.ScalarLike = 0 * u.mm
+    z: na.ScalarLike = 0 * u.mm
+
+    @property
+    def vector(self) -> na.Cartesian3dVectorArray:
+        return na.Cartesian3dVectorArray(self.x, self.y, self.z)
+
+
+@dataclasses.dataclass(eq=False)
 class AbstractLinearTransformation(
     AbstractTransformation,
 ):
@@ -299,6 +313,46 @@ class LinearTransformation(
             plt.legend();
     """
     matrix: MatrixT = dataclasses.MISSING
+
+
+@dataclasses.dataclass(eq=False)
+class AbstractCartesian3dRotation(
+    AbstractLinearTransformation
+):
+    angle: na.ScalarLike = 0 * u.deg
+
+    @classmethod
+    @abc.abstractmethod
+    def _matrix_type(cls) -> type[na.AbstractCartesian3dRotationMatrixArray]:
+        """to be used by subclasses to specify which rotation matrix to use"""
+
+    @property
+    def matrix(self) -> na.AbstractCartesian3dRotationMatrixArray:
+        return self._matrix_type()(self.angle)
+
+
+@dataclasses.dataclass(eq=False)
+class Cartesian3dRotationX(
+    AbstractCartesian3dRotation
+):
+    def _matrix_type(cls):
+        return na.Cartesian3dXRotationMatrixArray
+
+
+@dataclasses.dataclass(eq=False)
+class Cartesian3dRotationY(
+    AbstractCartesian3dRotation
+):
+    def _matrix_type(cls):
+        return na.Cartesian3dYRotationMatrixArray
+
+
+@dataclasses.dataclass(eq=False)
+class Cartesian3dRotationZ(
+    AbstractCartesian3dRotation
+):
+    def _matrix_type(cls):
+        return na.Cartesian3dZRotationMatrixArray
 
 
 @dataclasses.dataclass(eq=False)
