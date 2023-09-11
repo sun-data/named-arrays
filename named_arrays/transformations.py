@@ -182,7 +182,7 @@ class Translation(
 
         transformation_2 = na.transformations.Translation(displacement_2)
 
-        square_transformed_2 = transform_2(square)
+        square_transformed_2 = transformation_2(square)
 
         with astropy.visualization.quantity_support():
             plt.figure();
@@ -294,7 +294,7 @@ class LinearTransformation(
 
         transformation_2 = na.transformations.LinearTransformation(matrix_2)
 
-        square_transformed_2 = transform_2(square)
+        square_transformed_2 = transformation_2(square)
 
         with astropy.visualization.quantity_support():
             plt.figure();
