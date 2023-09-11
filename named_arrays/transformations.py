@@ -7,6 +7,14 @@ import named_arrays as na
 
 __all__ = [
     "AbstractTransformation",
+    "AbstractTranslation",
+    "Translation",
+    "AbstractLinearTransformation",
+    "LinearTransformation",
+    "AbstractAffineTransformation",
+    "AffineTransformation",
+    "AbstractTransformationList",
+    "TransformationList",
 ]
 
 VectorT = TypeVar("VectorT", bound="na.AbstractVectorArray")
