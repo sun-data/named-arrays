@@ -260,7 +260,7 @@ class LinearTransformation(
         import named_arrays as na
 
         angle = 53 * u.deg
-        matrix  na.Cartesian2dRotationMatrixArray(angle)
+        matrix = na.Cartesian2dRotationMatrixArray(angle)
 
         transformation = na.transformations.LinearTransformation(matrix)
 
@@ -280,7 +280,7 @@ class LinearTransformation(
 
     |
 
-    Translate a vector using an array of transformations
+    Rotate a vector using an array of transformations
 
     .. jupyter-execute::
 
