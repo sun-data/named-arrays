@@ -180,7 +180,7 @@ class Translation(
             y=9 * u.mm,
         )
 
-        transformation_2 = na.transformations.Translation(displacement_2)
+        transformation_2 = na.transformations.Translation(vector_2)
 
         square_transformed_2 = transformation_2(square)
 
@@ -286,11 +286,6 @@ class LinearTransformation(
 
         angle_2 = na.ScalarArray([30, 45] * u.deg, axes="transform")
         matrix_2 = na.Cartesian2dRotationMatrixArray(angle_2)
-
-        vector_2 = na.Cartesian3dVectorArray(
-            x=na.ScalarArray([12, -12] * u.mm, axes="transform"),
-            y=9 * u.mm,
-        )
 
         transformation_2 = na.transformations.LinearTransformation(matrix_2)
 
