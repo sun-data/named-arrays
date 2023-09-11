@@ -244,6 +244,65 @@ class LinearTransformation(
     AbstractLinearTransformation,
     Generic[MatrixT],
 ):
+    """
+    A vector transformation represented by a matrix multiplication
+
+    Examples
+    --------
+
+    Rotate a vector using a linear transformation
+
+    .. jupyter-execute::
+
+        import matplotlib.pyplot as plt
+        import astropy.units as u
+        import astropy.visualization
+        import named_arrays as na
+
+        angle = 53 * u.deg
+        matrix  na.Cartesian2dRotationMatrixArray(angle)
+
+        transformation = na.transformations.LinearTransformation(matrix)
+
+        square = na.Cartesian2dVectorArray(
+            x=na.ScalarArray([-10, 10, 10, -10, -10] * u.mm, axes="vertex"),
+            y=na.ScalarArray([-10, -10, 10, 10, -10] * u.mm, axes="vertex"),
+        )
+
+        square_transformed = transformation(square)
+
+        with astropy.visualization.quantity_support():
+            plt.figure();
+            plt.gca().set_aspect("equal");
+            na.plt.plot(square, label="original");
+            na.plt.plot(square_transformed, label="translated");
+            plt.legend();
+
+    |
+
+    Translate a vector using an array of transformations
+
+    .. jupyter-execute::
+
+        angle_2 = na.ScalarArray([30, 45] * u.deg, axes="transform")
+        matrix_2 = na.Cartesian2dRotationMatrixArray(angle_2)
+
+        vector_2 = na.Cartesian3dVectorArray(
+            x=na.ScalarArray([12, -12] * u.mm, axes="transform"),
+            y=9 * u.mm,
+        )
+
+        transformation_2 = na.transformations.LinearTransformation(matrix_2)
+
+        square_transformed_2 = transform_2(square)
+
+        with astropy.visualization.quantity_support():
+            plt.figure();
+            plt.gca().set_aspect("equal");
+            na.plt.plot(square, label="original");
+            na.plt.plot(square_transformed_2, axis="vertex", label="translated");
+            plt.legend();
+    """
     matrix: MatrixT = dataclasses.MISSING
 
 
