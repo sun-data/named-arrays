@@ -19,6 +19,9 @@ TranslationT = TypeVar("TranslationT", bound="AbstractTranslation")
 class AbstractTransformation(
     abc.ABC
 ):
+    """
+    An interface for an arbitrary vector transform
+    """
 
     @abc.abstractmethod
     def __call__(
@@ -53,6 +56,40 @@ class AbstractTransformation(
         ----------
         other
             another transformation to compose with this one
+
+        Examples
+        --------
+        Compose two transformations
+
+        .. jupyter-execute::
+
+            import astropy.units as u
+            import named_arrays as na
+
+            t1 = na.transformations.Translation(
+                vector=na.Cartesian2dVectorArray(x=5) * u.mm,
+            )
+            t2 = na.transformations.LinearTransformation(
+                matrix=na.Cartesian2dRotationArray(53 * u.deg)
+            )
+
+            t_composed = t1 @ t2
+            t_composed
+
+        use the composed transformation to transform a vector
+
+        .. jupyter-execute::
+
+            v = na.Cartesian3dVectorArray(1, 2, 3) * u.mm
+
+            t_composed(v)
+
+        transform the same vector by applying each transformation separately
+        and note that it's the same result as using the composed transformation
+
+        .. jupyter-execute::
+
+            t1(t2(v))
         """
 
 
@@ -88,6 +125,64 @@ class Translation(
     AbstractTranslation,
     Generic[VectorT]
 ):
+    """
+    A translation-only vector transformation.
+
+    Examples
+    --------
+
+    Translate a vector using a single transformation
+
+    .. jupyter-execute::
+
+        import matplotlib.pyplot as plt
+        import astropy.units as u
+        import astropy.visualization
+        import named_arrays as na
+
+        vector = na.Cartesian3dVectorArray(
+            x=12 * u.mm,
+            y=12 * u.mm,
+        )
+
+        transformation = na.transformations.Translation(vector)
+
+        square = na.Cartesian3dVectorArray(
+            x=na.ScalarArray([-10, 10, 10, -10, -10] * u.mm, axes="vertex"),
+            y=na.ScalarArray([-10, -10, 10, 10, -10] * u.mm, axes="vertex"),
+        )
+
+        square_transformed = transformation(square)
+
+        with astropy.visualization.quantity_support():
+            plt.figure();
+            plt.gca().set_aspect("equal");
+            na.plt.plot(square, label="original");
+            na.plt.plot(square_transformed, label="translated");
+            plt.legend();
+
+    |
+
+    Translate a vector using an array of transformations
+
+    .. jupyter-execute::
+
+        vector_2 = na.Cartesian3dVectorArray(
+            x=na.ScalarArray([12, -12] * u.mm, axes="transform"),
+            y=9 * u.mm,
+        )
+
+        transformation_2 = na.transformations.Translation(displacement_2)
+
+        square_transformed_2 = transform_2(square)
+
+        with astropy.visualization.quantity_support():
+            plt.figure();
+            plt.gca().set_aspect("equal");
+            na.plt.plot(square, label="original");
+            na.plt.plot(square_transformed_2, axis="vertex", label="translated");
+            plt.legend();
+    """
     vector: VectorT = dataclasses.MISSING
 
 
