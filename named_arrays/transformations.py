@@ -206,7 +206,7 @@ class AbstractAffineTransformation(
         if isinstance(other, AbstractLinearTransformation):
             return AffineTransformation(
                 transformation_linear=other @ self.transformation_linear,
-                translation=self.translation,
+                translation=Translation(other.matrix @ self.translation.vector),
             )
         elif isinstance(other, AbstractTranslation):
             return AffineTransformation(
@@ -256,7 +256,7 @@ class AbstractTransformationList(
         transformations = iter(self)
         result = next(transformations)
         for t in transformations:
-            result = result @ t
+            result = t @ result
         return result
 
     def __call__(self, a: na.AbstractVectorArray) -> na.AbstractVectorArray:

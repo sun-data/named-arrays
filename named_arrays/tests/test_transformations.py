@@ -144,6 +144,20 @@ class AbstractTestAbstractTransformationList(
         assert isinstance(result, na.transformations.AbstractTransformation)
         assert not isinstance(result, na.transformations.AbstractTransformationList)
 
+    class TestVectorOperations(
+        AbstractTestAbstractTransformation.TestVectorOperations
+    ):
+        def test__call__(
+                self,
+                a: na.transformations.AbstractTransformationList,
+                x: na.AbstractVectorArray,
+        ):
+            result = a(x)
+            result_expected = x
+            for transformation in a:
+                result_expected = transformation(result_expected)
+            assert np.allclose(result, result_expected)
+
 
 @pytest.mark.parametrize("a", transformations_list)
 class TestTransformationList(
