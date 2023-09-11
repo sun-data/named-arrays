@@ -275,7 +275,7 @@ class LinearTransformation(
             plt.figure();
             plt.gca().set_aspect("equal");
             na.plt.plot(square, label="original");
-            na.plt.plot(square_transformed, label="translated");
+            na.plt.plot(square_transformed, label="rotated");
             plt.legend();
 
     |
@@ -295,7 +295,7 @@ class LinearTransformation(
             plt.figure();
             plt.gca().set_aspect("equal");
             na.plt.plot(square, label="original");
-            na.plt.plot(square_transformed_2, axis="vertex", label="translated");
+            na.plt.plot(square_transformed_2, axis="vertex", label="rotated");
             plt.legend();
     """
     matrix: MatrixT = dataclasses.MISSING
