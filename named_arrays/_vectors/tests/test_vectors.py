@@ -521,6 +521,7 @@ class AbstractTestAbstractVectorArray(
                     ax: None | matplotlib.axes.Axes,
                     axis: None | str,
                     where: bool | na.AbstractScalar,
+                    transformation: None | na.transformations.AbstractTransformation,
                     alpha: None | str | na.AbstractScalar,
             ):
 
@@ -533,6 +534,8 @@ class AbstractTestAbstractVectorArray(
                     kwargs["axis"] = axis
                 if where is not np._NoValue:
                     kwargs["where"] = where
+                if transformation is not np._NoValue:
+                    kwargs["transformation"] = transformation
                 if alpha is not np._NoValue:
                     kwargs["alpha"] = alpha
 
@@ -552,6 +555,7 @@ class AbstractTestAbstractVectorArray(
                     ax=ax,
                     axis=axis,
                     where=where,
+                    transformation=transformation,
                     alpha=alpha,
                 )
 

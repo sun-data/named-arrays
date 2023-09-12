@@ -1032,7 +1032,6 @@ class AbstractTestAbstractArray(
             argnames="ax",
             argvalues=[
                 np._NoValue,
-                None,
                 plt.subplots()[1],
                 na.plt.subplots(axis_cols="x", ncols=num_x)[1],
             ]
@@ -1041,8 +1040,14 @@ class AbstractTestAbstractArray(
             argnames="axis",
             argvalues=[
                 np._NoValue,
-                None,
                 "y",
+            ]
+        )
+        @pytest.mark.parametrize(
+            argnames="transformation",
+            argvalues=[
+                np._NoValue,
+                na.transformations.Translation(0),
             ]
         )
         class TestPltPlotLikeFunctions(abc.ABC):
@@ -1055,6 +1060,7 @@ class AbstractTestAbstractArray(
                     ax: None | matplotlib.axes.Axes,
                     axis: None | str,
                     where: bool | na.AbstractScalar,
+                    transformation: None | na.transformations.AbstractTransformation,
                     alpha: None | str | na.AbstractScalar,
             ):
                 args = (array_2, array)
@@ -1067,6 +1073,8 @@ class AbstractTestAbstractArray(
                     kwargs["axis"] = axis
                 if where is not np._NoValue:
                     kwargs["where"] = where
+                if transformation is not np._NoValue:
+                    kwargs["transformation"] = transformation
                 if alpha is not np._NoValue:
                     kwargs["alpha"] = alpha
 
