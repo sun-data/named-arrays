@@ -81,6 +81,7 @@ def plot(
         axis: None | str = None,
         where: bool | na.AbstractScalar = True,
         transformation: None | na.transformations.AbstractTransformation = None,
+        components: None | tuple[str, ...] = None,
         **kwargs,
 ) -> na.ScalarArray[npt.NDArray[None | matplotlib.artist.Artist]]:
     """
@@ -108,6 +109,9 @@ def plot(
         A boolean array that selects which elements to plot
     transformation
         A callable that is applied to args before plotting
+    components
+        The component names of ``*args`` to plot, helpful if ``*args`` are an instance of
+        :class:`named_arrays.AbstractVectorArray`.
     kwargs
         Additional keyword arguments passed to :meth:`matplotlib.axes.Axes.plot`.
         These can be instances of :class:`named_arrays.AbstractArray`.
@@ -180,6 +184,7 @@ def plot(
         ax=ax,
         axis=axis,
         where=where,
+        components=components,
         **kwargs,
     )
 
@@ -190,6 +195,7 @@ def fill(
         axis: None | str = None,
         where: bool | na.AbstractScalar = True,
         transformation: None | na.transformations.AbstractTransformation = None,
+        components: None | tuple[str, ...] = None,
         **kwargs,
 ) -> na.ScalarArray[npt.NDArray]:
     """
@@ -219,6 +225,9 @@ def fill(
         A boolean array that selects which elements to plot
     transformation
         A callable that is applied to args before plotting
+    components
+        The component names of ``*args`` to plot, helpful if ``*args`` are an instance of
+        :class:`named_arrays.AbstractVectorArray`.
     kwargs
         Additional keyword arguments passed to :meth:`matplotlib.axes.Axes.fill`.
         These can be instances of :class:`named_arrays.AbstractArray`.
@@ -231,5 +240,6 @@ def fill(
         ax=ax,
         axis=axis,
         where=where,
+        components=components,
         **kwargs,
     )

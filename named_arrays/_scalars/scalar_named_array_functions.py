@@ -193,8 +193,12 @@ def plt_plot_like(
         ax: None | matplotlib.axes.Axes | na.ScalarArray[npt.NDArray[matplotlib.axes.Axes]] = None,
         axis: None | str = None,
         where: bool | na.AbstractScalarArray = True,
+        components: None | tuple[str, ...] = None,
         **kwargs,
 ) -> na.ScalarArray[npt.NDArray[None | matplotlib.artist.Artist]]:
+
+    if components is not None:
+        raise ValueError(f"`components` should be `None` for scalars, got {components}")
 
     try:
         args = tuple(scalars._normalize(arg) for arg in args)

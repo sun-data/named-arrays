@@ -513,51 +513,7 @@ class AbstractTestAbstractVectorArray(
         class TestPltPlotLikeFunctions(
             named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestPltPlotLikeFunctions
         ):
-            def test_plt_plot_like(
-                    self,
-                    func: Callable,
-                    array: na.AbstractVectorArray,
-                    array_2: None,
-                    ax: None | matplotlib.axes.Axes,
-                    axis: None | str,
-                    where: bool | na.AbstractScalar,
-                    transformation: None | na.transformations.AbstractTransformation,
-                    alpha: None | str | na.AbstractScalar,
-            ):
-
-                args = array,
-
-                kwargs = dict()
-                if ax is not np._NoValue:
-                    kwargs["ax"] = ax
-                if axis is not np._NoValue:
-                    kwargs["axis"] = axis
-                if where is not np._NoValue:
-                    kwargs["where"] = where
-                if transformation is not np._NoValue:
-                    kwargs["transformation"] = transformation
-                if alpha is not np._NoValue:
-                    kwargs["alpha"] = alpha
-
-                for c in array.components:
-                    if not isinstance(na.as_named_array(array.components[c]), na.AbstractScalar):
-                        with pytest.raises(
-                            expected_exception=TypeError,
-                            match="all types, .*, returned .* for function .*"
-                        ):
-                            func(*args, **kwargs)
-                        return
-
-                return super().test_plt_plot_like(
-                    func=func,
-                    array=array,
-                    array_2=array_2,
-                    ax=ax,
-                    axis=axis,
-                    where=where,
-                    transformation=transformation,
-                    alpha=alpha,
-                )
+            pass
 
         @pytest.mark.xfail
         class TestOptimizeRootSecant(
