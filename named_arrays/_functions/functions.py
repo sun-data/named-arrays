@@ -463,7 +463,7 @@ class AbstractFunctionArray(
             intensity = np.exp(-(((position.x + velocity*time)/x_width) ** 2 + ((position.y + 2*velocity*time)/y_width)** 2))
             scene = na.FunctionArray(
                 inputs=position,
-                outputs=intensity * u.DN,
+                outputs=intensity,
             )
 
             fig, axs = plt.subplots(
