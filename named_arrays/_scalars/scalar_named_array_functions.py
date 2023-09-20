@@ -288,6 +288,59 @@ def jacobian(
         return NotImplemented
 
 
+@_implements(na.optimize.root_newton)
+def optimize_root_newton(
+        function: Callable[[na.ScalarLike], na.ScalarLike],
+        guess: na.ScalarLike,
+        jacobian: Callable[[na.ScalarLike], na.ScalarLike],
+        max_abs_error: na.ScalarLike,
+        max_iterations: int = 100,
+        callback: None | Callable[[int, na.ScalarLike, na.ScalarLike, na.ScalarLike], None] = None,
+) -> na.ScalarArray:
+
+    try:
+        guess = scalars._normalize(guess)
+
+        x = guess
+
+        f = function(x)
+        f = scalars._normalize(f)
+
+        max_abs_error = scalars._normalize(max_abs_error)
+
+    except scalars.ScalarTypeError:
+        return NotImplemented
+
+    if na.shape(max_abs_error):
+        raise ValueError(f"argument `max_abs_error` should have an empty shape, got {na.shape(max_abs_error)}")
+
+    shape = na.shape_broadcasted(f, guess)
+
+    converged = na.broadcast_to(0 * na.value(f), shape=shape).astype(bool)
+
+    x = na.broadcast_to(x, shape).astype(float)
+
+    for i in range(max_iterations):
+
+        if callback is not None:
+            callback(i, x, f, converged)
+
+        converged |= np.abs(f) < max_abs_error
+
+        if np.all(converged):
+            return x
+
+        jac = jacobian(x)
+
+        correction = f / jac
+
+        x = x - correction
+
+        f = function(x)
+
+    raise ValueError("Max iterations exceeded")
+
+
 @_implements(na.optimize.root_secant)
 def optimize_root_secant(
         function: Callable[[na.ScalarLike], na.ScalarLike],
