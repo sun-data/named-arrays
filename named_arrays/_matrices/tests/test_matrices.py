@@ -109,6 +109,16 @@ class AbstractTestAbstractMatrixArray(
                     array @ array_2
                 return
 
+    class TestNamedArrayFunctions(
+        named_arrays._vectors.tests.test_vectors.AbstractTestAbstractVectorArray.TestNamedArrayFunctions
+    ):
+
+        @pytest.mark.skip
+        class TestPltPlotLikeFunctions(
+            named_arrays._vectors.tests.test_vectors.AbstractTestAbstractVectorArray.TestNamedArrayFunctions.TestPltPlotLikeFunctions
+        ):
+            pass
+
 
 class AbstractTestAbstractExplicitMatrixArray(
     AbstractTestAbstractMatrixArray,

@@ -409,6 +409,9 @@ class AbstractFunctionArray(
         if func in function_named_array_functions.ASARRAY_LIKE_FUNCTIONS:
             return function_named_array_functions.asarray_like(func=func, *args, **kwargs)
 
+        if func in function_named_array_functions.HANDLED_FUNCTIONS:
+            return function_named_array_functions.HANDLED_FUNCTIONS[func](*args, **kwargs)
+
         return NotImplemented
 
     def pcolormesh(

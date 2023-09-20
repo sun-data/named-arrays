@@ -114,6 +114,19 @@ def arange(
     )
 
 
+@_implements(na.unit)
+def unit(a: na.AbstractScalarArray) -> None | u.UnitBase:
+    return na.unit(a.ndarray)
+
+
+@_implements(na.unit_normalized)
+def unit_normalized(a: na.AbstractScalarArray) -> u.UnitBase:
+    result = na.unit(a)
+    if result is None:
+        result = u.dimensionless_unscaled
+    return result
+
+
 def random(
         func: Callable,
         *args: float | u.Quantity | na.AbstractScalarArray,
@@ -181,8 +194,12 @@ def plt_plot_like(
         ax: None | matplotlib.axes.Axes | na.ScalarArray[npt.NDArray[matplotlib.axes.Axes]] = None,
         axis: None | str = None,
         where: bool | na.AbstractScalarArray = True,
+        components: None | tuple[str, ...] = None,
         **kwargs,
 ) -> na.ScalarArray[npt.NDArray[None | matplotlib.artist.Artist]]:
+
+    if components is not None:
+        raise ValueError(f"`components` should be `None` for scalars, got {components}")
 
     try:
         args = tuple(scalars._normalize(arg) for arg in args)

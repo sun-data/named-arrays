@@ -39,6 +39,13 @@ class AbstractTestAbstractCartesianVectorArray(
 
     def test__lshift__(self, array: na.AbstractVectorArray):
         unit = u.mm
+        try:
+            for c in array.components:
+                array.components[c] << unit
+        except u.UnitConversionError as e:
+            with pytest.raises(type(e)):
+                array << unit
+            return
         result = array << unit
         for c in array.components:
             assert np.all(result.components[c] == array.components[c] << unit)

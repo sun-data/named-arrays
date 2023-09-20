@@ -1,5 +1,7 @@
 from typing import Callable, TypeVar
 import numpy as np
+import numpy.typing as npt
+import matplotlib.axes
 import astropy.units as u
 import named_arrays as na
 import named_arrays._scalars.scalar_named_array_functions
@@ -8,8 +10,10 @@ from . import vectors
 __all__ = [
     "ASARRAY_LIKE_FUNCTIONS",
     "RANDOM_FUNCTIONS",
+    "PLT_PLOT_LIKE_FUNCTIONS",
     "HANDLED_FUNCTIONS",
-    "random"
+    "random",
+    "plt_plot_like",
 ]
 
 InputT = TypeVar("InputT", bound="float | u.Quantity | na.AbstractVectorArray")
@@ -17,6 +21,7 @@ OutputT = TypeVar("OutputT", bound="float | u.Quantity | na.AbstractVectorArray"
 
 ASARRAY_LIKE_FUNCTIONS = named_arrays._scalars.scalar_named_array_functions.ASARRAY_LIKE_FUNCTIONS
 RANDOM_FUNCTIONS = named_arrays._scalars.scalar_named_array_functions.RANDOM_FUNCTIONS
+PLT_PLOT_LIKE_FUNCTIONS = named_arrays._scalars.scalar_named_array_functions.PLT_PLOT_LIKE_FUNCTIONS
 HANDLED_FUNCTIONS = dict()
 
 
@@ -116,6 +121,31 @@ def arange(
     return prototype.type_explicit.from_components(components)
 
 
+@_implements(na.unit)
+def unit(a: na.AbstractVectorArray) -> None | u.UnitBase | na.AbstractVectorArray:
+    components = a.components
+    components = {c: na.unit(components[c]) for c in components}
+    iter_components = iter(components)
+    component_0 = components[next(iter_components)]
+    if all(component_0 == components[c] for c in components):
+        return component_0
+    else:
+        components = {c: 1 if components[c] is None else 1 * components[c] for c in components}
+        return a.type_explicit.from_components(components,)
+
+
+@_implements(na.unit_normalized)
+def unit_normalized(a: na.AbstractVectorArray) -> u.UnitBase | na.AbstractVectorArray:
+    components = a.components
+    components = {c: na.unit_normalized(components[c]) for c in components}
+    iter_components = iter(components)
+    component_0 = components[next(iter_components)]
+    if all(component_0 == components[c] for c in components):
+        return component_0
+    else:
+        return a.type_explicit.from_components(components)
+
+
 def random(
         func: Callable,
         *args: float | u.Quantity |na.AbstractScalar | na.AbstractVectorArray,
@@ -146,6 +176,42 @@ def random(
     }
 
     return prototype.type_explicit.from_components(components)
+
+
+def plt_plot_like(
+        func: Callable,
+        *args: na.AbstractCartesian2dVectorArray,
+        ax: None | matplotlib.axes.Axes | na.ScalarArray[npt.NDArray[matplotlib.axes.Axes]] = None,
+        axis: None | str = None,
+        where: bool | na.AbstractScalarArray = True,
+        components: None | tuple[str, ...] = None,
+        **kwargs,
+) -> na.ScalarArray[npt.NDArray[None | matplotlib.artist.Artist]]:
+
+    if len(args) != 1:
+        return NotImplemented
+
+    a, = args
+
+    if not isinstance(a, na.AbstractVectorArray):
+        return NotImplemented
+
+    a = a.cartesian_nd
+
+    components_a = a.components
+
+    if components is None:
+        components = components_a
+
+    args = tuple(na.as_named_array(components_a[c]) for c in components)
+
+    return func(
+        *args,
+        ax=ax,
+        axis=axis,
+        where=where,
+        **kwargs,
+    )
 
 
 @_implements(na.jacobian)

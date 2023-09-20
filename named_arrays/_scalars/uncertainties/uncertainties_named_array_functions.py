@@ -81,6 +81,16 @@ def asarray_like(
     )
 
 
+@_implements(na.unit)
+def unit(a: na.AbstractUncertainScalarArray) -> None | u.UnitBase:
+    return na.unit(a.nominal)
+
+
+@_implements(na.unit_normalized)
+def unit_normalized(a: na.AbstractUncertainScalarArray) -> u.UnitBase:
+    return na.unit_normalized(a.nominal)
+
+
 def random(
         func: Callable,
         *args: float | u.Quantity | na.AbstractScalar,
@@ -117,11 +127,16 @@ def plt_plot_like(
         ax: None | matplotlib.axes.Axes = None,
         axis: None | str = None,
         where: bool | na.AbstractScalarArray = True,
+        components: None | tuple[str, ...] = None,
         **kwargs,
 ) -> na.UncertainScalarArray[
     npt.NDArray[matplotlib.artist.Artist],
     npt.NDArray[matplotlib.artist.Artist]
 ]:
+
+    if components is not None:
+        raise ValueError(f"`components` should be `None` for scalars, got {components}")
+
     try:
         args = tuple(uncertainties._normalize(arg) for arg in args)
         where = uncertainties._normalize(where)
