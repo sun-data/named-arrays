@@ -197,6 +197,21 @@ def plt_plot_like(
     return result
 
 
+@_implements(na.jacobian)
+def jacobian(
+        function: Callable[[na.AbstractScalar], na.AbstractScalar],
+        x: na.AbstractScalar,
+        dx: None | na.AbstractScalar = None,
+        like: None | na.AbstractScalar = None,
+) -> na.AbstractScalar:
+    return named_arrays._scalars.scalar_named_array_functions.jacobian(
+        function=function,
+        x=x,
+        dx=dx,
+        like=like,
+    )
+
+
 @_implements(na.optimize.root_secant)
 def optimize_root_secant(
         function: Callable[[na.ScalarLike], na.ScalarLike],

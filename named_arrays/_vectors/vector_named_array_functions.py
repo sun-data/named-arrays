@@ -1,4 +1,4 @@
-from typing import Callable
+from typing import Callable, TypeVar
 import numpy as np
 import numpy.typing as npt
 import matplotlib.axes
@@ -15,6 +15,9 @@ __all__ = [
     "random",
     "plt_plot_like",
 ]
+
+InputT = TypeVar("InputT", bound="float | u.Quantity | na.AbstractVectorArray")
+OutputT = TypeVar("OutputT", bound="float | u.Quantity | na.AbstractVectorArray")
 
 ASARRAY_LIKE_FUNCTIONS = named_arrays._scalars.scalar_named_array_functions.ASARRAY_LIKE_FUNCTIONS
 RANDOM_FUNCTIONS = named_arrays._scalars.scalar_named_array_functions.RANDOM_FUNCTIONS
@@ -209,3 +212,71 @@ def plt_plot_like(
         where=where,
         **kwargs,
     )
+
+
+@_implements(na.jacobian)
+def jacobian(
+        function: Callable[[InputT], OutputT],
+        x: InputT,
+        dx: None | InputT = None,
+        like: None | OutputT = None,
+) -> na.AbstractVectorArray | na.AbstractMatrixArray:
+
+    f = function(x)
+
+    if like is None:
+        like = f
+
+    type_x = x.type_explicit
+
+    if isinstance(x, na.AbstractVectorArray):
+
+        components_x = x.components
+        components_dx = dx.components
+
+        if isinstance(f, na.AbstractVectorArray):
+
+            components_f = f.components
+
+            components_result = {c: type_x() for c in components_f}
+
+            for c_x in components_x:
+                components_x0 = components_x.copy()
+                components_x0[c_x] = components_x0[c_x] + components_dx[c_x]
+                x0 = type_x.from_components(components_x0)
+                f0 = function(x0)
+                df = f - f0
+                for c_f in components_result:
+                    components_result[c_f].components[c_x] = df.components[c_f] / components_dx[c_x]
+
+            result = like.type_matrix.from_components(components_result)
+
+        elif isinstance(f, na.AbstractScalar):
+
+            components_result = dict()
+
+            for c_x in components_x:
+                components_x0 = components_x.copy()
+                components_x0[c_x] = components_x0[c_x] + components_dx[c_x]
+                x0 = type_x.from_components(components_x0)
+                f0 = function(x0)
+                df = f - f0
+                components_result[c_x] = df / components_dx[c_x]
+
+            result = type_x.from_components(components_result)
+
+        else:
+            return NotImplemented
+
+    elif isinstance(x, na.AbstractScalar):
+        return named_arrays._scalars.scalar_named_array_functions.jacobian(
+            function=function,
+            x=x,
+            dx=dx,
+            like=like,
+        )
+
+    else:
+        return NotImplemented
+
+    return result
