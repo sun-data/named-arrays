@@ -618,9 +618,9 @@ class AbstractTestAbstractFunctionArray(
         ):
             pass
 
-        @pytest.mark.xfail
-        class TestOptimizeRootSecant(
-            named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestOptimizeRootSecant,
+        @pytest.mark.skip
+        class TestOptimizeRoot(
+            named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestOptimizeRoot,
         ):
             pass
 

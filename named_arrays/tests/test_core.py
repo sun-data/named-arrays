@@ -1158,10 +1158,11 @@ class AbstractTestAbstractArray(
 
                 assert isinstance(result, na.AbstractArray)
 
-        class TestOptimizeRootSecant:
+        class TestOptimizeRoot:
 
-            def test_optimize_root_secant(
+            def test_optimize_root(
                     self,
+                    func: Callable,
                     array: na.AbstractArray,
                     coefficient_constant: float | u.Quantity | na.AbstractArray,
                     coefficient_linear: float | u.Quantity | na.AbstractArray,
@@ -1177,7 +1178,7 @@ class AbstractTestAbstractArray(
                     u = na.value(x)
                     return a * u ** 2 + b * u + c
 
-                result = na.optimize.root_secant(
+                result = func(
                     function=function,
                     guess=array,
                 )

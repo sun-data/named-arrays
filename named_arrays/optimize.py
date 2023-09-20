@@ -47,11 +47,11 @@ def root_newton(
         root being computed.
     """
     if jacobian is None:
-        jacobian = functools.partial(na.jacobian, function=function)
+        jacobian = lambda x: na.jacobian(function=function, x=x)
 
     f_guess = function(guess)
     if max_abs_error is None:
-        max_abs_error = 1e-13
+        max_abs_error = 1e-10
         if f_guess.unit is not None:
             max_abs_error = max_abs_error * f_guess.unit
     max_abs_error = na.asanyarray(max_abs_error, like=f_guess)

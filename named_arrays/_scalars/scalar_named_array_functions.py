@@ -279,7 +279,7 @@ def jacobian(
         if isinstance(x, na.AbstractScalar):
             x0 = x + dx
             f0 = function(x0)
-            df = f - f0
+            df = f0 - f
             return df / dx
 
         else:
@@ -298,18 +298,32 @@ def optimize_root_newton(
         callback: None | Callable[[int, na.ScalarLike, na.ScalarLike, na.ScalarLike], None] = None,
 ) -> na.ScalarArray:
 
-    try:
-        guess = scalars._normalize(guess)
+    if isinstance(guess, na.AbstractArray):
+        if isinstance(guess, na.AbstractScalar):
+            pass
+        else:
+            return NotImplemented
+    else:
+        guess = na.ScalarArray(guess)
 
-        x = guess
+    x = guess
+    f = function(x)
 
-        f = function(x)
-        f = scalars._normalize(f)
+    if isinstance(f, na.AbstractArray):
+        if isinstance(f, na.AbstractScalar):
+            pass
+        else:
+            return NotImplemented
+    else:
+        f = na.ScalarArray(f)
 
-        max_abs_error = scalars._normalize(max_abs_error)
-
-    except scalars.ScalarTypeError:
-        return NotImplemented
+    if isinstance(max_abs_error, na.AbstractArray):
+        if isinstance(max_abs_error, na.AbstractScalar):
+            pass
+        else:
+            return NotImplemented
+    else:
+        max_abs_error = na.ScalarArray(max_abs_error)
 
     if na.shape(max_abs_error):
         raise ValueError(f"argument `max_abs_error` should have an empty shape, got {na.shape(max_abs_error)}")
