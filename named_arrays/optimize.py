@@ -16,7 +16,7 @@ def root_secant(
         max_abs_error: None | OutputT = None,
         max_iterations: int = 100,
         damping: None | float = None,
-        callback: None | Callable[[InputT, OutputT], None] = None,
+        callback: None | Callable[[int, InputT, OutputT, na.AbstractArray], None] = None,
 ) -> InputT:
     """
     Find the root of a given function using the
