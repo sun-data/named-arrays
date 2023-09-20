@@ -1111,6 +1111,36 @@ class AbstractTestAbstractArray(
                 for index in ax_normalized.ndindex():
                     assert ax_normalized[index].ndarray.has_data()
 
+        @pytest.mark.parametrize(
+            argnames="function",
+            argvalues=[
+                lambda x: x * x
+            ]
+        )
+        @pytest.mark.parametrize(
+            argnames="dx",
+            argvalues=[
+                None,
+            ]
+        )
+        class TestJacobian:
+
+            def test_jacobian(
+                    self,
+                    function: Callable[[na.AbstractArray], na.AbstractArray],
+                    array: na.AbstractVectorArray,
+                    dx: None | float | na.AbstractVectorArray,
+            ):
+                x = array
+
+                result = na.jacobian(
+                    function=function,
+                    x=x,
+                    dx=dx,
+                )
+
+                assert isinstance(result, na.AbstractArray)
+
         class TestOptimizeRootSecant:
 
             def test_optimize_root_secant(

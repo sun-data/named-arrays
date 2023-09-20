@@ -14,6 +14,7 @@ __all__ = [
     "PLT_PLOT_LIKE_FUNCTIONS",
     "HANDLED_FUNCTIONS",
     "random",
+    "jacobian",
 ]
 
 ASARRAY_LIKE_FUNCTIONS = (
@@ -245,6 +246,29 @@ def plt_plot_like(
             )[0]
 
     return result
+
+
+@_implements(na.jacobian)
+def jacobian(
+        function: Callable[[na.AbstractScalar], na.AbstractScalar],
+        x: na.AbstractScalar,
+        dx: None | na.AbstractScalar = None,
+        like: None | na.AbstractScalar = None,
+) -> na.AbstractScalar:
+
+    f = function(x)
+
+    if isinstance(f, na.AbstractScalar):
+        if isinstance(x, na.AbstractScalar):
+            x0 = x + dx
+            f0 = function(x0)
+            df = f - f0
+            return df / dx
+
+        else:
+            return NotImplemented
+    else:
+        return NotImplemented
 
 
 @_implements(na.optimize.root_secant)

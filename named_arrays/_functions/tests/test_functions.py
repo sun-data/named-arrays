@@ -613,6 +613,12 @@ class AbstractTestAbstractFunctionArray(
             pass
 
         @pytest.mark.xfail
+        class TestJacobian(
+            named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestJacobian,
+        ):
+            pass
+
+        @pytest.mark.xfail
         class TestOptimizeRootSecant(
             named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestOptimizeRootSecant,
         ):

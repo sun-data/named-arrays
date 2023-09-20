@@ -19,6 +19,7 @@ __all__ = [
     'stack',
     'concatenate',
     'add_axes',
+    'jacobian',
 ]
 
 ArrayT = TypeVar("ArrayT")
@@ -26,6 +27,8 @@ LikeT = TypeVar("LikeT", bound="None | na.AbstractArray")
 AxisT = TypeVar("AxisT", bound="str | na.AbstractArray")
 NumT = TypeVar("NumT", bound="int | na.AbstractArray")
 BaseT = TypeVar("BaseT", bound="int | na.AbstractArray")
+InputT = TypeVar("InputT", bound="float | u.Quantity | na.AbstractScalarArray")
+OutputT = TypeVar("OutputT", bound="float | u.Quantity | na.AbstractScalarArray")
 
 
 def _is_subclass(a: Any, b: Any):
@@ -499,3 +502,39 @@ def add_axes(array: na.ArrayLike, axes: str | Sequence[str]):
     if not isinstance(array, na.AbstractArray):
         array = na.ScalarArray(array)
     return array.add_axes(axes)
+
+
+def jacobian(
+        function: Callable[[InputT], OutputT],
+        x: InputT,
+        dx: None | InputT = None,
+) -> na.AbstractMatrixArray:
+    """
+    Compute the Jacobian of the given function using the first-order finite difference method.
+
+    Parameters
+    ----------
+    function
+        The function to compute the Jacobian of
+    x
+        The point to evaluate the function
+    step_size
+        The distance that ``x`` will be perturbed by to compute the slope
+    """
+
+    if dx is None:
+        dx = 1e-13
+        unit_x = na.unit(x)
+        if unit_x is not None:
+            dx = dx * unit_x
+    dx = na.asanyarray(dx, like=x)
+
+    f_x = function(x)
+
+    return na._named_array_function(
+        func=jacobian,
+        function=function,
+        x=x,
+        dx=dx,
+        like=f_x,
+    )
