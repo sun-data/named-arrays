@@ -1131,7 +1131,7 @@ class AbstractTestAbstractArray(
         @pytest.mark.parametrize(
             argnames="function",
             argvalues=[
-                lambda x: x * x
+                lambda x: 2 * x ** 3
             ]
         )
         @pytest.mark.parametrize(
@@ -1156,6 +1156,7 @@ class AbstractTestAbstractArray(
                     dx=dx,
                 )
 
+                assert np.all(result >= 0)
                 assert isinstance(result, na.AbstractArray)
 
         class TestOptimizeRoot:

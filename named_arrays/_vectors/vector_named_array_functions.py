@@ -245,7 +245,7 @@ def jacobian(
                 components_x0[c_x] = components_x0[c_x] + components_dx[c_x]
                 x0 = type_x.from_components(components_x0)
                 f0 = function(x0)
-                df = f - f0
+                df = f0 - f
                 for c_f in components_result:
                     components_result[c_f].components[c_x] = df.components[c_f] / components_dx[c_x]
 
@@ -260,7 +260,7 @@ def jacobian(
                 components_x0[c_x] = components_x0[c_x] + components_dx[c_x]
                 x0 = type_x.from_components(components_x0)
                 f0 = function(x0)
-                df = f - f0
+                df = f0 - f
                 components_result[c_x] = df / components_dx[c_x]
 
             result = type_x.from_components(components_result)
