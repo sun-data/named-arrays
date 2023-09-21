@@ -584,7 +584,7 @@ def jacobian(
     """
 
     if dx is None:
-        dx = 1e-13
+        dx = 1e-10
         unit_x = na.unit(x)
         if unit_x is not None:
             dx = dx * unit_x
