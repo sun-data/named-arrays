@@ -82,12 +82,18 @@ def asarray_like(
 
 
 @_implements(na.unit)
-def unit(a: na.AbstractUncertainScalarArray) -> None | u.UnitBase:
+def unit(
+        a: na.AbstractUncertainScalarArray,
+        squeeze: bool = True,
+) -> None | u.UnitBase:
     return na.unit(a.nominal)
 
 
 @_implements(na.unit_normalized)
-def unit_normalized(a: na.AbstractUncertainScalarArray) -> u.UnitBase:
+def unit_normalized(
+        a: na.AbstractUncertainScalarArray,
+        squeeze: bool = True,
+) -> u.UnitBase:
     return na.unit_normalized(a.nominal)
 
 

@@ -115,12 +115,18 @@ def arange(
 
 
 @_implements(na.unit)
-def unit(a: na.AbstractScalarArray) -> None | u.UnitBase:
+def unit(
+        a: na.AbstractScalarArray,
+        squeeze: bool = True,
+) -> None | u.UnitBase:
     return na.unit(a.ndarray)
 
 
 @_implements(na.unit_normalized)
-def unit_normalized(a: na.AbstractScalarArray) -> u.UnitBase:
+def unit_normalized(
+        a: na.AbstractScalarArray,
+        squeeze: bool = True,
+) -> u.UnitBase:
     result = na.unit(a)
     if result is None:
         result = u.dimensionless_unscaled
