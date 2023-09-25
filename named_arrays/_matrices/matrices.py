@@ -362,15 +362,18 @@ class AbstractExplicitMatrixArray(
             for c in components:
 
                 component = components[c]
-                if isinstance(component, na.AbstractMatrixArray):
-                    nd_key_mod = f"{c}_"
-                    sub_dict = {k[len(nd_key_mod):]: v for k, v in nd_components.items() if k.startswith(nd_key_mod)}
-                    components_new[c] = component.type_explicit.from_cartesian_nd(
-                         na.CartesianNdMatrixArray(sub_dict),
-                         like=component,
-                     )
+                if isinstance(component, na.AbstractVectorArray):
+                    if isinstance(component, na.AbstractMatrixArray):
+                        nd_key_mod = f"{c}_"
+                        sub_dict = {k[len(nd_key_mod):]: v for k, v in nd_components.items() if k.startswith(nd_key_mod)}
+                        components_new[c] = component.type_explicit.from_cartesian_nd(
+                             na.CartesianNdMatrixArray(sub_dict),
+                             like=component,
+                         )
+                    else:
+                        components_new[c] = component.type_explicit.from_cartesian_nd(nd_components[c], like=component)
                 else:
-                    components_new[c] = component.type_explicit.from_cartesian_nd(nd_components[c], like=component)
+                    components_new[c] = nd_components[c]
 
         return cls.from_components(components_new)
 
