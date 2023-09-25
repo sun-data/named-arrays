@@ -368,6 +368,4 @@ def optimize_root_newton(
 
         f = function(x)
 
-        print()
-
     raise ValueError("Max iterations exceeded")
