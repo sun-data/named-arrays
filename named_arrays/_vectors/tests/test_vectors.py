@@ -515,7 +515,27 @@ class AbstractTestAbstractVectorArray(
         ):
             pass
 
-        @pytest.mark.xfail
+        @pytest.mark.parametrize(
+            argnames="func",
+            argvalues=[
+                na.optimize.root_newton,
+            ],
+        )
+        @pytest.mark.parametrize(
+            argnames="coefficient_constant",
+            argvalues=[
+                400 - 1,
+                na.linspace(300, 400, axis="coeff_0", num=6) - 1,
+                ],
+        )
+        @pytest.mark.parametrize(
+            argnames="coefficient_linear",
+            argvalues=[-40],
+        )
+        @pytest.mark.parametrize(
+            argnames="coefficient_quadratic",
+            argvalues=[1],
+        )
         class TestOptimizeRoot(
             named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestOptimizeRoot,
         ):

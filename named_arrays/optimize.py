@@ -52,7 +52,7 @@ def root_newton(
     f_guess = function(guess)
     if max_abs_error is None:
         max_abs_error = 1e-10
-        if f_guess.unit is not None:
+        if na.unit(f_guess) is not None:
             max_abs_error = max_abs_error * f_guess.unit
     max_abs_error = na.asanyarray(max_abs_error, like=f_guess)
 

@@ -1184,8 +1184,8 @@ class AbstractTestAbstractArray(
                     guess=array,
                 )
 
-                equal_1 = np.allclose(na.value(result), root_1)
-                equal_2 = np.allclose(na.value(result), root_2)
+                equal_1 = np.abs(root_1 - na.value(result)) < 1e-8
+                equal_2 = np.abs(root_2 - na.value(result)) < 1e-8
 
                 assert np.all(equal_1 | equal_2)
 
