@@ -235,29 +235,37 @@ def jacobian(
     if like is None:
         like = f
 
+    like = na.asanyarray(like)
+
     type_x = x.type_explicit
 
     if isinstance(x, na.AbstractVectorArray):
 
-        components_x = x.components
-        components_dx = dx.components
+        components_x = x.cartesian_nd.components
+        components_dx = dx.cartesian_nd.components
 
         if isinstance(f, na.AbstractVectorArray):
 
-            components_f = f.components
+            components_f = f.cartesian_nd.components
 
-            components_result = {c: type_x() for c in components_f}
+            components_result = {c: dict() for c in components_f}
 
             for c_x in components_x:
                 components_x0 = components_x.copy()
                 components_x0[c_x] = components_x0[c_x] + components_dx[c_x]
-                x0 = type_x.from_components(components_x0)
+                x0 = type_x.from_cartesian_nd(na.CartesianNdVectorArray(components_x0), like=x)
                 f0 = function(x0)
                 df = f0 - f
+                components_df = df.cartesian_nd.components
                 for c_f in components_result:
-                    components_result[c_f].components[c_x] = df.components[c_f] / components_dx[c_x]
+                    components_result[c_f][c_x] = components_df[c_f] / components_dx[c_x]
 
-            result = like.type_matrix.from_components(components_result)
+            components_result = {
+                c: type_x.from_cartesian_nd(na.CartesianNdVectorArray(components_result[c]), like=x)
+                for c in components_result
+            }
+
+            result = like.type_matrix.from_cartesian_nd(na.CartesianNdVectorArray(components_result), like=like.matrix)
 
         elif isinstance(f, na.AbstractScalar):
 
@@ -266,12 +274,13 @@ def jacobian(
             for c_x in components_x:
                 components_x0 = components_x.copy()
                 components_x0[c_x] = components_x0[c_x] + components_dx[c_x]
-                x0 = type_x.from_components(components_x0)
+                x0 = type_x.from_cartesian_nd(na.CartesianNdVectorArray(components_x0), like=x)
                 f0 = function(x0)
                 df = f0 - f
                 components_result[c_x] = df / components_dx[c_x]
 
-            result = type_x.from_components(components_result)
+            result = na.CartesianNdVectorArray(components_result)
+            result = type_x.from_cartesian_nd(result, like=x)
 
         else:
             return NotImplemented
