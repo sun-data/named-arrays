@@ -54,36 +54,6 @@ class AbstractCartesian3dMatrixArray(
         g, h, i = self.z.components.values()
         return (a * e * i) + (b * f * g) + (c * d * h) - (c * e * g) - (b * d * i) - (a * f * h)
 
-    @property
-    def inverse(self) -> na.AbstractMatrixArray:
-        if not self.is_square:
-            raise ValueError("can only compute inverse of square matrices")
-        type_matrix = self.x.type_matrix
-        type_row = self.type_vector
-        c1, c2, c3 = self.x.components
-        a, b, c = self.x.components.values()
-        d, e, f = self.y.components.values()
-        g, h, i = self.z.components.values()
-        result = type_matrix.from_components({
-            c1: type_row(
-                x=(e * i - f * h),
-                y=-(b * i - c * h),
-                z=(b * f - c * e),
-            ),
-            c2: type_row(
-                x=-(d * i - f * g),
-                y=(a * i - c * g),
-                z=-(a * f - c * d),
-            ),
-            c3: type_row(
-                x=(d * h - e * g),
-                y=-(a * h - b * g),
-                z=(a * e - b * d),
-            )
-        })
-        result = result / self.determinant
-        return result
-
 
 @dataclasses.dataclass(eq=False, repr=False)
 class Cartesian3dMatrixArray(
