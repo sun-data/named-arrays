@@ -267,7 +267,7 @@ def jacobian(
 
             result = like.type_matrix.from_cartesian_nd(na.CartesianNdVectorArray(components_result), like=like.matrix)
 
-        elif isinstance(f, na.AbstractScalar):
+        elif isinstance(na.as_named_array(f), na.AbstractScalar):
 
             components_result = dict()
 
@@ -285,7 +285,7 @@ def jacobian(
         else:
             return NotImplemented
 
-    elif isinstance(x, na.AbstractScalar):
+    elif isinstance(na.as_named_array(x), na.AbstractScalar):
         x0 = x + dx
         f0 = function(x0)
         df = f0 - f

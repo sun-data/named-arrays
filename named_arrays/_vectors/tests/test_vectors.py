@@ -518,8 +518,8 @@ class AbstractTestAbstractVectorArray(
         @pytest.mark.parametrize(
             argnames="function",
             argvalues=[
-                lambda x: a * x ** 3
-                for a in [2, ]
+                lambda x: 2 * x ** 3,
+                lambda x: 2 * list(x.components.values())[0] ** 3,
             ]
         )
         class TestJacobian(
