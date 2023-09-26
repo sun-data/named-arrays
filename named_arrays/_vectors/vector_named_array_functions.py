@@ -286,12 +286,10 @@ def jacobian(
             return NotImplemented
 
     elif isinstance(x, na.AbstractScalar):
-        return named_arrays._scalars.scalar_named_array_functions.jacobian(
-            function=function,
-            x=x,
-            dx=dx,
-            like=like,
-        )
+        x0 = x + dx
+        f0 = function(x0)
+        df = f0 - f
+        return df / dx
 
     else:
         return NotImplemented

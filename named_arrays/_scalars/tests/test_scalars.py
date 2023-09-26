@@ -855,6 +855,22 @@ class AbstractTestAbstractScalarArray(
             pass
 
         @pytest.mark.parametrize(
+            argnames="function",
+            argvalues=[
+                lambda x: a * x ** 3
+                for a in [
+                    2,
+                    na.linspace(1, 2, num=6, axis="a"),
+                    na.Cartesian2dVectorArray(2, 3),
+                ]
+            ]
+        )
+        class TestJacobian(
+            tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestJacobian,
+        ):
+            pass
+
+        @pytest.mark.parametrize(
             argnames="func",
             argvalues=[
                 na.optimize.root_secant,

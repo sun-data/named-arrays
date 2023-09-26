@@ -1129,12 +1129,6 @@ class AbstractTestAbstractArray(
                     assert ax_normalized[index].ndarray.has_data()
 
         @pytest.mark.parametrize(
-            argnames="function",
-            argvalues=[
-                lambda x: 2 * x ** 3
-            ]
-        )
-        @pytest.mark.parametrize(
             argnames="dx",
             argvalues=[
                 None,

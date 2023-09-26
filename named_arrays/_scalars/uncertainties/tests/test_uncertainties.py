@@ -674,6 +674,18 @@ class AbstractTestAbstractUncertainScalarArray(
             pass
 
         @pytest.mark.parametrize(
+            argnames="function",
+            argvalues=[
+                lambda x: a * x ** 3
+                for a in [2, na.UniformUncertainScalarArray(2, width=0.5, num_distribution=_num_distribution)]
+            ]
+        )
+        class TestJacobian(
+            named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestJacobian,
+        ):
+            pass
+
+        @pytest.mark.parametrize(
             argnames="func",
             argvalues=[
                 na.optimize.root_secant,
