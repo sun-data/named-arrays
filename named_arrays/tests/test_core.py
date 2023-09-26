@@ -1165,29 +1165,20 @@ class AbstractTestAbstractArray(
                     self,
                     func: Callable,
                     array: na.AbstractArray,
-                    coefficient_constant: float | u.Quantity | na.AbstractArray,
-                    coefficient_linear: float | u.Quantity | na.AbstractArray,
-                    coefficient_quadratic: float | u.Quantity | na.AbstractArray,
+                    function: Callable[[na.AbstractArray], na.AbstractArray],
             ):
-                a = coefficient_quadratic
-                b = coefficient_linear
-                c = coefficient_constant
-                root_1 = (-b + np.sqrt(np.square(b) - 4 * a * c)) / (2 * a)
-                root_2 = (-b - np.sqrt(np.square(b) - 4 * a * c)) / (2 * a)
-
-                def function(x: na.AbstractArray):
-                    u = na.value(x)
-                    return a * u ** 2 + b * u + c
+                def callback(i, x, f, c):
+                    global out
+                    out = x
 
                 result = func(
                     function=function,
                     guess=array,
+                    callback=callback,
                 )
 
-                equal_1 = np.abs(root_1 - na.value(result)) < 1e-8
-                equal_2 = np.abs(root_2 - na.value(result)) < 1e-8
-
-                assert np.all(equal_1 | equal_2)
+                assert np.all(np.abs(function(result)) < 1e-8)
+                assert out is result
 
 
 class AbstractTestAbstractExplicitArray(

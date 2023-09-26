@@ -862,19 +862,15 @@ class AbstractTestAbstractScalarArray(
             ],
         )
         @pytest.mark.parametrize(
-            argnames="coefficient_constant",
+            argnames="function",
             argvalues=[
-                400 - 1,
-                na.linspace(300, 400, axis="coeff_0", num=6) - 1,
-            ],
-        )
-        @pytest.mark.parametrize(
-            argnames="coefficient_linear",
-            argvalues=[-40],
-        )
-        @pytest.mark.parametrize(
-            argnames="coefficient_quadratic",
-            argvalues=[1],
+                lambda x: np.square(na.value(x) - shift_horizontal) + shift_vertical
+                for shift_horizontal in [
+                    20,
+                    na.linspace(19, 20, axis="c", num=6),
+                ]
+                for shift_vertical in [-1]
+            ]
         )
         class TestOptimizeRoot(
             tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestOptimizeRoot,
