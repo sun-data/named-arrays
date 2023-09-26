@@ -75,10 +75,16 @@ def asarray_like(
 
 
 @_implements(na.unit)
-def unit(a: na.AbstractFunctionArray) -> None | u.UnitBase | na.AbstractArray:
-    return na.unit(a.outputs)
+def unit(
+        a: na.AbstractFunctionArray,
+        squeeze: bool = True,
+) -> None | u.UnitBase | na.AbstractArray:
+    return na.unit(a.outputs, squeeze=squeeze)
 
 
 @_implements(na.unit_normalized)
-def unit_normalized(a: na.AbstractFunctionArray) -> u.UnitBase | na.AbstractArray:
-    return na.unit_normalized(a.outputs)
+def unit_normalized(
+        a: na.AbstractFunctionArray,
+        squeeze: bool = True,
+) -> u.UnitBase | na.AbstractArray:
+    return na.unit_normalized(a.outputs, squeeze=squeeze)

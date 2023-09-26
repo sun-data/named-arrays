@@ -674,22 +674,37 @@ class AbstractTestAbstractUncertainScalarArray(
             pass
 
         @pytest.mark.parametrize(
-            argnames="coefficient_constant",
+            argnames="function",
             argvalues=[
-                400 - 1,
-                na.linspace(300, 400, axis="coeff_0", num=6) - 1,
+                lambda x: a * x ** 3
+                for a in [2, na.UniformUncertainScalarArray(2, width=0.5, num_distribution=_num_distribution)]
+            ]
+        )
+        class TestJacobian(
+            named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestJacobian,
+        ):
+            pass
+
+        @pytest.mark.parametrize(
+            argnames="func",
+            argvalues=[
+                na.optimize.root_secant,
+                na.optimize.root_newton,
             ],
         )
         @pytest.mark.parametrize(
-            argnames="coefficient_linear",
-            argvalues=[-40],
+            argnames="function",
+            argvalues=[
+                lambda x: np.square(na.value(x) - shift_horizontal) + shift_vertical
+                for shift_horizontal in [
+                    20,
+                    na.UniformUncertainScalarArray(20, width=1, num_distribution=_num_distribution),
+                ]
+                for shift_vertical in [-1]
+            ]
         )
-        @pytest.mark.parametrize(
-            argnames="coefficient_quadratic",
-            argvalues=[1],
-        )
-        class TestOptimizeRootSecant(
-            named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestOptimizeRootSecant,
+        class TestOptimizeRoot(
+            named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestOptimizeRoot,
         ):
             pass
 

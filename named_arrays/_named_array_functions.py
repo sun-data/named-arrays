@@ -444,7 +444,10 @@ def shape(a: na.ArrayLike) -> dict[str, int]:
     return np.shape(a)
 
 
-def unit(a: Any) -> None | u.UnitBase | na.AbstractArray:
+def unit(
+        a: Any,
+        squeeze: bool = True,
+) -> None | u.UnitBase | na.AbstractArray:
     """
     Isolate the physical units associated with the given object.
 
@@ -454,6 +457,10 @@ def unit(a: Any) -> None | u.UnitBase | na.AbstractArray:
     ----------
     a
         object to isolate the units of
+    squeeze
+        If the result is an instance of :class:`named_arrays.AbstractVectorArray`,
+        and all the components are the same, simplify the result into a single
+        :class:`astropy.units.Unit` instance.
 
     See Also
     --------
@@ -468,12 +475,16 @@ def unit(a: Any) -> None | u.UnitBase | na.AbstractArray:
         return na._named_array_function(
             func=unit,
             a=a,
+            squeeze=squeeze,
         )
     else:
         return None
 
 
-def unit_normalized(a: Any) -> u.UnitBase | na.AbstractArray:
+def unit_normalized(
+        a: Any,
+        squeeze: bool = True,
+) -> u.UnitBase | na.AbstractArray:
     """
     Isolate the physical units associated with a given object, normalizing to dimensionless units
     if the object does not have associated units.
@@ -483,6 +494,10 @@ def unit_normalized(a: Any) -> u.UnitBase | na.AbstractArray:
     ----------
     a
         object to isolate the units of
+    squeeze
+        If the result is an instance of :class:`named_arrays.AbstractVectorArray`,
+        and all the components are the same, simplify the result into a single
+        :class:`astropy.units.Unit` instance.
 
     See Also
     --------
@@ -498,6 +513,7 @@ def unit_normalized(a: Any) -> u.UnitBase | na.AbstractArray:
         return na._named_array_function(
             func=unit_normalized,
             a=a,
+            squeeze=squeeze,
         )
     else:
         return u.dimensionless_unscaled
@@ -584,7 +600,7 @@ def jacobian(
     """
 
     if dx is None:
-        dx = 1e-13
+        dx = 1e-10
         unit_x = na.unit(x)
         if unit_x is not None:
             dx = dx * unit_x

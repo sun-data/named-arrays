@@ -122,28 +122,36 @@ def arange(
 
 
 @_implements(na.unit)
-def unit(a: na.AbstractVectorArray) -> None | u.UnitBase | na.AbstractVectorArray:
+def unit(
+        a: na.AbstractVectorArray,
+        squeeze: bool = True,
+) -> None | u.UnitBase | na.AbstractVectorArray:
     components = a.components
-    components = {c: na.unit(components[c]) for c in components}
+    components = {c: na.unit(components[c], squeeze=squeeze) for c in components}
     iter_components = iter(components)
     component_0 = components[next(iter_components)]
-    if all(component_0 == components[c] for c in components):
-        return component_0
-    else:
-        components = {c: 1 if components[c] is None else 1 * components[c] for c in components}
-        return a.type_explicit.from_components(components,)
+    if squeeze:
+        if all(component_0 == components[c] for c in components):
+            return component_0
+
+    components = {c: 1 if components[c] is None else 1 * components[c] for c in components}
+    return a.type_explicit.from_components(components,)
 
 
 @_implements(na.unit_normalized)
-def unit_normalized(a: na.AbstractVectorArray) -> u.UnitBase | na.AbstractVectorArray:
+def unit_normalized(
+        a: na.AbstractVectorArray,
+        squeeze: bool = True,
+) -> u.UnitBase | na.AbstractVectorArray:
     components = a.components
-    components = {c: na.unit_normalized(components[c]) for c in components}
+    components = {c: na.unit_normalized(components[c], squeeze=squeeze) for c in components}
     iter_components = iter(components)
     component_0 = components[next(iter_components)]
-    if all(component_0 == components[c] for c in components):
-        return component_0
-    else:
-        return a.type_explicit.from_components(components)
+    if squeeze:
+        if all(component_0 == components[c] for c in components):
+            return component_0
+
+    return a.type_explicit.from_components(components)
 
 
 def random(
@@ -227,56 +235,112 @@ def jacobian(
     if like is None:
         like = f
 
+    like = na.asanyarray(like)
+
     type_x = x.type_explicit
 
     if isinstance(x, na.AbstractVectorArray):
 
-        components_x = x.components
-        components_dx = dx.components
+        components_x = x.cartesian_nd.components
+        components_dx = dx.cartesian_nd.components
 
         if isinstance(f, na.AbstractVectorArray):
 
-            components_f = f.components
+            components_f = f.cartesian_nd.components
 
-            components_result = {c: type_x() for c in components_f}
+            components_result = {c: dict() for c in components_f}
 
             for c_x in components_x:
                 components_x0 = components_x.copy()
                 components_x0[c_x] = components_x0[c_x] + components_dx[c_x]
-                x0 = type_x.from_components(components_x0)
+                x0 = type_x.from_cartesian_nd(na.CartesianNdVectorArray(components_x0), like=x)
                 f0 = function(x0)
-                df = f - f0
+                df = f0 - f
+                components_df = df.cartesian_nd.components
                 for c_f in components_result:
-                    components_result[c_f].components[c_x] = df.components[c_f] / components_dx[c_x]
+                    components_result[c_f][c_x] = components_df[c_f] / components_dx[c_x]
 
-            result = like.type_matrix.from_components(components_result)
+            components_result = {
+                c: type_x.from_cartesian_nd(na.CartesianNdVectorArray(components_result[c]), like=x)
+                for c in components_result
+            }
 
-        elif isinstance(f, na.AbstractScalar):
+            result = like.type_matrix.from_cartesian_nd(na.CartesianNdVectorArray(components_result), like=like.matrix)
+
+        elif isinstance(na.as_named_array(f), na.AbstractScalar):
 
             components_result = dict()
 
             for c_x in components_x:
                 components_x0 = components_x.copy()
                 components_x0[c_x] = components_x0[c_x] + components_dx[c_x]
-                x0 = type_x.from_components(components_x0)
+                x0 = type_x.from_cartesian_nd(na.CartesianNdVectorArray(components_x0), like=x)
                 f0 = function(x0)
-                df = f - f0
+                df = f0 - f
                 components_result[c_x] = df / components_dx[c_x]
 
-            result = type_x.from_components(components_result)
+            result = na.CartesianNdVectorArray(components_result)
+            result = type_x.from_cartesian_nd(result, like=x)
 
         else:
             return NotImplemented
 
-    elif isinstance(x, na.AbstractScalar):
-        return named_arrays._scalars.scalar_named_array_functions.jacobian(
-            function=function,
-            x=x,
-            dx=dx,
-            like=like,
-        )
+    elif isinstance(na.as_named_array(x), na.AbstractScalar):
+        x0 = x + dx
+        f0 = function(x0)
+        df = f0 - f
+        return df / dx
 
     else:
         return NotImplemented
 
     return result
+
+
+@_implements(na.optimize.root_newton)
+def optimize_root_newton(
+        function: Callable[[na.ScalarLike], na.ScalarLike],
+        guess: na.ScalarLike,
+        jacobian: Callable[[na.ScalarLike], na.ScalarLike],
+        max_abs_error: na.ScalarLike,
+        max_iterations: int = 100,
+        callback: None | Callable[[int, na.ScalarLike, na.ScalarLike, na.ScalarLike], None] = None,
+) -> na.ScalarArray:
+
+    x = guess
+    f = function(x)
+
+    if not isinstance(x, na.AbstractVectorArray):
+        return NotImplemented
+
+    if not isinstance(f, na.AbstractVectorArray):
+        return NotImplemented
+
+    if na.shape(max_abs_error):
+        raise ValueError(f"argument `max_abs_error` should have an empty shape, got {na.shape(max_abs_error)}")
+
+    shape = na.shape_broadcasted(f, x)
+
+    converged = na.broadcast_to(0 * na.value(f), shape=shape).astype(bool)
+
+    x = na.broadcast_to(x, shape).astype(float)
+
+    for i in range(max_iterations):
+
+        if callback is not None:
+            callback(i, x, f, converged)
+
+        converged |= np.abs(f) < max_abs_error
+
+        if np.all(converged):
+            return x
+
+        jac = jacobian(x)
+
+        correction = jac.inverse @ f
+
+        x = x - correction
+
+        f = function(x)
+
+    raise ValueError("Max iterations exceeded")

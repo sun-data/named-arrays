@@ -41,10 +41,6 @@ class AbstractPositionalMatrixArray(
     def determinant(self) -> na.ScalarLike:
         raise NotImplementedError
 
-    @property
-    def inverse(self) -> na.AbstractMatrixArray:
-        raise NotImplementedError
-
 
 @dataclasses.dataclass(eq=False, repr=False)
 class PositionalMatrixArray(

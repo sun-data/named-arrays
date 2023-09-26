@@ -119,6 +119,12 @@ class AbstractTestAbstractMatrixArray(
         ):
             pass
 
+        @pytest.mark.skip
+        class TestOptimizeRoot(
+            named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestOptimizeRoot,
+        ):
+            pass
+
 
 class AbstractTestAbstractExplicitMatrixArray(
     AbstractTestAbstractMatrixArray,

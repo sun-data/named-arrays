@@ -515,9 +515,34 @@ class AbstractTestAbstractVectorArray(
         ):
             pass
 
-        @pytest.mark.xfail
-        class TestOptimizeRootSecant(
-            named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestOptimizeRootSecant,
+        @pytest.mark.parametrize(
+            argnames="function",
+            argvalues=[
+                lambda x: 2 * x ** 3,
+                lambda x: 2 * list(x.components.values())[0] ** 3,
+            ]
+        )
+        class TestJacobian(
+            named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestJacobian,
+        ):
+            pass
+
+        @pytest.mark.parametrize(
+            argnames="func",
+            argvalues=[
+                na.optimize.root_newton,
+            ],
+        )
+        @pytest.mark.parametrize(
+            argnames="function",
+            argvalues=[
+                lambda x: np.square(na.value(x) - shift_horizontal) + shift_vertical
+                for shift_horizontal in [20,]
+                for shift_vertical in [-1]
+            ],
+        )
+        class TestOptimizeRoot(
+            named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestOptimizeRoot,
         ):
             pass
 

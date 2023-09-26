@@ -1129,12 +1129,6 @@ class AbstractTestAbstractArray(
                     assert ax_normalized[index].ndarray.has_data()
 
         @pytest.mark.parametrize(
-            argnames="function",
-            argvalues=[
-                lambda x: x * x
-            ]
-        )
-        @pytest.mark.parametrize(
             argnames="dx",
             argvalues=[
                 None,
@@ -1156,36 +1150,29 @@ class AbstractTestAbstractArray(
                     dx=dx,
                 )
 
+                assert np.all(result >= 0)
                 assert isinstance(result, na.AbstractArray)
 
-        class TestOptimizeRootSecant:
+        class TestOptimizeRoot:
 
-            def test_optimize_root_secant(
+            def test_optimize_root(
                     self,
+                    func: Callable,
                     array: na.AbstractArray,
-                    coefficient_constant: float | u.Quantity | na.AbstractArray,
-                    coefficient_linear: float | u.Quantity | na.AbstractArray,
-                    coefficient_quadratic: float | u.Quantity | na.AbstractArray,
+                    function: Callable[[na.AbstractArray], na.AbstractArray],
             ):
-                a = coefficient_quadratic
-                b = coefficient_linear
-                c = coefficient_constant
-                root_1 = (-b + np.sqrt(np.square(b) - 4 * a * c)) / (2 * a)
-                root_2 = (-b - np.sqrt(np.square(b) - 4 * a * c)) / (2 * a)
+                def callback(i, x, f, c):
+                    global out
+                    out = x
 
-                def function(x: na.AbstractArray):
-                    u = na.value(x)
-                    return a * u ** 2 + b * u + c
-
-                result = na.optimize.root_secant(
+                result = func(
                     function=function,
                     guess=array,
+                    callback=callback,
                 )
 
-                equal_1 = np.allclose(na.value(result), root_1)
-                equal_2 = np.allclose(na.value(result), root_2)
-
-                assert np.all(equal_1 | equal_2)
+                assert np.all(np.abs(function(result)) < 1e-8)
+                assert out is result
 
 
 class AbstractTestAbstractExplicitArray(

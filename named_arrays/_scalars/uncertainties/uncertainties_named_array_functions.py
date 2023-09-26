@@ -82,12 +82,18 @@ def asarray_like(
 
 
 @_implements(na.unit)
-def unit(a: na.AbstractUncertainScalarArray) -> None | u.UnitBase:
+def unit(
+        a: na.AbstractUncertainScalarArray,
+        squeeze: bool = True,
+) -> None | u.UnitBase:
     return na.unit(a.nominal)
 
 
 @_implements(na.unit_normalized)
-def unit_normalized(a: na.AbstractUncertainScalarArray) -> u.UnitBase:
+def unit_normalized(
+        a: na.AbstractUncertainScalarArray,
+        squeeze: bool = True,
+) -> u.UnitBase:
     return na.unit_normalized(a.nominal)
 
 
@@ -209,6 +215,25 @@ def jacobian(
         x=x,
         dx=dx,
         like=like,
+    )
+
+
+@_implements(na.optimize.root_newton)
+def optimize_root_newton(
+        function: Callable[[na.ScalarLike], na.ScalarLike],
+        guess: na.ScalarLike,
+        jacobian: Callable[[na.ScalarLike], na.ScalarLike],
+        max_abs_error: na.ScalarLike,
+        max_iterations: int = 100,
+        callback: None | Callable[[int, na.ScalarLike, na.ScalarLike, na.ScalarLike], None] = None,
+) -> na.UncertainScalarArray:
+    return named_arrays._scalars.scalar_named_array_functions.optimize_root_newton(
+        function=function,
+        guess=guess,
+        jacobian=jacobian,
+        max_abs_error=max_abs_error,
+        max_iterations=max_iterations,
+        callback=callback,
     )
 
 
