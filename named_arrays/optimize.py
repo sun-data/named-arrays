@@ -113,15 +113,15 @@ def root_secant(
 
     if min_step_size is None:
         min_step_size = 1e-13
-        if guess.unit is not None:
-            min_step_size = min_step_size * guess.unit
+        if na.unit(guess) is not None:
+            min_step_size = min_step_size * na.unit(guess)
     min_step_size = na.asanyarray(min_step_size, like=guess)
 
     f_guess = function(guess)
     if max_abs_error is None:
         max_abs_error = 1e-13
-        if f_guess.unit is not None:
-            max_abs_error = max_abs_error * f_guess.unit
+        if na.unit(f_guess) is not None:
+            max_abs_error = max_abs_error * na.unit(f_guess)
     max_abs_error = na.asanyarray(max_abs_error, like=f_guess)
 
     return na._named_array_function(
