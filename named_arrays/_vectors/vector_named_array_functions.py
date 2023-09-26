@@ -309,46 +309,23 @@ def optimize_root_newton(
         callback: None | Callable[[int, na.ScalarLike, na.ScalarLike, na.ScalarLike], None] = None,
 ) -> na.ScalarArray:
 
-    if isinstance(guess, na.AbstractArray):
-        if isinstance(guess, na.AbstractVectorArray):
-            pass
-        elif isinstance(guess, na.AbstractScalar):
-            pass
-        else:
-            return NotImplemented
-
     x = guess
     f = function(x)
 
-    if isinstance(f, na.AbstractArray):
-        if isinstance(f, na.AbstractVectorArray):
-            pass
-        elif isinstance(f, na.AbstractScalar):
-            pass
-        else:
-            return NotImplemented
+    if not isinstance(x, na.AbstractVectorArray):
+        return NotImplemented
 
-    if isinstance(max_abs_error, na.AbstractArray):
-        if isinstance(max_abs_error, na.AbstractVectorArray):
-            pass
-        elif isinstance(max_abs_error, na.AbstractScalar):
-            pass
-        else:
-            return NotImplemented
+    if not isinstance(f, na.AbstractVectorArray):
+        return NotImplemented
 
     if na.shape(max_abs_error):
         raise ValueError(f"argument `max_abs_error` should have an empty shape, got {na.shape(max_abs_error)}")
 
-    shape = na.shape_broadcasted(f, guess)
+    shape = na.shape_broadcasted(f, x)
 
     converged = na.broadcast_to(0 * na.value(f), shape=shape).astype(bool)
 
     x = na.broadcast_to(x, shape).astype(float)
-
-    if isinstance(f, na.AbstractVectorArray) and isinstance(x, na.AbstractVectorArray):
-        calc_correction = lambda g, j: j.inverse @ g
-    else:
-        calc_correction = lambda g, j: g / j
 
     for i in range(max_iterations):
 
@@ -362,7 +339,7 @@ def optimize_root_newton(
 
         jac = jacobian(x)
 
-        correction = calc_correction(f, jac)
+        correction = jac.inverse @ f
 
         x = x - correction
 
