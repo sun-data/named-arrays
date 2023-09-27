@@ -5,6 +5,7 @@ import named_arrays as na
 
 __all__ = [
     "root_secant",
+    "root_newton",
 ]
 
 InputT = TypeVar("InputT", bound="float | u.Quantity | na.AbstractScalarArray")
