@@ -39,3 +39,4 @@ from ._matrices.matrices_temporal_spectral_positional import *
 from ._matrices.matrices_temporal_spectral_directional import *
 from ._matrices.matrices_input_output import *
 from ._functions.functions import *
+from ._histograms.histograms import *

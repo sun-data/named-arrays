@@ -46,6 +46,57 @@ class AbstractFunctionArray(
     __named_array_priority__: ClassVar[float] = 100 * na.AbstractVectorArray.__named_array_priority__
 
     @property
+    def axes_center(self) -> tuple(str):
+        """
+        Return keys corresponding to all input axes representing bin centers
+        """
+        axes_center = tuple()
+        input_shape = self.inputs.shape
+        output_shape = self.outputs.shape
+        all_axes = set(input_shape | output_shape)
+
+        for axis in all_axes:
+            if axis in output_shape:
+                if axis in input_shape:
+                    if input_shape[axis] == output_shape[axis]:
+                        axes_center += (axis,)
+                    elif input_shape[axis] != output_shape[axis] + 1:
+                        raise ValueError(
+                            'Output axis dimension must either match Input axis dimension (representing'
+                            ' bin centers, or exceed by one (representing bin vertices).'
+                        )
+                else:
+                    axes_center += (axis,)
+
+            if axis in input_shape:
+                if axis not in output_shape:
+                    axes_center += (axis,)
+
+        return axes_center
+
+    @property
+    def axes_vertex(self) -> tuple(str):
+        """
+       Return keys corresponding to all input axes representing bin vertices
+       """
+        axes_vertex = tuple()
+        input_shape = self.inputs.shape
+        output_shape = self.outputs.shape
+        all_axes = set(input_shape | output_shape)
+
+        for axis in all_axes:
+            if axis in output_shape:
+                if axis in input_shape:
+                    if input_shape[axis] == output_shape[axis] + 1:
+                        axes_vertex += (axis,)
+                    elif input_shape[axis] != output_shape[axis]:
+                        raise ValueError(
+                            'Output axis dimension must either match Input axis dimension (representing'
+                            ' bin centers, or exceed by one (representing bin vertices).'
+                        )
+        return axes_vertex
+
+    @property
     def type_abstract(self) -> Type[AbstractFunctionArray]:
         return AbstractFunctionArray
 
@@ -492,8 +543,6 @@ class AbstractFunctionArray(
             )
         """
 
-
-
         if axs.ndim == 1:
             if input_component_row is not None:
                 axs = axs[..., np.newaxis]
@@ -619,7 +668,18 @@ class FunctionArray(
 
     @property
     def shape(self) -> dict[str, int]:
-        return na.shape_broadcasted(self.inputs, self.outputs)
+        outputs_shape = self.outputs.shape
+        inputs_shape = self.inputs.shape
+        vertex_shape = {axis: outputs_shape[axis] for axis in self.axes_vertex}
+
+        center_shape = {}
+        for axis in self.axes_center:
+            if axis in inputs_shape:
+                center_shape[axis] = inputs_shape[axis]
+            elif axis in outputs_shape:
+                center_shape[axis] = outputs_shape[axis]
+
+        return center_shape | vertex_shape
 
     @property
     def ndim(self) -> int:
