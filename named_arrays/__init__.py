@@ -21,3 +21,4 @@ from ._matrices.matrices_spectral import *
 from ._matrices.matrices_position import *
 from ._matrices.matrices_spectral_position import *
 from ._functions.functions import *
+from ._histograms.histograms import *
