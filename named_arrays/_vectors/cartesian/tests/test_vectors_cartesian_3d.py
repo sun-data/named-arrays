@@ -130,6 +130,9 @@ class AbstractTestAbstractCartesian3dVectorArray(
     test_vectors_cartesian.AbstractTestAbstractCartesianVectorArray,
 ):
 
+    def test_xy(self, array: na.AbstractCartesian3dVectorArray):
+        assert isinstance(array.xy, na.Cartesian2dVectorArray)
+
     @pytest.mark.parametrize(
         argnames='item',
         argvalues=_cartesian3d_items()

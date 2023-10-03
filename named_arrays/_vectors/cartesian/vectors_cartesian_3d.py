@@ -39,6 +39,13 @@ class AbstractCartesian3dVectorArray(
         """
 
     @property
+    def xy(self) -> na.Cartesian2dVectorArray:
+        return na.Cartesian2dVectorArray(
+            x=self.x,
+            y=self.y,
+        )
+
+    @property
     def type_abstract(self: Self) -> Type[AbstractCartesian3dVectorArray]:
         return AbstractCartesian3dVectorArray
 
