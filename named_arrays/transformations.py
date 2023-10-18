@@ -489,8 +489,8 @@ class AbstractTransformationList(
 
     @property
     def composed(self) -> AbstractTransformation:
-        transformations = iter(self)
-        result = next(transformations)
+        transformations = list(self)
+        result = IdentityTransformation()
         for t in transformations:
             result = t @ result
         return result

@@ -53,6 +53,10 @@ transformations_affine = [
 transformations_basic = identities + translations + transformations_linear + transformations_affine
 
 transformations_list = [
+    na.transformations.TransformationList([]),
+]
+
+transformations_list += [
     na.transformations.TransformationList([t1, t2], intrinsic=intrinsic)
     for t1 in transformations_basic[::2]
     for t2 in transformations_basic[1::2]
