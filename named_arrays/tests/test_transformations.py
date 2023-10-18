@@ -8,6 +8,10 @@ __all__ = [
     "AbstractTestAbstractTransformation",
 ]
 
+identities = [
+    na.transformations.IdentityTransformation(),
+]
+
 translations = [
     na.transformations.Translation(na.Cartesian3dVectorArray(1, 2) * u.mm),
     na.transformations.Translation(na.Cartesian3dVectorLinearSpace(
@@ -46,7 +50,7 @@ transformations_affine = [
     for translation in translations
 ]
 
-transformations_basic = translations + transformations_linear + transformations_affine
+transformations_basic = identities + translations + transformations_linear + transformations_affine
 
 transformations_list = [
     na.transformations.TransformationList([t1, t2], intrinsic=intrinsic)
@@ -94,6 +98,13 @@ class AbstractTestAbstractTransformation(
                 x: na.AbstractVectorArray,
         ):
             assert np.allclose((a @ a)(x), a(a(x)))
+
+
+@pytest.mark.parametrize("a", identities)
+class TestIdentityTransformation(
+    AbstractTestAbstractTransformation,
+):
+    pass
 
 
 class AbstractTestAbstractTranslation(

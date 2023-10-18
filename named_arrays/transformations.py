@@ -20,6 +20,7 @@ __all__ = [
 
 VectorT = TypeVar("VectorT", bound="na.AbstractVectorArray")
 MatrixT = TypeVar("MatrixT", bound="na.AbstractMatrixArray")
+TransformationT = TypeVar("TransformationT", bound="AbstractTransformation")
 LinearTransformationT = TypeVar("LinearTransformationT", bound="AbstractLinearTransformation")
 TranslationT = TypeVar("TranslationT", bound="AbstractTranslation")
 
@@ -100,6 +101,30 @@ class AbstractTransformation(
 
             t1(t2(v))
         """
+
+
+@dataclasses.dataclass(eq=False)
+class IdentityTransformation(
+    AbstractTransformation,
+):
+    """
+    The identity transformation just returns its inputs.
+    """
+    def __call__(
+        self,
+        a: na.AbstractVectorArray,
+    ) -> na.AbstractVectorArray:
+        return a
+
+    @property
+    def inverse(self: Self) -> Self:
+        return self
+
+    def __matmul__(self, other: TransformationT) -> TransformationT:
+        return other
+
+    def __rmatmul__(self, other: TransformationT) -> TransformationT:
+        return other
 
 
 @dataclasses.dataclass(eq=False)
