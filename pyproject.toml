@@ -38,7 +38,7 @@ doc = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/Kankelborg-Group/named_arrays"
+Homepage = "https://github.com/sun-data/named-arrays"
 Documentation = "https://named-arrays.readthedocs.io/en/latest"
 
 [tool.setuptools_scm]

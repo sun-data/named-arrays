@@ -78,7 +78,7 @@ html_theme_options = {
     "icon_links": [
         {
             "name": "GitHub",
-            "url": "https://github.com/Kankelborg-Group/named_arrays",
+            "url": "https://github.com/sun-data/named-arrays",
             "icon": "fa-brands fa-github",
             "type": "fontawesome",
         },
