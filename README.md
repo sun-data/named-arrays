@@ -1,6 +1,6 @@
 # named-arrays
 
-![tests](https://github.com/sun-data/named-arrays/actions/workflows/tests.yml/badge.svg)
+[![tests](https://github.com/sun-data/named-arrays/actions/workflows/tests.yml/badge.svg)](https://github.com/sun-data/named-arrays/actions/workflows/tests.yml)
 [![codecov](https://codecov.io/gh/sun-data/named-arrays/graph/badge.svg?token=1GhdcsgwO0)](https://codecov.io/gh/sun-data/named-arrays)
 [![Documentation Status](https://readthedocs.org/projects/named-arrays/badge/?version=latest)](https://named-arrays.readthedocs.io/en/latest/?badge=latest)
 [![PyPI version](https://badge.fury.io/py/named-arrays.svg)](https://badge.fury.io/py/named-arrays)
