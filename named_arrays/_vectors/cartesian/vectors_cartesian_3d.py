@@ -65,6 +65,14 @@ class AbstractCartesian3dVectorArray(
             self,
             other: AbstractCartesian3dVectorArray,
     ) -> na.Cartesian3dVectorArray:
+        """
+        Compute the vector product :math:`\mathbf{a} \times \mathbf{b}`
+
+        Parameters
+        ----------
+        other
+            the right-hand operand of the cross product operation
+        """
         a = self
         b = other
         if isinstance(other, na.AbstractCartesian3dVectorArray):
