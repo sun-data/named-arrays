@@ -65,7 +65,7 @@ class AbstractCartesian3dVectorArray(
             self,
             other: AbstractCartesian3dVectorArray,
     ) -> na.Cartesian3dVectorArray:
-        """
+        r"""
         Compute the vector product :math:`\mathbf{a} \times \mathbf{b}`
 
         Parameters
