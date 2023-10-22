@@ -30,6 +30,17 @@ _num_distribution = named_arrays._vectors.tests.test_vectors._num_distribution
 class AbstractTestAbstractCartesianVectorArray(
     named_arrays._vectors.tests.test_vectors.AbstractTestAbstractVectorArray,
 ):
+    def test_normalized(self, array: na.AbstractCartesianVectorArray):
+        try:
+            array.length
+        except u.UnitConversionError as e:
+            with pytest.raises(type(e)):
+                array.normalized
+            return
+
+        mask = na.as_named_array(array.length > 0)
+        result = array[mask].normalized
+        assert np.allclose(result.length, 1)
 
     def test__mul__(self, array: na.AbstractVectorArray):
         unit = u.mm

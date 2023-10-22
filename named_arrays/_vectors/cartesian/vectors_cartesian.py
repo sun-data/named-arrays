@@ -44,6 +44,13 @@ class AbstractCartesianVectorArray(
         result = np.sqrt(result)
         return result
 
+    @property
+    def normalized(self: Self) -> Self:
+        """
+        Return a normalized copy of this vector, where :attr:`length` is unity.
+        """
+        return self / self.length
+
     def __mul__(self: Self, other: na.ArrayLike | u.Unit) -> AbstractExplicitCartesianVectorArray:
         if isinstance(other, u.UnitBase):
             components = self.components
