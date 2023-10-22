@@ -61,6 +61,28 @@ class AbstractCartesian3dVectorArray(
     def explicit(self) -> Cartesian3dVectorArray:
         return super().explicit
 
+    def cross(
+            self,
+            other: AbstractCartesian3dVectorArray,
+    ) -> na.Cartesian3dVectorArray:
+        a = self
+        b = other
+        if isinstance(other, na.AbstractCartesian3dVectorArray):
+            if len(self.cartesian_nd.components) != 3:
+                raise ValueError("all components of `self` must be scalars")
+            if len(other.cartesian_nd.components) != 3:
+                raise ValueError("all components of `other` must be scalars")
+            return self.type_explicit(
+                x=+(a.y * b.z - a.z * b.y),
+                y=-(a.x * b.z - a.z * b.x),
+                z=+(a.x * b.y - a.y * b.x),
+            )
+        else:
+            raise TypeError(
+                f"`other` must be an instance of `{na.AbstractCartesian3dVectorArray.__name__}`, "
+                f"got `{type(other).__name__}`"
+            )
+
 
 @dataclasses.dataclass(eq=False, repr=False)
 class Cartesian3dVectorArray(

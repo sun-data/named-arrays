@@ -133,6 +133,32 @@ class AbstractTestAbstractCartesian3dVectorArray(
     def test_xy(self, array: na.AbstractCartesian3dVectorArray):
         assert isinstance(array.xy, na.Cartesian2dVectorArray)
 
+    @pytest.mark.parametrize("array_2", _cartesian3d_arrays_2())
+    def test_cross(
+            self,
+            array: na.AbstractCartesian3dVectorArray,
+            array_2: float | u.Quantity | na.AbstractArray,
+    ):
+        if not isinstance(array_2, na.AbstractCartesian3dVectorArray):
+            with pytest.raises(TypeError):
+                array.cross(array_2)
+            return
+
+        array_is_not_3d = len(array.cartesian_nd.components) != 3
+        array_2_is_not_3d = len(array_2.cartesian_nd.components) != 3
+
+        if array_is_not_3d or array_2_is_not_3d:
+            with pytest.raises(ValueError):
+                array.cross(array_2)
+            return
+
+        assert np.allclose(array.cross(array), 0)
+
+        result = array.cross(array_2)
+
+        assert np.allclose(result @ array, 0)
+        assert np.allclose(result@ array_2, 0)
+
     @pytest.mark.parametrize(
         argnames='item',
         argvalues=_cartesian3d_items()
