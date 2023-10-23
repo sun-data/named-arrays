@@ -484,6 +484,7 @@ class AbstractTestAbstractVectorArray(
             np.convolve(array, v=v, mode=mode)
 
     def test_broadcasted(self, array: na.AbstractVectorArray):
+        super().test_broadcasted(array=array)
         array_broadcasted = array.broadcasted
         shape = array.shape
         components = array_broadcasted.components

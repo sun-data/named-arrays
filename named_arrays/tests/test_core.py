@@ -197,6 +197,11 @@ class AbstractTestAbstractArray(
         assert not issubclass(array.type_abstract, na.AbstractExplicitArray)
         assert not issubclass(array.type_abstract, na.AbstractImplicitArray)
 
+    def test_broadcasted(self, array: na.AbstractArray):
+        result = array.broadcasted
+        assert result.shape == array.shape
+        assert isinstance(result, array.type_explicit)
+
     def test_centers(self, array: na.AbstractArray):
         assert isinstance(array.centers, na.AbstractArray)
 

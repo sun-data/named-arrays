@@ -478,14 +478,6 @@ class AbstractUncertainScalarArray(
 
         return NotImplemented
 
-    @property
-    def broadcasted(self) -> na.UncertainScalarArray:
-        a = self.explicit
-        return na.UncertainScalarArray(
-            nominal=na.broadcast_to(a.nominal, a.shape),
-            distribution=na.broadcast_to(a.distribution, a.shape_distribution),
-        )
-
 
 @dataclasses.dataclass(eq=False, repr=False)
 class UncertainScalarArray(

@@ -422,11 +422,6 @@ class AbstractVectorArray(
 
         return NotImplemented
 
-    @property
-    def broadcasted(self: Self) -> Self:
-        a = self.explicit
-        return a.broadcast_to(a.shape)
-
 
 AbstractScalarOrVectorArray = na.AbstractScalar | AbstractVectorArray
 

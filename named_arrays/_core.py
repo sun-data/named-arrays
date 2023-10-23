@@ -346,6 +346,16 @@ class AbstractArray(
         """
 
     @property
+    def broadcasted(self) -> na.AbstractExplicitArray:
+        """
+        if this array has multiple components, broadcast them against each other.
+
+        Equivalent to ``a.broadcast_to(a.shape)``
+        """
+        a = self.explicit
+        return a.broadcast_to(a.shape)
+
+    @property
     @abc.abstractmethod
     def centers(self: Self) -> AbstractArray:
         """
