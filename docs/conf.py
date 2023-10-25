@@ -88,6 +88,7 @@ html_theme_options = {
             "icon": "fa-brands fa-python",
         },
     ],
+    "navigation_with_keys": False,
 }
 
 favicons = [
