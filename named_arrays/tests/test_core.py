@@ -1015,6 +1015,14 @@ class AbstractTestAbstractArray(
     ):
         assert np.array_equal(array.transpose(), np.transpose(array))
 
+    def test_interp_linear_identity(
+            self,
+            array: na.AbstractArray,
+    ):
+        item = array.indices
+        result = array.interp_linear(item)
+        assert np.allclose(result, array)
+
     class TestNamedArrayFunctions(abc.ABC):
 
         def test_unit(self, array: na.AbstractArray):

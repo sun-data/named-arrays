@@ -414,6 +414,16 @@ class AbstractFunctionArray(
 
         return NotImplemented
 
+    def interp_linear(
+            self,
+            item: dict[str, na.AbstractArray],
+    ) -> FunctionArray:
+        a = self.broadcasted
+        return a.type_explicit(
+            inputs=a.inputs[item],
+            outputs=a.outputs[item],
+        )
+
     def pcolormesh(
             self,
             axs: np.ndarray,

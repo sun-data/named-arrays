@@ -785,10 +785,13 @@ class AbstractArray(
             self: Self,
             item: dict[str, Self],
     ) -> Self:
-        return self._interp_linear_recursive(
-            item=item,
-            item_base=self[{ax: 0 for ax in item}].indices,
-        )
+        if item:
+            return self._interp_linear_recursive(
+                item=item,
+                item_base=self[{ax: 0 for ax in item}].indices,
+            )
+        else:
+            return self
 
     def __call__(self: Self, item: dict[str, Self]) -> Self:
         return self.interp_linear(item=item)

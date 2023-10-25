@@ -1077,33 +1077,6 @@ class ScalarLinearSpace(
     # def index_below(self, value: AbstractScalarT) -> typ.Dict[str, AbstractScalarT]:
     #     return {self.axis: (value - self.start) // self.step}
 
-    def interp_linear(
-            self: Self,
-            item: dict[str, Self],
-    ) -> AbstractScalar:
-
-        item = item.copy()
-
-        if self.axis in item:
-
-            x = item.pop(self.axis)
-            x0 = 0
-
-            y0 = self.start.interp_linear(item)
-            y1 = self.stop.interp_linear(item)
-
-            result = y0 + (x - x0) * (y1 - y0)
-            return result
-
-        else:
-            return type(self)(
-                start=self.start.interp_linear(item),
-                stop=self.stop.interp_linear(item),
-                num=self.num,
-                endpoint=self.endpoint,
-                axis=self.axis,
-            )
-
 
 @dataclasses.dataclass(eq=False, repr=False)
 class ScalarStratifiedRandomSpace(
