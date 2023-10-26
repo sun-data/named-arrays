@@ -21,6 +21,7 @@ __all__ = [
     'stack',
     'concatenate',
     'add_axes',
+    "interp",
     'jacobian',
 ]
 
@@ -579,6 +580,55 @@ def add_axes(array: na.ArrayLike, axes: str | Sequence[str]):
     if not isinstance(array, na.AbstractArray):
         array = na.ScalarArray(array)
     return array.add_axes(axes)
+
+
+def interp(
+        x: float | u.Quantity | na.AbstractArray,
+        xp:  na.AbstractArray,
+        fp: na.AbstractArray,
+        axis: None | str = None,
+        left: None | float | u.Quantity | na.AbstractArray = None,
+        right: None | float | u.Quantity | na.AbstractArray = None,
+        period: None | float | u.Quantity | na.AbstractArray = None,
+) -> na.AbstractArray:
+    """
+    Thin wrapper around :func:`numpy.interp`.
+
+    Performs 1D interpolation on monotonically-increasing sample points along
+    the specified axes.
+
+    This function adds an ``axis`` argument to allow for interpolating
+    :math:`n`-dimensional arrays.
+
+    Parameters
+    ----------
+    x
+         The new :math:`x` coordinates where the interpolant will be evaluated.
+    xp
+        The :math:`x` coordinates of the data points.
+    fp
+        The :math:`y` coordinates of the data points.
+    axis
+        The logical axis along which to interpolate.
+    left
+        Value to return for points less than ``xp[{axis: 0}]``.
+        Default is ``fp[{axis: 0}]``
+    right
+        Value to return for points larger than ``xp[{axis: ~0}]``
+    period
+        A period for the :math:`x` coordinates.
+        This parameter allows for proper interpolation of angular coordinates
+    """
+    return _named_array_function(
+        func=interp,
+        x=x,
+        xp=xp,
+        fp=fp,
+        axis=axis,
+        left=left,
+        right=right,
+        period=period,
+    )
 
 
 def jacobian(

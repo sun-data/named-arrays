@@ -1035,6 +1035,37 @@ class AbstractTestAbstractArray(
             assert isinstance(result, (u.UnitBase, na.AbstractArray))
 
         @pytest.mark.parametrize(
+            argnames="slope",
+            argvalues=[
+                2,
+                na.Cartesian2dVectorArray(x=2, y=3)
+            ],
+        )
+        class TestInterp:
+            def test_interp(
+                self,
+                array: na.AbstractArray,
+                slope: float | na.AbstractArray,
+            ):
+
+                xp = na.linspace(-100, 100, axis="interp", num=11)
+
+                unit_array = na.unit(array)
+                if unit_array is not None:
+                    xp = xp * unit_array
+
+                fp = slope * xp
+
+                result = na.interp(
+                    x=array,
+                    xp=xp,
+                    fp=fp,
+                    axis="interp",
+                )
+
+                assert np.allclose(result, slope * array)
+
+        @pytest.mark.parametrize(
             argnames="func",
             argvalues=[
                 na.plt.plot,

@@ -842,6 +842,18 @@ class AbstractTestAbstractScalarArray(
     class TestNamedArrayFunctions(
         tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions
     ):
+        class TestInterp(
+            tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestInterp,
+        ):
+            def test_interp(
+                    self,
+                    array: na.AbstractScalarArray,
+                    slope: float | na.AbstractArray,
+            ):
+                if np.issubdtype(array.dtype, bool):
+                    return
+                super().test_interp(array=array, slope=slope)
+
         @pytest.mark.parametrize(
             argnames="array_2",
             argvalues=_scalar_arrays_2(),

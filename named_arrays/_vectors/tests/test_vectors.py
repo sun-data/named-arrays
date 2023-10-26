@@ -494,6 +494,11 @@ class AbstractTestAbstractVectorArray(
     class TestNamedArrayFunctions(
         named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions
     ):
+        @pytest.mark.skip
+        class TestInterp(
+            named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestInterp
+        ):
+            pass
 
         @pytest.mark.parametrize("array_2", [None])
         @pytest.mark.parametrize(

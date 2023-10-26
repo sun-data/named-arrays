@@ -133,6 +133,76 @@ def unit_normalized(
     return result
 
 
+@_implements(na.interp)
+def interp(
+        x: float | u.Quantity | na.AbstractScalarArray,
+        xp:  na.AbstractScalarArray,
+        fp: na.AbstractScalarArray,
+        axis: None | str = None,
+        left: None | float | u.Quantity | na.AbstractScalarArray = None,
+        right: None | float | u.Quantity | na.AbstractScalarArray = None,
+        period: None | float | u.Quantity | na.AbstractScalarArray = None,
+):
+    try:
+        x = scalars._normalize(x)
+        xp = scalars._normalize(xp)
+        fp = scalars._normalize(fp)
+        left = scalars._normalize(left) if left is not None else left
+        right = scalars._normalize(right) if right is not None else right
+        period = scalars._normalize(period) if period is not None else period
+    except na.ScalarTypeError:
+        return NotImplemented
+
+    if axis is None:
+        if xp.ndim != 1:
+            raise ValueError("if `axis` is `None`, `xp` must have only one axis")
+        axis = next(iter(xp.shape))
+
+    shape = na.shape_broadcasted(
+        # x,
+        xp[{axis: 0}],
+        fp[{axis: 0}],
+        left,
+        right,
+        period,
+    )
+
+    x = na.broadcast_to(x, na.broadcast_shapes(x.shape, shape))
+    xp = na.broadcast_to(xp, na.broadcast_shapes(xp.shape, shape))
+    fp = na.broadcast_to(fp, na.broadcast_shapes(fp.shape, shape))
+    left = na.broadcast_to(left, shape) if left is not None else left
+    right = na.broadcast_to(right, shape) if right is not None else right
+    period = na.broadcast_to(period, shape) if period is not None else period
+
+    result = np.empty_like(x.value)
+    if fp.unit is not None:
+        result = result << fp.unit
+
+    for index in na.ndindex(shape):
+        x_index = x[index]
+        xp_index = xp[index]
+        fp_index = fp[index]
+        left_index = left[index].ndarray if left is not None else left
+        right_index = right[index].ndarray if right is not None else right
+        period_index = period[index].ndarray if period is not None else period
+
+        shape_index = na.shape_broadcasted(xp_index, fp_index)
+
+        result[index] = result.type_explicit(
+            ndarray=np.interp(
+                x=x_index.ndarray,
+                xp=xp_index.ndarray_aligned(shape_index),
+                fp=fp_index.ndarray_aligned(shape_index),
+                left=left_index,
+                right=right_index,
+                period=period_index,
+            ),
+            axes=x.axes,
+        )
+
+    return result
+
+
 def random(
         func: Callable,
         *args: float | u.Quantity | na.AbstractScalarArray,

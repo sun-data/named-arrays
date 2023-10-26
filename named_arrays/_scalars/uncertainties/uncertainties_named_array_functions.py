@@ -97,6 +97,48 @@ def unit_normalized(
     return na.unit_normalized(a.nominal)
 
 
+@_implements(na.interp)
+def interp(
+        x: float | u.Quantity | na.AbstractScalar,
+        xp:  na.AbstractScalar,
+        fp: na.AbstractScalar,
+        axis: None | str = None,
+        left: None | float | u.Quantity | na.AbstractScalar = None,
+        right: None | float | u.Quantity | na.AbstractScalar = None,
+        period: None | float | u.Quantity | na.AbstractScalar = None,
+) -> na.AbstractUncertainScalarArray:
+    try:
+        x = uncertainties._normalize(x)
+        xp = uncertainties._normalize(xp)
+        fp = uncertainties._normalize(fp)
+        left = uncertainties._normalize(left)
+        right = uncertainties._normalize(right)
+        period = uncertainties._normalize(period)
+    except na.UncertainScalarTypeError:
+        return NotImplemented
+
+    result = x.type_explicit(
+        nominal=na.interp(
+            x=x.nominal,
+            xp=xp.nominal,
+            fp=fp.nominal,
+            left=left.nominal,
+            right=right.nominal,
+            period=period.nominal,
+        ),
+        distribution=na.interp(
+            x=x.distribution,
+            xp=xp.distribution,
+            fp=fp.distribution,
+            left=left.distribution,
+            right=right.distribution,
+            period=period.distribution,
+        ),
+    )
+
+    return result
+
+
 def random(
         func: Callable,
         *args: float | u.Quantity | na.AbstractScalar,

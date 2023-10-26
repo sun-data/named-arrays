@@ -154,6 +154,48 @@ def unit_normalized(
     return a.type_explicit.from_components(components)
 
 
+@_implements(na.interp)
+def interp(
+        x: float | u.Quantity | na.AbstractScalar,
+        xp:  na.AbstractScalar,
+        fp: na.AbstractVectorArray,
+        axis: None | str = None,
+        left: None | float | na.AbstractScalar | na.AbstractVectorArray = None,
+        right: None | float | na.AbstractScalar | na.AbstractVectorArray = None,
+        period: None | float| na.AbstractScalar | na.AbstractVectorArray = None,
+) -> na.AbstractUncertainScalarArray:
+    try:
+        left = vectors._normalize(left, prototype=fp)
+        right = vectors._normalize(right, prototype=fp)
+    except na.VectorTypeError:
+        return NotImplemented
+
+    fp_cartesian = fp.cartesian_nd
+    components_fp = fp_cartesian.components
+    components_left = left.cartesian_nd.components
+    components_right = right.cartesian_nd.components
+
+    components_result = dict()
+    for c in components_fp:
+        components_result[c] = na.interp(
+            x=x,
+            xp=xp,
+            fp=components_fp[c],
+            axis=axis,
+            left=components_left[c],
+            right=components_right[c],
+            period=period,
+        )
+
+    result = type(fp_cartesian)(components_result)
+    result = fp.type_explicit.from_cartesian_nd(
+        array=result,
+        like=fp,
+    )
+
+    return result
+
+
 def random(
         func: Callable,
         *args: float | u.Quantity |na.AbstractScalar | na.AbstractVectorArray,
