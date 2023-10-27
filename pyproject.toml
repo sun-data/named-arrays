@@ -3,7 +3,7 @@ requires = ["setuptools", "setuptools-scm"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "named_arrays"
+name = "named-arrays"
 authors = [
     {name = "Roy T. Smart", email = "roytsmart@gmail.com"},
     {name = "Jacob D. Parker", email="jacobdparker@gmail.com"}
