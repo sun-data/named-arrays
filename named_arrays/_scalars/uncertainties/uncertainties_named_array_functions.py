@@ -211,7 +211,10 @@ def plt_plot_like(
     else:
         num_distribution = 1
 
-    alpha = max(1 / num_distribution, 1/255)
+    if num_distribution == 0:
+        alpha = 1
+    else:
+        alpha = max(1 / num_distribution, 1/255)
     if "alpha" in kwargs:
         kwargs["alpha"] *= alpha
     else:
