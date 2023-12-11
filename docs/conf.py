@@ -89,6 +89,9 @@ html_theme_options = {
         },
     ],
     "navigation_with_keys": False,
+    "analytics": {
+        "google_analytics_id": "G-8CL1YN2HZN"
+    },
 }
 
 favicons = [
