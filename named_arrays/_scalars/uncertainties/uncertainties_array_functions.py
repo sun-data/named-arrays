@@ -6,6 +6,7 @@ import named_arrays._scalars.scalar_array_functions
 from . import uncertainties
 
 __all__ = [
+    'SINGLE_ARG_FUNCTIONS',
     'ARRAY_CREATION_LIKE_FUNCTIONS',
     'SEQUENCE_FUNCTIONS',
     'DEFAULT_FUNCTIONS',
@@ -17,6 +18,7 @@ __all__ = [
     'HANDLED_FUNCTIONS',
 ]
 
+SINGLE_ARG_FUNCTIONS = named_arrays._scalars.scalar_array_functions.SINGLE_ARG_FUNCTIONS
 ARRAY_CREATION_LIKE_FUNCTIONS = named_arrays._scalars.scalar_array_functions.ARRAY_CREATION_LIKE_FUNCTIONS
 SEQUENCE_FUNCTIONS = named_arrays._scalars.scalar_array_functions.SEQUENCE_FUNCTIONS
 DEFAULT_FUNCTIONS = named_arrays._scalars.scalar_array_functions.DEFAULT_FUNCTIONS
@@ -26,6 +28,16 @@ FFT_LIKE_FUNCTIONS = named_arrays._scalars.scalar_array_functions.FFT_LIKE_FUNCT
 FFTN_LIKE_FUNCTIONS = named_arrays._scalars.scalar_array_functions.FFTN_LIKE_FUNCTIONS
 STACK_LIKE_FUNCTIONS = [np.stack, np.concatenate]
 HANDLED_FUNCTIONS = dict()
+
+
+def array_functions_single_arg(
+    func: Callable,
+    a: na.AbstractUncertainScalarArray,
+) -> na.UncertainScalarArray:
+    return a.type_explicit(
+        nominal=func(a.nominal),
+        distribution=func(a.distribution),
+    )
 
 
 def array_function_array_creation_like(

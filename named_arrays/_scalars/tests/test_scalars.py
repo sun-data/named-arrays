@@ -470,6 +470,16 @@ class AbstractTestAbstractScalarArray(
                     array_2=array_2,
                 )
 
+        class TestSingleArgumentFunctions(
+            AbstractTestAbstractScalar.TestArrayFunctions.TestSingleArgumentFunctions,
+        ):
+            def test_single_argument_functions(
+                self,
+                func: Callable,
+                array: na.AbstractScalarArray,
+            ):
+                result = func(array)
+                assert np.all(result.ndarray == func(array.ndarray))
 
         @pytest.mark.parametrize(
             argnames='where',

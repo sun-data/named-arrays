@@ -492,6 +492,23 @@ class AbstractTestAbstractArray(
         @pytest.mark.parametrize(
             argnames="func",
             argvalues=[
+                np.real,
+                np.imag,
+            ]
+        )
+        class TestSingleArgumentFunctions(abc.ABC):
+
+            @abc.abstractmethod
+            def test_single_argument_functions(
+                self,
+                func: Callable,
+                array: na.AbstractArray,
+            ):
+                pass
+
+        @pytest.mark.parametrize(
+            argnames="func",
+            argvalues=[
                 np.empty_like,
                 np.zeros_like,
                 np.ones_like,

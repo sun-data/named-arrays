@@ -6,6 +6,7 @@ import named_arrays as na
 from . import scalars
 
 __all__ = [
+    'SINGLE_ARG_FUNCTIONS',
     'ARRAY_CREATION_LIKE_FUNCTIONS',
     'DEFAULT_FUNCTIONS',
     'PERCENTILE_LIKE_FUNCTIONS',
@@ -13,6 +14,10 @@ __all__ = [
     'FFT_LIKE_FUNCTIONS',
     'FFTN_LIKE_FUNCTIONS',
     'HANDLED_FUNCTIONS',
+]
+SINGLE_ARG_FUNCTIONS = [
+    np.real,
+    np.imag,
 ]
 ARRAY_CREATION_LIKE_FUNCTIONS = [
     np.empty_like,
@@ -76,6 +81,16 @@ FFTN_LIKE_FUNCTIONS = [
     np.fft.irfftn,
 ]
 HANDLED_FUNCTIONS = dict()
+
+
+def array_function_single_arg(
+    func: Callable,
+    a: na.AbstractScalarArray,
+) -> na.ScalarArray:
+    return a.type_explicit(
+        ndarray=func(a.ndarray),
+        axes=a.axes,
+    )
 
 
 def array_function_array_creation_like(

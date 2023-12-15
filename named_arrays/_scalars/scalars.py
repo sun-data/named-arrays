@@ -487,6 +487,9 @@ class AbstractScalarArray(
 
         from . import scalar_array_functions
 
+        if func in scalar_array_functions.SINGLE_ARG_FUNCTIONS:
+            return scalar_array_functions.array_function_single_arg(func, *args, **kwargs)
+
         if func in scalar_array_functions.ARRAY_CREATION_LIKE_FUNCTIONS:
             return scalar_array_functions.array_function_array_creation_like(func, *args, **kwargs)
 

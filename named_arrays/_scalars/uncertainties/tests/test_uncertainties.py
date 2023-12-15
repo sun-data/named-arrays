@@ -381,6 +381,18 @@ class AbstractTestAbstractUncertainScalarArray(
                     array_2=array_2,
                 )
 
+        class TestSingleArgumentFunctions(
+            named_arrays._scalars.tests.test_scalars.AbstractTestAbstractScalar.TestArrayFunctions.TestSingleArgumentFunctions,
+        ):
+            def test_single_argument_functions(
+                self,
+                func: Callable,
+                array: na.AbstractUncertainScalarArray,
+            ):
+                result = func(array)
+                assert np.all(result.nominal == func(array.nominal))
+                assert np.all(result.distribution == func(array.distribution))
+
         @pytest.mark.parametrize(
             argnames='where',
             argvalues=[

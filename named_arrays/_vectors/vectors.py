@@ -372,6 +372,9 @@ class AbstractVectorArray(
 
         from . import vector_array_functions
 
+        if func in vector_array_functions.SINGLE_ARG_FUNCTIONS:
+            return vector_array_functions.array_functions_single_arg(func, *args, **kwargs)
+
         if func in vector_array_functions.ARRAY_CREATION_LIKE_FUNCTIONS:
             return vector_array_functions.array_function_array_creation_like(func, *args, **kwargs)
 

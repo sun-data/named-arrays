@@ -378,6 +378,17 @@ class AbstractTestAbstractFunctionArray(
                     array_2=array_2,
                 )
 
+        @pytest.mark.skip
+        class TestSingleArgumentFunctions(
+            named_arrays.tests.test_core.AbstractTestAbstractArray.TestArrayFunctions.TestSingleArgumentFunctions,
+        ):
+            def test_single_argument_functions(
+                self,
+                func: Callable,
+                array: na.AbstractFunctionArray,
+            ):
+                assert False
+
         @pytest.mark.xfail
         class TestArrayCreationLikeFunctions(
             named_arrays.tests.test_core.AbstractTestAbstractArray.TestArrayFunctions.TestArrayCreationLikeFunctions

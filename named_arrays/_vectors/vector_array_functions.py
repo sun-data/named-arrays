@@ -6,6 +6,7 @@ import named_arrays._scalars.scalar_array_functions
 from . import vectors
 
 __all__ = [
+    'SINGLE_ARG_FUNCTIONS',
     'ARRAY_CREATION_LIKE_FUNCTIONS',
     'SEQUENCE_FUNCTIONS',
     'DEFAULT_FUNCTIONS',
@@ -17,6 +18,7 @@ __all__ = [
     'STACK_LIKE_FUNCTIONS',
 ]
 
+SINGLE_ARG_FUNCTIONS = named_arrays._scalars.scalar_array_functions.SINGLE_ARG_FUNCTIONS
 ARRAY_CREATION_LIKE_FUNCTIONS = named_arrays._scalars.scalar_array_functions.ARRAY_CREATION_LIKE_FUNCTIONS
 SEQUENCE_FUNCTIONS = named_arrays._scalars.scalar_array_functions.SEQUENCE_FUNCTIONS
 DEFAULT_FUNCTIONS = [
@@ -75,6 +77,15 @@ STACK_LIKE_FUNCTIONS = [
     np.concatenate,
 ]
 HANDLED_FUNCTIONS = dict()
+
+
+def array_functions_single_arg(
+    func: Callable,
+    a: na.AbstractVectorArray,
+) -> na.AbstractExplicitVectorArray:
+    components = a.components
+    components = {c: func(components[c]) for c in components}
+    return a.type_explicit.from_components(components)
 
 
 def array_function_array_creation_like(

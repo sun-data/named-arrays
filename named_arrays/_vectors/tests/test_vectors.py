@@ -237,6 +237,18 @@ class AbstractTestAbstractVectorArray(
                     array_2=array_2,
                 )
 
+        class TestSingleArgumentFunctions(
+            named_arrays.tests.test_core.AbstractTestAbstractArray.TestArrayFunctions.TestSingleArgumentFunctions,
+        ):
+            def test_single_argument_functions(
+                self,
+                func: Callable,
+                array: na.AbstractVectorArray,
+            ):
+                result = func(array)
+                for c in array.components:
+                    assert np.all(result.components[c] == func(array.components[c]))
+
         class TestReductionFunctions(
             named_arrays.tests.test_core.AbstractTestAbstractArray.TestArrayFunctions.TestReductionFunctions,
         ):
