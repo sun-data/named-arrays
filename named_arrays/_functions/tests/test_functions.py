@@ -606,6 +606,10 @@ class AbstractTestAbstractFunctionArray(
             super().test_unravel_index(array=array)
 
         @pytest.mark.skip
+        def test_where(self, array: na.AbstractArray):
+            super().test_where(array=array)
+
+        @pytest.mark.skip
         def test_nan_to_num(self, array: na.AbstractFunctionArray, copy: bool):
             pass
 

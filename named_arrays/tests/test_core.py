@@ -907,6 +907,16 @@ class AbstractTestAbstractArray(
             result_expected = array[mask]
             assert np.all(result == result_expected)
 
+        def test_where(self, array: na.AbstractArray):
+            condition = array > array.mean()
+            result = np.where(
+                condition,
+                array,
+                array.mean(),
+            )
+            result_expected = np.maximum(array.mean(), array)
+            assert np.all(result == result_expected)
+
         @abc.abstractmethod
         def test_nan_to_num(self, array: na.AbstractArray, copy: bool):
             pass

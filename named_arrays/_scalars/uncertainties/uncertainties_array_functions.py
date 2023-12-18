@@ -748,6 +748,33 @@ def nonzero(a: na.AbstractUncertainScalarArray) -> dict[str, na.UncertainScalarA
     return result
 
 
+@implements(np.where)
+def where(
+    condition: na.AbstractScalar,
+    x: float | u.Quantity | na.AbstractScalar,
+    y: float | u.Quantity | na.AbstractScalar,
+) -> na.UncertainScalarArray:
+    try:
+        condition = uncertainties._normalize(condition)
+        x = uncertainties._normalize(x)
+        y = uncertainties._normalize(y)
+    except uncertainties.UncertainScalarTypeError:
+        return NotImplemented
+
+    return condition.type_explicit(
+        nominal=np.where(
+            condition.nominal,
+            x.nominal,
+            y.nominal,
+        ),
+        distribution=np.where(
+            condition.distribution,
+            x.distribution,
+            y.distribution,
+        ),
+    )
+
+
 @implements(np.nan_to_num)
 def nan_to_num(
         x: na.AbstractUncertainScalarArray,

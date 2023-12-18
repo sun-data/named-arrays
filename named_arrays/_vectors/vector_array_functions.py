@@ -727,6 +727,35 @@ def nonzero(a: na.AbstractVectorArray):
     return np.nonzero(components_accumulated)
 
 
+@implements(np.where)
+def where(
+    condition: na.AbstractScalar | na.AbstractVectorArray,
+    x: float | u.Quantity | na.AbstractScalar | na.AbstractVectorArray,
+    y: float | u.Quantity | na.AbstractScalar | na.AbstractVectorArray,
+) -> na.AbstractExplicitVectorArray:
+    try:
+        prototype = vectors._prototype(condition, x, y)
+        condition = vectors._normalize(condition, prototype)
+        x = vectors._normalize(x, prototype)
+        y = vectors._normalize(y, prototype)
+    except vectors.VectorTypeError:
+        return NotImplemented
+
+    components_condition = condition.components
+    components_x = x.components
+    components_y = y.components
+    components_result = dict()
+
+    for c in components_condition:
+        components_result[c] = np.where(
+            components_condition[c],
+            components_x[c],
+            components_y[c],
+        )
+
+    return prototype.type_explicit.from_components(components_result)
+
+
 @implements(np.nan_to_num)
 def nan_to_num(
         x: na.AbstractVectorArray,

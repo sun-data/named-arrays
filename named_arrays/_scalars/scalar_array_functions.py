@@ -773,6 +773,31 @@ def nonzero(a: na.AbstractScalarArray):
     return {axes[r]: na.ScalarArray(result[r], axes=(axes_flattened, )) for r, _ in enumerate(result)}
 
 
+@implements(np.where)
+def where(
+    condition: na.AbstractScalarArray,
+    x: float | u.Quantity | na.AbstractScalarArray,
+    y: float | u.Quantity | na.AbstractScalarArray,
+) -> na.ScalarArray:
+    try:
+        condition = scalars._normalize(condition)
+        x = scalars._normalize(x)
+        y = scalars._normalize(y)
+    except scalars.ScalarTypeError:
+        return NotImplemented
+
+    shape = na.shape_broadcasted(condition, x, y)
+
+    return condition.type_explicit(
+        ndarray=np.where(
+            condition.ndarray_aligned(shape),
+            x.ndarray_aligned(shape),
+            y.ndarray_aligned(shape),
+        ),
+        axes=tuple(shape),
+    )
+
+
 @implements(np.nan_to_num)
 def nan_to_num(
         x: na.AbstractScalarArray,
