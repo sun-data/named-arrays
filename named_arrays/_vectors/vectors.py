@@ -183,7 +183,12 @@ class AbstractVectorArray(
         return self.type_explicit.from_components(
             {c: components[c].astype(dtype=dtype[c], **kwargs) for c in components})
 
-    def to(self: Self, unit: u.UnitBase | dict[str, None | u.UnitBase]) -> AbstractExplicitVectorArray:
+    def to(
+        self: Self,
+        unit: u.UnitBase | dict[str, None | u.UnitBase],
+        equivalencies: None | list[tuple[u.Unit, u.Unit]] = [],
+        copy: bool = True,
+    ) -> AbstractExplicitVectorArray:
         components = self.components
         if not isinstance(unit, dict):
             unit = {c: unit for c in components}
@@ -194,7 +199,11 @@ class AbstractVectorArray(
                     components_c = components[c] << u.dimensionless_unscaled
                 else:
                     components_c = components[c]
-                components_result[c] = components_c.to(unit[c])
+                components_result[c] = components_c.to(
+                    unit=unit[c],
+                    equivalencies=equivalencies,
+                    copy=copy,
+                )
             else:
                 components_result[c] = components[c]
         return self.type_explicit.from_components(components_result)

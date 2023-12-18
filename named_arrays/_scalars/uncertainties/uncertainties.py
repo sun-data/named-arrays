@@ -145,9 +145,18 @@ class AbstractUncertainScalarArray(
             ),
         )
 
-    def to(self, unit: u.UnitBase) -> UncertainScalarArray:
+    def to(
+        self,
+        unit: u.UnitBase,
+        equivalencies: None | list[tuple[u.Unit, u.Unit]] = None,
+        copy: bool = True,
+    ) -> UncertainScalarArray:
         return UncertainScalarArray(
-            nominal=na.as_named_array(self.nominal).to(unit),
+            nominal=na.as_named_array(self.nominal).to(
+                unit=unit,
+                equivalencies=equivalencies,
+                copy=copy,
+            ),
             distribution=self.distribution.to(unit),
         )
 

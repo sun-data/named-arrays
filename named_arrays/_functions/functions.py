@@ -87,10 +87,19 @@ class AbstractFunctionArray(
             )
         )
 
-    def to(self, unit: u.UnitBase) -> FunctionArray:
+    def to(
+        self,
+        unit: u.UnitBase,
+        equivalencies: None | list[tuple[u.Unit, u.Unit]] = [],
+        copy: bool = True,
+    ) -> FunctionArray:
         return self.type_explicit(
             inputs=self.inputs,
-            outputs=self.outputs.to(unit),
+            outputs=self.outputs.to(
+                unit=unit,
+                equivalencies=equivalencies,
+                copy=copy,
+            ),
         )
 
     @property

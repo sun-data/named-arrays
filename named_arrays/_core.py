@@ -379,7 +379,12 @@ class AbstractArray(
         """
 
     @abc.abstractmethod
-    def to(self: Self, unit: u.UnitBase) -> Self:
+    def to(
+        self: Self,
+        unit: u.UnitBase,
+        equivalencies: None | list[tuple[u.Unit, u.Unit]] = [],
+        copy: bool = True,
+    ) -> Self:
         """
         Convert this array to a new unit.
 
@@ -389,10 +394,11 @@ class AbstractArray(
         ----------
         unit
             New unit of the returned array
-
-        Returns
-        -------
-            Array with :attr:`unit` set to the new value
+        equivalencies
+            A list of equivalence pairs to try if the units are not directly
+            convertible.
+        copy
+            Boolean flag controlling whether to copy the array.
         """
 
     @property

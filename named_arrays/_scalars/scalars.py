@@ -175,12 +175,21 @@ class AbstractScalarArray(
             axes=self.axes,
         )
 
-    def to(self: Self, unit: u.Unit) -> ScalarArray:
+    def to(
+        self: Self,
+        unit: u.Unit,
+        equivalencies: None | list[tuple[u.Unit, u.Unit]] = [],
+        copy: bool = True,
+    ) -> ScalarArray:
         ndarray = self.ndarray
         if not isinstance(ndarray, u.Quantity):
             ndarray = ndarray << u.dimensionless_unscaled
         return ScalarArray(
-            ndarray=ndarray.to(unit),
+            ndarray=ndarray.to(
+                unit=unit,
+                equivalencies=equivalencies,
+                copy=copy,
+            ),
             axes=self.axes,
         )
 
