@@ -8,6 +8,7 @@ import matplotlib.axes
 import matplotlib.artist
 import matplotlib.pyplot as plt
 import astropy.units as u
+import astropy.visualization
 import named_arrays as na
 
 num_x = 3
@@ -134,6 +135,8 @@ class TestIndexingFunctions:
 class AbstractTestAbstractArray(
     abc.ABC,
 ):
+    def test_named_array_like(self, array: na.AbstractArray):
+        assert na.named_array_like(array)
 
     @pytest.mark.parametrize('axis', [None, 'x', ('x', 'y')])
     def test_axis_normalized_function(
@@ -193,6 +196,11 @@ class AbstractTestAbstractArray(
         assert issubclass(array.type_abstract, na.AbstractArray)
         assert not issubclass(array.type_abstract, na.AbstractExplicitArray)
         assert not issubclass(array.type_abstract, na.AbstractImplicitArray)
+
+    def test_broadcasted(self, array: na.AbstractArray):
+        result = array.broadcasted
+        assert result.shape == array.shape
+        assert isinstance(result, array.type_explicit)
 
     def test_centers(self, array: na.AbstractArray):
         assert isinstance(array.centers, na.AbstractArray)
@@ -450,6 +458,36 @@ class AbstractTestAbstractArray(
             self.test_matmul(array_2, array)
 
     class TestArrayFunctions(abc.ABC):
+
+        @pytest.mark.parametrize(
+            argnames="func",
+            argvalues=[
+                na.asarray,
+                na.asanyarray,
+            ]
+        )
+        class TestAsArrayLikeFunctions(abc.ABC):
+
+            @abc.abstractmethod
+            def test_asarray_like_functions(
+                    self,
+                    func: Callable,
+                    array: None | float | u.Quantity | na.AbstractArray,
+                    array_2: None | float | u.Quantity | na.AbstractArray,
+            ):
+                pass
+
+            def test_asarray_like_functions_reversed(
+                    self,
+                    func: Callable,
+                    array: None | float | u.Quantity | na.AbstractArray,
+                    array_2: None | float | u.Quantity | na.AbstractArray,
+            ):
+                self.test_asarray_like_functions(
+                    func=func,
+                    array=array_2,
+                    array_2=array,
+                )
 
         @pytest.mark.parametrize(
             argnames="func",
@@ -977,19 +1015,67 @@ class AbstractTestAbstractArray(
     ):
         assert np.array_equal(array.transpose(), np.transpose(array))
 
+    def test_interp_linear_identity(
+            self,
+            array: na.AbstractArray,
+    ):
+        item = array.indices
+        result = array.interp_linear(item)
+        assert np.allclose(result, array)
+
     class TestNamedArrayFunctions(abc.ABC):
+
+        def test_unit(self, array: na.AbstractArray):
+            result = na.unit(array)
+            if result is not None:
+                assert isinstance(result, (u.UnitBase, na.AbstractArray))
+
+        def test_unit_normalized(self, array: na.AbstractArray):
+            result = na.unit_normalized(array)
+            assert isinstance(result, (u.UnitBase, na.AbstractArray))
+
+        @pytest.mark.parametrize(
+            argnames="slope",
+            argvalues=[
+                2,
+                na.Cartesian2dVectorArray(x=2, y=3)
+            ],
+        )
+        class TestInterp:
+            def test_interp(
+                self,
+                array: na.AbstractArray,
+                slope: float | na.AbstractArray,
+            ):
+
+                xp = na.linspace(-100, 100, axis="interp", num=11)
+
+                unit_array = na.unit(array)
+                if unit_array is not None:
+                    xp = xp * unit_array
+
+                fp = slope * xp
+
+                result = na.interp(
+                    x=array,
+                    xp=xp,
+                    fp=fp,
+                    axis="interp",
+                )
+
+                assert np.allclose(result, slope * array)
 
         @pytest.mark.parametrize(
             argnames="func",
             argvalues=[
                 na.plt.plot,
+                na.plt.fill,
             ]
         )
         @pytest.mark.parametrize(
             argnames="ax",
             argvalues=[
                 np._NoValue,
-                None,
                 plt.subplots()[1],
                 na.plt.subplots(axis_cols="x", ncols=num_x)[1],
             ]
@@ -998,8 +1084,14 @@ class AbstractTestAbstractArray(
             argnames="axis",
             argvalues=[
                 np._NoValue,
-                None,
                 "y",
+            ]
+        )
+        @pytest.mark.parametrize(
+            argnames="transformation",
+            argvalues=[
+                np._NoValue,
+                na.transformations.Translation(0),
             ]
         )
         class TestPltPlotLikeFunctions(abc.ABC):
@@ -1012,6 +1104,7 @@ class AbstractTestAbstractArray(
                     ax: None | matplotlib.axes.Axes,
                     axis: None | str,
                     where: bool | na.AbstractScalar,
+                    transformation: None | na.transformations.AbstractTransformation,
                     alpha: None | str | na.AbstractScalar,
             ):
                 args = (array_2, array)
@@ -1024,6 +1117,8 @@ class AbstractTestAbstractArray(
                     kwargs["axis"] = axis
                 if where is not np._NoValue:
                     kwargs["where"] = where
+                if transformation is not np._NoValue:
+                    kwargs["transformation"] = transformation
                 if alpha is not np._NoValue:
                     kwargs["alpha"] = alpha
 
@@ -1068,13 +1163,60 @@ class AbstractTestAbstractArray(
                             func(*args, **kwargs)
                         return
 
-                result = func(*args, **kwargs)
+                with astropy.visualization.quantity_support():
+                    result = func(*args, **kwargs)
 
                 assert isinstance(result, na.AbstractArray)
                 assert result.dtype == matplotlib.artist.Artist
 
                 for index in ax_normalized.ndindex():
                     assert ax_normalized[index].ndarray.has_data()
+
+        @pytest.mark.parametrize(
+            argnames="dx",
+            argvalues=[
+                None,
+            ]
+        )
+        class TestJacobian:
+
+            def test_jacobian(
+                    self,
+                    function: Callable[[na.AbstractArray], na.AbstractArray],
+                    array: na.AbstractVectorArray,
+                    dx: None | float | na.AbstractVectorArray,
+            ):
+                x = array
+
+                result = na.jacobian(
+                    function=function,
+                    x=x,
+                    dx=dx,
+                )
+
+                assert np.all(result >= 0)
+                assert isinstance(result, na.AbstractArray)
+
+        class TestOptimizeRoot:
+
+            def test_optimize_root(
+                    self,
+                    func: Callable,
+                    array: na.AbstractArray,
+                    function: Callable[[na.AbstractArray], na.AbstractArray],
+            ):
+                def callback(i, x, f, c):
+                    global out
+                    out = x
+
+                result = func(
+                    function=function,
+                    guess=array,
+                    callback=callback,
+                )
+
+                assert np.all(np.abs(function(result)) < 1e-8)
+                assert out is result
 
 
 class AbstractTestAbstractExplicitArray(
@@ -1131,6 +1273,39 @@ class AbstractTestAbstractExplicitArray(
 
         result[item] = value
         assert np.all(result[item] == value)
+
+
+class AbstractTestAbstractExplicitArrayCreation(
+    abc.ABC,
+):
+
+    @pytest.mark.parametrize(
+        argnames="a",
+        argvalues=[
+            None,
+            2,
+            2 * u.mm,
+            np.array(2),
+            np.array(2) * u.mm,
+            na.ScalarArray(2),
+            na.ScalarArray(2 * u.mm),
+            na.ScalarLinearSpace(0, 1, axis="y", num=num_y),
+            na.ScalarLinearSpace(0, 1, axis="y", num=num_y) * u.mm,
+        ]
+    )
+    class TestFromScalarArray:
+        @abc.abstractmethod
+        def test_from_scalar_array(
+                self,
+                type_array: type[na.AbstractExplicitArray],
+                a: None | float | u.Quantity | na.AbstractScalar,
+                like: None | na.AbstractArray
+        ):
+            result = type_array.from_scalar_array(a=a, like=na.explicit(like))
+
+            assert isinstance(result, type_array)
+            if like is not None:
+                assert isinstance(result, type(like))
 
 
 class AbstractTestAbstractImplicitArray(

@@ -163,11 +163,91 @@ class AbstractMatrixArray(
         """
 
     @property
-    @abc.abstractmethod
     def inverse(self) -> AbstractMatrixArray:
         """
         The inverse of this matrix
         """
+        explicit = self.explicit
+
+        a = explicit.cartesian_nd
+
+        if not a.is_square:
+            raise ValueError("can only invert square matrices")
+
+        rows = a.rows
+
+        if len(rows) == 1:
+            r_1, = rows.keys()
+            row_1, = [r.components for r in rows.values()]
+            c_1, = row_1.keys()
+            a, = row_1.values()
+            result = na.CartesianNdMatrixArray({
+                c_1: na.CartesianNdVectorArray({
+                    r_1: 1 / a
+                })
+            })
+
+        elif len(rows) == 2:
+            r_1, r_2 = rows.keys()
+            row_1, row_2 = [r.components for r in rows.values()]
+            c_1, c_2 = row_1.keys()
+            a, b = row_1.values()
+            c, d = row_2.values()
+            det = a * d - b * c
+            result = na.CartesianNdMatrixArray({
+                c_1: na.CartesianNdVectorArray({
+                    r_1: d / det,
+                    r_2: -b / det,
+                }),
+                c_2: na.CartesianNdVectorArray({
+                    r_1: -c / det,
+                    r_2: a / det,
+                }),
+            })
+
+        elif len(rows) == 3:
+            r_1, r_2, r_3 = rows.keys()
+            row_1, row_2, row_3 = [r.components for r in rows.values()]
+            c_1, c_2, c_3 = row_1.keys()
+            a, b, c = row_1.values()
+            d, e, f = row_2.values()
+            g, h, i = row_3.values()
+            det = (a * e * i) + (b * f * g) + (c * d * h) - (c * e * g) - (b * d * i) - (a * f * h)
+            result = na.CartesianNdMatrixArray({
+                c_1: na.CartesianNdVectorArray({
+                    r_1: (e * i - f * h) / det,
+                    r_2: -(b * i - c * h) / det,
+                    r_3: (b * f - c * e) / det,
+                }),
+                c_2: na.CartesianNdVectorArray({
+                    r_1: -(d * i - f * g) / det,
+                    r_2: (a * i - c * g) / det,
+                    r_3: -(a * f - c * d) / det,
+                }),
+                c_3: na.CartesianNdVectorArray({
+                    r_1: (d * h - e * g) / det,
+                    r_2: -(a * h - b * g) / det,
+                    r_3: (a * e - b * d) / det,
+                }),
+            })
+
+        else:
+            unit = na.unit(a, squeeze=False)
+            value = na.value(a)
+            value = na.stack([
+                na.stack(list(row.components.values()), axis="_column")
+                for row in value.rows.values()
+            ], axis="_row")
+            inverse = value.matrix_inverse(axis_rows="_row", axis_columns="_column")
+            result = 1 / unit.matrix_transpose
+            for i, r in enumerate(result.rows):
+                row = result.rows[r].components
+                for j, c in enumerate(row):
+                    row[c] = inverse[dict(_row=i, _column=j)] * row[c]
+
+        result = explicit.from_cartesian_nd(result, like=explicit.matrix_transpose)
+
+        return result
 
     @property
     def cartesian_nd(self) -> na.AbstractCartesianNdMatrixArray:
@@ -282,15 +362,18 @@ class AbstractExplicitMatrixArray(
             for c in components:
 
                 component = components[c]
-                if isinstance(component, na.AbstractMatrixArray):
-                    nd_key_mod = f"{c}_"
-                    sub_dict = {k[len(nd_key_mod):]: v for k, v in nd_components.items() if k.startswith(nd_key_mod)}
-                    components_new[c] = component.type_explicit.from_cartesian_nd(
-                         na.CartesianNdMatrixArray(sub_dict),
-                         like=component,
-                     )
+                if isinstance(component, na.AbstractVectorArray):
+                    if isinstance(component, na.AbstractMatrixArray):
+                        nd_key_mod = f"{c}_"
+                        sub_dict = {k[len(nd_key_mod):]: v for k, v in nd_components.items() if k.startswith(nd_key_mod)}
+                        components_new[c] = component.type_explicit.from_cartesian_nd(
+                             na.CartesianNdMatrixArray(sub_dict),
+                             like=component,
+                         )
+                    else:
+                        components_new[c] = component.type_explicit.from_cartesian_nd(nd_components[c], like=component)
                 else:
-                    components_new[c] = component.type_explicit.from_cartesian_nd(nd_components[c], like=component)
+                    components_new[c] = nd_components[c]
 
         return cls.from_components(components_new)
 

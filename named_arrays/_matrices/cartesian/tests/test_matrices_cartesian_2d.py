@@ -228,3 +228,15 @@ class TestCartesian2dMatrixArray(
         test_matrices_cartesian.AbstractTestAbstractCartesianMatrixArray.TestMatmul
     ):
         pass
+
+
+@pytest.mark.parametrize("type_array", [na.Cartesian2dMatrixArray])
+class TestCartesian2dMatrixArrayCreation(
+    test_matrices_cartesian.AbstractTestAbstractExplicitCartesianMatrixArrayCreation,
+):
+
+    @pytest.mark.parametrize("like", [None] + _cartesian_2d_matrices())
+    class TestFromScalarArray(
+        test_matrices_cartesian.AbstractTestAbstractExplicitCartesianMatrixArrayCreation.TestFromScalarArray,
+    ):
+        pass

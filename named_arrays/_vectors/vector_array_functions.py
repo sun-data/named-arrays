@@ -490,10 +490,11 @@ def array_function_stack_like(
             vector_prototype = array
             break
 
-    arrays = [vector_prototype.type_explicit.from_scalar(a) if not isinstance(a, na.AbstractVectorArray) else a
-              for a in arrays]
-    shape = na.shape_broadcasted(*arrays)
-    arrays = [a.broadcast_to(shape) for a in arrays]
+    arrays = [
+        vector_prototype.type_explicit.from_scalar(a) if not isinstance(a, na.AbstractVectorArray) else a
+        for a in arrays
+    ]
+    arrays = [a.broadcasted for a in arrays]
 
     components_arrays = [a.components for a in arrays]
 
@@ -505,7 +506,7 @@ def array_function_stack_like(
     components_result = dict()
     for c in components_arrays[0]:
         components_result[c] = func(
-            arrays=[components[c] for components in components_arrays],
+            [components[c] for components in components_arrays],
             axis=axis,
             out=components_out[c],
             dtype=dtype,

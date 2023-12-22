@@ -58,7 +58,7 @@ def _normalize(a: float | u.Quantity | na.AbstractScalar):
             else:
                 result = na.UncertainScalarArray(a, a)
         else:
-            return UncertainScalarTypeError
+            raise UncertainScalarTypeError
     else:
         result = na.UncertainScalarArray(a, a)
 
@@ -119,10 +119,6 @@ class AbstractUncertainScalarArray(
             nominal=na.value(self.nominal),
             distribution=na.value(self.distribution),
         )
-
-    @property
-    def unit(self: Self) -> None | u.Unit:
-        return na.unit(self.nominal)
 
     def astype(
             self,
@@ -468,6 +464,9 @@ class AbstractUncertainScalarArray(
 
         from . import uncertainties_named_array_functions
 
+        if func in uncertainties_named_array_functions.ASARRAY_LIKE_FUNCTIONS:
+            return uncertainties_named_array_functions.asarray_like(func=func, *args, **kwargs)
+
         if func in uncertainties_named_array_functions.RANDOM_FUNCTIONS:
             return uncertainties_named_array_functions.random(func=func, *args, **kwargs)
 
@@ -479,14 +478,6 @@ class AbstractUncertainScalarArray(
 
         return NotImplemented
 
-    @property
-    def broadcasted(self) -> na.UncertainScalarArray:
-        a = self.explicit
-        return na.UncertainScalarArray(
-            nominal=na.broadcast_to(a.nominal, a.shape),
-            distribution=na.broadcast_to(a.distribution, a.shape_distribution),
-        )
-
 
 @dataclasses.dataclass(eq=False, repr=False)
 class UncertainScalarArray(
@@ -494,8 +485,8 @@ class UncertainScalarArray(
     na.AbstractExplicitArray,
     Generic[NominalArrayT, DistributionArrayT],
 ):
-    nominal: NominalArrayT = dataclasses.MISSING
-    distribution: DistributionArrayT = dataclasses.MISSING
+    nominal: NominalArrayT = 0
+    distribution: DistributionArrayT = 0
 
     def __post_init__(self):
         if self.axis_distribution in na.shape(self.nominal):
@@ -503,6 +494,38 @@ class UncertainScalarArray(
                 f"`axis_distribution`, '{self.axis_distribution}' should not be in `nominal` array with "
                 f"shape {na.shape(self.nominal)}"
             )
+
+    @classmethod
+    def from_scalar_array(
+            cls: type[Self],
+            a: float | u.Quantity | na.AbstractScalarArray,
+            like: None | Self = None,
+    ) -> Self:
+
+        self = super().from_scalar_array(a=a, like=like)
+
+        if isinstance(a, na.AbstractArray):
+            if not isinstance(a, na.AbstractScalarArray):
+                raise TypeError(
+                    f"If `a` is an instance of `{na.AbstractArray.__name__}`, it must be an instance of "
+                    f"`{na.AbstractScalarArray.__name__}`, got `{type(a).__name__}`."
+                )
+
+        if like is None:
+            self.nominal = a
+            self.distribution = a
+        else:
+            if isinstance(like.nominal, na.AbstractArray):
+                self.nominal = like.nominal.from_scalar_array(a=a, like=like.nominal)
+            else:
+                self.nominal = a
+
+            if isinstance(like.distribution, na.AbstractArray):
+                self.distribution = like.distribution.from_scalar_array(a=a, like=like.distribution)
+            else:
+                self.distribution = a
+
+        return self
 
     @property
     def num_distribution(self: Self) -> int:
@@ -552,8 +575,7 @@ class UncertainScalarArray(
                 )
 
             if isinstance(item, na.AbstractUncertainScalarArray):
-                item_nominal = item.nominal
-                item_distribution = item.distribution
+                item_nominal = item_distribution = item.nominal & np.all(item.distribution, axis=self.axis_distribution)
             elif isinstance(item, na.AbstractScalarArray):
                 item_nominal = item_distribution = item
             else:

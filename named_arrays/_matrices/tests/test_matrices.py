@@ -109,10 +109,32 @@ class AbstractTestAbstractMatrixArray(
                     array @ array_2
                 return
 
+    class TestNamedArrayFunctions(
+        named_arrays._vectors.tests.test_vectors.AbstractTestAbstractVectorArray.TestNamedArrayFunctions
+    ):
+
+        @pytest.mark.skip
+        class TestPltPlotLikeFunctions(
+            named_arrays._vectors.tests.test_vectors.AbstractTestAbstractVectorArray.TestNamedArrayFunctions.TestPltPlotLikeFunctions
+        ):
+            pass
+
+        @pytest.mark.skip
+        class TestOptimizeRoot(
+            named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestOptimizeRoot,
+        ):
+            pass
+
 
 class AbstractTestAbstractExplicitMatrixArray(
     AbstractTestAbstractMatrixArray,
     named_arrays._vectors.tests.test_vectors.AbstractTestAbstractExplicitVectorArray,
+):
+    pass
+
+
+class AbstractTestAbstractExplicitMatrixArrayCreation(
+    named_arrays._vectors.tests.test_vectors.AbstractTestAbstractExplicitVectorArrayCreation,
 ):
     pass
 

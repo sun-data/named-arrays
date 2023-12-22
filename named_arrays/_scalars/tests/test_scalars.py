@@ -11,6 +11,7 @@ __all__ = [
     'AbstractTestAbstractScalar',
     'AbstractTestAbstractScalarArray',
     'TestScalarArray',
+    'TestScalarArrayCreation',
     'AbstractTestAbstractParameterizedScalarArray',
 ]
 
@@ -144,6 +145,18 @@ class AbstractTestAbstractScalar(
             assert np.all(result == result_out)
             assert result_out is out
 
+    def test_interp_linear_identity(
+            self,
+            array: na.AbstractArray,
+    ):
+        if np.issubdtype(array.dtype, bool):
+            with pytest.raises(TypeError):
+                item = array.indices
+                array.interp_linear(item)
+            return
+
+        super().test_interp_linear_identity(array=array)
+
 
 class AbstractTestAbstractScalarArray(
     AbstractTestAbstractScalar,
@@ -152,7 +165,7 @@ class AbstractTestAbstractScalarArray(
     def test_ndarray(self, array: na.AbstractScalarArray):
         assert isinstance(array.ndarray, (int, float, complex, str, np.ndarray))
 
-    def test_axes(self, array: na.AbstractArray):
+    def test_axes(self, array: na.AbstractScalarArray):
         super().test_axes(array)
         assert len(array.axes) == np.ndim(array.ndarray)
 
@@ -425,6 +438,38 @@ class AbstractTestAbstractScalarArray(
     class TestArrayFunctions(
         AbstractTestAbstractScalar.TestArrayFunctions,
     ):
+
+        @pytest.mark.parametrize("array_2", _scalar_arrays_2())
+        class TestAsArrayLikeFunctions(
+            AbstractTestAbstractScalar.TestArrayFunctions.TestAsArrayLikeFunctions,
+        ):
+
+            def test_asarray_like_functions(
+                    self,
+                    func: Callable,
+                    array: None | float | u.Quantity | na.AbstractArray,
+                    array_2: None | float | u.Quantity | na.AbstractArray,
+            ):
+                a = array
+                like = array_2
+
+                if a is None:
+                    assert func(a, like=like) is None
+                    return
+
+                result = func(a, like=like)
+
+                assert isinstance(result, na.ScalarArray)
+                assert isinstance(result.ndarray, np.ndarray)
+
+                assert np.all(result.value == na.value(a))
+
+                super().test_asarray_like_functions(
+                    func=func,
+                    array=array,
+                    array_2=array_2,
+                )
+
 
         @pytest.mark.parametrize(
             argnames='where',
@@ -797,6 +842,18 @@ class AbstractTestAbstractScalarArray(
     class TestNamedArrayFunctions(
         tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions
     ):
+        class TestInterp(
+            tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestInterp,
+        ):
+            def test_interp(
+                    self,
+                    array: na.AbstractScalarArray,
+                    slope: float | na.AbstractArray,
+            ):
+                if np.issubdtype(array.dtype, bool):
+                    return
+                super().test_interp(array=array, slope=slope)
+
         @pytest.mark.parametrize(
             argnames="array_2",
             argvalues=_scalar_arrays_2(),
@@ -818,6 +875,45 @@ class AbstractTestAbstractScalarArray(
         )
         class TestPltPlotLikeFunctions(
             tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestPltPlotLikeFunctions,
+        ):
+            pass
+
+        @pytest.mark.parametrize(
+            argnames="function",
+            argvalues=[
+                lambda x: a * x ** 3
+                for a in [
+                    2,
+                    na.linspace(1, 2, num=6, axis="a"),
+                    na.Cartesian2dVectorArray(2, 3),
+                ]
+            ]
+        )
+        class TestJacobian(
+            tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestJacobian,
+        ):
+            pass
+
+        @pytest.mark.parametrize(
+            argnames="func",
+            argvalues=[
+                na.optimize.root_secant,
+                na.optimize.root_newton,
+            ],
+        )
+        @pytest.mark.parametrize(
+            argnames="function",
+            argvalues=[
+                lambda x: np.square(na.value(x) - shift_horizontal) + shift_vertical
+                for shift_horizontal in [
+                    20,
+                    na.linspace(19, 20, axis="c", num=6),
+                ]
+                for shift_vertical in [-1]
+            ]
+        )
+        class TestOptimizeRoot(
+            tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestOptimizeRoot,
         ):
             pass
 
@@ -855,30 +951,69 @@ class TestScalarArray(
         super().test__setitem__(array=array, item=item, value=value)
 
 
-@pytest.mark.parametrize('shape', [dict(x=3), dict(x=4, y=5)])
-@pytest.mark.parametrize('dtype', [int, float, complex])
-class TestScalarArrayCreation:
+@pytest.mark.parametrize("type_array", [na.ScalarArray])
+class TestScalarArrayCreation(
+    tests.test_core.AbstractTestAbstractExplicitArrayCreation,
+):
 
-    @property
-    def type_array(self) -> Type[na.ScalarArray]:
-        return na.ScalarArray
+    @pytest.mark.parametrize("like", [None] + _scalar_arrays())
+    class TestFromScalarArray(
+        tests.test_core.AbstractTestAbstractExplicitArrayCreation.TestFromScalarArray
+    ):
 
-    def test_empty(self, shape: dict[str, int], dtype: Type):
-        result = self.type_array.empty(shape, dtype=dtype)
-        assert result.shape == shape
-        assert result.dtype == dtype
+        def test_from_scalar_array(
+                self,
+                type_array: type[na.AbstractExplicitArray],
+                a: None | float | u.Quantity | na.AbstractScalar,
+                like: None | na.AbstractArray
+        ):
+            if isinstance(a, na.AbstractArray):
+                if not isinstance(a, na.AbstractScalarArray):
+                    with pytest.raises(TypeError):
+                        type_array.from_scalar_array(a=a, like=like)
+                    return
 
-    def test_zeros(self, shape: dict[str, int], dtype: Type):
-        result = self.type_array.zeros(shape, dtype=dtype)
-        assert result.shape == shape
-        assert np.all(result == 0)
-        assert result.dtype == dtype
+                super().test_from_scalar_array(
+                    type_array=type_array,
+                    a=a,
+                    like=like,
+                )
 
-    def test_ones(self, shape: dict[str, int], dtype: Type):
-        result = self.type_array.ones(shape, dtype=dtype)
-        assert result.shape == shape
-        assert np.all(result == 1)
-        assert result.dtype == dtype
+    @pytest.mark.parametrize('shape', [dict(x=3), dict(x=4, y=5)])
+    @pytest.mark.parametrize('dtype', [int, float, complex])
+    class TestNumpyArrayCreationFunctions:
+
+        def test_empty(
+                self,
+                type_array: type[na.AbstractArray],
+                shape: dict[str, int],
+                dtype: None | type | np.dtype | str,
+        ):
+            result = type_array.empty(shape, dtype=dtype)
+            assert result.shape == shape
+            assert result.dtype == dtype
+
+        def test_zeros(
+                self,
+                type_array: type[na.AbstractArray],
+                shape: dict[str, int],
+                dtype: None | type | np.dtype | str
+        ):
+            result = type_array.zeros(shape, dtype=dtype)
+            assert result.shape == shape
+            assert np.all(result == 0)
+            assert result.dtype == dtype
+
+        def test_ones(
+                self,
+                type_array: type[na.AbstractArray],
+                shape: dict[str, int],
+                dtype: None | type | np.dtype | str
+        ):
+            result = type_array.ones(shape, dtype=dtype)
+            assert result.shape == shape
+            assert np.all(result == 1)
+            assert result.dtype == dtype
 
 
 class AbstractTestAbstractImplicitScalarArray(

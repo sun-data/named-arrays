@@ -1,5 +1,7 @@
 from __future__ import annotations
+from typing import Literal
 import matplotlib.axes
+import matplotlib.figure
 import matplotlib.artist
 import matplotlib.pyplot as plt
 import numpy.typing as npt
@@ -8,20 +10,24 @@ import named_arrays as na
 __all__ = [
     "subplots",
     "plot",
+    "fill",
 ]
 
 
 def subplots(
-        axis_rows: None | str = None,
+        axis_rows: str = "subplots_row",
         ncols: int = 1,
-        axis_cols: None | str = None,
+        axis_cols: str = "subplots_col",
         nrows: int = 1,
         *,
-        sharex: bool | str = False,
-        sharey: bool | str = False,
+        sharex: bool | Literal["none", "all", "row", "col"] = False,
+        sharey: bool | Literal["none", "all", "row", "col"] = False,
         squeeze: bool = True,
         **kwargs,
-) -> tuple[plt.Figure, na.ScalarArray[npt.NDArray[matplotlib.axes.Axes]]]:
+) -> tuple[
+    matplotlib.figure.Figure,
+    matplotlib.axes.Axes | na.ScalarArray[npt.NDArray],
+]:
     """
     A thin wrapper around :func:`matplotlib.pyplot.subplots()` which allows for
     providing axis names to the rows and columns.
@@ -30,7 +36,7 @@ def subplots(
     ----------
     axis_rows
         Name of the axis representing the rows in the subplot grid.
-        If :obj:`None`, the ``squeeze`` argument must be :class:`True`.
+        If :obj:`None`, the ``squeeze`` argument must be :obj:`True`.
     nrows
         Number of rows in the subplot grid
     axis_cols
@@ -52,8 +58,10 @@ def subplots(
         Additional keyword arguments passed to :func:`matplotlib.pyplot.subplots`
     """
 
-    axes = (axis_rows, axis_cols)
-    axes = tuple(axis for axis in axes if axis is not None)
+    shape = {axis_rows: nrows, axis_cols: ncols}
+
+    if squeeze:
+        shape = {axis: shape[axis] for axis in shape if shape[axis] != 1}
 
     fig, axs = plt.subplots(
         ncols=ncols,
@@ -64,7 +72,7 @@ def subplots(
         **kwargs,
     )
 
-    return fig, na.ScalarArray(axs, axes)
+    return fig, na.ScalarArray(axs, axes=tuple(shape.keys()))
 
 
 def plot(
@@ -72,6 +80,8 @@ def plot(
         ax: None | matplotlib.axes.Axes | na.ScalarArray[npt.NDArray[matplotlib.axes.Axes]] = None,
         axis: None | str = None,
         where: bool | na.AbstractScalar = True,
+        transformation: None | na.transformations.AbstractTransformation = None,
+        components: None | tuple[str, ...] = None,
         **kwargs,
 ) -> na.ScalarArray[npt.NDArray[None | matplotlib.artist.Artist]]:
     """
@@ -83,7 +93,9 @@ def plot(
     Parameters
     ----------
     args
-        either ``x, y`` or ``y``, same as :meth:`matplotlib.axes.Axes.plot`
+        Same signature as :meth:`matplotlib.axes.Axes.plot`.
+        If ``ax`` is a 2D plot, ``*args`` should be ``y`` or ``x, y``.
+        If ``ax`` is a 3D plot, ``*args`` should be ``x, y`` or ``x, y, z``.
     ax
         The instances of :class:`matplotlib.axes.Axes` to use.
         If :obj:`None`, calls :func:`matplotlib.pyplot.gca` to get the current axes.
@@ -95,6 +107,11 @@ def plot(
         otherwise a :class:`ValueError` is raised.
     where
         A boolean array that selects which elements to plot
+    transformation
+        A callable that is applied to args before plotting
+    components
+        The component names of ``*args`` to plot, helpful if ``*args`` are an instance of
+        :class:`named_arrays.AbstractVectorArray`.
     kwargs
         Additional keyword arguments passed to :meth:`matplotlib.axes.Axes.plot`.
         These can be instances of :class:`named_arrays.AbstractArray`.
@@ -149,12 +166,80 @@ def plot(
 
         na.plt.plot(x, y, ax=ax, axis="x");
 
+    Plot a 2D Cartesian vector
+
+    .. jupyter-execute::
+
+        v = na.Cartesian2dVectorArray(x, np.sin(x))
+
+        plt.figure()
+        na.plt.plot(v)
+
     """
+    if transformation is not None:
+        args = tuple(transformation(arg) for arg in args)
     return na._named_array_function(
         plot,
         *args,
         ax=ax,
         axis=axis,
         where=where,
+        components=components,
+        **kwargs,
+    )
+
+
+def fill(
+        *args: na.AbstractArray,
+        ax: None | matplotlib.axes.Axes | na.ScalarArray[npt.NDArray] = None,
+        axis: None | str = None,
+        where: bool | na.AbstractScalar = True,
+        transformation: None | na.transformations.AbstractTransformation = None,
+        components: None | tuple[str, ...] = None,
+        **kwargs,
+) -> na.ScalarArray[npt.NDArray]:
+    """
+    Plot filled polygons
+
+    This is a thin wrapper around :meth:`matplotlib.axes.Axes.fill` for named arrays.
+
+    The main difference of this function from :func:`matplotlib.pyplot.fill` is the addition of the ``axis`` parameter
+    indicating along which axis the lines should be connected.
+
+    Parameters
+    ----------
+    args
+        Same signature as :meth:`matplotlib.axes.Axes.fill`.
+        If ``ax`` is a 2D plot, ``*args`` should be ``x, y``.
+        If ``ax`` is a 3D plot, ``*args`` should be ``x, y, z``.
+    ax
+        The instances of :class:`matplotlib.axes.Axes` to use.
+        If :obj:`None`, calls :func:`matplotlib.pyplot.gca` to get the current axes.
+        If an instance of :class:`named_arrays.ScalarArray`, ``ax.shape`` should be a subset of the broadcasted shape of
+        ``*args``.
+    axis
+        The name of the axis that the plot lines should be connected along.
+        If :obj:`None`, the broadcasted shape of ``args`` should have only one element,
+        otherwise a :class:`ValueError` is raised.
+    where
+        A boolean array that selects which elements to plot
+    transformation
+        A callable that is applied to args before plotting
+    components
+        The component names of ``*args`` to plot, helpful if ``*args`` are an instance of
+        :class:`named_arrays.AbstractVectorArray`.
+    kwargs
+        Additional keyword arguments passed to :meth:`matplotlib.axes.Axes.fill`.
+        These can be instances of :class:`named_arrays.AbstractArray`.
+    """
+    if transformation is not None:
+        args = tuple(transformation(arg) for arg in args)
+    return na._named_array_function(
+        fill,
+        *args,
+        ax=ax,
+        axis=axis,
+        where=where,
+        components=components,
         **kwargs,
     )

@@ -41,6 +41,7 @@ extensions = [
 ]
 autosummary_generate = True  # Turn on sphinx.ext.autosummary
 autosummary_imported_members = True
+autosummary_ignore_module_all = False
 # autoclass_content = 'both'
 autodoc_typehints = "description"
 
@@ -77,7 +78,7 @@ html_theme_options = {
     "icon_links": [
         {
             "name": "GitHub",
-            "url": "https://github.com/Kankelborg-Group/named_arrays",
+            "url": "https://github.com/sun-data/named-arrays",
             "icon": "fa-brands fa-github",
             "type": "fontawesome",
         },
@@ -87,6 +88,7 @@ html_theme_options = {
             "icon": "fa-brands fa-python",
         },
     ],
+    "navigation_with_keys": False,
 }
 
 favicons = [

@@ -6,12 +6,12 @@ import dataclasses
 import named_arrays as na
 
 __all__ = [
-    'AbstractPositionVectorArray',
-    'PositionVectorArray',
-    'AbstractImplicitPositionVectorArray',
-    'AbstractParameterizedPositionVectorArray',
-    'AbstractPositionVectorSpace',
-    'PositionVectorLinearSpace',
+    'AbstractPositionalVectorArray',
+    'PositionalVectorArray',
+    'AbstractImplicitPositionalVectorArray',
+    'AbstractParameterizedPositionalVectorArray',
+    'AbstractPositionalVectorSpace',
+    'PositionalVectorLinearSpace',
 
 ]
 
@@ -19,7 +19,7 @@ PositionT = TypeVar("PositionT", bound=na.ArrayLike)
 
 
 @dataclasses.dataclass(eq=False, repr=False)
-class AbstractPositionVectorArray(
+class AbstractPositionalVectorArray(
     na.AbstractCartesianVectorArray,
 ):
 
@@ -32,20 +32,20 @@ class AbstractPositionVectorArray(
 
     @property
     def type_abstract(self) -> Type[na.AbstractArray]:
-        return AbstractPositionVectorArray
+        return AbstractPositionalVectorArray
 
     @property
     def type_explicit(self) -> Type[na.AbstractExplicitArray]:
-        return PositionVectorArray
+        return PositionalVectorArray
 
     @property
-    def type_matrix(self) -> Type[na.PositionMatrixArray]:
-        return na.PositionMatrixArray
+    def type_matrix(self) -> Type[na.PositionalMatrixArray]:
+        return na.PositionalMatrixArray
 
 
 @dataclasses.dataclass(eq=False, repr=False)
-class PositionVectorArray(
-    AbstractPositionVectorArray,
+class PositionalVectorArray(
+    AbstractPositionalVectorArray,
     na.AbstractExplicitCartesianVectorArray,
     Generic[PositionT],
 ):
@@ -56,16 +56,16 @@ class PositionVectorArray(
             cls: Type[Self],
             scalar: na.AbstractScalar,
             like: None | na.AbstractExplicitVectorArray = None,
-    ) -> PositionVectorArray:
+    ) -> PositionalVectorArray:
         result = super().from_scalar(scalar, like=like)
         if result is not NotImplemented:
             return result
-        return cls(Position=scalar)
+        return cls(position=scalar)
 
 
 @dataclasses.dataclass(eq=False, repr=False)
-class AbstractImplicitPositionVectorArray(
-    AbstractPositionVectorArray,
+class AbstractImplicitPositionalVectorArray(
+    AbstractPositionalVectorArray,
     na.AbstractImplicitCartesianVectorArray,
 ):
 
@@ -75,24 +75,24 @@ class AbstractImplicitPositionVectorArray(
 
 
 @dataclasses.dataclass(eq=False, repr=False)
-class AbstractParameterizedPositionVectorArray(
-    AbstractImplicitPositionVectorArray,
+class AbstractParameterizedPositionalVectorArray(
+    AbstractImplicitPositionalVectorArray,
     na.AbstractParameterizedVectorArray,
 ):
     pass
 
 
 @dataclasses.dataclass(eq=False, repr=False)
-class AbstractPositionVectorSpace(
-    AbstractParameterizedPositionVectorArray,
+class AbstractPositionalVectorSpace(
+    AbstractParameterizedPositionalVectorArray,
     na.AbstractVectorSpace,
 ):
     pass
 
 
 @dataclasses.dataclass(eq=False, repr=False)
-class PositionVectorLinearSpace(
-    AbstractPositionVectorSpace,
+class PositionalVectorLinearSpace(
+    AbstractPositionalVectorSpace,
     na.AbstractVectorLinearSpace,
 ):
     pass

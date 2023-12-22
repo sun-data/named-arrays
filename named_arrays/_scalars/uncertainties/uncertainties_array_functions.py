@@ -539,15 +539,8 @@ def array_function_stack_like(
     arrays_nominal = []
     arrays_distribution = []
 
-    if func is np.concatenate:
-        shape = na.shape_broadcasted(*arrays)
-        if axis in shape:
-            shape = {axis: shape[axis]}
-        else:
-            shape = {}
-        arrays = tuple(na.broadcast_to(a, a.shape | shape) for a in arrays)
-
     for array in arrays:
+        array = array.broadcasted
         if isinstance(array, na.AbstractArray):
             if isinstance(array, na.AbstractScalar):
                 if isinstance(array, na.AbstractUncertainScalarArray):

@@ -1,25 +1,37 @@
-# named_arrays
+# named-arrays
 
-![tests](https://github.com/Kankelborg-Group/named_arrays/actions/workflows/tests.yml/badge.svg)
-[![codecov](https://codecov.io/gh/Kankelborg-Group/named_arrays/branch/main/graph/badge.svg?token=x8K7SLx4UB)](https://codecov.io/gh/Kankelborg-Group/named_arrays)
+[![tests](https://github.com/sun-data/named-arrays/actions/workflows/tests.yml/badge.svg)](https://github.com/sun-data/named-arrays/actions/workflows/tests.yml)
+[![codecov](https://codecov.io/gh/sun-data/named-arrays/graph/badge.svg?token=1GhdcsgwO0)](https://codecov.io/gh/sun-data/named-arrays)
 [![Documentation Status](https://readthedocs.org/projects/named-arrays/badge/?version=latest)](https://named-arrays.readthedocs.io/en/latest/?badge=latest)
 [![PyPI version](https://badge.fury.io/py/named-arrays.svg)](https://badge.fury.io/py/named-arrays)
 
-`named_arrays` is an implementation of a [named tensor](https://nlp.seas.harvard.edu/NamedTensor), which assigns names to each axis of an n-dimensional array such as a numpy array.
+`named-arrays` is an implementation of a [named tensor](https://nlp.seas.harvard.edu/NamedTensor), which assigns names to each axis of an n-dimensional array such as a numpy array.
 
-When using a numpy array, we often have to insert singleton dimensions to align axes before using binary operators etc.
-This is not necessary when using a named tensor implementation such as `xarray` or `named_arrays`, axes are aligned automatically using their names.
+When using a Numpy n-dimensional array, the programmer must manually keep track of the physical meaning of each axis in the array.
+Furthermore, it is often necessary to insert singleton dimensions at the end of the array to allow it to broadcastable against other arrays.
+Named tensors solve this problem by giving each axis a name, which allows for automatic axis alignment without the need for inserting extra dimensions.
+`named-arrays` provides a very unapologetic implementation of a named tensor, since axes can _only_ be accessed using their names,
+unlike [`xarray`](https://github.com/pydata/xarray) which allows for both name and index.
+
+## Features
+
+ - [`ScalarArray`](https://named-arrays.readthedocs.io/en/latest/_autosummary/named_arrays.ScalarArray.html), a named tensor implementation with Astropy Quantity support. Analogue of [`xarray.Variable`](https://docs.xarray.dev/en/latest/generated/xarray.Variable.html)
+ - [`UncertainScalarArray`](https://named-arrays.readthedocs.io/en/latest/_autosummary/named_arrays.UncertainScalarArray.html), a named tensor implementation with automatic uncertainty propagation.
+ - [`Cartesian2dVectorArray`](https://named-arrays.readthedocs.io/en/latest/_autosummary/named_arrays.Cartesian2dVectorArray.html), representation of a 2D vector.
+ - [`Cartesian3dVectorArray`](https://named-arrays.readthedocs.io/en/latest/_autosummary/named_arrays.Cartesian3dVectorArray.html), representation of a 3D vector.
+ - [`FunctionArray`](https://named-arrays.readthedocs.io/en/latest/_autosummary/named_arrays.FunctionArray.html), representation of a discrete function. Analogue of an [`xarray.DataArray`](https://docs.xarray.dev/en/latest/generated/xarray.DataArray.html#xarray.DataArray)
+
 
 ## Installation
-`named_arrays` is available on PyPi and can be installed using pip
+`named-arrays` is available on PyPi and can be installed using pip
 ```bash
-pip install named_arrays
+pip install named-arrays
 ```
 
 ## Examples
 
 ### ScalarArray
-The fundamental type of `named_arrays` is the [`ScalarArray`](https://named-arrays.readthedocs.io/en/latest/_autosummary/named_arrays.ScalarArray.html), which is a composition of a numpy ndarray-like object and a tuple of axis names which must have the same length as the number of dimensions in the array.
+The fundamental type of `named-arrays` is the [`ScalarArray`](https://named-arrays.readthedocs.io/en/latest/_autosummary/named_arrays.ScalarArray.html), which is a composition of a numpy ndarray-like object and a tuple of axis names which must have the same length as the number of dimensions in the array.
 
 
 ```python
@@ -96,13 +108,7 @@ d
 
 
 
-    ScalarLinearSpace(
-        start=0,
-        stop=1,
-        axis='z',
-        num=4,
-        endpoint=True,
-    )
+    ScalarLinearSpace(start=0, stop=1, axis='z', num=4, endpoint=True)
 
 
 

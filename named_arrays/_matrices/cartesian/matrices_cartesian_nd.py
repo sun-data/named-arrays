@@ -32,10 +32,6 @@ class AbstractCartesianNdMatrixArray(
     def determinant(self) -> na.ScalarLike:
         return NotImplementedError
 
-    @property
-    def inverse(self) -> na.AbstractMatrixArray:
-        return NotImplementedError
-
 
 @dataclasses.dataclass(eq=False, repr=False)
 class CartesianNdMatrixArray(

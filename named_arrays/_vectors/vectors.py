@@ -307,7 +307,8 @@ class AbstractVectorArray(
         result = super().__bool__()
         components = self.components
         for c in components:
-            result = result and bool(components[c])
+            component = bool(components[c])
+            result = result and component
         return result
 
     def __array_matmul__(
@@ -407,18 +408,19 @@ class AbstractVectorArray(
 
         from . import vector_named_array_functions
 
+        if func in vector_named_array_functions.ASARRAY_LIKE_FUNCTIONS:
+            return vector_named_array_functions.asarray_like(func=func, *args, **kwargs)
+
         if func in vector_named_array_functions.RANDOM_FUNCTIONS:
             return vector_named_array_functions.random(func=func, *args, **kwargs)
+
+        if func in vector_named_array_functions.PLT_PLOT_LIKE_FUNCTIONS:
+            return vector_named_array_functions.plt_plot_like(func, *args, **kwargs)
 
         if func in vector_named_array_functions.HANDLED_FUNCTIONS:
             return vector_named_array_functions.HANDLED_FUNCTIONS[func](*args, **kwargs)
 
         return NotImplemented
-
-    @property
-    def broadcasted(self: Self) -> Self:
-        a = self.explicit
-        return a.broadcast_to(a.shape)
 
 
 AbstractScalarOrVectorArray = na.AbstractScalar | AbstractVectorArray
@@ -429,6 +431,32 @@ class AbstractExplicitVectorArray(
     AbstractVectorArray,
     na.AbstractExplicitArray,
 ):
+    @classmethod
+    def from_scalar_array(
+            cls: Type[Self],
+            a: None | float | u.Quantity | na.AbstractArray,
+            like: None | AbstractExplicitVectorArray = None,
+    ) -> AbstractExplicitVectorArray:
+
+        self = super().from_scalar_array(a=a, like=like)
+
+        components_self = dict()
+
+        if like is None:
+            for c in self.components:
+                components_self[c] = a
+        else:
+            components_like = like.components
+            for c in components_like:
+                component_like = components_like[c]
+                if isinstance(component_like, na.AbstractArray):
+                    components_self[c] = component_like.from_scalar_array(a, like=component_like)
+                else:
+                    components_self[c] = a
+
+        self.components = components_self
+
+        return self
 
     @classmethod
     def from_components(

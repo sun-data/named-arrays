@@ -14,10 +14,9 @@ __all__ = [
     'QuantityLike',
     'StartT',
     'StopT',
+    'named_array_like',
     'get_dtype',
     'value',
-    'unit',
-    'unit_normalized',
     'type_array',
     'broadcast_shapes',
     'shape_broadcasted',
@@ -58,6 +57,42 @@ WidthT = TypeVar("WidthT", bound="QuantityLike | AbstractArray")
 StartExponentT = TypeVar("StartExponentT", bound="QuantityLike | AbstractArray")
 StopExponentT = TypeVar("StopExponentT", bound="QuantityLike | AbstractArray")
 BaseT = TypeVar("BaseT", bound="QuantityLike | AbstractArray")
+
+
+def named_array_like(a: Any) -> bool:
+    """
+    Check if an object is compatible with the :mod:`named_arrays` API.
+
+    If the object has a ``__named_array_function__`` method it is considered compatible.
+
+    Parameters
+    ----------
+    a
+        Object to be checked for compatibility with the :mod:`named_arrays` API.
+
+    Examples
+    --------
+
+    Instances of :class:`named_arrays.ScalarArray` are compatible with the :mod:`named_arrays` API
+
+    .. jupyter-execute::
+
+        import named_arrays as na
+
+        na.named_array_like(na.ScalarArray(2))
+
+    But instances of :class:`numpy.ndarray` are not compatible
+
+    .. jupyter-execute::
+
+        import numpy as np
+
+        na.named_array_like(np.empty(3))
+    """
+    if hasattr(a, "__named_array_function__"):
+        return True
+    else:
+        return False
 
 
 def get_dtype(
@@ -111,31 +146,6 @@ def value(a: float | u.Quantity | AbstractArray):
     else:
         return a
 
-def unit(
-        value: float | complex | np.ndarray | u.UnitBase | u.Quantity | AbstractArray
-) -> None | u.UnitBase:
-    if isinstance(value, u.UnitBase):
-        return value
-    elif isinstance(value, u.Quantity):
-        return value.unit
-    elif isinstance(value, AbstractArray):
-        if isinstance(value, na.AbstractScalar):
-            return value.unit
-        else:
-            raise ValueError("non-scalar instances of `na.AbstractArray` may not be represented by a single unit")
-    else:
-        return None
-
-
-def unit_normalized(
-        value: float | complex | np.ndarray | u.UnitBase | u.Quantity | AbstractArray
-) -> u.UnitBase | dict[str, u.UnitBase]:
-    result = unit(value)
-    if result is None:
-        return u.dimensionless_unscaled
-    else:
-        return result
-
 
 def type_array(
         *values: bool | int | float | complex | str | np.ndarray | u.Quantity | AbstractArray,
@@ -171,7 +181,7 @@ def broadcast_shapes(*shapes: dict[str, int]) -> dict[str, int]:
     return result
 
 
-def shape_broadcasted(*arrays: AbstractArray) -> dict[str, int]:
+def shape_broadcasted(*arrays: Any) -> dict[str, int]:
     shapes = [np.shape(array) for array in arrays if isinstance(array, AbstractArray)]
     return broadcast_shapes(*shapes)
 
@@ -334,6 +344,16 @@ class AbstractArray(
         """
         Converts this array to an instance of :class:`named_arrays.AbstractExplicitArray`
         """
+
+    @property
+    def broadcasted(self) -> na.AbstractExplicitArray:
+        """
+        if this array has multiple components, broadcast them against each other.
+
+        Equivalent to ``a.broadcast_to(a.shape)``
+        """
+        a = self.explicit
+        return a.broadcast_to(a.shape)
 
     @property
     @abc.abstractmethod
@@ -765,10 +785,13 @@ class AbstractArray(
             self: Self,
             item: dict[str, Self],
     ) -> Self:
-        return self._interp_linear_recursive(
-            item=item,
-            item_base=self[{ax: 0 for ax in item}].indices,
-        )
+        if item:
+            return self._interp_linear_recursive(
+                item=item,
+                item_base=self[{ax: 0 for ax in item}].indices,
+            )
+        else:
+            return self
 
     def __call__(self: Self, item: dict[str, Self]) -> Self:
         return self.interp_linear(item=item)
@@ -833,6 +856,34 @@ ArrayLike = Union[QuantityLike, AbstractArray]
 class AbstractExplicitArray(
     AbstractArray,
 ):
+    @classmethod
+    @abc.abstractmethod
+    def from_scalar_array(
+            cls: type[Self],
+            a: float | u.Quantity | na.AbstractScalarArray,
+            like: None | Self = None,
+    ) -> Self:
+        """
+        Constructs a new version of this array using ``a`` as the underlying data.
+
+        Parameters
+        ----------
+        a
+            Anything that can be coerced into an instance of :class:`named_arrays.AbstractScalarArray`.
+        like
+            Optional reference object.
+            If provided, the result will be defined by this object.
+        """
+        if like is None:
+            return cls()
+        else:
+            if isinstance(like, cls):
+                return type(like)()
+            else:
+                raise TypeError(
+                    f"If `like` is not `None`, it must be an instance of `{cls.__name__}`, "
+                    f"got `{type(like).__name__}`"
+                )
 
     @abc.abstractmethod
     def __setitem__(

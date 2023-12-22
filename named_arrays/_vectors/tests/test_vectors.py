@@ -2,6 +2,7 @@ from typing import Type, Callable, Sequence
 import pytest
 import abc
 import numpy as np
+import matplotlib.axes
 import astropy.units as u
 import named_arrays as na
 
@@ -23,6 +24,11 @@ __all__ = [
     'AbstractTestAbstractVectorLogarithmicSpace',
     'AbstractTestAbstractVectorGeometricSpace',
 ]
+
+_num_x = named_arrays.tests.test_core.num_x
+_num_y = named_arrays.tests.test_core.num_y
+_num_z = named_arrays.tests.test_core.num_z
+_num_distribution = named_arrays.tests.test_core.num_distribution
 
 
 class AbstractTestAbstractVectorArray(
@@ -54,7 +60,7 @@ class AbstractTestAbstractVectorArray(
         assert isinstance(components, dict)
         for component in components:
             assert isinstance(component, str)
-            assert isinstance(components[component], (int, float, complex, np.ndarray, na.AbstractArray))
+            assert isinstance(components[component], (int, float, complex, np.generic, np.ndarray, na.AbstractArray))
 
     def test_axes(self, array: na.AbstractVectorArray):
         super().test_axes(array)
@@ -85,15 +91,16 @@ class AbstractTestAbstractVectorArray(
     def test_length(self, array: na.AbstractVectorArray):
         super().test_length(array=array)
         entries = array.cartesian_nd.entries
-        entries_iter = iter(entries)
-        entry_0 = entries[next(entries_iter)]
-        if all(na.unit_normalized(entry_0).is_equivalent(na.unit_normalized(entries[e])) for e in entries_iter):
-            length = array.length
-            assert isinstance(length, (int, float, np.ndarray, na.AbstractScalar))
-            assert np.all(length >= 0)
-        else:
+        try:
+            sum(entries.values())
+        except u.UnitConversionError:
             with pytest.raises(u.UnitConversionError):
                 array.length
+            return
+
+        length = array.length
+        assert isinstance(length, (int, float, np.ndarray, na.AbstractScalar))
+        assert np.all(length >= 0)
 
     def test__getitem__(
             self,
@@ -192,6 +199,43 @@ class AbstractTestAbstractVectorArray(
     class TestArrayFunctions(
         named_arrays.tests.test_core.AbstractTestAbstractArray.TestArrayFunctions,
     ):
+        class TestAsArrayLikeFunctions(
+            named_arrays.tests.test_core.AbstractTestAbstractArray.TestArrayFunctions.TestAsArrayLikeFunctions,
+        ):
+            def test_asarray_like_functions(
+                    self,
+                    func: Callable,
+                    array: None | float | u.Quantity | na.AbstractArray,
+                    array_2: None | float | u.Quantity | na.AbstractArray,
+            ):
+                a = array
+                like = array_2
+
+                if a is None:
+                    assert func(a, like=like) is None
+                    return
+
+                if isinstance(a, na.AbstractVectorArray):
+                    if isinstance(like, na.AbstractVectorArray):
+                        if a.type_explicit != like.type_explicit:
+                            with pytest.raises(
+                                    expected_exception=TypeError,
+                                    match="all types, .*, returned .* for function .*",
+                            ):
+                                func(a, like=like)
+                            return
+
+                result = func(a, like=like)
+
+                assert isinstance(result, na.AbstractExplicitVectorArray)
+                for c in result.components:
+                    assert isinstance(result.components[c], (na.AbstractScalar, na.AbstractVectorArray))
+
+                super().test_asarray_like_functions(
+                    func=func,
+                    array=array,
+                    array_2=array_2,
+                )
 
         class TestReductionFunctions(
             named_arrays.tests.test_core.AbstractTestAbstractArray.TestArrayFunctions.TestReductionFunctions,
@@ -440,6 +484,7 @@ class AbstractTestAbstractVectorArray(
             np.convolve(array, v=v, mode=mode)
 
     def test_broadcasted(self, array: na.AbstractVectorArray):
+        super().test_broadcasted(array=array)
         array_broadcasted = array.broadcasted
         shape = array.shape
         components = array_broadcasted.components
@@ -449,10 +494,61 @@ class AbstractTestAbstractVectorArray(
     class TestNamedArrayFunctions(
         named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions
     ):
+        @pytest.mark.skip
+        class TestInterp(
+            named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestInterp
+        ):
+            pass
 
-        @pytest.mark.xfail
+        @pytest.mark.parametrize("array_2", [None])
+        @pytest.mark.parametrize(
+            argnames="where",
+            argvalues=[
+                np._NoValue,
+                True,
+                na.linspace(0, 1, axis="x", num=_num_x) > 0.5,
+            ]
+        )
+        @pytest.mark.parametrize(
+            argnames="alpha",
+            argvalues=[
+                np._NoValue,
+                na.linspace(0, 1, axis="x", num=_num_x),
+            ]
+        )
         class TestPltPlotLikeFunctions(
             named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestPltPlotLikeFunctions
+        ):
+            pass
+
+        @pytest.mark.parametrize(
+            argnames="function",
+            argvalues=[
+                lambda x: 2 * x ** 3,
+                lambda x: 2 * list(x.components.values())[0] ** 3,
+            ]
+        )
+        class TestJacobian(
+            named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestJacobian,
+        ):
+            pass
+
+        @pytest.mark.parametrize(
+            argnames="func",
+            argvalues=[
+                na.optimize.root_newton,
+            ],
+        )
+        @pytest.mark.parametrize(
+            argnames="function",
+            argvalues=[
+                lambda x: np.square(na.value(x) - shift_horizontal) + shift_vertical
+                for shift_horizontal in [20,]
+                for shift_vertical in [-1]
+            ],
+        )
+        class TestOptimizeRoot(
+            named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestOptimizeRoot,
         ):
             pass
 
@@ -460,6 +556,12 @@ class AbstractTestAbstractVectorArray(
 class AbstractTestAbstractExplicitVectorArray(
     AbstractTestAbstractVectorArray,
     named_arrays.tests.test_core.AbstractTestAbstractExplicitArray,
+):
+    pass
+
+
+class AbstractTestAbstractExplicitVectorArrayCreation(
+    named_arrays.tests.test_core.AbstractTestAbstractExplicitArrayCreation
 ):
     pass
 

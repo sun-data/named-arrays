@@ -347,6 +347,36 @@ class AbstractTestAbstractFunctionArray(
     class TestArrayFunctions(
         named_arrays.tests.test_core.AbstractTestAbstractArray.TestArrayFunctions
     ):
+        @pytest.mark.parametrize("array_2", _function_arrays_2())
+        class TestAsArrayLikeFunctions(
+            named_arrays.tests.test_core.AbstractTestAbstractArray.TestArrayFunctions.TestAsArrayLikeFunctions
+        ):
+            def test_asarray_like_functions(
+                    self,
+                    func: Callable,
+                    array: None | float | u.Quantity | na.AbstractArray,
+                    array_2: None | float | u.Quantity | na.AbstractArray,
+            ):
+                a = array
+                like = array_2
+
+                if a is None:
+                    assert func(a, like=like) is None
+                    return
+
+                result = func(a, like=like)
+
+                assert isinstance(result, na.FunctionArray)
+                assert isinstance(result.inputs, na.AbstractArray)
+                assert isinstance(result.outputs, na.AbstractArray)
+
+                assert np.all(result.value == na.value(a))
+
+                super().test_asarray_like_functions(
+                    func=func,
+                    array=array,
+                    array_2=array_2,
+                )
 
         @pytest.mark.xfail
         class TestArrayCreationLikeFunctions(
@@ -575,10 +605,27 @@ class AbstractTestAbstractFunctionArray(
     class TestNamedArrayFunctions(
         named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions
     ):
+        @pytest.mark.skip
+        class TestInterp(
+            named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestInterp,
+        ):
+            pass
 
         @pytest.mark.xfail
         class TestPltPlotLikeFunctions(
             named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestPltPlotLikeFunctions
+        ):
+            pass
+
+        @pytest.mark.xfail
+        class TestJacobian(
+            named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestJacobian,
+        ):
+            pass
+
+        @pytest.mark.skip
+        class TestOptimizeRoot(
+            named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestOptimizeRoot,
         ):
             pass
 
@@ -620,3 +667,14 @@ class TestFunctionArray(
             value: float | u.Quantity | na.AbstractScalar | na.AbstractVectorArray,
     ):
         super().test__setitem__(array=array.explicit, item=item, value=value)
+
+
+@pytest.mark.parametrize("type_array", [na.FunctionArray])
+class TestFunctionArrayCreation(
+    named_arrays.tests.test_core.AbstractTestAbstractExplicitArrayCreation,
+):
+    @pytest.mark.parametrize("like", [None] + _function_arrays())
+    class TestFromScalarArray(
+        named_arrays.tests.test_core.AbstractTestAbstractExplicitArrayCreation.TestFromScalarArray,
+    ):
+        pass

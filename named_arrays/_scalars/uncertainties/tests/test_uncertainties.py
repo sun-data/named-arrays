@@ -9,6 +9,7 @@ import named_arrays._scalars.tests.test_scalars
 __all__ = [
     'AbstractTestAbstractUncertainScalarArray',
     'TestUncertainScalarArray',
+    'TestUncertainScalarArrayCreation',
     'AbstractTestAbstractImplicitUncertainScalarArray',
     'TestUniformUncertainScalarArray',
     'TestNormalUncertainScalarArray',
@@ -345,6 +346,41 @@ class AbstractTestAbstractUncertainScalarArray(
         named_arrays._scalars.tests.test_scalars.AbstractTestAbstractScalar.TestArrayFunctions,
     ):
 
+        @pytest.mark.parametrize("array_2", _uncertain_scalar_arrays_2())
+        class TestAsArrayLikeFunctions(
+            named_arrays._scalars.tests.test_scalars.AbstractTestAbstractScalar.TestArrayFunctions
+            .TestAsArrayLikeFunctions
+        ):
+
+            def test_asarray_like_functions(
+                    self,
+                    func: Callable,
+                    array: None | float | u.Quantity | na.AbstractArray,
+                    array_2: None | float | u.Quantity | na.AbstractArray,
+            ):
+                a = array
+                like = array_2
+
+                if a is None:
+                    assert func(a, like=like) is None
+                    return
+
+                result = func(a, like=like)
+
+                assert isinstance(result, na.UncertainScalarArray)
+                assert isinstance(result.nominal, na.ScalarArray)
+                assert isinstance(result.distribution, na.ScalarArray)
+                assert isinstance(result.nominal.ndarray, np.ndarray)
+                assert isinstance(result.distribution.ndarray, np.ndarray)
+
+                assert np.all(result.value == na.value(a))
+
+                super().test_asarray_like_functions(
+                    func=func,
+                    array=array,
+                    array_2=array_2,
+                )
+
         @pytest.mark.parametrize(
             argnames='where',
             argvalues=[
@@ -637,6 +673,41 @@ class AbstractTestAbstractUncertainScalarArray(
         ):
             pass
 
+        @pytest.mark.parametrize(
+            argnames="function",
+            argvalues=[
+                lambda x: a * x ** 3
+                for a in [2, na.UniformUncertainScalarArray(2, width=0.5, num_distribution=_num_distribution)]
+            ]
+        )
+        class TestJacobian(
+            named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestJacobian,
+        ):
+            pass
+
+        @pytest.mark.parametrize(
+            argnames="func",
+            argvalues=[
+                na.optimize.root_secant,
+                na.optimize.root_newton,
+            ],
+        )
+        @pytest.mark.parametrize(
+            argnames="function",
+            argvalues=[
+                lambda x: np.square(na.value(x) - shift_horizontal) + shift_vertical
+                for shift_horizontal in [
+                    20,
+                    na.UniformUncertainScalarArray(20, width=1, num_distribution=_num_distribution),
+                ]
+                for shift_vertical in [-1]
+            ]
+        )
+        class TestOptimizeRoot(
+            named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestOptimizeRoot,
+        ):
+            pass
+
 
 @pytest.mark.parametrize('array', _uncertain_scalar_arrays())
 class TestUncertainScalarArray(
@@ -674,6 +745,18 @@ class TestUncertainScalarArray(
             value: float | na.ScalarArray
     ):
         super().test__setitem__(array=array, item=item, value=value)
+
+
+@pytest.mark.parametrize("type_array", [na.UncertainScalarArray])
+class TestUncertainScalarArrayCreation(
+    named_arrays.tests.test_core.AbstractTestAbstractExplicitArrayCreation,
+):
+
+    @pytest.mark.parametrize("like", [None] + _uncertain_scalar_arrays())
+    class TestFromScalarArray(
+        named_arrays.tests.test_core.AbstractTestAbstractExplicitArrayCreation.TestFromScalarArray,
+    ):
+        pass
 
 
 class AbstractTestAbstractImplicitUncertainScalarArray(

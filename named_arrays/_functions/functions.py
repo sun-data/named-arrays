@@ -1,5 +1,6 @@
 from __future__ import annotations
 from typing import TypeVar, Generic, Type, ClassVar, Sequence, Callable, Collection, Any
+from typing_extensions import Self
 import abc
 import dataclasses
 import numpy as np
@@ -449,6 +450,31 @@ class AbstractFunctionArray(
 
         return NotImplemented
 
+    def __named_array_function__(self, func, *args, **kwargs):
+        result = super().__named_array_function__(func, *args, **kwargs)
+        if result is not NotImplemented:
+            return result
+
+        from . import function_named_array_functions
+
+        if func in function_named_array_functions.ASARRAY_LIKE_FUNCTIONS:
+            return function_named_array_functions.asarray_like(func=func, *args, **kwargs)
+
+        if func in function_named_array_functions.HANDLED_FUNCTIONS:
+            return function_named_array_functions.HANDLED_FUNCTIONS[func](*args, **kwargs)
+
+        return NotImplemented
+
+    def interp_linear(
+            self,
+            item: dict[str, na.AbstractArray],
+    ) -> FunctionArray:
+        a = self.broadcasted
+        return a.type_explicit(
+            inputs=a.inputs[item],
+            outputs=a.outputs[item],
+        )
+
     def pcolormesh(
             self,
             axs: np.ndarray,
@@ -498,7 +524,7 @@ class AbstractFunctionArray(
             intensity = np.exp(-(((position.x + velocity*time)/x_width) ** 2 + ((position.y + 2*velocity*time)/y_width)** 2))
             scene = na.FunctionArray(
                 inputs=position,
-                outputs=intensity * u.DN,
+                outputs=intensity,
             )
 
             fig, axs = plt.subplots(
@@ -606,8 +632,33 @@ class FunctionArray(
     na.AbstractExplicitArray,
     Generic[InputsT, OutputsT],
 ):
-    inputs: InputsT = dataclasses.MISSING
-    outputs: OutputsT = dataclasses.MISSING
+    inputs: InputsT = 0
+    outputs: OutputsT = 0
+
+    @classmethod
+    def from_scalar_array(
+            cls: type[Self],
+            a: float | u.Quantity | na.AbstractScalarArray,
+            like: None | Self = None,
+    ) -> Self:
+
+        self = super().from_scalar_array(a=a, like=like)
+
+        if like is None:
+            self.inputs = a
+            self.outputs = a
+        else:
+            if isinstance(like.inputs, na.AbstractArray):
+                self.inputs = like.inputs.from_scalar_array(a=a, like=like.inputs)
+            else:
+                self.inputs = a
+
+            if isinstance(like.outputs, na.AbstractArray):
+                self.outputs = like.outputs.from_scalar_array(a=a, like=like.outputs)
+            else:
+                self.outputs = a
+
+        return self
 
     @property
     def axes(self) -> tuple[str, ...]:
@@ -639,8 +690,8 @@ class FunctionArray(
     @property
     def explicit(self) -> FunctionArray:
         return self.type_explicit(
-            inputs=self.inputs.explicit,
-            outputs=self.outputs.explicit,
+            inputs=na.explicit(self.inputs),
+            outputs=na.explicit(self.outputs),
         )
 
     def __setitem__(

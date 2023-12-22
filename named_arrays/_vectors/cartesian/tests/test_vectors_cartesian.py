@@ -7,6 +7,7 @@ import named_arrays._vectors.tests.test_vectors
 __all__ = [
     'AbstractTestAbstractCartesianVectorArray',
     'AbstractTestAbstractExplicitCartesianVectorArray',
+    'AbstractTestAbstractExplicitCartesianVectorArrayCreation',
     'AbstractTestAbstractImplicitCartesianVectorArray',
     'AbstractTestAbstractCartesianVectorRandomSample',
     'AbstractTestAbstractCartesianVectorUniformRandomSample',
@@ -20,10 +21,26 @@ __all__ = [
     'AbstractTestAbstractCartesianVectorGeometricSpace',
 ]
 
+_num_x = named_arrays._vectors.tests.test_vectors._num_x
+_num_y = named_arrays._vectors.tests.test_vectors._num_y
+_num_z = named_arrays._vectors.tests.test_vectors._num_z
+_num_distribution = named_arrays._vectors.tests.test_vectors._num_distribution
+
 
 class AbstractTestAbstractCartesianVectorArray(
     named_arrays._vectors.tests.test_vectors.AbstractTestAbstractVectorArray,
 ):
+    def test_normalized(self, array: na.AbstractCartesianVectorArray):
+        try:
+            array.length
+        except u.UnitConversionError as e:
+            with pytest.raises(type(e)):
+                array.normalized
+            return
+
+        mask = na.as_named_array(array.length > 0)
+        result = array[mask].normalized
+        assert np.allclose(result.length, 1)
 
     def test__mul__(self, array: na.AbstractVectorArray):
         unit = u.mm
@@ -33,6 +50,13 @@ class AbstractTestAbstractCartesianVectorArray(
 
     def test__lshift__(self, array: na.AbstractVectorArray):
         unit = u.mm
+        try:
+            for c in array.components:
+                array.components[c] << unit
+        except u.UnitConversionError as e:
+            with pytest.raises(type(e)):
+                array << unit
+            return
         result = array << unit
         for c in array.components:
             assert np.all(result.components[c] == array.components[c] << unit)
@@ -194,6 +218,12 @@ class AbstractTestAbstractCartesianVectorArray(
 class AbstractTestAbstractExplicitCartesianVectorArray(
     AbstractTestAbstractCartesianVectorArray,
     named_arrays._vectors.tests.test_vectors.AbstractTestAbstractExplicitVectorArray,
+):
+    pass
+
+
+class AbstractTestAbstractExplicitCartesianVectorArrayCreation(
+    named_arrays._vectors.tests.test_vectors.AbstractTestAbstractExplicitVectorArrayCreation
 ):
     pass
 

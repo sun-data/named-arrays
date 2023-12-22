@@ -9,12 +9,18 @@ import named_arrays as na
 from . import scalars
 
 __all__ = [
+    "ASARRAY_LIKE_FUNCTIONS",
     "RANDOM_FUNCTIONS",
     "PLT_PLOT_LIKE_FUNCTIONS",
     "HANDLED_FUNCTIONS",
     "random",
+    "jacobian",
 ]
 
+ASARRAY_LIKE_FUNCTIONS = (
+    na.asarray,
+    na.asanyarray,
+)
 RANDOM_FUNCTIONS = (
     na.random.uniform,
     na.random.normal,
@@ -22,6 +28,7 @@ RANDOM_FUNCTIONS = (
 )
 PLT_PLOT_LIKE_FUNCTIONS = (
     na.plt.plot,
+    na.plt.fill,
 )
 HANDLED_FUNCTIONS = dict()
 
@@ -32,6 +39,52 @@ def _implements(function: Callable):
         HANDLED_FUNCTIONS[function] = func
         return func
     return decorator
+
+
+def asarray_like(
+        func: Callable,
+        a: None | float | u.Quantity | na.AbstractScalarArray,
+        dtype: None | type | np.dtype = None,
+        order: None | str = None,
+        *,
+        like: None | na.AbstractScalarArray = None,
+) -> None | na.ScalarArray:
+
+    func_numpy = getattr(np, func.__name__)
+
+    if isinstance(a, na.AbstractArray):
+        if isinstance(a, na.AbstractScalarArray):
+            a_ndarray = a.ndarray
+            a_axes = a.axes
+        else:
+            return NotImplemented
+    else:
+        a_ndarray = a
+        a_axes = None
+
+    if isinstance(like, na.AbstractArray):
+        if isinstance(like, na.AbstractScalarArray):
+            like_ndarray = like.ndarray
+            type_like = like.type_explicit
+        else:
+            return NotImplemented
+    else:
+        like_ndarray = like
+        type_like = na.ScalarArray
+
+    if isinstance(like_ndarray, u.Quantity):
+        like_ndarray = like_ndarray.value
+    like_ndarray = func_numpy(like_ndarray)
+
+    return type_like(
+        ndarray=func_numpy(
+            a=a_ndarray,
+            dtype=dtype,
+            order=order,
+            like=like_ndarray,
+        ),
+        axes=a_axes,
+    )
 
 
 @_implements(na.arange)
@@ -59,6 +112,95 @@ def arange(
         ),
         axes=(axis,),
     )
+
+
+@_implements(na.unit)
+def unit(
+        a: na.AbstractScalarArray,
+        squeeze: bool = True,
+) -> None | u.UnitBase:
+    return na.unit(a.ndarray)
+
+
+@_implements(na.unit_normalized)
+def unit_normalized(
+        a: na.AbstractScalarArray,
+        squeeze: bool = True,
+) -> u.UnitBase:
+    result = na.unit(a)
+    if result is None:
+        result = u.dimensionless_unscaled
+    return result
+
+
+@_implements(na.interp)
+def interp(
+        x: float | u.Quantity | na.AbstractScalarArray,
+        xp:  na.AbstractScalarArray,
+        fp: na.AbstractScalarArray,
+        axis: None | str = None,
+        left: None | float | u.Quantity | na.AbstractScalarArray = None,
+        right: None | float | u.Quantity | na.AbstractScalarArray = None,
+        period: None | float | u.Quantity | na.AbstractScalarArray = None,
+):
+    try:
+        x = scalars._normalize(x)
+        xp = scalars._normalize(xp)
+        fp = scalars._normalize(fp)
+        left = scalars._normalize(left) if left is not None else left
+        right = scalars._normalize(right) if right is not None else right
+        period = scalars._normalize(period) if period is not None else period
+    except na.ScalarTypeError:
+        return NotImplemented
+
+    if axis is None:
+        if xp.ndim != 1:
+            raise ValueError("if `axis` is `None`, `xp` must have only one axis")
+        axis = next(iter(xp.shape))
+
+    shape = na.shape_broadcasted(
+        # x,
+        xp[{axis: 0}],
+        fp[{axis: 0}],
+        left,
+        right,
+        period,
+    )
+
+    x = na.broadcast_to(x, na.broadcast_shapes(x.shape, shape))
+    xp = na.broadcast_to(xp, na.broadcast_shapes(xp.shape, shape))
+    fp = na.broadcast_to(fp, na.broadcast_shapes(fp.shape, shape))
+    left = na.broadcast_to(left, shape) if left is not None else left
+    right = na.broadcast_to(right, shape) if right is not None else right
+    period = na.broadcast_to(period, shape) if period is not None else period
+
+    result = np.empty_like(x.value)
+    if fp.unit is not None:
+        result = result << fp.unit
+
+    for index in na.ndindex(shape):
+        x_index = x[index]
+        xp_index = xp[index]
+        fp_index = fp[index]
+        left_index = left[index].ndarray if left is not None else left
+        right_index = right[index].ndarray if right is not None else right
+        period_index = period[index].ndarray if period is not None else period
+
+        shape_index = na.shape_broadcasted(xp_index, fp_index)
+
+        result[index] = result.type_explicit(
+            ndarray=np.interp(
+                x=x_index.ndarray,
+                xp=xp_index.ndarray_aligned(shape_index),
+                fp=fp_index.ndarray_aligned(shape_index),
+                left=left_index,
+                right=right_index,
+                period=period_index,
+            ),
+            axes=x.axes,
+        )
+
+    return result
 
 
 def random(
@@ -128,8 +270,12 @@ def plt_plot_like(
         ax: None | matplotlib.axes.Axes | na.ScalarArray[npt.NDArray[matplotlib.axes.Axes]] = None,
         axis: None | str = None,
         where: bool | na.AbstractScalarArray = True,
+        components: None | tuple[str, ...] = None,
         **kwargs,
 ) -> na.ScalarArray[npt.NDArray[None | matplotlib.artist.Artist]]:
+
+    if components is not None:
+        raise ValueError(f"`components` should be `None` for scalars, got {components}")
 
     try:
         args = tuple(scalars._normalize(arg) for arg in args)
@@ -193,3 +339,178 @@ def plt_plot_like(
             )[0]
 
     return result
+
+
+@_implements(na.jacobian)
+def jacobian(
+        function: Callable[[na.AbstractScalar], na.AbstractScalar],
+        x: na.AbstractScalar,
+        dx: None | na.AbstractScalar = None,
+        like: None | na.AbstractScalar = None,
+) -> na.AbstractScalar:
+
+    f = function(x)
+
+    if isinstance(f, na.AbstractScalar):
+        if isinstance(x, na.AbstractScalar):
+            x0 = x + dx
+            f0 = function(x0)
+            df = f0 - f
+            return df / dx
+
+        else:
+            return NotImplemented
+    else:
+        return NotImplemented
+
+
+@_implements(na.optimize.root_newton)
+def optimize_root_newton(
+        function: Callable[[na.ScalarLike], na.ScalarLike],
+        guess: na.ScalarLike,
+        jacobian: Callable[[na.ScalarLike], na.ScalarLike],
+        max_abs_error: na.ScalarLike,
+        max_iterations: int = 100,
+        callback: None | Callable[[int, na.ScalarLike, na.ScalarLike, na.ScalarLike], None] = None,
+) -> na.ScalarArray:
+
+    if isinstance(guess, na.AbstractArray):
+        if isinstance(guess, na.AbstractScalar):
+            pass
+        else:
+            return NotImplemented
+    else:
+        guess = na.ScalarArray(guess)
+
+    x = guess
+    f = function(x)
+
+    if isinstance(f, na.AbstractArray):
+        if isinstance(f, na.AbstractScalar):
+            pass
+        else:
+            return NotImplemented
+    else:
+        f = na.ScalarArray(f)
+
+    if isinstance(max_abs_error, na.AbstractArray):
+        if isinstance(max_abs_error, na.AbstractScalar):
+            pass
+        else:
+            return NotImplemented
+    else:
+        max_abs_error = na.ScalarArray(max_abs_error)
+
+    if na.shape(max_abs_error):
+        raise ValueError(f"argument `max_abs_error` should have an empty shape, got {na.shape(max_abs_error)}")
+
+    shape = na.shape_broadcasted(f, guess)
+
+    converged = na.broadcast_to(0 * na.value(f), shape=shape).astype(bool)
+
+    x = na.broadcast_to(x, shape).astype(float)
+
+    for i in range(max_iterations):
+
+        if callback is not None:
+            callback(i, x, f, converged)
+
+        converged |= np.abs(f) < max_abs_error
+
+        if np.all(converged):
+            return x
+
+        jac = jacobian(x)
+
+        correction = f / jac
+
+        x = x - correction
+
+        f = function(x)
+
+    raise ValueError("Max iterations exceeded")
+
+
+@_implements(na.optimize.root_secant)
+def optimize_root_secant(
+        function: Callable[[na.ScalarLike], na.ScalarLike],
+        guess: na.ScalarLike,
+        min_step_size: na.ScalarLike,
+        max_abs_error: na.ScalarLike,
+        max_iterations: int = 100,
+        damping: None | float = None,
+        callback: None | Callable[[int, na.ScalarLike, na.ScalarLike, na.ScalarLike], None] = None,
+) -> na.ScalarArray:
+
+    try:
+        guess = scalars._normalize(guess)
+
+        min_step_size = scalars._normalize(min_step_size)
+
+        x0 = guess - 10 * min_step_size
+        x1 = guess
+
+        f0 = function(x0)
+        f0 = scalars._normalize(f0)
+
+        max_abs_error = scalars._normalize(max_abs_error)
+
+    except scalars.ScalarTypeError:
+        return NotImplemented
+
+    if na.shape(max_abs_error):
+        raise ValueError(f"argument `max_abs_error` should have an empty shape, got {na.shape(max_abs_error)}")
+
+    shape = na.shape_broadcasted(f0, guess, min_step_size)
+
+    converged = na.broadcast_to(0 * na.value(f0), shape=shape).astype(bool)
+
+    x1 = na.broadcast_to(x1, shape).astype(float)
+
+    for i in range(max_iterations):
+
+
+        f1 = function(x1)
+
+        if callback is not None:
+            callback(i, x1, f1, converged)
+
+        if max_abs_error is not None:
+            converged |= np.abs(f1) < max_abs_error
+
+        dx = x1 - x0
+
+        converged |= np.abs(dx) < np.abs(min_step_size)
+
+        if np.all(converged):
+            return x1
+
+        active = ~converged
+
+        df = f1 - f0
+
+        if np.any(df == 0, where=active):
+            raise ValueError("stationary point detected")
+
+        dx_active = dx[active]
+        f0_active = f0[active]
+        f1_active = f1[active]
+
+        df_active = f1_active - f0_active
+        if np.any(df_active == 0):
+            raise ValueError("stationary point detected")
+
+        jacobian = df_active / dx_active
+
+        correction = f1_active / jacobian
+        if damping is not None:
+            correction = damping * correction
+
+        x2 = x1.copy()
+        x2[active] -= correction
+
+        x0 = x1
+        x1 = x2
+        f0 = f1
+
+    raise ValueError("Max iterations exceeded")

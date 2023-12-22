@@ -41,10 +41,6 @@ class AbstractSpectralMatrixArray(
     def determinant(self) -> na.ScalarLike:
         return np.abs(self.wavelength)
 
-    @property
-    def inverse(self) -> na.AbstractMatrixArray:
-        return 1 / self
-
 
 @dataclasses.dataclass(eq=False, repr=False)
 class SpectralMatrixArray(

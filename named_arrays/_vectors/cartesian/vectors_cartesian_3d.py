@@ -39,6 +39,13 @@ class AbstractCartesian3dVectorArray(
         """
 
     @property
+    def xy(self) -> na.Cartesian2dVectorArray:
+        return na.Cartesian2dVectorArray(
+            x=self.x,
+            y=self.y,
+        )
+
+    @property
     def type_abstract(self: Self) -> Type[AbstractCartesian3dVectorArray]:
         return AbstractCartesian3dVectorArray
 
@@ -47,12 +54,42 @@ class AbstractCartesian3dVectorArray(
         return Cartesian3dVectorArray
 
     @property
-    def cartesian_nd(self):
-        return NotImplementedError
-
-    @property
     def type_matrix(self) -> Type[na.Cartesian3dMatrixArray]:
         return na.Cartesian3dMatrixArray
+
+    @property
+    def explicit(self) -> Cartesian3dVectorArray:
+        return super().explicit
+
+    def cross(
+            self,
+            other: AbstractCartesian3dVectorArray,
+    ) -> na.Cartesian3dVectorArray:
+        r"""
+        Compute the vector product :math:`\mathbf{a} \times \mathbf{b}`
+
+        Parameters
+        ----------
+        other
+            the right-hand operand of the cross product operation
+        """
+        a = self
+        b = other
+        if isinstance(other, na.AbstractCartesian3dVectorArray):
+            if len(self.cartesian_nd.components) != 3:
+                raise ValueError("all components of `self` must be scalars")
+            if len(other.cartesian_nd.components) != 3:
+                raise ValueError("all components of `other` must be scalars")
+            return self.type_explicit(
+                x=+(a.y * b.z - a.z * b.y),
+                y=-(a.x * b.z - a.z * b.x),
+                z=+(a.x * b.y - a.y * b.x),
+            )
+        else:
+            raise TypeError(
+                f"`other` must be an instance of `{na.AbstractCartesian3dVectorArray.__name__}`, "
+                f"got `{type(other).__name__}`"
+            )
 
 
 @dataclasses.dataclass(eq=False, repr=False)
@@ -69,8 +106,11 @@ class Cartesian3dVectorArray(
     def from_scalar(
             cls: Type[Self],
             scalar: na.AbstractScalar,
+            like: None | na.AbstractExplicitVectorArray = None,
     ) -> Cartesian3dVectorArray:
-        return cls(x=scalar, y=scalar, z=scalar)
+        result = super().from_scalar(scalar, like=like)
+        result.z = scalar
+        return result
 
 
 @dataclasses.dataclass(eq=False, repr=False)

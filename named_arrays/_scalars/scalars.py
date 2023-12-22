@@ -80,17 +80,17 @@ class AbstractScalar(
         """
 
     @property
-    @abc.abstractmethod
-    def unit(self: Self) -> None | u.UnitBase | dict[str, None | u.UnitBase]:
+    def unit(self: Self) -> None | u.UnitBase:
         """
         Unit associated with the array.
 
         If :attr:`ndarray` is an instance of :class:`astropy.units.Quantity`, return :attr:`astropy.units.Quantity.unit`,
         otherwise return :class:`None`.
         """
+        return na.unit(self)
 
     @property
-    def unit_normalized(self: Self) -> u.UnitBase | dict[str, u.UnitBase]:
+    def unit_normalized(self: Self) -> u.UnitBase:
         """
         Similar to :attr:`unit` but returns :attr:`astropy.units.dimensionless_unscaled` if :attr:`ndarray` is not an
         instance of :class:`astropy.units.Quantity`.
@@ -520,6 +520,9 @@ class AbstractScalarArray(
 
         from . import scalar_named_array_functions
 
+        if func in scalar_named_array_functions.ASARRAY_LIKE_FUNCTIONS:
+            return scalar_named_array_functions.asarray_like(func=func, *args, **kwargs)
+
         if func in scalar_named_array_functions.RANDOM_FUNCTIONS:
             return scalar_named_array_functions.random(func=func, *args, **kwargs)
 
@@ -600,66 +603,28 @@ class AbstractScalarArray(
             axis_rows: str,
             axis_columns: str,
     ) -> ScalarArray:
-        shape = self.shape
-        if shape[axis_rows] != shape[axis_columns]:
-            raise ValueError('Matrix must be square')
 
         axis_rows_inverse = axis_columns
         axis_columns_inverse = axis_rows
 
-        if shape[axis_rows] == 1:
-            return 1 / self
+        index_axis_rows = self.axes.index(axis_rows)
+        index_axis_columns = self.axes.index(axis_columns)
+        value = np.moveaxis(
+            a=self.ndarray,
+            source=[index_axis_rows, index_axis_columns],
+            destination=[~1, ~0],
+        )
 
-        elif shape[axis_rows] == 2:
-            result = ScalarArray(ndarray=self.ndarray.copy(), axes=self.axes.copy())
-            result[{axis_rows_inverse: 0, axis_columns_inverse: 0}] = self[{axis_rows: 1, axis_columns: 1}]
-            result[{axis_rows_inverse: 1, axis_columns_inverse: 1}] = self[{axis_rows: 0, axis_columns: 0}]
-            result[{axis_rows_inverse: 0, axis_columns_inverse: 1}] = -self[{axis_rows: 0, axis_columns: 1}]
-            result[{axis_rows_inverse: 1, axis_columns_inverse: 0}] = -self[{axis_rows: 1, axis_columns: 0}]
-            return result / self.matrix_determinant(axis_rows=axis_rows, axis_columns=axis_columns)
+        axes_new = list(self.axes)
+        axes_new.remove(axis_rows)
+        axes_new.remove(axis_columns)
+        axes_new.append(axis_rows_inverse)
+        axes_new.append(axis_columns_inverse)
 
-        elif shape[axis_rows] == 3:
-            a = self[{axis_rows: 0, axis_columns: 0}]
-            b = self[{axis_rows: 0, axis_columns: 1}]
-            c = self[{axis_rows: 0, axis_columns: 2}]
-            d = self[{axis_rows: 1, axis_columns: 0}]
-            e = self[{axis_rows: 1, axis_columns: 1}]
-            f = self[{axis_rows: 1, axis_columns: 2}]
-            g = self[{axis_rows: 2, axis_columns: 0}]
-            h = self[{axis_rows: 2, axis_columns: 1}]
-            i = self[{axis_rows: 2, axis_columns: 2}]
-
-            result = ScalarArray(ndarray=self.explicit.copy(), axes=self.axes.copy())
-            result[{axis_rows_inverse: 0, axis_columns_inverse: 0}] = (e * i - f * h)
-            result[{axis_rows_inverse: 0, axis_columns_inverse: 1}] = -(b * i - c * h)
-            result[{axis_rows_inverse: 0, axis_columns_inverse: 2}] = (b * f - c * e)
-            result[{axis_rows_inverse: 1, axis_columns_inverse: 0}] = -(d * i - f * g)
-            result[{axis_rows_inverse: 1, axis_columns_inverse: 1}] = (a * i - c * g)
-            result[{axis_rows_inverse: 1, axis_columns_inverse: 2}] = -(a * f - c * d)
-            result[{axis_rows_inverse: 2, axis_columns_inverse: 0}] = (d * h - e * g)
-            result[{axis_rows_inverse: 2, axis_columns_inverse: 1}] = -(a * h - b * g)
-            result[{axis_rows_inverse: 2, axis_columns_inverse: 2}] = (a * e - b * d)
-            return result / self.matrix_determinant(axis_rows=axis_rows, axis_columns=axis_columns)
-
-        else:
-            index_axis_rows = self.axes.index(axis_rows)
-            index_axis_columns = self.axes.index(axis_columns)
-            value = np.moveaxis(
-                a=self.ndarray,
-                source=[index_axis_rows, index_axis_columns],
-                destination=[~1, ~0],
-            )
-
-            axes_new = list(self.axes)
-            axes_new.remove(axis_rows)
-            axes_new.remove(axis_columns)
-            axes_new.append(axis_rows_inverse)
-            axes_new.append(axis_columns_inverse)
-
-            return ScalarArray(
-                ndarray=np.linalg.inv(value),
-                axes=tuple(axes_new),
-            )
+        return ScalarArray(
+            ndarray=np.linalg.inv(value),
+            axes=tuple(axes_new),
+        )
 
     def filter_median(
             self: Self,
@@ -746,8 +711,8 @@ class ScalarArray(
         print(radius.mean(axis='position_x'))
     """
 
-    ndarray: NDArrayT = dataclasses.MISSING
-    axes: None | tuple[str, ...] = None
+    ndarray: None | NDArrayT = 0
+    axes: None | str | tuple[str, ...] = None
 
     def __post_init__(self: Self):
         if self.axes is None:
@@ -758,6 +723,30 @@ class ScalarArray(
             raise ValueError('The number of axis names must match the number of dimensions.')
         if len(self.axes) != len(set(self.axes)):
             raise ValueError(f'Each axis name must be unique, got {self.axes}.')
+
+    @classmethod
+    def from_scalar_array(
+            cls: type[Self],
+            a: float | u.Quantity | na.AbstractScalarArray,
+            like: None | Self = None,
+    ) -> Self:
+
+        self = super().from_scalar_array(a=a, like=like)
+
+        if isinstance(a, na.AbstractArray):
+            if isinstance(a, na.AbstractScalarArray):
+                self.ndarray = a.ndarray
+                self.axes = a.axes
+            else:
+                raise TypeError(
+                    f"If `a` is an instance of `{na.AbstractArray.__name__}`, it must be an instance of "
+                    f"`{na.AbstractScalarArray.__name__}`, got `{type(a).__name__}`."
+                )
+        else:
+            self.ndarray = a
+            self.axes = tuple()
+
+        return self
 
     @classmethod
     def empty(cls: Type[Self], shape: dict[str, int], dtype: Type | np.dtype = float) -> Self:
@@ -837,10 +826,6 @@ class ScalarArray(
     @property
     def dtype(self: Self) -> np.dtype:
         return na.get_dtype(self.ndarray)
-
-    @property
-    def unit(self: Self) -> None | u.UnitBase:
-        return na.unit(self.ndarray)
 
     @property
     def explicit(self: Self) -> Self:
@@ -945,10 +930,6 @@ class AbstractImplicitScalarArray(
     @property
     def dtype(self: Self) -> np.dtype:
         return self.explicit.dtype
-
-    @property
-    def unit(self: Self) -> None | u.Unit:
-        return self.explicit.unit
 
     def _attr_normalized(self, name: str) -> ScalarArray:
 
@@ -1095,33 +1076,6 @@ class ScalarLinearSpace(
     #
     # def index_below(self, value: AbstractScalarT) -> typ.Dict[str, AbstractScalarT]:
     #     return {self.axis: (value - self.start) // self.step}
-
-    def interp_linear(
-            self: Self,
-            item: dict[str, Self],
-    ) -> AbstractScalar:
-
-        item = item.copy()
-
-        if self.axis in item:
-
-            x = item.pop(self.axis)
-            x0 = 0
-
-            y0 = self.start.interp_linear(item)
-            y1 = self.stop.interp_linear(item)
-
-            result = y0 + (x - x0) * (y1 - y0)
-            return result
-
-        else:
-            return type(self)(
-                start=self.start.interp_linear(item),
-                stop=self.stop.interp_linear(item),
-                num=self.num,
-                endpoint=self.endpoint,
-                axis=self.axis,
-            )
 
 
 @dataclasses.dataclass(eq=False, repr=False)
