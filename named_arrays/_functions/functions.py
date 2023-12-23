@@ -210,15 +210,26 @@ class AbstractFunctionArray(
                     item_inputs[ax] = item_ax.inputs
                     item_outputs[ax] = item_ax.outputs
                 else:
-                    item_inputs[ax] = item_outputs[ax] = item_ax
+                    if ax in self.axes_center:
+                        item_inputs[ax] = item_outputs[ax]= item_ax
+                    if ax in self.axes_vertex:
+                        if isinstance(item_ax, int):
+                            item_outputs[ax] = slice(item_ax, item_ax + 1)
+                            item_inputs[ax] = slice(item_ax, item_ax + 2)
+                        elif isinstance(item_ax, slice):
+                            item_outputs[ax] = item_ax
+                            item_inputs[ax] = slice(item_ax.start, item_ax.stop + 1)
+                        else:
+                            return NotImplemented
 
-            shape_item_inputs = {ax: shape[ax] for ax in item_inputs if ax in shape}
-            shape_item_outputs = {ax: shape[ax] for ax in item_outputs if ax in shape}
+            shape_item_inputs = {ax: shape_inputs[ax] for ax in item_inputs if ax in shape}
+            shape_item_outputs = {ax: shape_outputs[ax] for ax in item_outputs if ax in shape}
 
         else:
             return NotImplemented
 
-        inputs = na.broadcast_to(inputs, na.broadcast_shapes(shape_inputs, shape_item_inputs))
+        new_shape = na.broadcast_shapes(shape_inputs, shape_item_inputs)
+        inputs = na.broadcast_to(inputs, new_shape)
         outputs = na.broadcast_to(outputs, na.broadcast_shapes(shape_outputs, shape_item_outputs))
 
         return self.type_explicit(
@@ -312,7 +323,6 @@ class AbstractFunctionArray(
         if out is not None:
             if not np.all(inputs == out.inputs):
                 raise InputValueError("`out.inputs` must be equal to `x1.inputs` and `x2.inputs`")
-
         result = self.type_explicit(
             inputs=inputs,
             outputs=np.matmul(
@@ -564,7 +574,7 @@ class AbstractFunctionArray(
                 if input_component_column is not None:
                     index_final[input_component_column] = index_subplot['column']
 
-                inp = self[index_final].inputs
+                inp = self[index_final].inputs.cartesian_nd
 
                 inp_x = inp.components[input_component_x].ndarray
                 inp_y = inp.components[input_component_y].ndarray
@@ -578,7 +588,7 @@ class AbstractFunctionArray(
                     inp_x,
                     inp_y,
                     out.ndarray,
-                    shading='nearest',
+                    shading='auto',
                     **kwargs,
                 )
 
@@ -605,7 +615,7 @@ class AbstractFunctionArray(
                             ax.text(
                                 x=0.5,
                                 y=1.01,
-                                s=f'{inp_column.mean().array.value:0.03f} {inp_column.unit:latex_inline}',
+                                s=f'{inp_column.mean().ndarray.value:0.03f} {inp_column.unit:latex_inline}',
                                 transform=ax.transAxes,
                                 ha='center',
                                 va='bottom'
@@ -618,7 +628,7 @@ class AbstractFunctionArray(
                             ax.text(
                                 x=1.01,
                                 y=0.5,
-                                s=f'{inp_row.mean().array.value:0.03f} {inp_row.unit:latex_inline}',
+                                s=f'{inp_row.mean().ndarray.value:0.03f} {inp_row.unit:latex_inline}',
                                 transform=ax.transAxes,
                                 va='center',
                                 ha='left',
