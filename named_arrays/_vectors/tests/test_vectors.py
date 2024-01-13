@@ -533,6 +533,12 @@ class AbstractTestAbstractVectorArray(
         ):
             pass
 
+        @pytest.mark.skip
+        class TestPltScatter(
+            named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestPltScatter,
+        ):
+            pass
+
         @pytest.mark.parametrize(
             argnames="function",
             argvalues=[

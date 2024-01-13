@@ -1200,6 +1200,46 @@ class AbstractTestAbstractArray(
                     assert ax_normalized[index].ndarray.has_data()
 
         @pytest.mark.parametrize(
+            argnames="ax",
+            argvalues=[
+                plt.subplots()[1],
+                na.plt.subplots(axis_cols="x", ncols=num_x)[1],
+            ],
+        )
+        @pytest.mark.parametrize(
+            argnames="transformation",
+            argvalues=[
+                None,
+                na.transformations.Translation(0),
+            ]
+        )
+        class TestPltScatter(abc.ABC):
+            def test_plt_scatter(
+                self,
+                array: na.AbstractArray,
+                array_2: na.ArrayLike,
+                s: None | float | na.AbstractScalar,
+                c: None | str | na.AbstractScalar,
+                ax: None | matplotlib.axes.Axes,
+                where: bool | na.AbstractScalar,
+                transformation: None | na.transformations.AbstractTransformation,
+            ):
+                args = (array_2, array)
+                for arg in args:
+                    if arg is None:
+                        return
+
+                with astropy.visualization.quantity_support():
+                    na.plt.scatter(
+                        *args,
+                        s=s,
+                        c=c,
+                        ax=ax,
+                        where=where,
+                        transformation=transformation,
+                    )
+
+        @pytest.mark.parametrize(
             argnames="dx",
             argvalues=[
                 None,

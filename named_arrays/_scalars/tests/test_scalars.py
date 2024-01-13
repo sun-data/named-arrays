@@ -889,6 +889,34 @@ class AbstractTestAbstractScalarArray(
             pass
 
         @pytest.mark.parametrize(
+            argnames="array_2",
+            argvalues=_scalar_arrays_2(),
+        )
+        @pytest.mark.parametrize(
+            argnames="s",
+            argvalues=[
+                None,
+            ]
+        )
+        @pytest.mark.parametrize(
+            argnames="c",
+            argvalues=[
+                None,
+            ]
+        )
+        @pytest.mark.parametrize(
+            argnames="where",
+            argvalues=[
+                True,
+                na.linspace(0, 1, axis="x", num=_num_x) > 0.5,
+            ],
+        )
+        class TestPltScatter(
+            tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestPltScatter,
+        ):
+            pass
+
+        @pytest.mark.parametrize(
             argnames="function",
             argvalues=[
                 lambda x: a * x ** 3

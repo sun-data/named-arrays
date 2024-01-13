@@ -632,6 +632,12 @@ class AbstractTestAbstractFunctionArray(
         ):
             pass
 
+        @pytest.mark.skip
+        class TestPltScatter(
+            named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestPltScatter
+        ):
+            pass
+
         @pytest.mark.xfail
         class TestJacobian(
             named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestJacobian,
