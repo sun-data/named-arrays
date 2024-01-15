@@ -385,7 +385,10 @@ def plt_scatter(
         s = na.broadcast_to(s, shape_orthogonal)
 
     if np.issubdtype(na.get_dtype(c), np.number):
-        c = na.broadcast_to(c, shape)
+        if "rgba" in c.shape:
+            c = na.broadcast_to(c, shape | dict(rgba=c.shape["rgba"]))
+        else:
+            c = na.broadcast_to(c, shape)
     else:
         if "rgba" in c.shape:
             c = na.broadcast_to(c, shape_orthogonal | dict(rgba=c.shape["rgba"]))
