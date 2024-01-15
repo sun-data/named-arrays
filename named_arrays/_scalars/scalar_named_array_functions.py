@@ -390,10 +390,7 @@ def plt_scatter(
         else:
             c = na.broadcast_to(c, shape)
     else:
-        if "rgba" in c.shape:
-            c = na.broadcast_to(c, shape_orthogonal | dict(rgba=c.shape["rgba"]))
-        else:
-            c = na.broadcast_to(c, shape_orthogonal)
+        c = na.broadcast_to(c, shape_orthogonal)
 
     where = where.broadcast_to(shape)
 

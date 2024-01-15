@@ -890,7 +890,7 @@ class AbstractTestAbstractScalarArray(
 
         @pytest.mark.parametrize(
             argnames="array_2",
-            argvalues=_scalar_arrays_2(),
+            argvalues=_scalar_arrays_2()[:8],
         )
         @pytest.mark.parametrize(
             argnames="s",

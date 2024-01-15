@@ -1202,7 +1202,7 @@ class AbstractTestAbstractArray(
         @pytest.mark.parametrize(
             argnames="ax",
             argvalues=[
-                plt.subplots()[1],
+                None,
                 na.plt.subplots(axis_cols="x", ncols=num_x)[1],
             ],
         )
