@@ -896,12 +896,18 @@ class AbstractTestAbstractScalarArray(
             argnames="s",
             argvalues=[
                 None,
+                5,
             ]
         )
         @pytest.mark.parametrize(
             argnames="c",
             argvalues=[
                 None,
+                5,
+                na.ScalarArray(
+                    ndarray=np.array([.5, .5, .5, 1]),
+                    axes="rgba",
+                )
             ]
         )
         @pytest.mark.parametrize(
