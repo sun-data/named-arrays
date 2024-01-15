@@ -289,7 +289,7 @@ class AbstractUncertainScalarArray(
         result = super().__bool__()
         nominal = bool(self.nominal)
         distribution = self.distribution
-        if self.axis_distribution in distribution.shape:
+        if self.axis_distribution in na.shape(distribution):
             distribution = np.all(distribution, axis=self.axis_distribution)
         distribution = bool(distribution)
         return result and nominal and distribution

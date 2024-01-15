@@ -11,6 +11,7 @@ __all__ = [
     "subplots",
     "plot",
     "fill",
+    "scatter",
 ]
 
 
@@ -239,6 +240,105 @@ def fill(
         *args,
         ax=ax,
         axis=axis,
+        where=where,
+        components=components,
+        **kwargs,
+    )
+
+
+def scatter(
+        *args: na.AbstractScalar,
+        s: None | na.AbstractScalarArray = None,
+        c: None | na.AbstractScalarArray = None,
+        ax: None | matplotlib.axes.Axes | na.ScalarArray[npt.NDArray[matplotlib.axes.Axes]] = None,
+        where: bool | na.AbstractScalar = True,
+        transformation: None | na.transformations.AbstractTransformation = None,
+        components: None | tuple[str, ...] = None,
+        **kwargs,
+) -> na.ScalarArray[npt.NDArray[None | matplotlib.artist.Artist]]:
+    """
+    A thin wrapper around :meth:`matplotlib.axes.Axes.scatter` for named arrays.
+
+    Parameters
+    ----------
+    args
+        Same signature as :meth:`matplotlib.axes.Axes.scatter`.
+        If ``ax`` is a 2D plot, ``*args`` should be ``y`` or ``x, y``.
+        If ``ax`` is a 3D plot, ``*args`` should be ``x, y`` or ``x, y, z``.
+    s
+        The marker size in points**2
+    c
+        The color of the markers
+    ax
+        The instances of :class:`matplotlib.axes.Axes` to use.
+        If :obj:`None`, calls :func:`matplotlib.pyplot.gca` to get the current axes.
+        If an instance of :class:`named_arrays.ScalarArray`, ``ax.shape`` should be a subset of the broadcasted shape of
+        ``*args``.
+    where
+        A boolean array that selects which elements to plot
+    transformation
+        A callable that is applied to args before plotting
+    components
+        The component names of ``*args`` to plot, helpful if ``*args`` are an instance of
+        :class:`named_arrays.AbstractVectorArray`.
+    kwargs
+        Additional keyword arguments passed to :meth:`matplotlib.axes.Axes.scatter`.
+        These can be instances of :class:`named_arrays.AbstractArray`.
+
+    Examples
+    --------
+
+    Plot a single scalar
+
+    .. jupyter-execute::
+
+        import numpy as np
+        import matplotlib.pyplot as plt
+        import named_arrays as na
+
+        x = na.linspace(0, 2 * np.pi, axis="x",  num=51)
+        y = np.sin(x)
+
+        plt.figure();
+        na.plt.scatter(x, y);
+
+    Plot an array of scalars
+
+    .. jupyter-execute::
+
+        z = na.linspace(0, np.pi, axis="z", num=5)
+
+        y = np.sin(x - z)
+
+        plt.figure();
+        na.plt.scatter(x, y, c=z);
+
+    Plot an uncertain scalar
+
+    .. jupyter-execute::
+
+        ux = na.NormalUncertainScalarArray(x, width=0.2)
+        uy = np.sin(ux)
+
+        plt.figure();
+        na.plt.scatter(x, uy);
+
+    Broadcast an array of scalars against an array of :class:`matplotlib.axes.Axes`
+
+    .. jupyter-execute::
+
+        fig, ax = na.plt.subplots(axis_rows="z", nrows=z.shape["z"], sharex=True)
+
+        na.plt.scatter(x, y, ax=ax);
+    """
+    if transformation is not None:
+        args = tuple(transformation(arg) for arg in args)
+    return na._named_array_function(
+        scatter,
+        *args,
+        s=s,
+        c=c,
+        ax=ax,
         where=where,
         components=components,
         **kwargs,

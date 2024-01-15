@@ -248,6 +248,91 @@ def plt_plot_like(
     return result
 
 
+@_implements(na.plt.scatter)
+def plt_scatter(
+        *args: na.AbstractScalar,
+        s: None | na.AbstractScalar = None,
+        c: None | na.AbstractScalar = None,
+        ax: None | matplotlib.axes.Axes | na.ScalarArray = None,
+        where: bool | na.AbstractScalar = True,
+        components: None | tuple[str, ...] = None,
+        **kwargs,
+) -> na.UncertainScalarArray:
+
+    if components is not None:
+        raise ValueError(
+            f"`components` should be `None` for scalars, got {components}"
+        )
+
+    try:
+        args = tuple(uncertainties._normalize(arg) for arg in args)
+        s = uncertainties._normalize(s)
+        c = uncertainties._normalize(c)
+        where = uncertainties._normalize(where)
+        kwargs = {k: uncertainties._normalize(kwargs[k]) for k in kwargs}
+    except na.UncertainScalarTypeError:
+        return NotImplemented
+
+    if ax is None:
+        ax = plt.gca()
+    ax = na.as_named_array(ax)
+
+    axis_distribution = args[0].axis_distribution
+    shape_distribution = na.broadcast_shapes(*[arg.shape_distribution for arg in args])
+
+    if axis_distribution in shape_distribution:
+        num_distribution = shape_distribution[axis_distribution]
+    else:
+        num_distribution = 1
+
+    if num_distribution == 0:
+        alpha = 1
+    else:
+        alpha = max(1 / num_distribution, 1 / 255)
+
+    if "alpha" in kwargs:
+        kwargs["alpha"] = kwargs["alpha"] * alpha
+    else:
+        kwargs["alpha"] = na.UncertainScalarArray(1, alpha)
+
+    result_nominal = na.plt.scatter(
+        *[na.as_named_array(arg.nominal) for arg in args],
+        s=s.nominal,
+        c=c.nominal,
+        ax=ax,
+        where=where.nominal,
+        components=components,
+        **{k: kwargs[k].nominal for k in kwargs},
+    )
+
+    if c.distribution is None:
+        c_distribution = na.ScalarArray.zeros(shape=ax.shape | dict(rgba=4))
+        for index in ax.ndindex():
+            facecolor = result_nominal[index].ndarray.get_facecolor()[0]
+            c_distribution[index] = na.ScalarArray(
+                ndarray=facecolor,
+                axes="rgba",
+            )
+        c.distribution = c_distribution
+
+    result_distribution = na.plt.scatter(
+        *[na.as_named_array(arg.distribution) for arg in args],
+        s=s.distribution,
+        c=c.distribution,
+        ax=ax,
+        where=where.distribution,
+        components=components,
+        **{k: kwargs[k].distribution for k in kwargs},
+    )
+
+    result = na.UncertainScalarArray(
+        nominal=result_nominal,
+        distribution=result_distribution,
+    )
+
+    return result
+
+
 @_implements(na.jacobian)
 def jacobian(
         function: Callable[[na.AbstractScalar], na.AbstractScalar],

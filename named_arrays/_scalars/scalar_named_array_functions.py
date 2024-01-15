@@ -341,6 +341,100 @@ def plt_plot_like(
     return result
 
 
+@_implements(na.plt.scatter)
+def plt_scatter(
+        *args: na.AbstractScalarArray,
+        s: None | na.AbstractScalarArray = None,
+        c: None | na.AbstractScalarArray = None,
+        ax: None | matplotlib.axes.Axes | na.ScalarArray = None,
+        where: bool | na.AbstractScalarArray = True,
+        components: None | tuple[str, ...] = None,
+        **kwargs,
+) -> na.ScalarArray:
+
+    if components is not None:
+        raise ValueError(f"`components` should be `None` for scalars, got {components}")
+
+    try:
+        args = tuple(scalars._normalize(arg) for arg in args)
+        s = scalars._normalize(s)
+        c = scalars._normalize(c)
+        where = scalars._normalize(where)
+        kwargs = {k: scalars._normalize(kwargs[k]) for k in kwargs}
+    except na.ScalarTypeError:
+        return NotImplemented
+
+    if ax is None:
+        ax = plt.gca()
+    ax = na.as_named_array(ax)
+
+    shape_c = c.shape
+    if "rgba" in c.shape:
+        shape_c.pop("rgba")
+
+    shape = na.shape_broadcasted(*args, s, ax, where)
+    shape = na.broadcast_shapes(shape, shape_c)
+
+    shape_orthogonal = ax.shape
+
+    args = tuple(arg.broadcast_to(shape) for arg in args)
+
+    if np.issubdtype(na.get_dtype(s), np.number):
+        s = na.broadcast_to(s, shape)
+    else:
+        s = na.broadcast_to(s, shape_orthogonal)
+
+    if np.issubdtype(na.get_dtype(c), np.number):
+        if "rgba" in c.shape:
+            c = na.broadcast_to(c, shape | dict(rgba=c.shape["rgba"]))
+        else:
+            c = na.broadcast_to(c, shape)
+    else:
+        c = na.broadcast_to(c, shape_orthogonal)
+
+    where = where.broadcast_to(shape)
+
+    args = tuple(np.where(where, arg, np.nan) for arg in args)
+
+    kwargs_broadcasted = dict()
+    for k in kwargs:
+        kwarg = kwargs[k]
+        if not set(na.shape(kwarg)).issubset(shape_orthogonal):
+            raise ValueError(
+                f"the shape of `{k}`, {na.shape(kwarg)}, "
+                f"should be a subset of the shape of `ax`, {shape_orthogonal}"
+            )
+        kwargs_broadcasted[k] = na.broadcast_to(kwarg, shape_orthogonal)
+    kwargs = kwargs_broadcasted
+
+    result = na.ScalarArray.empty(shape=shape_orthogonal, dtype=object)
+
+    for index in na.ndindex(shape_orthogonal):
+        func_matplotlib = getattr(ax[index].ndarray, "scatter")
+        args_index = tuple(arg[index].ndarray.reshape(-1) for arg in args)
+
+        s_index = s[index].ndarray
+        if s_index is not None:
+            s_index = s_index.reshape(-1)
+
+        c_index = c[index].ndarray
+        if c_index is not None:
+            if "rgba" in c.shape:
+                c_index = c[index].ndarray.reshape(-1, c.shape["rgba"])
+            else:
+                c_index = c[index].ndarray.reshape(-1)
+
+        kwargs_index = {k: kwargs[k][index].ndarray for k in kwargs}
+        result[index] = func_matplotlib(
+            *args_index,
+            s=s_index,
+            c=c_index,
+            **kwargs_index,
+        )
+
+    return result
+
+
 @_implements(na.jacobian)
 def jacobian(
         function: Callable[[na.AbstractScalar], na.AbstractScalar],
