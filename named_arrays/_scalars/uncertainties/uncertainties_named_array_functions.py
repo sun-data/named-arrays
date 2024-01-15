@@ -267,7 +267,7 @@ def plt_scatter(
     try:
         args = tuple(uncertainties._normalize(arg) for arg in args)
         s = uncertainties._normalize(s)
-        c = uncertainties._normalize(c) if c is not None else c
+        c = uncertainties._normalize(c)
         where = uncertainties._normalize(where)
         kwargs = {k: uncertainties._normalize(kwargs[k]) for k in kwargs}
     except na.UncertainScalarTypeError:
@@ -295,33 +295,42 @@ def plt_scatter(
     else:
         kwargs["alpha"] = na.UncertainScalarArray(1, alpha)
 
-    if c is None:
-        c = na.ScalarArray.empty(shape=ax.shape, dtype=object)
-        for index in ax.ndindex():
-            c[index] = next(ax[index].ndarray._get_lines.prop_cycler)['color']
-        c = na.UncertainScalarArray(c, c)
-
-    result = na.UncertainScalarArray(
-        nominal=na.plt.scatter(
-            *[na.as_named_array(arg.nominal) for arg in args],
-            s=s.nominal,
-            c=c.nominal,
-            ax=ax,
-            where=where.nominal,
-            components=components,
-            **{k: kwargs[k].nominal for k in kwargs},
-        ),
-        distribution=na.plt.scatter(
-            *[na.as_named_array(arg.distribution) for arg in args],
-            s=s.distribution,
-            c=c.distribution,
-            ax=ax,
-            where=where.distribution,
-            components=components,
-            **{k: kwargs[k].distribution for k in kwargs},
-        )
+    result_nominal = na.plt.scatter(
+        *[na.as_named_array(arg.nominal) for arg in args],
+        s=s.nominal,
+        c=c.nominal,
+        ax=ax,
+        where=where.nominal,
+        components=components,
+        **{k: kwargs[k].nominal for k in kwargs},
     )
 
+    if c.distribution is None:
+        c_distribution = na.ScalarArray.zeros(shape=ax.shape | dict(rgba=4))
+        for index in ax.ndindex():
+            facecolor = result_nominal[index].ndarray.get_facecolor()[0]
+            c_distribution[index] = na.ScalarArray(
+                ndarray=facecolor,
+                axes="rgba",
+            )
+        c.distribution = c_distribution
+
+    result_distribution = na.plt.scatter(
+        *[na.as_named_array(arg.distribution) for arg in args],
+        s=s.distribution,
+        c=c.distribution,
+        ax=ax,
+        where=where.distribution,
+        components=components,
+        **{k: kwargs[k].distribution for k in kwargs},
+    )
+
+    result = na.UncertainScalarArray(
+        nominal=result_nominal,
+        distribution=result_distribution,
+    )
+
+    return result
 
 
 @_implements(na.jacobian)

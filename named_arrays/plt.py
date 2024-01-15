@@ -282,7 +282,7 @@ def scatter(
         The component names of ``*args`` to plot, helpful if ``*args`` are an instance of
         :class:`named_arrays.AbstractVectorArray`.
     kwargs
-        Additional keyword arguments passed to :meth:`matplotlib.axes.Axes.plot`.
+        Additional keyword arguments passed to :meth:`matplotlib.axes.Axes.scatter`.
         These can be instances of :class:`named_arrays.AbstractArray`.
 
     Examples
@@ -296,7 +296,7 @@ def scatter(
         import matplotlib.pyplot as plt
         import named_arrays as na
 
-        x = na.linspace(0, 2 * np.pi, axis="x",  num=101)
+        x = na.linspace(0, 2 * np.pi, axis="x",  num=51)
         y = np.sin(x)
 
         plt.figure();
@@ -329,7 +329,7 @@ def scatter(
 
         fig, ax = na.plt.subplots(axis_rows="z", nrows=z.shape["z"], sharex=True)
 
-        na.plt.scatter(x, y, ax=ax, axis="x");
+        na.plt.scatter(x, y, ax=ax);
     """
     if transformation is not None:
         args = tuple(transformation(arg) for arg in args)

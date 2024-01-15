@@ -368,7 +368,12 @@ def plt_scatter(
         ax = plt.gca()
     ax = na.as_named_array(ax)
 
-    shape = na.shape_broadcasted(*args, s, c, ax, where)
+    shape_c = c.shape
+    if "rgba" in c.shape:
+        shape_c.pop("rgba")
+
+    shape = na.shape_broadcasted(*args, s, ax, where)
+    shape = na.broadcast_shapes(shape, shape_c)
 
     shape_orthogonal = ax.shape
 
@@ -382,7 +387,10 @@ def plt_scatter(
     if np.issubdtype(na.get_dtype(c), np.number):
         c = na.broadcast_to(c, shape)
     else:
-        c = na.broadcast_to(c, shape_orthogonal)
+        if "rgba" in c.shape:
+            c = na.broadcast_to(c, shape_orthogonal | dict(rgba=c.shape["rgba"]))
+        else:
+            c = na.broadcast_to(c, shape_orthogonal)
 
     where = where.broadcast_to(shape)
 
@@ -403,9 +411,19 @@ def plt_scatter(
 
     for index in na.ndindex(shape_orthogonal):
         func_matplotlib = getattr(ax[index].ndarray, "scatter")
-        args_index = tuple(arg[index].ndarray for arg in args)
+        args_index = tuple(arg[index].ndarray.reshape(-1) for arg in args)
+
         s_index = s[index].ndarray
+        if s_index is not None:
+            s_index = s_index.reshape(-1)
+
         c_index = c[index].ndarray
+        if c_index is not None:
+            if "rgba" in c.shape:
+                c_index = c[index].ndarray.reshape(-1, c.shape["rgba"])
+            else:
+                c_index = c[index].ndarray.reshape(-1)
+
         kwargs_index = {k: kwargs[k][index].ndarray for k in kwargs}
         result[index] = func_matplotlib(
             *args_index,
