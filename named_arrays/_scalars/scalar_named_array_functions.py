@@ -174,7 +174,7 @@ def interp(
     right = na.broadcast_to(right, shape) if right is not None else right
     period = na.broadcast_to(period, shape) if period is not None else period
 
-    result = np.empty_like(x.value)
+    result = np.empty_like(x.value, dtype=fp.dtype)
     if fp.unit is not None:
         result = result << fp.unit
 
