@@ -658,3 +658,33 @@ class AbstractTestAbstractVectorGeometricSpace(
     named_arrays.tests.test_core.AbstractTestAbstractGeometricSpace,
 ):
     pass
+
+
+class AbstractTestAbstractWcsVector(
+    AbstractTestAbstractImplicitVectorArray,
+):
+    def test_crval(self, array: na.AbstractWcsVector):
+        result = array.crval
+        assert isinstance(result, array.type_abstract)
+
+    def test_crpix(self, array: na.AbstractWcsVector):
+        result = array.crpix
+        assert isinstance(result, na.AbstractCartesianNdVectorArray)
+
+    def test_cdelt(self, array: na.AbstractWcsVector):
+        result = array.cdelt
+        assert isinstance(result, array.type_abstract)
+
+    def test_pc(self, array: na.AbstractWcsVector):
+        result = array.pc
+        assert isinstance(result, array.type_matrix)
+        components = result.components
+        for c in components:
+            assert isinstance(components[c], na.AbstractVectorArray)
+
+    def test_shape_wcs(self, array: na.AbstractWcsVector):
+        result = array.shape_wcs
+        assert isinstance(result, dict)
+        for k in result:
+            assert isinstance(k, str)
+            assert isinstance(result[k], int)

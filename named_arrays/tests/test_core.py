@@ -714,6 +714,10 @@ class AbstractTestAbstractArray(
             ]
         )
         def test_broadcast_to(self, array: na.AbstractArray, shape: dict[str, int]):
+            if not set(array.shape).issubset(shape):
+                with pytest.raises(ValueError):
+                    np.broadcast_to(array, shape=shape)
+                return
             result = np.broadcast_to(array, shape=shape)
             assert result.shape == shape
 
@@ -730,6 +734,12 @@ class AbstractTestAbstractArray(
         )
         def test_transpose(self, array: na.AbstractArray, axes: None | Sequence[str]):
             axes_normalized = tuple(reversed(array.axes) if axes is None else axes)
+
+            if not set(array.axes).issubset(axes_normalized):
+                with pytest.raises(ValueError):
+                    np.transpose(array, axes=axes)
+                return
+
             result = np.transpose(
                 a=array,
                 axes=axes
@@ -937,6 +947,10 @@ class AbstractTestAbstractArray(
             array: na.AbstractArray,
             shape: dict[str, int],
     ):
+        if not set(array.shape).issubset(shape):
+            with pytest.raises(ValueError):
+                array.broadcast_to(shape)
+            return
         assert np.array_equal(array.broadcast_to(shape), np.broadcast_to(array, shape))
 
     @pytest.mark.parametrize('shape', [dict(r=-1)])

@@ -11,6 +11,7 @@ __all__ = [
     'AbstractParameterizedSpectralDirectionalVectorArray',
     'AbstractSpectralDirectionalVectorSpace',
     'SpectralDirectionalVectorLinearSpace',
+    'WcsSpectralDirectionalVectorArray',
 ]
 
 DirectionT = TypeVar("DirectionT", bound=na.ArrayLike)
@@ -83,3 +84,19 @@ class SpectralDirectionalVectorLinearSpace(
     na.AbstractVectorLinearSpace,
 ):
     pass
+
+
+@dataclasses.dataclass(eq=False, repr=False)
+class WcsSpectralDirectionalVectorArray(
+    AbstractImplicitSpectralDirectionalVectorArray,
+    na.AbstractWcsVector,
+):
+    crval: AbstractSpectralDirectionalVectorArray = dataclasses.MISSING
+    crpix: na.AbstractCartesianNdVectorArray = dataclasses.MISSING
+    cdelt: AbstractSpectralDirectionalVectorArray = dataclasses.MISSING
+    pc: na.AbstractSpectralDirectionalMatrixArray = dataclasses.MISSING
+    shape_wcs: dict[str, int] = dataclasses.MISSING
+
+    @property
+    def _components_explicit(self) -> dict[str, na.ArrayLike]:
+        return dict()
