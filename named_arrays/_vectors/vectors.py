@@ -24,6 +24,7 @@ __all__ = [
     'AbstractVectorStratifiedRandomSpace',
     'AbstractVectorLogarithmicSpace',
     'AbstractVectorGeometricSpace',
+    'AbstractWcsVector',
 ]
 
 VectorPrototypeT = TypeVar("VectorPrototypeT", bound="AbstractVectorArray")
@@ -760,3 +761,69 @@ class AbstractVectorGeometricSpace(
     na.AbstractGeometricSpace,
 ):
     pass
+
+
+@dataclasses.dataclass(eq=False, repr=False)
+class AbstractWcsVector(
+    AbstractImplicitVectorArray,
+):
+    @property
+    @abc.abstractmethod
+    def crval(self) -> AbstractVectorArray:
+        """
+        The reference point in world coordinates
+        """
+
+    @property
+    @abc.abstractmethod
+    def crpix(self) -> na.CartesianNdVectorArray:
+        """
+        The reference point in pixel coordinates
+        """
+
+    @property
+    @abc.abstractmethod
+    def cdelt(self) -> AbstractVectorArray:
+        """
+        The plate scale at the reference point
+        """
+
+    @property
+    @abc.abstractmethod
+    def pc(self) -> na.AbstractMatrixArray:
+        """
+        The transformation matrix between pixel coordinates and
+        world coordinates
+        """
+
+    @property
+    @abc.abstractmethod
+    def shape_wcs(self) -> dict[str, int]:
+        """
+        The shape of the WCS components of the vector
+        """
+
+    @property
+    @abc.abstractmethod
+    def _components_explicit(self) -> dict[str, na.ArrayLike]:
+        """
+        The components of this vector that are not specified by the WCS parameters
+        """
+
+    @property
+    def _components_wcs(self):
+        crval = self.crval
+        r = self.crpix
+        s = self.cdelt
+        m = self.pc
+        shape_wcs = self.shape_wcs
+        p = na.CartesianNdVectorArray(na.indices(shape_wcs)) - 0.5
+        q = m @ (p - r)
+        x = s * q + crval
+        return x.components
+
+    @property
+    def explicit(self) -> na.AbstractExplicitArray:
+        components = self._components_explicit | self._components_wcs
+        return self.type_explicit.from_components(components)
+

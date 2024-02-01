@@ -2,6 +2,7 @@ import pytest
 import numpy as np
 import astropy.units as u
 import named_arrays as na
+from ..tests import test_vectors
 from ..cartesian.tests import test_vectors_cartesian
 
 _num_x = test_vectors_cartesian._num_x
@@ -185,5 +186,40 @@ def _spectral_directional_linear_spaces() -> list[na.SpectralDirectionalVectorLi
 class TestSpectralDirectionalVectorLinearSpace(
     AbstractTestAbstractSpectralDirectionalVectorSpace,
     test_vectors_cartesian.AbstractTestAbstractCartesianVectorLinearSpace,
+):
+    pass
+
+
+@pytest.mark.parametrize(
+    argnames="array",
+    argvalues=[
+        na.WcsSpectralDirectionalVectorArray(
+            crval=na.SpectralDirectionalVectorArray(
+                wavelength=500 * u.nm,
+                direction=na.Cartesian2dVectorArray(1, 1) * u.deg,
+            ),
+            crpix=na.CartesianNdVectorArray(dict(
+                wavelength=1,
+                x=2,
+                y=3,
+            )),
+            cdelt=na.SpectralDirectionalVectorArray(
+                wavelength=1 * u.nm,
+                direction=na.Cartesian2dVectorArray(1, 1) * u.arcsec,
+            ),
+            pc=na.SpectralDirectionalMatrixArray(
+                wavelength=na.CartesianNdVectorArray(dict(wavelength=1, x=0, y=0)),
+                direction=na.Cartesian2dMatrixArray(
+                    x=na.CartesianNdVectorArray(dict(wavelength=0, x=1, y=0)),
+                    y=na.CartesianNdVectorArray(dict(wavelength=0, x=0, y=1)),
+                ),
+            ),
+            shape_wcs=dict(wavelength=5, x=_num_x, y=_num_y),
+        ),
+    ],
+)
+class TestWcsSpectralDirectionalVectorArray(
+    AbstractTestAbstractImplicitSpectralDirectionalVectorArray,
+    test_vectors.AbstractTestAbstractWcsVector,
 ):
     pass
