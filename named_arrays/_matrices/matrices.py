@@ -302,9 +302,12 @@ class AbstractMatrixArray(
                     result = NotImplemented
 
             elif isinstance(x2, na.AbstractVectorArray):
-                if x1.type_vector().type_abstract == x2.type_abstract:
+                if x1.row_prototype.type_abstract == x2.type_abstract:
                     result_components = {r: components_x1[r] @ x2.cartesian_nd for r in components_x1}
-                    result = x2.type_explicit.from_cartesian_nd(na.CartesianNdVectorArray(result_components), like=x2)
+                    result = x1.type_vector.from_cartesian_nd(
+                        array=na.CartesianNdVectorArray(result_components),
+                        like=x1.column_prototype,
+                    )
 
                 else:
                     result = NotImplemented
