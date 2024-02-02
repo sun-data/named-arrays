@@ -665,7 +665,7 @@ class AbstractTestAbstractWcsVector(
 ):
     def test_crval(self, array: na.AbstractWcsVector):
         result = array.crval
-        assert isinstance(result, array.type_abstract)
+        assert isinstance(result, na.AbstractVectorArray)
 
     def test_crpix(self, array: na.AbstractWcsVector):
         result = array.crpix
@@ -673,11 +673,11 @@ class AbstractTestAbstractWcsVector(
 
     def test_cdelt(self, array: na.AbstractWcsVector):
         result = array.cdelt
-        assert isinstance(result, array.type_abstract)
+        assert isinstance(result, na.AbstractVectorArray)
 
     def test_pc(self, array: na.AbstractWcsVector):
         result = array.pc
-        assert isinstance(result, array.type_matrix)
+        assert isinstance(result, na.AbstractMatrixArray)
         components = result.components
         for c in components:
             assert isinstance(components[c], na.AbstractVectorArray)

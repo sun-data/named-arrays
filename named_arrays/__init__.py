@@ -17,6 +17,7 @@ from ._vectors.vectors_positional import *
 from ._vectors.vectors_directional import *
 from ._vectors.vectors_spectral_positional import *
 from ._vectors.vectors_spectral_directional import *
+from ._vectors.vectors_temporal_spectral_directional import *
 from ._matrices.matrices import *
 from ._matrices.cartesian.matrices_cartesian import *
 from ._matrices.cartesian.matrices_cartesian_2d import *
@@ -28,4 +29,5 @@ from ._matrices.matrices_positional import *
 from ._matrices.matrices_directional import *
 from ._matrices.matrices_spectral_positional import *
 from ._matrices.matrices_spectral_directional import *
+from ._matrices.matrices_temporal_spectral_directional import *
 from ._functions.functions import *
