@@ -435,6 +435,79 @@ def plt_scatter(
     return result
 
 
+@_implements(na.plt.imshow)
+def plt_imshow(
+    X: na.AbstractScalarArray,
+    axis_x: str,
+    axis_y: str,
+    axis_rgb: None | str = None,
+    ax: None | matplotlib.axes.Axes | na.AbstractArray = None,
+    cmap: None | str | matplotlib.colors.Colormap = None,
+    norm: None | str | matplotlib.colors.Normalize = None,
+    aspect: None | na.ArrayLike = None,
+    alpha: None | na.ArrayLike = None,
+    vmin: None | na.ArrayLike = None,
+    vmax: None | na.ArrayLike = None,
+    extent: None | na.ArrayLike = None,
+    **kwargs,
+) -> na.ScalarArray:
+    try:
+        X = scalars._normalize(X)
+        aspect = scalars._normalize(aspect) if aspect is not None else aspect
+        alpha = scalars._normalize(alpha) if alpha is not None else alpha
+        vmin = scalars._normalize(vmin) if vmin is not None else vmin
+        vmax = scalars._normalize(vmax) if vmax is not None else vmax
+        extent = scalars._normalize(extent) if extent is not None else extent
+    except na.ScalarTypeError:
+        return NotImplemented
+
+    if ax is None:
+        ax = plt.gca()
+    ax = na.as_named_array(ax)
+
+    if axis_x not in X.shape:
+        raise ValueError(f"`{axis_x=}` must be a member of `{X.shape=}`")
+
+    if axis_y not in X.shape:
+        raise ValueError(f"`{axis_y=}` must be a member of `{X.shape=}`")
+
+    if axis_rgb is not None:
+        if axis_rgb not in X.shape:
+            raise ValueError(f"`{axis_rgb=}` must be a member of `{X.shape=}`")
+
+    shape = na.shape_broadcasted(X, ax)
+    shape_orthogonal = ax.shape
+    shape_extent = shape_orthogonal | {f"{axis_x},{axis_y}": 4}
+
+    X = X.broadcast_to(shape)
+    aspect = aspect.broadcast_to(shape_orthogonal) if aspect is not None else aspect
+    alpha = alpha.broadcast_to(shape) if alpha is not None else alpha
+    vmin = vmin.broadcast_to(shape_orthogonal) if vmin is not None else vmin
+    vmax = vmax.broadcast_to(shape_orthogonal) if vmax is not None else vmax
+    extent = extent.broadcast_to(shape_extent) if extent is not None else extent
+
+    shape_img = {axis_y: shape[axis_y], axis_x: shape[axis_x]}
+    if axis_rgb is not None:
+        shape_img[axis_rgb] = shape[axis_rgb]
+
+    result = na.ScalarArray.empty(shape_orthogonal, dtype=object)
+
+    for index in na.ndindex(shape_orthogonal):
+        result[index] = ax[index].ndarray.imshow(
+            X=X[index].ndarray_aligned(shape_img),
+            cmap=cmap,
+            norm=norm,
+            aspect=aspect[index].ndarray if aspect is not None else aspect,
+            alpha=alpha[index].ndarray_aligned(shape_img) if alpha is not None else alpha,
+            vmin=vmin[index].ndarray if vmin is not None else vmin,
+            vmax=vmax[index].ndarray if vmax is not None else vmax,
+            extent=extent[index].ndarray if extent is not None else extent,
+            **kwargs,
+        )
+
+    return result
+
+
 @_implements(na.jacobian)
 def jacobian(
         function: Callable[[na.AbstractScalar], na.AbstractScalar],
