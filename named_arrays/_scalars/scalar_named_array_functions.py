@@ -458,20 +458,20 @@ def plt_imshow(
         vmin = scalars._normalize(vmin) if vmin is not None else vmin
         vmax = scalars._normalize(vmax) if vmax is not None else vmax
         extent = scalars._normalize(extent) if extent is not None else extent
-    except na.ScalarTypeError:
+    except na.ScalarTypeError:  # pragma: nocover
         return NotImplemented
 
     if ax is None:
         ax = plt.gca()
     ax = na.as_named_array(ax)
 
-    if axis_x not in X.shape:
+    if axis_x not in X.shape:   # pragma: nocover
         raise ValueError(f"`{axis_x=}` must be a member of `{X.shape=}`")
 
-    if axis_y not in X.shape:
+    if axis_y not in X.shape:   # pragma: nocover
         raise ValueError(f"`{axis_y=}` must be a member of `{X.shape=}`")
 
-    if axis_rgb is not None:
+    if axis_rgb is not None:    # pragma: nocover
         if axis_rgb not in X.shape:
             raise ValueError(f"`{axis_rgb=}` must be a member of `{X.shape=}`")
 
