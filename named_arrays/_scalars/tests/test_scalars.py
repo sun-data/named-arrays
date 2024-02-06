@@ -2,6 +2,8 @@ from __future__ import annotations
 from typing import Type, Sequence, Callable
 import pytest
 import numpy as np
+import matplotlib
+import matplotlib.pyplot as plt
 import astropy.units as u
 import astropy.units.quantity_helper.helpers as quantity_helpers
 import named_arrays as na
@@ -921,6 +923,39 @@ class AbstractTestAbstractScalarArray(
             tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestPltScatter,
         ):
             pass
+
+        @pytest.mark.parametrize("axis_x", ["x"])
+        @pytest.mark.parametrize("axis_y", ["y"])
+        class TestPltImshow:
+
+            @pytest.mark.parametrize("axis_rgb", [None, "rgb"])
+            def test_imshow(
+                self,
+                array: na.AbstractScalarArray,
+                axis_x: str,
+                axis_y: str,
+                axis_rgb: None | str
+            ):
+                kwargs = dict(
+                    X=array,
+                    axis_x=axis_x,
+                    axis_y=axis_y,
+                    axis_rgb=axis_rgb,
+                )
+
+                if axis_x not in array.shape or axis_y not in array.shape:
+                    with pytest.raises(ValueError):
+                        na.plt.imshow(**kwargs)
+                    return
+
+                if axis_rgb is not None:
+                    with pytest.raises(ValueError):
+                        na.plt.imshow(**kwargs)
+                    return
+
+                result = na.plt.imshow(**kwargs)
+                assert isinstance(result, na.ScalarArray)
+                assert result.dtype == matplotlib.image.AxesImage
 
         @pytest.mark.parametrize(
             argnames="function",

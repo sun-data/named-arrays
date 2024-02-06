@@ -1,8 +1,6 @@
 from __future__ import annotations
 from typing import Literal
-import matplotlib.axes
-import matplotlib.figure
-import matplotlib.artist
+import matplotlib
 import matplotlib.pyplot as plt
 import numpy.typing as npt
 import named_arrays as na
@@ -12,6 +10,7 @@ __all__ = [
     "plot",
     "fill",
     "scatter",
+    "imshow",
 ]
 
 
@@ -341,5 +340,171 @@ def scatter(
         ax=ax,
         where=where,
         components=components,
+        **kwargs,
+    )
+
+
+def imshow(
+    X: na.AbstractArray,
+    *,
+    axis_x: str,
+    axis_y: str,
+    axis_rgb: None | str = None,
+    ax: None | matplotlib.axes.Axes | na.AbstractArray = None,
+    cmap: None | str | matplotlib.colors.Colormap = None,
+    norm: None | str | matplotlib.colors.Normalize = None,
+    aspect: None | na.ArrayLike = None,
+    alpha: None | na.ArrayLike = None,
+    vmin: None | na.ArrayLike = None,
+    vmax: None | na.ArrayLike = None,
+    extent: None | na.ArrayLike = None,
+    **kwargs,
+) -> na.AbstractArray:
+    """
+    A thin wrappper around :func:`matplotlib.pyplot.imshow` for named arrays.
+
+    Parameters
+    ----------
+    X
+        The image data.
+    axis_x
+        The name of the horizontal axis.
+    axis_y
+        The name of the vertical axis
+    axis_rgb
+        The optional name of the color axis.
+    ax
+        The instances of :class:`matplotlib.axes.Axes` to use.
+        If :obj:`None`, calls :func:`matplotlib.pyplot.gca` to get the current axes.
+        If an instance of :class:`named_arrays.ScalarArray`, ``ax.shape`` should be a subset of the broadcasted shape of
+        ``*args``.
+    cmap
+        The Colormap instance or registered colormap name used to map scalar
+        data to colors.
+    norm
+        The normalization method used to scale the data into the range 0 to 1
+        before mapping colors.
+    aspect
+        The aspect ratio of the Axes.
+    alpha
+        The alpha blending value that ranges between 0 (transparent) and 1 (opaque).
+    vmin
+        The minimum value of the data range.
+    vmax
+        The maximum value of the data range.
+    extent
+        The bounding box in data coordinates that the image will fill.
+        The logical axis name of the bounding box should be ``f"{axis_x},{axis_y}``
+    kwargs
+        An additional keyword arguments that are passed to :func:`matplotlib.pyplot.imshow`.
+
+    Examples
+    --------
+
+    Plot a random 2d array.
+
+    .. jupyter-execute::
+
+        import numpy as np
+        import matplotlib.pyplot as plt
+        import named_arrays as na
+
+        # Define the horizontal and vertical axis names of the image
+        axis_x = "x"
+        axis_y = "y"
+
+        # Define a random dummy array to plot
+        a = na.random.uniform(
+            low=0,
+            high=1,
+            shape_random={axis_x: 16, axis_y: 16},
+        )
+
+        # Create the plot axes
+        fig, ax = plt.subplots()
+
+        # Plot the dummy array
+        na.plt.imshow(
+            a,
+            axis_x=axis_x,
+            axis_y=axis_y,
+            ax=ax,
+            extent=na.ScalarArray(
+                ndarray=np.array([0, 1, 0, 1]),
+                axes=f"{axis_x},{axis_y}",
+            ),
+        );
+
+    |
+
+    Plot a grid of 2d dummy arrays
+
+    .. jupyter-execute::
+
+        import numpy as np
+        import matplotlib.pyplot as plt
+        import named_arrays as na
+
+        # Define the horizontal and vertical axis names of the plot
+        axis_x = "x"
+        axis_y = "y"
+
+        # Define the row and column axis names of the plot
+        axis_rows = "row"
+        axis_cols = "col"
+
+        # Define the number of rows and columns of the plot
+        num_rows = 2
+        num_cols = 3
+
+        # Define a random dummy array to plot
+        a = na.random.uniform(
+            low=0,
+            high=1,
+            shape_random={
+                axis_rows: num_rows,
+                axis_cols: num_cols,
+                axis_x: 16,
+                axis_y: 16,
+            }
+        )
+
+        # Define the array of matplotlib axes
+        fig, axs = na.plt.subplots(
+            axis_rows=axis_rows,
+            nrows=num_rows,
+            axis_cols=axis_cols,
+            ncols=num_cols,
+            sharex=True,
+            sharey=True,
+            constrained_layout=True,
+        )
+
+        # Plot the dummy arrays
+        na.plt.imshow(
+            a,
+            axis_x=axis_x,
+            axis_y=axis_y,
+            ax=axs,
+            extent=na.ScalarArray(
+                ndarray=np.array([0, 1, 0, 1]),
+                axes=f"{axis_x},{axis_y}",
+            ),
+        );
+    """
+    return na._named_array_function(
+        func=imshow,
+        X=X,
+        axis_x=axis_x,
+        axis_y=axis_y,
+        axis_rgb=axis_rgb,
+        ax=ax,
+        cmap=cmap,
+        norm=norm,
+        aspect=aspect,
+        alpha=alpha,
+        vmin=vmin,
+        vmax=vmax,
+        extent=extent,
         **kwargs,
     )
