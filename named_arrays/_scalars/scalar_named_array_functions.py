@@ -475,30 +475,34 @@ def plt_imshow(
         if axis_rgb not in X.shape:
             raise ValueError(f"`{axis_rgb=}` must be a member of `{X.shape=}`")
 
-    shape = na.shape_broadcasted(X, ax)
+    shape_X = na.shape_broadcasted(X, ax)
+    shape = {a: shape_X[a] for a in shape_X if a != axis_rgb}
     shape_orthogonal = ax.shape
     shape_extent = shape_orthogonal | {f"{axis_x},{axis_y}": 4}
 
-    X = X.broadcast_to(shape)
+    X = X.broadcast_to(shape_X)
     aspect = aspect.broadcast_to(shape_orthogonal) if aspect is not None else aspect
     alpha = alpha.broadcast_to(shape) if alpha is not None else alpha
     vmin = vmin.broadcast_to(shape_orthogonal) if vmin is not None else vmin
     vmax = vmax.broadcast_to(shape_orthogonal) if vmax is not None else vmax
     extent = extent.broadcast_to(shape_extent) if extent is not None else extent
 
-    shape_img = {axis_y: shape[axis_y], axis_x: shape[axis_x]}
+    shape_index = {axis_y: shape[axis_y], axis_x: shape[axis_x]}
+
     if axis_rgb is not None:
-        shape_img[axis_rgb] = shape[axis_rgb]
+        shape_X_index = shape_index | {axis_rgb: shape_X[axis_rgb]}
+    else:
+        shape_X_index = shape_index
 
     result = na.ScalarArray.empty(shape_orthogonal, dtype=object)
 
     for index in na.ndindex(shape_orthogonal):
         result[index] = ax[index].ndarray.imshow(
-            X=X[index].ndarray_aligned(shape_img),
+            X=X[index].ndarray_aligned(shape_X_index),
             cmap=cmap,
             norm=norm,
             aspect=aspect[index].ndarray if aspect is not None else aspect,
-            alpha=alpha[index].ndarray_aligned(shape_img) if alpha is not None else alpha,
+            alpha=alpha[index].ndarray_aligned(shape_index) if alpha is not None else alpha,
             vmin=vmin[index].ndarray if vmin is not None else vmin,
             vmax=vmax[index].ndarray if vmax is not None else vmax,
             extent=extent[index].ndarray if extent is not None else extent,

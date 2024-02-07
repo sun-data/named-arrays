@@ -1029,6 +1029,38 @@ class TestScalarArray(
     ):
         super().test__setitem__(array=array, item=item, value=value)
 
+    class TestNamedArrayFunctions(
+        AbstractTestAbstractScalarArray.TestNamedArrayFunctions,
+    ):
+        class TestPltImshow(
+            AbstractTestAbstractScalarArray.TestNamedArrayFunctions.TestPltImshow,
+        ):
+            @pytest.mark.parametrize("axis_rgb", ["rgb"])
+            def test_imshow_rgb(
+                    self,
+                    array: na.AbstractScalarArray,
+                    axis_x: str,
+                    axis_y: str,
+                    axis_rgb: None | str
+            ):
+                array = array.broadcast_to(array.shape | {axis_rgb: 3})
+
+                kwargs = dict(
+                    X=array,
+                    axis_x=axis_x,
+                    axis_y=axis_y,
+                    axis_rgb=axis_rgb,
+                )
+
+                if axis_x not in array.shape or axis_y not in array.shape:
+                    with pytest.raises(ValueError):
+                        na.plt.imshow(**kwargs)
+                    return
+
+                result = na.plt.imshow(**kwargs)
+                assert isinstance(result, na.ScalarArray)
+                assert result.dtype == matplotlib.image.AxesImage
+
 
 @pytest.mark.parametrize("type_array", [na.ScalarArray])
 class TestScalarArrayCreation(
