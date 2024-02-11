@@ -288,7 +288,7 @@ def pcolormesh(
     try:
         prototype = vectors._prototype(*XY)
         XY = tuple(vectors._normalize(arg, prototype) for arg in XY)
-    except na.VectorTypeError:
+    except na.VectorTypeError:  # pragma: nocover
         return NotImplemented
 
     if len(XY) != 1:    # pragma: nocover
