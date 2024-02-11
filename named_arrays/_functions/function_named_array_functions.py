@@ -105,7 +105,7 @@ def pcolormesh(
     **kwargs,
 ) -> na.ScalarArray:
 
-    if len(XY) != 0:
+    if len(XY) != 0:    # pragma: nocover
         raise ValueError(
             "if `C` is an instance of `na.AbstractFunctionArray`, "
             "`XY` must not be specified."

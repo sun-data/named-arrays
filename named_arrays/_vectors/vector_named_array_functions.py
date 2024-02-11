@@ -291,7 +291,7 @@ def pcolormesh(
     except na.VectorTypeError:
         return NotImplemented
 
-    if len(XY) != 1:
+    if len(XY) != 1:    # pragma: nocover
         raise ValueError("if any element of `XY` is a vector, `XY` must have a length of 1")
     XY = XY[0]
 

@@ -667,17 +667,7 @@ class AbstractTestAbstractFunctionArray(
                         na.plt.pcolormesh(**kwargs)
                     return
 
-                if any(isinstance(array.inputs.components[c], na.AbstractUncertainScalarArray) for c in components):
-                    with pytest.raises(TypeError):
-                        na.plt.pcolormesh(**kwargs)
-                    return
-
                 if axis_rgb is not None:
-                    with pytest.raises(ValueError):
-                        na.plt.pcolormesh(**kwargs)
-                    return
-
-                if array.ndim != 2:
                     with pytest.raises(ValueError):
                         na.plt.pcolormesh(**kwargs)
                     return

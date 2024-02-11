@@ -526,7 +526,7 @@ def pcolormesh(
     **kwargs,
 ) -> na.ScalarArray:
 
-    if components is not None:
+    if components is not None:  # pragma: nocover
         raise ValueError(f"`components` should be `None` for scalars, got {components}")
 
     try:
