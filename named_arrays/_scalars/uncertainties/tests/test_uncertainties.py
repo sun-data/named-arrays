@@ -713,6 +713,12 @@ class AbstractTestAbstractUncertainScalarArray(
         ):
             pass
 
+        @pytest.mark.skip
+        class TestPltPcolormesh(
+            named_arrays._scalars.tests.test_scalars.AbstractTestAbstractScalar.TestNamedArrayFunctions.TestPltPcolormesh,
+        ):
+            pass
+
         @pytest.mark.parametrize(
             argnames="function",
             argvalues=[

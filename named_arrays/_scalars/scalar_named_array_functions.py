@@ -512,6 +512,64 @@ def plt_imshow(
     return result
 
 
+@_implements(na.plt.pcolormesh)
+def pcolormesh(
+    *XY: na.AbstractScalarArray,
+    C: na.AbstractScalarArray,
+    components: None | tuple[str, str] = None,
+    axis_rgb: None | str = None,
+    ax: None | matplotlib.axes.Axes | na.AbstractScalarArray = None,
+    cmap: None | str | matplotlib.colors.Colormap = None,
+    norm: None | str | matplotlib.colors.Normalize = None,
+    vmin: None | float | u.Quantity | na.AbstractScalarArray = None,
+    vmax: None | float | u.Quantity | na.AbstractScalarArray = None,
+    **kwargs,
+) -> na.ScalarArray:
+
+    if components is not None:  # pragma: nocover
+        raise ValueError(f"`components` should be `None` for scalars, got {components}")
+
+    try:
+        XY = tuple(scalars._normalize(arg) for arg in XY)
+        C = scalars._normalize(C)
+        vmin = scalars._normalize(vmin) if vmin is not None else vmin
+        vmax = scalars._normalize(vmax) if vmax is not None else vmax
+    except na.ScalarTypeError:  # pragma: nocover
+        pass
+
+    if ax is None:
+        ax = plt.gca()
+    ax = na.as_named_array(ax)
+
+    if axis_rgb is not None:    # pragma: nocover
+        if axis_rgb not in C.shape:
+            raise ValueError(f"`{axis_rgb=}` must be a member of `{C.shape=}`")
+
+    shape_C = na.shape_broadcasted(*XY, C, ax)
+    shape = {a: shape_C[a] for a in shape_C if a != axis_rgb}
+    shape_orthogonal = ax.shape
+
+    XY = tuple(arg.broadcast_to(shape) for arg in XY)
+    C = C.broadcast_to(shape_C)
+    vmin = vmin.broadcast_to(shape_orthogonal) if vmin is not None else vmin
+    vmax = vmax.broadcast_to(shape_orthogonal) if vmax is not None else vmax
+
+    result = na.ScalarArray.empty(shape_orthogonal, dtype=object)
+
+    for index in na.ndindex(shape_orthogonal):
+        result[index] = ax[index].ndarray.pcolormesh(
+            *[arg[index].ndarray for arg in XY],
+            C[index].ndarray,
+            cmap=cmap,
+            norm=norm,
+            vmin=vmin[index].ndarray if vmin is not None else vmin,
+            vmax=vmax[index].ndarray if vmax is not None else vmax,
+            **kwargs,
+        )
+
+    return result
+
+
 @_implements(na.jacobian)
 def jacobian(
         function: Callable[[na.AbstractScalar], na.AbstractScalar],

@@ -539,6 +539,12 @@ class AbstractTestAbstractVectorArray(
         ):
             pass
 
+        @pytest.mark.skip
+        class TestPltPcolormesh(
+            named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestPltPcolormesh,
+        ):
+            pass
+
         @pytest.mark.parametrize(
             argnames="function",
             argvalues=[

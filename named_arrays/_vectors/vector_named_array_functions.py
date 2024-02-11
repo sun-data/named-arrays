@@ -4,6 +4,7 @@ import numpy.typing as npt
 import matplotlib.axes
 import astropy.units as u
 import named_arrays as na
+from named_arrays._scalars import scalars
 import named_arrays._scalars.scalar_named_array_functions
 from . import vectors
 
@@ -260,6 +261,52 @@ def plt_plot_like(
         ax=ax,
         axis=axis,
         where=where,
+        **kwargs,
+    )
+
+
+@_implements(na.plt.pcolormesh)
+def pcolormesh(
+    *XY: na.AbstractVectorArray,
+    C: na.AbstractScalarArray,
+    components: None | tuple[str, str] = None,
+    axis_rgb: None | str = None,
+    ax: None | matplotlib.axes.Axes | na.AbstractScalarArray = None,
+    cmap: None | str | matplotlib.colors.Colormap = None,
+    norm: None | str | matplotlib.colors.Normalize = None,
+    vmin: None | float | u.Quantity | na.AbstractScalarArray = None,
+    vmax: None | float | u.Quantity | na.AbstractScalarArray = None,
+    **kwargs,
+) -> na.ScalarArray:
+    try:
+        C = scalars._normalize(C)
+        vmin = scalars._normalize(vmin) if vmin is not None else vmin
+        vmax = scalars._normalize(vmax) if vmax is not None else vmax
+    except na.ScalarTypeError:
+        return NotImplemented
+
+    try:
+        prototype = vectors._prototype(*XY)
+        XY = tuple(vectors._normalize(arg, prototype) for arg in XY)
+    except na.VectorTypeError:  # pragma: nocover
+        return NotImplemented
+
+    if len(XY) != 1:    # pragma: nocover
+        raise ValueError("if any element of `XY` is a vector, `XY` must have a length of 1")
+    XY = XY[0]
+
+    components_XY = XY.components
+    components = [components_XY[c] for c in components]
+
+    return na.plt.pcolormesh(
+        *components,
+        C=C,
+        axis_rgb=axis_rgb,
+        ax=ax,
+        cmap=cmap,
+        norm=norm,
+        vmin=vmin,
+        vmax=vmax,
         **kwargs,
     )
 

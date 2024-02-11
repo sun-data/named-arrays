@@ -1253,6 +1253,32 @@ class AbstractTestAbstractArray(
                         transformation=transformation,
                     )
 
+        class TestPltPcolormesh:
+
+            @pytest.mark.parametrize("axis_rgb", [None, "rgb"])
+            def test_pcolormesh(
+                self,
+                array: na.AbstractScalarArray,
+                axis_rgb: None | str
+            ):
+                kwargs = dict(
+                    C=array,
+                    axis_rgb=axis_rgb,
+                )
+
+                if axis_rgb is not None:
+                    with pytest.raises(ValueError):
+                        na.plt.pcolormesh(**kwargs)
+                    return
+
+                if array.ndim != 2:
+                    with pytest.raises(ValueError):
+                        na.plt.pcolormesh(**kwargs)
+                    return
+
+                result = na.plt.pcolormesh(**kwargs)
+                assert isinstance(result, na.ScalarArray)
+
         @pytest.mark.parametrize(
             argnames="dx",
             argvalues=[

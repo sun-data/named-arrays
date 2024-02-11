@@ -638,6 +638,43 @@ class AbstractTestAbstractFunctionArray(
         ):
             pass
 
+        class TestPltPcolormesh(
+            named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestPltPcolormesh,
+        ):
+            @pytest.mark.parametrize("axis_rgb", [None, "rgb"])
+            def test_pcolormesh(
+                self,
+                array: na.AbstractScalarArray,
+                axis_rgb: None | str
+            ):
+                if not isinstance(array.inputs, na.AbstractVectorArray):
+                    return
+
+                components = list(array.inputs.components.keys())[:2]
+
+                kwargs = dict(
+                    C=array,
+                    axis_rgb=axis_rgb,
+                    components=components,
+                )
+
+                if isinstance(array.outputs, na.AbstractVectorArray):
+                    with pytest.raises(TypeError):
+                        na.plt.pcolormesh(**kwargs)
+                    return
+                elif isinstance(array.outputs, na.AbstractUncertainScalarArray):
+                    with pytest.raises(TypeError):
+                        na.plt.pcolormesh(**kwargs)
+                    return
+
+                if axis_rgb is not None:
+                    with pytest.raises(ValueError):
+                        na.plt.pcolormesh(**kwargs)
+                    return
+
+                result = na.plt.pcolormesh(**kwargs)
+                assert isinstance(result, na.ScalarArray)
+
         @pytest.mark.xfail
         class TestJacobian(
             named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestJacobian,
