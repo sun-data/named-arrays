@@ -1,5 +1,6 @@
 from typing import Callable
 import numpy as np
+import matplotlib
 import astropy.units as u
 import named_arrays as na
 import named_arrays._scalars.scalar_named_array_functions
@@ -88,3 +89,37 @@ def unit_normalized(
         squeeze: bool = True,
 ) -> u.UnitBase | na.AbstractArray:
     return na.unit_normalized(a.outputs, squeeze=squeeze)
+
+
+@_implements(na.plt.pcolormesh)
+def pcolormesh(
+    *XY: na.AbstractArray,
+    C: na.AbstractFunctionArray,
+    components: None | tuple[str, str] = None,
+    axis_rgb: None | str = None,
+    ax: None | matplotlib.axes.Axes | na.AbstractArray = None,
+    cmap: None | str | matplotlib.colors.Colormap = None,
+    norm: None | str | matplotlib.colors.Normalize = None,
+    vmin: None | na.ArrayLike = None,
+    vmax: None | na.ArrayLike = None,
+    **kwargs,
+) -> na.ScalarArray:
+
+    if len(XY) != 0:
+        raise ValueError(
+            "if `C` is an instance of `na.AbstractFunctionArray`, "
+            "`XY` must not be specified."
+        )
+
+    return na.plt.pcolormesh(
+        C.inputs,
+        C=C.outputs,
+        components=components,
+        axis_rgb=axis_rgb,
+        ax=ax,
+        cmap=cmap,
+        norm=norm,
+        vmin=vmin,
+        vmax=vmax,
+        **kwargs,
+    )
