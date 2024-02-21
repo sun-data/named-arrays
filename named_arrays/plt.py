@@ -2,6 +2,7 @@ from __future__ import annotations
 from typing import Literal
 import matplotlib
 import matplotlib.pyplot as plt
+import astropy.units as u
 import numpy.typing as npt
 import named_arrays as na
 
@@ -12,6 +13,7 @@ __all__ = [
     "scatter",
     "imshow",
     "pcolormesh",
+    "text",
 ]
 
 
@@ -625,5 +627,74 @@ def pcolormesh(
         vmin=vmin,
         vmax=vmax,
         components=components,
+        **kwargs,
+    )
+
+
+def text(
+    x: float | u.Quantity | na.AbstractScalar,
+    y: float | u.Quantity | na.AbstractScalar,
+    s: str | na.AbstractScalar,
+    ax: None | matplotlib.axes.Axes | na.AbstractScalar = None,
+    **kwargs,
+) -> na.AbstractScalar:
+    """
+    A thin wrapper around :meth:`matplotlib.axes.Axes.text` for named arrays.
+
+    Parameters
+    ----------
+    x
+        The horizontal position of the text in data coordinates.
+    y
+        The vertical position of the text in data coordinates.
+    s
+        The text to plot.
+    ax
+        The matplotlib axes instance on which to plot the text.
+    kwargs
+        Additional keyword arguments to pass to :meth:`matplotlib.axes.Axes.text`.
+
+    Examples
+    --------
+
+    Plot an array of text values at different locations.
+
+    .. jupyter-execute::
+
+        import numpy as np
+        import matplotlib.pyplot as plt
+        import astropy.units as u
+        import named_arrays as na
+
+        # Create an array of azimuths where the next will be placed
+        azimuth = na.linspace(0, 360, axis="azimuth", num=4, endpoint=False) * u.deg
+
+        # Compute the x and y coordinates for the given azimuth
+        x = np.cos(azimuth)
+        y = np.sin(azimuth)
+
+        # Create an array of strings to plot at the chosen positions
+        s = na.ScalarArray(
+            ndarray=np.array(["East", "North", "West", "South"]),
+            axes="azimuth"
+        )
+
+        # Plot the array of strings
+        fig, ax = plt.subplots()
+        na.plt.text(
+            x=x,
+            y=y,
+            s=s,
+            ax=ax,
+        );
+        ax.set_xlim(-2, 2);
+        ax.set_ylim(-2, 2);
+    """
+    return na._named_array_function(
+        text,
+        x=x,
+        y=y,
+        s=s,
+        ax=ax,
         **kwargs,
     )

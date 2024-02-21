@@ -570,6 +570,46 @@ def pcolormesh(
     return result
 
 
+@_implements(na.plt.text)
+def plt_text(
+    x: float | u.Quantity | na.AbstractScalarArray,
+    y: float | u.Quantity | na.AbstractScalarArray,
+    s: str | na.AbstractScalarArray,
+    ax: None | matplotlib.axes.Axes | na.AbstractScalarArray = None,
+    **kwargs,
+) -> na.AbstractScalarArray:
+
+    if ax is None:
+        ax = plt.gca()
+
+    try:
+        x = scalars._normalize(x)
+        y = scalars._normalize(y)
+        s = scalars._normalize(s)
+        ax = scalars._normalize(ax)
+    except na.ScalarTypeError:  # pragma: nocover
+        return NotImplemented
+
+    shape = na.shape_broadcasted(x, y, s, ax)
+
+    x = x.broadcast_to(shape)
+    y = y.broadcast_to(shape)
+    s = s.broadcast_to(shape)
+    ax = ax.broadcast_to(shape)
+
+    result = na.ScalarArray.empty(shape, dtype=matplotlib.axes.Axes)
+
+    for index in na.ndindex(shape):
+        result[index] = ax[index].ndarray.text(
+            x=x[index].ndarray,
+            y=y[index].ndarray,
+            s=s[index].ndarray,
+            **kwargs,
+        )
+
+    return result
+
+
 @_implements(na.jacobian)
 def jacobian(
         function: Callable[[na.AbstractScalar], na.AbstractScalar],

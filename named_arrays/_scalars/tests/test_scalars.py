@@ -957,6 +957,16 @@ class AbstractTestAbstractScalarArray(
                 assert isinstance(result, na.ScalarArray)
                 assert result.dtype == matplotlib.image.AxesImage
 
+        class TestPltText:
+
+            def test_plt_text(self, array):
+                result = na.plt.text(
+                    x=array,
+                    y=array,
+                    s="test label",
+                )
+                assert isinstance(result, na.ScalarArray)
+
         @pytest.mark.parametrize(
             argnames="function",
             argvalues=[
