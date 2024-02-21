@@ -5,6 +5,7 @@ import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 import astropy.units as u
+import astropy.visualization
 import astropy.units.quantity_helper.helpers as quantity_helpers
 import named_arrays as na
 from ... import tests
@@ -965,6 +966,24 @@ class AbstractTestAbstractScalarArray(
                     y=array,
                     s="test label",
                 )
+                assert isinstance(result, na.ScalarArray)
+
+        class TestPltBraceVertical:
+
+            @pytest.mark.parametrize("kind", ["left", "right"])
+            def test_plt_brace_vertical(
+                self,
+                array: na.AbstractScalarArray,
+                kind: str,
+            ):
+                with astropy.visualization.quantity_support():
+                    result = na.plt.brace_vertical(
+                        x=array.value,
+                        width=0.1,
+                        ymin=0.1,
+                        ymax=0.9,
+                        kind=kind,
+                    )
                 assert isinstance(result, na.ScalarArray)
 
         @pytest.mark.parametrize(

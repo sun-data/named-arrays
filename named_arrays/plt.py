@@ -1,8 +1,9 @@
 from __future__ import annotations
-from typing import Literal
+from typing import Literal, Any
 import matplotlib
 import matplotlib.pyplot as plt
 import astropy.units as u
+import numpy as np
 import numpy.typing as npt
 import named_arrays as na
 
@@ -14,6 +15,7 @@ __all__ = [
     "imshow",
     "pcolormesh",
     "text",
+    "brace_vertical",
 ]
 
 
@@ -698,3 +700,148 @@ def text(
         ax=ax,
         **kwargs,
     )
+
+
+def brace_vertical(
+    x: float | u.Quantity | na.AbstractScalar,
+    width: float | u.Quantity | na.AbstractScalar,
+    ymin: float | u.Quantity | na.AbstractScalar,
+    ymax: float | u.Quantity | na.AbstractScalar,
+    ax: None | matplotlib.axes | na.AbstractScalar = None,
+    label: None | str | na.AbstractScalar = None,
+    beta: None | float | na.AbstractScalar = None,
+    kind: Literal["left", "right"] = "left",
+    kwargs_plot: None | dict[str, Any] = None,
+    kwargs_text: None | dict[str, Any] = None,
+    **kwargs,
+) -> na.AbstractScalar:
+    """
+    Plot a vertical curly bracket at the given coordinates.
+
+    Parameters
+    ----------
+    x
+        The horizontal position of the vertical curly bracket.
+    width
+        The width of the curly bracket in data coordinates.
+    ymin
+        The minimum span of the vertical curly bracket.
+    ymax
+        The maximum span of the vertical curly bracket.
+    ax
+        A matplotlib axes instance on which to plot the curly bracket.
+    label
+        The optional text label for the curly bracket.
+    beta
+        Parameter which controls the "curlyness" of the bracket.
+        If :obj:`None`, ``beta = 2 / width``.
+    kind
+        The kind of the brace, left or right.
+    kwargs_plot
+        Additional keyword arguments that are passed to :func:`plot`.
+    kwargs_text
+        Additional keyword arguments that are passed to :func:`text`.
+    kwargs
+        Additional keyword arguments that are passed to both
+        :func:`plot` and :func:`text`.
+
+    Examples
+    --------
+
+    Plot an array of braces with different lengths
+
+    .. jupyter-execute::
+
+        import matplotlib.pyplot as plt
+        import named_arrays as na
+
+        # Define the number of braces to plot
+        num = 5
+
+        # Define the x coordinate of the braces
+        x = na.linspace(0.2, 0.9, axis="y", num=num)
+
+        # Define the y ranges of the braces
+        ymin = -na.linspace(.3, .8, axis="y", num=num)
+        ymax = +na.linspace(.3, .8, axis="y", num=num)
+
+        # Define the label as the length of the brace
+        label = ymax - ymin
+
+        # Plot the braces
+        fig, ax = plt.subplots()
+        na.plt.brace_vertical(
+            x=x,
+            width=0.05,
+            ymin=ymin,
+            ymax=ymax,
+            ax=ax,
+            kind="left",
+            label=label,
+        );
+        ax.set_xlim(0, 1);
+        ax.set_ylim(-1, 1);
+    """
+    if kwargs_plot is None:
+        kwargs_plot = dict()
+    kwargs_plot = kwargs | kwargs_plot
+
+    if kwargs_text is None:
+        kwargs_text = dict()
+    kwargs_text = kwargs | kwargs_text
+
+    label = na.as_named_array(label).astype(str).astype(object)
+
+    if beta is None:
+        beta = 1 / (width / 2)
+
+    axis = "_brace"
+
+    y = na.linspace(ymin, ymax, axis=axis, num=1001)
+
+    ycen = (ymin + ymax) / 2
+    z = np.abs(y - ycen)
+
+    f_outer = 1 / (1 + np.exp(-beta * (z - z.min(axis))))
+    f_inner = 1 / (1 + np.exp(-beta * (z - z.max(axis))))
+
+    f = f_outer + f_inner
+
+    f = f - 1.5
+
+    if kind == "left":
+        x_text = x - width
+        ha = "right"
+        label = label + "  "
+    elif kind == "right":
+        f = -f
+        x_text = x + width
+        ha = "left"
+        label = "  " + label
+    else:   # pragma: nocover
+        raise ValueError(
+            f"Invalide kind of brace '{kind}', the only supported options are "
+            f"'left' and 'right'."
+        )
+
+    f = x + width * f
+
+    result = plot(
+        f,
+        y,
+        ax=ax,
+        axis=axis,
+        **kwargs_plot,
+    )
+
+    text(
+        x=x_text,
+        y=ycen,
+        s=label,
+        ax=ax,
+        ha=ha,
+        va="center",
+        **kwargs_text
+    )
+
+    return result
