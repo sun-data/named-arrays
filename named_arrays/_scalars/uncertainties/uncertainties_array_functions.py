@@ -14,6 +14,7 @@ __all__ = [
     'ARG_REDUCE_FUNCTIONS',
     'FFT_LIKE_FUNCTIONS',
     'FFTN_LIKE_FUNCTIONS',
+    'EMATH_FUNCTIONS',
     'STACK_LIKE_FUNCTIONS',
     'HANDLED_FUNCTIONS',
 ]
@@ -26,6 +27,7 @@ PERCENTILE_LIKE_FUNCTIONS = named_arrays._scalars.scalar_array_functions.PERCENT
 ARG_REDUCE_FUNCTIONS = named_arrays._scalars.scalar_array_functions.ARG_REDUCE_FUNCTIONS
 FFT_LIKE_FUNCTIONS = named_arrays._scalars.scalar_array_functions.FFT_LIKE_FUNCTIONS
 FFTN_LIKE_FUNCTIONS = named_arrays._scalars.scalar_array_functions.FFTN_LIKE_FUNCTIONS
+EMATH_FUNCTIONS = named_arrays._scalars.scalar_array_functions.EMATH_FUNCTIONS
 STACK_LIKE_FUNCTIONS = [np.stack, np.concatenate]
 HANDLED_FUNCTIONS = dict()
 
@@ -374,6 +376,29 @@ def array_function_fftn_like(
     return na.UncertainScalarArray(
         nominal=func(a=nominal, **kwargs),
         distribution=func(a=distribution, **kwargs)
+    )
+
+
+def array_function_emath(
+    func: Callable,
+    *args: na.AbstractUncertainScalarArray,
+    **kwargs: na.AbstractUncertainScalarArray,
+) -> na.UncertainScalarArray:
+    try:
+        args = tuple(uncertainties._normalize(a) for a in args)
+        kwargs = {k: uncertainties._normalize(kwargs[k]) for k in kwargs}
+    except uncertainties.UncertainScalarTypeError:  # pragma: nocover
+        return NotImplemented
+
+    args_nominal = tuple(a.nominal for a in args)
+    args_distribution = tuple(a.distribution for a in args)
+
+    kwargs_nominal = {k: kwargs[k].nominal for k in kwargs}
+    kwargs_distribution = {k: kwargs[k].distribution for k in kwargs}
+
+    return na.UncertainScalarArray(
+        nominal=func(*args_nominal, **kwargs_nominal),
+        distribution=func(*args_distribution, **kwargs_distribution)
     )
 
 

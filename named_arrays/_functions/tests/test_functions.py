@@ -593,6 +593,18 @@ class AbstractTestAbstractFunctionArray(
             ):
                 pass
 
+        class TestEmathFunctions(
+            named_arrays.tests.test_core.AbstractTestAbstractArray.TestArrayFunctions.TestEmathFunctions,
+        ):
+
+            @pytest.mark.skip
+            def test_emath_functions(
+                self,
+                func: Callable,
+                array: na.AbstractArray,
+            ):
+                pass
+
         @pytest.mark.xfail
         def test_sort(self, array: na.AbstractFunctionArray, axis: None | str | Sequence[str]):
             pass

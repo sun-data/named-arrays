@@ -700,6 +700,30 @@ class AbstractTestAbstractArray(
             ):
                 pass
 
+        @pytest.mark.filterwarnings("ignore: function .* is not known to astropy's Quantity.")
+        @pytest.mark.filterwarnings("ignore: divide by zero encountered")
+        @pytest.mark.parametrize(
+            argnames="func",
+            argvalues=[
+                np.emath.sqrt,
+                np.emath.log,
+                np.emath.log2,
+                np.emath.log10,
+                np.emath.arccos,
+                np.emath.arcsin,
+                np.emath.arctanh,
+            ]
+        )
+        class TestEmathFunctions(abc.ABC):
+
+            @abc.abstractmethod
+            def test_emath_functions(
+                self,
+                func: Callable,
+                array: na.AbstractArray,
+            ):
+                pass
+
         def test_copyto(self, array: na.AbstractArray):
             dst = 0 * array
             np.copyto(dst=dst, src=array)

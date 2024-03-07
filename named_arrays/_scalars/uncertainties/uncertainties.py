@@ -461,6 +461,9 @@ class AbstractUncertainScalarArray(
         if func in uncertainties_array_functions.FFTN_LIKE_FUNCTIONS:
             return uncertainties_array_functions.array_function_fftn_like(func, *args, **kwargs)
 
+        if func in uncertainties_array_functions.EMATH_FUNCTIONS:
+            return uncertainties_array_functions.array_function_emath(func, *args, **kwargs)
+
         if func in uncertainties_array_functions.STACK_LIKE_FUNCTIONS:
             return uncertainties_array_functions.array_function_stack_like(func, *args, **kwargs)
 

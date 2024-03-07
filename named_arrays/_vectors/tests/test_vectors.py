@@ -444,6 +444,18 @@ class AbstractTestAbstractVectorArray(
 
                 assert np.all(result == result_expected)
 
+        class TestEmathFunctions(
+            named_arrays.tests.test_core.AbstractTestAbstractArray.TestArrayFunctions.TestEmathFunctions,
+        ):
+            def test_emath_functions(
+                self,
+                func: Callable,
+                array: na.AbstractVectorArray,
+            ):
+                result = func(array)
+                for c in array.components:
+                    assert np.all(result.components[c] == func(array.components[c]))
+
         @pytest.mark.parametrize('axis', [None, 'x', 'y', ('x', 'y'), ()])
         def test_sort(self, array: na.AbstractVectorArray, axis: None | str | Sequence[str]):
             super().test_sort(array=array, axis=axis)

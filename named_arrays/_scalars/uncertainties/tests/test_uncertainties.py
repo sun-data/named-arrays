@@ -601,6 +601,18 @@ class AbstractTestAbstractUncertainScalarArray(
                 assert np.all(result.nominal == result_nominal)
                 assert np.all(result.distribution == result_distribution)
 
+        class TestEmathFunctions(
+            named_arrays._scalars.tests.test_scalars.AbstractTestAbstractScalar.TestArrayFunctions.TestEmathFunctions,
+        ):
+            def test_emath_functions(
+                self,
+                func: Callable,
+                array: na.AbstractUncertainScalarArray,
+            ):
+                result = func(array)
+                assert np.all(result.nominal == func(array.nominal))
+                assert np.all(result.distribution == func(array.distribution))
+
         @pytest.mark.parametrize('axis', [None, 'x', 'y', ('x', 'y'), ()])
         def test_sort(self, array: na.AbstractUncertainScalarArray, axis: None | str | Sequence[str]):
 
