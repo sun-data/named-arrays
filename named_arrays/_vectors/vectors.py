@@ -406,6 +406,9 @@ class AbstractVectorArray(
         if func in vector_array_functions.FFTN_LIKE_FUNCTIONS:
             return vector_array_functions.array_function_fftn_like(func, *args, **kwargs)
 
+        if func in vector_array_functions.EMATH_FUNCTIONS:
+            return vector_array_functions.array_function_emath(func, *args, **kwargs)
+
         if func in vector_array_functions.STACK_LIKE_FUNCTIONS:
             return vector_array_functions.array_function_stack_like(func, *args, **kwargs)
 

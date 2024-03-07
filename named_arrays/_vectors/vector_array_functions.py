@@ -72,6 +72,7 @@ FFTN_LIKE_FUNCTIONS = [
     np.fft.rfftn,
     np.fft.irfftn,
 ]
+EMATH_FUNCTIONS = named_arrays._scalars.scalar_array_functions.EMATH_FUNCTIONS
 STACK_LIKE_FUNCTIONS = [
     np.stack,
     np.concatenate,
@@ -369,6 +370,29 @@ def array_function_fftn_like(
         )
 
     return result
+
+
+def array_function_emath(
+    func: Callable,
+    *args: na.AbstractScalar | na.AbstractVectorArray,
+    **kwargs: na.AbstractScalar | na.AbstractVectorArray,
+):
+    try:
+        prototype = vectors._prototype(*args, *kwargs.values())
+        args = tuple(vectors._normalize(a, prototype) for a in args)
+        kwargs = {k: vectors._normalize(kwargs[k], prototype) for k in kwargs}
+    except vectors.VectorTypeError:     # pragma: nocover
+        return NotImplemented
+
+    args = tuple(a.components for a in args)
+    kwargs = {k: kwargs[k].components for k in kwargs}
+
+    result = {
+        c: func(*[a[c] for a in args], **{k: kwargs[k][c] for k in kwargs})
+        for c in prototype.components
+    }
+
+    return prototype.type_explicit.from_components(result)
 
 
 def implements(numpy_function: Callable):

@@ -756,6 +756,19 @@ class AbstractTestAbstractScalarArray(
 
                 assert np.all(result.ndarray == result_expected)
 
+        class TestEmathFunctions(
+            AbstractTestAbstractScalar.TestArrayFunctions.TestEmathFunctions,
+        ):
+            def test_emath_functions(
+                self,
+                func: Callable,
+                array: na.AbstractScalarArray,
+            ):
+                result = func(array)
+                result_expected = func(array.ndarray)
+                assert np.all(result.ndarray == result_expected)
+                assert result.axes == array.axes
+
         @pytest.mark.parametrize('axis', [None, 'x', 'y', ('x', 'y')])
         def test_sort(self, array: na.AbstractScalarArray, axis: None | str | Sequence[str]):
 

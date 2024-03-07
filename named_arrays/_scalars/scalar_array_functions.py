@@ -13,6 +13,7 @@ __all__ = [
     'ARG_REDUCE_FUNCTIONS',
     'FFT_LIKE_FUNCTIONS',
     'FFTN_LIKE_FUNCTIONS',
+    "EMATH_FUNCTIONS",
     'HANDLED_FUNCTIONS',
 ]
 SINGLE_ARG_FUNCTIONS = [
@@ -79,6 +80,17 @@ FFTN_LIKE_FUNCTIONS = [
     np.fft.ifftn,
     np.fft.rfftn,
     np.fft.irfftn,
+]
+EMATH_FUNCTIONS = [
+    np.emath.sqrt,
+    np.emath.log,
+    np.emath.log2,
+    np.emath.logn,
+    np.emath.log10,
+    np.emath.power,
+    np.emath.arccos,
+    np.emath.arcsin,
+    np.emath.arctanh,
 ]
 HANDLED_FUNCTIONS = dict()
 
@@ -385,6 +397,27 @@ def array_function_fftn_like(
         axes=tuple(axes[ax] if ax in axes else ax for ax in a.axes),
     )
 
+
+def array_function_emath(
+    func: Callable,
+    *args: na.AbstractScalarArray,
+    **kwargs: na.AbstractScalarArray,
+) -> na.ScalarArray:
+    try:
+        args = tuple(scalars._normalize(a) for a in args)
+        kwargs = {k: scalars._normalize(kwargs[k]) for k in kwargs}
+    except scalars.ScalarTypeError:     # pragma: nocover
+        return NotImplemented
+
+    shape = na.shape_broadcasted(*args, *kwargs.values())
+
+    args = tuple(a.ndarray_aligned(shape) for a in args)
+    kwargs = {k: kwargs[k].ndarray_aligned(shape) for k in  kwargs}
+
+    return na.ScalarArray(
+        ndarray=func(*args, **kwargs),
+        axes=tuple(shape),
+    )
 
 def implements(numpy_function: Callable):
     """Register an __array_function__ implementation for AbstractScalarArray objects."""
