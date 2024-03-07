@@ -59,6 +59,43 @@ class AbstractCartesian2dMatrixArray(
         yx, yy = self.y.components.values()
         return xx * yy - xy * yx
 
+    def power(
+        self,
+        exponent: float | na.AbstractScalar,
+    ) -> Cartesian2dMatrixArray:
+        """
+        Compute this matrix raised to the power of a given exponent
+
+        Parameters
+        ----------
+        exponent
+            The power to raise this matrix to.
+        """
+
+        z = exponent
+        y = z - 1
+
+        a, b = self.x.components.values()
+        c, d = self.y.components.values()
+
+        chi = a + d
+        delta = a * d - b * c
+
+        t1 = chi / 2
+        t2 = np.emath.sqrt(np.square(chi) / 4 - delta)
+
+        e1 = t1 + t2
+        e2 = t1 - t2
+
+        d = e1 - e2
+
+        identity = na.Cartesian2dIdentityMatrixArray()
+
+        a1 = (e1 ** z - e2 ** z) / d * self
+        a2 = e1 * e2 * (e1 ** y - e2 ** y) / d * identity
+
+        return a1 - a2
+
 
 @dataclasses.dataclass(eq=False, repr=False)
 class Cartesian2dMatrixArray(
