@@ -342,8 +342,8 @@ class AbstractVectorArray(
 
         if isinstance(x1, AbstractVectorArray):
             if isinstance(x2, na.AbstractVectorArray):
-                components_x1 = x1.cartesian_nd.broadcasted.components
-                components_x2 = x2.cartesian_nd.broadcasted.components
+                components_x2 = x2.cartesian_nd.components
+                components_x1 = x1.cartesian_nd.components
 
                 if components_x1.keys() == components_x2.keys():
                     result = 0
