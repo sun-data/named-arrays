@@ -828,7 +828,10 @@ class ScalarArray(
 
     @property
     def shape(self: Self) -> dict[str, int]:
-        return {ax: sz for (ax, sz) in zip(self.axes, np.shape(self.ndarray), strict=True)}
+        try:
+            return dict(zip(self.axes, self.ndarray.shape, strict=True))
+        except AttributeError:
+            return dict()
 
     @property
     def ndim(self: Self) -> int:
