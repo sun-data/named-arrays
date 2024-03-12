@@ -166,23 +166,30 @@ def broadcast_shapes(*shapes: dict[str, int]) -> dict[str, int]:
     result = dict()
     for shape in reversed(shapes):
         for axis in reversed(shape):
+            shape_axis = shape[axis]
             if axis in result:
-                if result[axis] == shape[axis]:
+                result_axis = result[axis]
+                if result_axis == shape_axis:
                     pass
-                elif shape[axis] == 1:
+                elif shape_axis == 1:
                     pass
-                elif result[axis] == 1:
-                    result[axis] = shape[axis]
+                elif result_axis == 1:
+                    result[axis] = shape_axis
                 else:
                     raise ValueError(f'shapes {shapes} are not compatible')
             else:
-                result[axis] = shape[axis]
-    result = {axis: result[axis] for axis in reversed(result)}
+                result[axis] = shape_axis
+    result = dict(reversed(result.items()))
     return result
 
 
 def shape_broadcasted(*arrays: Any) -> dict[str, int]:
-    shapes = [np.shape(array) for array in arrays if isinstance(array, AbstractArray)]
+    shapes = []
+    for array in arrays:
+        try:
+            shapes.append(array.shape)
+        except AttributeError:
+            pass
     return broadcast_shapes(*shapes)
 
 
