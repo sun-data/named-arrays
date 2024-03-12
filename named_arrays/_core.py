@@ -184,7 +184,12 @@ def broadcast_shapes(*shapes: dict[str, int]) -> dict[str, int]:
 
 
 def shape_broadcasted(*arrays: Any) -> dict[str, int]:
-    shapes = [np.shape(array) for array in arrays if isinstance(array, AbstractArray)]
+    shapes = []
+    for array in arrays:
+        try:
+            shapes.append(array.shape)
+        except AttributeError:
+            pass
     return broadcast_shapes(*shapes)
 
 
