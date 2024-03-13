@@ -61,7 +61,7 @@ def _normalize(a: float | u.Quantity | na.AbstractScalarArray) -> na.AbstractSca
 
 
 def as_named_array(value: bool | int | float | complex | str | u.Quantity | na.AbstractArray):
-    if not isinstance(value, na.AbstractArray):
+    if not hasattr(value, "__named_array_function__"):
         return ScalarArray(value)
     else:
         return value
