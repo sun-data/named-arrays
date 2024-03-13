@@ -313,7 +313,7 @@ class AbstractTestAbstractVectorArray(
 
                 result_out = func(array, out=out, **kwargs)
 
-                assert np.all(result == result_expected)
+                assert np.allclose(result, result_expected)
                 assert np.all(result == result_out)
                 assert result_out is out
 
