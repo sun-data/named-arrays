@@ -187,12 +187,7 @@ def broadcast_shapes(*shapes: dict[str, int]) -> dict[str, int]:
 
 
 def shape_broadcasted(*arrays: Any) -> dict[str, int]:
-    shapes = []
-    for array in arrays:
-        try:
-            shapes.append(array.shape)
-        except AttributeError:
-            pass
+    shapes = [a.shape for a in arrays if hasattr(a, "__named_array_function__")]
     return broadcast_shapes(*shapes)
 
 
