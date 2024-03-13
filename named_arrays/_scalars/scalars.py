@@ -206,13 +206,19 @@ class AbstractScalarArray(
         -------
         An instance of :class:`numpy.ndarray` with the axes aligned.
         """
-        ndarray = np.asanyarray(self.ndarray)
         axes = tuple(axes)
-        ndim_missing = len(axes) - np.ndim(ndarray)
-        value = ndarray[(..., ) + ndim_missing * (np.newaxis, )]
+        axes_self = self.axes
+
+        ndarray = np.asanyarray(self.ndarray)
+
+        if axes == axes_self:
+            return ndarray
+
+        ndim_missing = len(axes) - ndarray.ndim
+        value = ndarray[(...,) + ndim_missing * (np.newaxis,)]
         source = []
         destination = []
-        for axis_index, axis_name in enumerate(self.axes):
+        for axis_index, axis_name in enumerate(axes_self):
             source.append(axis_index)
             if axis_name not in axes:
                 raise ValueError(

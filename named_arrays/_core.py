@@ -163,9 +163,13 @@ def type_array(
 
 
 def broadcast_shapes(*shapes: dict[str, int]) -> dict[str, int]:
-    result = dict()
-    for shape in reversed(shapes):
-        for axis in reversed(shape):
+    if not shapes:
+        return dict()
+    result = shapes[0].copy()
+    for shape in shapes[1:]:
+        if shape == result:
+            continue
+        for axis in shape:
             shape_axis = shape[axis]
             if axis in result:
                 result_axis = result[axis]
@@ -179,17 +183,11 @@ def broadcast_shapes(*shapes: dict[str, int]) -> dict[str, int]:
                     raise ValueError(f'shapes {shapes} are not compatible')
             else:
                 result[axis] = shape_axis
-    result = dict(reversed(result.items()))
     return result
 
 
 def shape_broadcasted(*arrays: Any) -> dict[str, int]:
-    shapes = []
-    for array in arrays:
-        try:
-            shapes.append(array.shape)
-        except AttributeError:
-            pass
+    shapes = [a.shape for a in arrays if hasattr(a, "__named_array_function__")]
     return broadcast_shapes(*shapes)
 
 
