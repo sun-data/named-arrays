@@ -2,6 +2,7 @@ from ._named_array_functions import *
 from . import random
 from . import plt
 from . import optimize
+from . import regridding
 from . import transformations
 from . import ndfilters
 from . import colorsynth

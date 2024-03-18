@@ -46,6 +46,10 @@ class AbstractFunctionArray(
     __named_array_priority__: ClassVar[float] = 100 * na.AbstractVectorArray.__named_array_priority__
 
     @property
+    def all_axes(self):
+        return set(self.inputs.shape | self.outputs.shape)
+
+    @property
     def axes_center(self) -> tuple(str):
         """
         Return keys corresponding to all input axes representing bin centers
@@ -53,24 +57,17 @@ class AbstractFunctionArray(
         axes_center = tuple()
         input_shape = self.inputs.shape
         output_shape = self.outputs.shape
-        all_axes = set(input_shape | output_shape)
 
-        for axis in all_axes:
-            if axis in output_shape:
-                if axis in input_shape:
-                    if input_shape[axis] == output_shape[axis]:
-                        axes_center += (axis,)
-                    elif input_shape[axis] != output_shape[axis] + 1:
-                        raise ValueError(
-                            'Output axis dimension must either match Input axis dimension (representing'
-                            ' bin centers, or exceed by one (representing bin vertices).'
-                        )
-                else:
+        for axis in self.all_axes:
+            if axis in output_shape or input_shape:
+                if input_shape[axis] == output_shape[axis]:
                     axes_center += (axis,)
-
-            if axis in input_shape:
-                if axis not in output_shape:
-                    axes_center += (axis,)
+                elif input_shape[axis] != output_shape[axis] + 1:
+                    raise ValueError(
+                        'Output axis dimension must either match Input axis dimension (representing'
+                        ' bin centers, or exceed by one (representing bin vertices).')
+            else:
+                axes_center += (axis,)
 
         return axes_center
 
@@ -80,20 +77,11 @@ class AbstractFunctionArray(
        Return keys corresponding to all input axes representing bin vertices
        """
         axes_vertex = tuple()
-        input_shape = self.inputs.shape
-        output_shape = self.outputs.shape
-        all_axes = set(input_shape | output_shape)
 
-        for axis in all_axes:
-            if axis in output_shape:
-                if axis in input_shape:
-                    if input_shape[axis] == output_shape[axis] + 1:
-                        axes_vertex += (axis,)
-                    elif input_shape[axis] != output_shape[axis]:
-                        raise ValueError(
-                            'Output axis dimension must either match Input axis dimension (representing'
-                            ' bin centers, or exceed by one (representing bin vertices).'
-                        )
+        for axis in self.all_axes:
+            if axis not in self.axes_center:
+                axes_vertex += (axis,)
+
         return axes_vertex
 
     @property
@@ -179,6 +167,68 @@ class AbstractFunctionArray(
             outputs=outputs.combine_axes(axes=axes, axis_new=axis_new),
         )
 
+    def __call__(self, new_inputs: na.AbstractArray, interp_axes: tuple[str] =None) -> AbstractFunctionArray:
+
+        new_input_components = new_inputs.cartesian_nd.components
+        old_input_components = self.inputs.cartesian_nd.components
+
+        # broadcast new inputs against value to be interpolated
+
+        if interp_axes is None:
+            interp_axes = na.shape_broadcasted(
+                *[new_input_components[c] for c in new_input_components if new_input_components[c] is not None])
+            interp_axes = interp_axes.keys()
+
+
+
+        # check physical dimensions of each input match
+        if new_input_components.keys() == old_input_components.keys():
+
+            coordinates_new = {}
+            coordinates_old = {}
+            for c in new_input_components:
+
+                component = new_input_components[c]
+                if component is not None:
+                    coordinates_new[c] = component
+                    coordinates_old[c] = old_input_components[c]
+
+                else:
+                    # check if uninterpolated physical axes vary along interpolation axes
+                    if np.any([axis in interp_axes for axis in old_input_components[c].axes]):
+                        raise ValueError('Omitted physical axis in old input depends on logical axis in new input')
+
+
+        else:
+            raise ValueError('Physical axes of new and old inputs must match.')
+
+        coordinates_new = na.CartesianNdVectorArray.from_components(coordinates_new)
+        coordinates_old = na.CartesianNdVectorArray.from_components(coordinates_old)
+
+        new_output = na.regridding.regrid(
+            coordinates_input=coordinates_old,
+            coordinates_output=coordinates_new,
+            values_input=self.outputs,
+            axis_input=interp_axes,
+            # method='multilinear'
+        )
+
+        final_coordinates_dict = {}
+
+        for c in self.inputs.cartesian_nd.components:
+            if new_inputs.cartesian_nd.components[c] is None:
+                final_coordinates_dict[c] = self.inputs.cartesian_nd.components[c]
+            else:
+                final_coordinates_dict[c] = new_inputs.cartesian_nd.components[c]
+
+        return FunctionArray(
+            inputs=self.inputs.type_explicit.from_cartesian_nd(
+                na.CartesianNdVectorArray(components=final_coordinates_dict),
+                like=self.inputs
+            ),
+            outputs=new_output
+        )
+
     def _getitem(
             self,
             item: dict[str, int | slice | na.AbstractArray] | na.AbstractFunctionArray,
@@ -213,7 +263,7 @@ class AbstractFunctionArray(
                     item_outputs[ax] = item_ax.outputs
                 else:
                     if ax in self.axes_center:
-                        item_inputs[ax] = item_outputs[ax]= item_ax
+                        item_inputs[ax] = item_outputs[ax] = item_ax
                     if ax in self.axes_vertex:
                         if isinstance(item_ax, int):
                             item_outputs[ax] = slice(item_ax, item_ax + 1)

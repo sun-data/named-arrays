@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Sequence, overload, Type, Any, Callable, TypeVar
+from typing import Sequence, overload, Type, Any, Callable, TypeVar, Literal
 import functools
 import numpy as np
 import astropy.units as u
@@ -73,7 +73,6 @@ def _asarray_like(
         *,
         like: None | LikeT = None,
 ) -> ArrayT | LikeT:
-
     if a is None:
         return None
 
@@ -670,7 +669,7 @@ def add_axes(array: na.ArrayLike, axes: str | Sequence[str]):
 
 def interp(
         x: float | u.Quantity | na.AbstractArray,
-        xp:  na.AbstractArray,
+        xp: na.AbstractArray,
         fp: na.AbstractArray,
         axis: None | str = None,
         left: None | float | u.Quantity | na.AbstractArray = None,
@@ -854,3 +853,56 @@ def jacobian(
         dx=dx,
         like=f_x,
     )
+
+
+# def regrid(
+#         coordinates_input: tuple(na.AbstractScalarArray),
+#         coordinates_output: tuple(na.AbstractScalarArray),
+#         values_input: na.AbstractScalarArray,
+#         values_output: None | na.AbstractScalarArray = None,
+#         axis_input: None | Sequence[str] = None,
+#         axis_output: None | Sequence[str] = None,
+#         method: Literal['multilinear', 'conservative'] = 'multilinear',
+# ) -> na.AbstractScalarArray:
+#
+#
+#
+#
+#     # I think the original intent here was to get everything in the right order.  Maybe this should be assumed
+#     coords_input = []
+#     for coordinate in coordinates_input:
+#         coords_input.append(
+#             coordinate.broadcast_to(dict([(c, coordinate.shape[c]) for c in coordinates_output.shape])).ndarray
+#         )
+#
+#     coords_output = []
+#     for coordinate in coordinates_output:
+#         coords_output.append(
+#             coordinate.broadcast_to(dict([(c, coordinate.shape[c]) for c in coordinates_output.shape])).ndarray
+#         )
+#
+#     # values_input.broadcast_to(dict([(c, values_input.shape[c]) for c in new_shape]))
+#
+#     interpolation_indices = [list(values_input.shape).index(key) for key in axis_input]
+#
+#     values = values_input.ndarray
+#     # values = np.moveaxis(values, 0, -1)
+#
+#     # interpolation_indices = [~0]
+#
+#     print(f'{interpolation_indices=}')
+#     print(f'{values.shape=}')
+#     print(f'{coords_input=}')
+#     print(f'{coords_output=}')
+#
+#     new_output = regridding.regrid(
+#         coordinates_input=tuple(coords_input),
+#         coordinates_output=tuple(coords_output),
+#         values_input=values,
+#         values_output=values_output,
+#         axis_input=interpolation_indices,
+#         axis_output=interpolation_indices,
+#         method=method
+#     )
+#
+#     print(new_output)
