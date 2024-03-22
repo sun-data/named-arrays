@@ -45,8 +45,8 @@ class AbstractInputOutputMatrixArray(
         return na.InputOutputVectorArray
 
     @property
-    def determinant(self) -> na.ScalarLike:
-        return np.abs(self.wavelength)
+    def determinant(self) -> na.ScalarLike:     # pragma: nocover
+        raise NotImplementedError
 
 
 @dataclasses.dataclass(eq=False, repr=False)
