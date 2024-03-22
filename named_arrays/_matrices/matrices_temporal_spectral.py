@@ -28,7 +28,7 @@ class AbstractTemporalSpectralMatrixArray(
         return na.TemporalSpectralVectorArray
 
     @property
-    def determinant(self) -> na.ScalarLike:
+    def determinant(self) -> na.ScalarLike:     # pragma: nocover
         return NotImplementedError
 
 
