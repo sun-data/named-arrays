@@ -645,7 +645,7 @@ def jacobian(
         The function to compute the Jacobian of
     x
         The point to evaluate the function
-    step_size
+    dx
         The distance that ``x`` will be perturbed by to compute the slope
     """
 
