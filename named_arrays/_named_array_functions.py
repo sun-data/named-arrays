@@ -480,6 +480,7 @@ def unit(
         return na._named_array_function(
             func=unit,
             a=a,
+            unit_dimensionless=unit_dimensionless,
             squeeze=squeeze,
         )
     else:
