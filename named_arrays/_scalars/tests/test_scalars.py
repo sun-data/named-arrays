@@ -1038,6 +1038,12 @@ class AbstractTestAbstractScalarArray(
         ):
             pass
 
+        @pytest.mark.skip
+        class TestOptimizeMinimum(
+            tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestOptimizeMinimum,
+        ):
+            pass
+
 
 @pytest.mark.parametrize('array', _scalar_arrays())
 class TestScalarArray(
