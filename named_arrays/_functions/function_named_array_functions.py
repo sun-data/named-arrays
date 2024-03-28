@@ -86,9 +86,14 @@ def unit(
 @_implements(na.unit_normalized)
 def unit_normalized(
         a: na.AbstractFunctionArray,
+        unit_dimensionless: float | u.UnitBase,
         squeeze: bool = True,
 ) -> u.UnitBase | na.AbstractArray:
-    return na.unit_normalized(a.outputs, squeeze=squeeze)
+    return na.unit_normalized(
+        a.outputs,
+        unit_dimensionless=unit_dimensionless,
+        squeeze=squeeze,
+    )
 
 
 @_implements(na.plt.pcolormesh)

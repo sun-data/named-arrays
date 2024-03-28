@@ -125,11 +125,12 @@ def unit(
 @_implements(na.unit_normalized)
 def unit_normalized(
         a: na.AbstractScalarArray,
+        unit_dimensionless: float | u.UnitBase = u.dimensionless_unscaled,
         squeeze: bool = True,
 ) -> u.UnitBase:
     result = na.unit(a)
     if result is None:
-        result = u.dimensionless_unscaled
+        result = unit_dimensionless
     return result
 
 

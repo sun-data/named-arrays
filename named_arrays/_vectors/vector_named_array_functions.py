@@ -142,10 +142,18 @@ def unit(
 @_implements(na.unit_normalized)
 def unit_normalized(
         a: na.AbstractVectorArray,
+        unit_dimensionless: float | u.UnitBase = u.dimensionless_unscaled,
         squeeze: bool = True,
 ) -> u.UnitBase | na.AbstractVectorArray:
     components = a.components
-    components = {c: na.unit_normalized(components[c], squeeze=squeeze) for c in components}
+    components = {
+        c: na.unit_normalized(
+            components[c],
+            unit_dimensionless=unit_dimensionless,
+            squeeze=squeeze
+        )
+        for c in components
+    }
     iter_components = iter(components)
     component_0 = components[next(iter_components)]
     if squeeze:
