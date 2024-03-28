@@ -6,6 +6,7 @@ import named_arrays as na
 __all__ = [
     "root_secant",
     "root_newton",
+    "minimum_gradient_descent",
 ]
 
 InputT = TypeVar("InputT", bound="float | u.Quantity | na.AbstractScalarArray")
@@ -133,5 +134,83 @@ def root_secant(
         max_abs_error=max_abs_error,
         max_iterations=max_iterations,
         damping=damping,
+        callback=callback,
+    )
+
+
+def minimum_gradient_descent(
+    function: Callable[[InputT], OutputT],
+    guess: InputT,
+    step_size: None | InputT = None,
+    gradient: None | Callable[[InputT], InputT] = None,
+    min_gradient: None | InputT = None,
+    max_iterations: int = 1000,
+    callback: None | Callable[[int, InputT, OutputT, na.AbstractArray], None] = None,
+) -> InputT:
+    """
+    Find the local minimum of the given function using the
+    `gradient descent <https://en.wikipedia.org/wiki/Gradient_descent>`_ method.
+
+    Parameters
+    ----------
+    function
+        The function to minimize.
+    guess
+        An initial guess for the local minimum.
+    step_size
+        The learning rate for the gradient descent algorithm.
+        This should have the same units as ``x / gradient(x)``.
+        If :obj:`None` (the default), this takes the value
+        ``0.1 * na.unit(x / gradient(x))``.
+    gradient
+        The gradient of `function`.
+        If :obj:`None` (the default), the gradient is computed using
+        :func:`named_arrays.jacobian`.
+    min_gradient
+        The convergence threshold for the local minimum.
+        If the gradient is smaller than this value, this function will stop.
+        This should have the same units as ``gradient(x)``.
+        If :obj:`None` (the default), this takes the value
+        ``1e-10 * na.unit(gradient(x))``.
+    max_iterations
+        The maximum number of steps to take before raising an error.
+    callback
+        Optional callback function that is called on every iteration as
+        ``callback(i, x, f, converged)``, where ``i`` is the current iteration,
+        ``x`` is the current guess, ``f`` is the current function value,
+        and ``converged`` is an array storing the convergence state for every
+        minimum being computed.
+    """
+
+    x = guess
+    f = function(x)
+
+    unit_f = na.unit(f, unit_dimensionless=1)
+    unit_x = na.unit(x, unit_dimensionless=1, squeeze=False)
+
+    unit_grad = unit_f / unit_x
+
+    if step_size is None:
+        step_size = 0.1 * (unit_x / unit_grad)
+
+    if gradient is None:
+        def gradient(x: float | na.AbstractScalar | na.AbstractVectorArray):
+            return na.jacobian(
+                function=function,
+                x=x,
+            )
+
+    if min_gradient is None:
+        min_gradient = 1e-10 * unit_grad
+    min_gradient = na.asanyarray(min_gradient, like=f)
+
+    return na._named_array_function(
+        func=minimum_gradient_descent,
+        function=function,
+        guess=guess,
+        step_size=step_size,
+        gradient=gradient,
+        min_gradient=min_gradient,
+        max_iterations=max_iterations,
         callback=callback,
     )

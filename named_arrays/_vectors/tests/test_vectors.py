@@ -588,6 +588,25 @@ class AbstractTestAbstractVectorArray(
         ):
             pass
 
+        @pytest.mark.parametrize(
+            argnames="func",
+            argvalues=[
+                na.optimize.minimum_gradient_descent,
+            ],
+        )
+        @pytest.mark.parametrize(
+            argnames="function,expected",
+            argvalues=[
+                (lambda x: (np.square(na.value(x) - shift_horizontal) + shift_vertical).length, shift_horizontal)
+                for shift_horizontal in [20,]
+                for shift_vertical in [1,]
+            ]
+        )
+        class TestOptimizeMinimum(
+            named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestOptimizeMinimum,
+        ):
+            pass
+
 
 class AbstractTestAbstractExplicitVectorArray(
     AbstractTestAbstractVectorArray,

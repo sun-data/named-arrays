@@ -448,3 +448,59 @@ def optimize_root_newton(
         f = function(x)
 
     raise ValueError("Max iterations exceeded")
+
+
+@_implements(na.optimize.minimum_gradient_descent)
+def optimize_minimum_gradient_descent(
+    function: Callable[[na.AbstractVectorArray], na.AbstractScalar],
+    guess: na.AbstractVectorArray,
+    step_size: float | na.AbstractScalar,
+    gradient: None | Callable[[na.AbstractVectorArray], na.AbstractScalar],
+    min_gradient: na.ScalarLike,
+    max_iterations: int,
+    callback: (
+        None
+        | Callable[[int, na.AbstractVectorArray, na.ScalarLike, na.ScalarLike], None]
+    ),
+) -> na.ScalarArray:
+
+    x = guess
+    f = function(x)
+
+    if not isinstance(x, na.AbstractVectorArray):   # pragma: nocover
+        return NotImplemented
+
+    if not isinstance(na.as_named_array(f), na.AbstractScalar):  # pragma: nocover
+        return NotImplemented
+
+    if na.shape(min_gradient):  # pragma: nocover
+        raise ValueError(
+            f"argument `min_gradient` should have an empty shape, "
+            f"got {na.shape(min_gradient)}"
+        )
+
+    shape = na.shape_broadcasted(f, x)
+
+    converged = na.broadcast_to(0 * na.value(x), shape=shape).astype(bool)
+
+    x = na.broadcast_to(x, shape).astype(float)
+
+    for i in range(max_iterations):
+
+        if callback is not None:
+            callback(i, x, f, converged)
+
+        grad = gradient(x)
+
+        converged |= np.abs(grad) < min_gradient
+
+        if np.all(converged):
+            return x
+
+        correction = step_size * grad
+
+        x = x - correction
+
+        f = function(x)
+
+    raise ValueError("Max iterations exceeded")  # pragma: nocover
