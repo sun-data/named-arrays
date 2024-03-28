@@ -483,7 +483,7 @@ def unit(
             squeeze=squeeze,
         )
     else:
-        return None
+        return unit_dimensionless
 
 
 def unit_normalized(
