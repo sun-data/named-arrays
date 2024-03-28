@@ -125,10 +125,17 @@ def arange(
 @_implements(na.unit)
 def unit(
         a: na.AbstractVectorArray,
+        unit_dimensionless: None | float | u.UnitBase = None,
         squeeze: bool = True,
 ) -> None | u.UnitBase | na.AbstractVectorArray:
     components = a.components
-    components = {c: na.unit(components[c], squeeze=squeeze) for c in components}
+    components = {
+        c: na.unit(
+            a=components[c],
+            unit_dimensionless=unit_dimensionless,
+            squeeze=squeeze)
+        for c in components
+    }
     iter_components = iter(components)
     component_0 = components[next(iter_components)]
     if squeeze:

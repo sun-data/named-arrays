@@ -447,6 +447,7 @@ def shape(a: na.ArrayLike) -> dict[str, int]:
 
 def unit(
         a: Any,
+        unit_dimensionless: None | float | u.UnitBase = None,
         squeeze: bool = True,
 ) -> None | u.UnitBase | na.AbstractArray:
     """
@@ -458,6 +459,8 @@ def unit(
     ----------
     a
         object to isolate the units of
+    unit_dimensionless
+        The unit to use for dimensionless objects.
     squeeze
         If the result is an instance of :class:`named_arrays.AbstractVectorArray`,
         and all the components are the same, simplify the result into a single
@@ -465,8 +468,9 @@ def unit(
 
     See Also
     --------
-    :func:`unit_normalized` : version of this function that returns :obj:`astropy.units.dimensionless_unscaled`
-        instead of :obj:`None` if there is no unit associated with the given object
+    :func:`unit_normalized` : version of this function that by default returns
+        :obj:`astropy.units.dimensionless_unscaled` instead of :obj:`None`
+        if there is no unit associated with the given object.
     """
     if isinstance(a, u.UnitBase):
         return a
@@ -506,8 +510,9 @@ def unit_normalized(
 
     See Also
     --------
-    :func:`unit` : version of this function that returns :obj:`None` instead of
-        :obj:`astropy.units.dimensionless_unscaled` if there is no unit associated with the given object.
+    :func:`unit` : version of this function that by default returns :obj:`None`
+        instead of :obj:`astropy.units.dimensionless_unscaled` if there is no
+        unit associated with the given object.
 
     """
     if isinstance(a, u.UnitBase):
