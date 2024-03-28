@@ -484,17 +484,21 @@ def unit(
 
 def unit_normalized(
         a: Any,
+        unit_dimensionless: float | u.UnitBase = u.dimensionless_unscaled,
         squeeze: bool = True,
 ) -> u.UnitBase | na.AbstractArray:
     """
-    Isolate the physical units associated with a given object, normalizing to dimensionless units
-    if the object does not have associated units.
+    Isolate the physical units associated with a given object,`
+    normalizing to the given dimensionless units if the object does not have
+    associated units.
 
 
     Parameters
     ----------
     a
         object to isolate the units of
+    unit_dimensionless
+        The unit to use for dimensionless objects.
     squeeze
         If the result is an instance of :class:`named_arrays.AbstractVectorArray`,
         and all the components are the same, simplify the result into a single
@@ -514,10 +518,11 @@ def unit_normalized(
         return na._named_array_function(
             func=unit_normalized,
             a=a,
+            unit_dimensionless=unit_dimensionless,
             squeeze=squeeze,
         )
     else:
-        return u.dimensionless_unscaled
+        return unit_dimensionless
 
 
 @overload
