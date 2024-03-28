@@ -1349,6 +1349,27 @@ class AbstractTestAbstractArray(
                 assert np.all(np.abs(function(result)) < 1e-8)
                 assert out is result
 
+        class TestOptimizeMinimum:
+            def test_optimize_minimum(
+                self,
+                func: Callable,
+                array: na.AbstractArray,
+                function: Callable[[na.AbstractArray], na.AbstractArray],
+                expected: na.AbstractArray,
+            ):
+                def callback(i, x, f, c):
+                    global out
+                    out = x
+
+                result = func(
+                    function=function,
+                    guess=array,
+                    callback=callback,
+                )
+
+                assert np.allclose(na.value(result), expected)
+                assert out is result
+
 
 class AbstractTestAbstractExplicitArray(
     AbstractTestAbstractArray,

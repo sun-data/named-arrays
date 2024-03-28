@@ -766,6 +766,12 @@ class AbstractTestAbstractUncertainScalarArray(
         ):
             pass
 
+        @pytest.mark.skip
+        class TestOptimizeMinimum(
+            named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestOptimizeMinimum,
+        ):
+            pass
+
 
 @pytest.mark.parametrize('array', _uncertain_scalar_arrays())
 class TestUncertainScalarArray(
