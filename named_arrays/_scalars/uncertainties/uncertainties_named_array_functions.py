@@ -92,9 +92,13 @@ def unit(
 @_implements(na.unit_normalized)
 def unit_normalized(
         a: na.AbstractUncertainScalarArray,
+        unit_dimensionless: float | u.UnitBase = u.dimensionless_unscaled,
         squeeze: bool = True,
 ) -> u.UnitBase:
-    return na.unit_normalized(a.nominal)
+    return na.unit_normalized(
+        a.nominal,
+        unit_dimensionless=unit_dimensionless,
+    )
 
 
 @_implements(na.interp)
