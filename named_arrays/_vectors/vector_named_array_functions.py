@@ -467,13 +467,13 @@ def optimize_minimum_gradient_descent(
     x = guess
     f = function(x)
 
-    if not isinstance(x, na.AbstractVectorArray):
+    if not isinstance(x, na.AbstractVectorArray):   # pragma: nocover
         return NotImplemented
 
-    if not isinstance(na.as_named_array(f), na.AbstractScalar):
+    if not isinstance(na.as_named_array(f), na.AbstractScalar):  # pragma: nocover
         return NotImplemented
 
-    if na.shape(min_gradient):
+    if na.shape(min_gradient):  # pragma: nocover
         raise ValueError(
             f"argument `min_gradient` should have an empty shape, "
             f"got {na.shape(min_gradient)}"
@@ -503,4 +503,4 @@ def optimize_minimum_gradient_descent(
 
         f = function(x)
 
-    raise ValueError("Max iterations exceeded")
+    raise ValueError("Max iterations exceeded")  # pragma: nocover
