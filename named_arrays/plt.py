@@ -53,7 +53,7 @@ def subplots(
         Controls whether all the :class:`matplotlib.axes.Axes` instances share the same horizontal axis properties.
         See the documentation of :func:`matplotlib.pyplot.subplots` for more information.
     sharey
-        Controls whether all the :class`matplotlib.axes.Axes` instances share the same vertical axis properties.
+        Controls whether all the :class:`matplotlib.axes.Axes` instances share the same vertical axis properties.
         See the documentation of :func:`matplotlib.pyplot.subplots` for more information.
     squeeze
         If :obj:`True`, :func:`numpy.squeeze` is called on the result, which removes singleton dimensions from the
