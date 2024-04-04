@@ -59,13 +59,16 @@ class AbstractFunctionArray(
         output_shape = self.outputs.shape
 
         for axis in self.all_axes:
-            if axis in output_shape or input_shape:
-                if input_shape[axis] == output_shape[axis]:
+            if axis in input_shape:
+                if axis in output_shape:
+                    if input_shape[axis] == output_shape[axis]:
+                        axes_center += (axis,)
+                    elif input_shape[axis] != output_shape[axis] + 1:
+                        raise ValueError(
+                            'Output axis dimension must either match Input axis dimension (representing'
+                            ' bin centers, or exceed by one (representing bin vertices).')
+                else:
                     axes_center += (axis,)
-                elif input_shape[axis] != output_shape[axis] + 1:
-                    raise ValueError(
-                        'Output axis dimension must either match Input axis dimension (representing'
-                        ' bin centers, or exceed by one (representing bin vertices).')
             else:
                 axes_center += (axis,)
 
