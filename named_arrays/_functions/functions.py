@@ -102,6 +102,19 @@ class AbstractFunctionArray(
             outputs=self.outputs.value,
         )
 
+    @property
+    def broadcasted(self) -> FunctionArray:
+
+        broadcasted_shape_outputs = self.shape
+        broadcasted_shape_inputs = self.shape
+        for key in broadcasted_shape_outputs:
+            if key in self.axes_vertex:
+                broadcasted_shape_inputs[key] = self.inputs.shape[key]
+
+        return FunctionArray(self.inputs.broadcast_to(broadcasted_shape_inputs),
+                             self.outputs.broadcast_to(broadcasted_shape_outputs)
+                             )
+
     def astype(
             self,
             dtype: str | np.dtype | type,
