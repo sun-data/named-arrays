@@ -183,19 +183,16 @@ class AbstractFunctionArray(
             outputs=outputs.combine_axes(axes=axes, axis_new=axis_new),
         )
 
-    def __call__(self, new_inputs: na.AbstractArray, interp_axes: tuple[str] =None) -> AbstractFunctionArray:
+    def __call__(self, new_inputs: na.AbstractArray, interp_axes: tuple[str] = None) -> AbstractFunctionArray:
 
         new_input_components = new_inputs.cartesian_nd.components
         old_input_components = self.inputs.cartesian_nd.components
 
         # broadcast new inputs against value to be interpolated
-
         if interp_axes is None:
             interp_axes = na.shape_broadcasted(
                 *[new_input_components[c] for c in new_input_components if new_input_components[c] is not None])
             interp_axes = interp_axes.keys()
-
-
 
         # check physical dimensions of each input match
         if new_input_components.keys() == old_input_components.keys():
