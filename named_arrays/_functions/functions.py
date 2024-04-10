@@ -255,6 +255,16 @@ class AbstractFunctionArray(
         shape_inputs = inputs.shape
         shape_outputs = outputs.shape
 
+        # #broadcast along get_item axes if missing
+        # for key in shape:
+        #     if key not in shape_inputs:
+        #         shape_inputs[key] = shape[key]
+        #     if key not in shape_outputs:
+        #         shape_outputs[key] = shape[key]
+        #
+        # inputs = inputs.broadcast_to(shape_inputs)
+        # outputs = outputs.broadcast_to(shape_outputs)
+
         if isinstance(item, na.AbstractFunctionArray):
             if np.any(item.inputs != self.inputs):
                 raise ValueError("boolean advanced index does not have the same inputs as the array")
@@ -276,7 +286,11 @@ class AbstractFunctionArray(
                     item_outputs[ax] = item_ax.outputs
                 else:
                     if ax in self.axes_center:
-                        item_inputs[ax] = item_outputs[ax] = item_ax
+                        #can't assume center ax is in both outputs and inputs
+                        if ax in shape_inputs:
+                            item_inputs[ax] = item_ax
+                        if ax in shape_outputs:
+                            item_outputs[ax] = item_ax
                     if ax in self.axes_vertex:
                         if isinstance(item_ax, int):
                             item_outputs[ax] = slice(item_ax, item_ax + 1)
@@ -293,9 +307,11 @@ class AbstractFunctionArray(
         else:
             return NotImplemented
 
-        new_shape = na.broadcast_shapes(shape_inputs, shape_item_inputs)
-        inputs = na.broadcast_to(inputs, new_shape)
-        outputs = na.broadcast_to(outputs, na.broadcast_shapes(shape_outputs, shape_item_outputs))
+        # This final broadcast doesn't seem necessary
+
+        # new_shape = na.broadcast_shapes(shape_inputs, shape_item_inputs)
+        # inputs = na.broadcast_to(inputs, new_shape)
+        # outputs = na.broadcast_to(outputs, na.broadcast_shapes(shape_outputs, shape_item_outputs))
 
         return self.type_explicit(
             inputs=inputs[item_inputs],
