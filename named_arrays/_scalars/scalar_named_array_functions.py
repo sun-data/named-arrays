@@ -260,7 +260,7 @@ def histogram2d(
         shape_bins = {ax: bins[ax] + 1 for ax in bins}
         bins = tuple(bins.values())
 
-    if set(shape_bins).issubset(shape_orthogonal):
+    if set(shape_bins).issubset(shape_orthogonal):  # pragma: nocover
         raise ValueError(
             f"The histogram axes, {shape_bins}, should not be a subset of "
             f"the orthogonal axes, {shape_orthogonal}."

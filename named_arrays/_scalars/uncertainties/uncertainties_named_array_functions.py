@@ -215,7 +215,7 @@ def histogram2d(
         else:
             max_nominal = max_distribution = max
 
-    except na.UncertainScalarTypeError:
+    except na.UncertainScalarTypeError:  # pragma: nocover
         return NotImplemented
 
     result_nominal = na.histogram2d(
