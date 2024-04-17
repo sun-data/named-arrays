@@ -159,8 +159,8 @@ def histogram2d(
     weights: None | na.AbstractScalar = None,
 ) -> na.FunctionArray[na.Cartesian2dVectorArray, na.UncertainScalarArray]:
     try:
-        x = uncertainties._normalize(x)
-        y = uncertainties._normalize(y)
+        x = uncertainties._normalize(x).broadcasted
+        y = uncertainties._normalize(y).broadcasted
         weights = uncertainties._normalize(weights)
 
         if isinstance(bins, na.AbstractCartesian2dVectorArray):
@@ -256,8 +256,6 @@ def histogram2d(
             distribution=result_distribution.outputs,
         ),
     )
-
-
 
 
 def random(

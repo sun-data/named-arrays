@@ -275,12 +275,16 @@ def histogram2d(
     elif not isinstance(min, na.AbstractCartesian2dVectorArray):
         min = na.broadcast_to(min, shape_orthogonal)
         min = na.Cartesian2dVectorArray.from_scalar(min)
+    else:
+        min = na.broadcast_to(min, shape_orthogonal)
 
     if max is None:
         max = a.max(axis)
     elif not isinstance(max, na.AbstractCartesian2dVectorArray):
         max = na.broadcast_to(max, shape_orthogonal)
         max = na.Cartesian2dVectorArray.from_scalar(max)
+    else:
+        max = na.broadcast_to(max, shape_orthogonal)
 
     shape_hist = {ax: shape_bins[ax] - 1 for ax in shape_bins}
     shape_hist = na.broadcast_shapes(shape_orthogonal, shape_hist)
