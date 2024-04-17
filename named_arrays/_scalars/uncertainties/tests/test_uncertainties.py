@@ -671,7 +671,7 @@ class AbstractTestAbstractUncertainScalarArray(
                 np.convolve(array, v=v, mode=mode)
 
     class TestNamedArrayFunctions(
-        named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions
+        named_arrays._scalars.tests.test_scalars.AbstractTestAbstractScalar.TestNamedArrayFunctions
     ):
         @pytest.mark.parametrize(
             argnames="array_2",
@@ -693,7 +693,7 @@ class AbstractTestAbstractUncertainScalarArray(
             ]
         )
         class TestPltPlotLikeFunctions(
-            named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestPltPlotLikeFunctions,
+            named_arrays._scalars.tests.test_scalars.AbstractTestAbstractScalar.TestNamedArrayFunctions.TestPltPlotLikeFunctions,
         ):
             pass
 
@@ -721,7 +721,7 @@ class AbstractTestAbstractUncertainScalarArray(
             ]
         )
         class TestPltScatter(
-            named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestPltScatter,
+            named_arrays._scalars.tests.test_scalars.AbstractTestAbstractScalar.TestNamedArrayFunctions.TestPltScatter,
         ):
             pass
 
@@ -739,7 +739,7 @@ class AbstractTestAbstractUncertainScalarArray(
             ]
         )
         class TestJacobian(
-            named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestJacobian,
+            named_arrays._scalars.tests.test_scalars.AbstractTestAbstractScalar.TestNamedArrayFunctions.TestJacobian,
         ):
             pass
 
@@ -762,13 +762,13 @@ class AbstractTestAbstractUncertainScalarArray(
             ]
         )
         class TestOptimizeRoot(
-            named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestOptimizeRoot,
+            named_arrays._scalars.tests.test_scalars.AbstractTestAbstractScalar.TestNamedArrayFunctions.TestOptimizeRoot,
         ):
             pass
 
         @pytest.mark.skip
         class TestOptimizeMinimum(
-            named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestOptimizeMinimum,
+            named_arrays._scalars.tests.test_scalars.AbstractTestAbstractScalar.TestNamedArrayFunctions.TestOptimizeMinimum,
         ):
             pass
 
