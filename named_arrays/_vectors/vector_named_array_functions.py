@@ -315,7 +315,7 @@ def pcolormesh(
     if components is None:
         if len(components_XY) == 2:
             components = components_XY.values()
-        else:
+        else:   # pragma: nocover
             raise ValueError(
                 f"if `XY` is a vector and `components` is `None`, "
                 f"`XY` must have exactly 2 components, got {len(components_XY)}."
