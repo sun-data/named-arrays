@@ -866,10 +866,10 @@ class AbstractTestAbstractScalarArray(
             assert np.all(result.ndarray == result_expected)
 
     class TestNamedArrayFunctions(
-        tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions
+        AbstractTestAbstractScalar.TestNamedArrayFunctions
     ):
         class TestInterp(
-            tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestInterp,
+            AbstractTestAbstractScalar.TestNamedArrayFunctions.TestInterp,
         ):
             def test_interp(
                     self,
@@ -900,7 +900,7 @@ class AbstractTestAbstractScalarArray(
             ]
         )
         class TestPltPlotLikeFunctions(
-            tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestPltPlotLikeFunctions,
+            AbstractTestAbstractScalar.TestNamedArrayFunctions.TestPltPlotLikeFunctions,
         ):
             pass
 
@@ -934,7 +934,7 @@ class AbstractTestAbstractScalarArray(
             ],
         )
         class TestPltScatter(
-            tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestPltScatter,
+            AbstractTestAbstractScalar.TestNamedArrayFunctions.TestPltScatter,
         ):
             pass
 
@@ -1011,7 +1011,7 @@ class AbstractTestAbstractScalarArray(
             ]
         )
         class TestJacobian(
-            tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestJacobian,
+            AbstractTestAbstractScalar.TestNamedArrayFunctions.TestJacobian,
         ):
             pass
 
@@ -1034,13 +1034,13 @@ class AbstractTestAbstractScalarArray(
             ]
         )
         class TestOptimizeRoot(
-            tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestOptimizeRoot,
+            AbstractTestAbstractScalar.TestNamedArrayFunctions.TestOptimizeRoot,
         ):
             pass
 
         @pytest.mark.skip
         class TestOptimizeMinimum(
-            tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestOptimizeMinimum,
+            AbstractTestAbstractScalar.TestNamedArrayFunctions.TestOptimizeMinimum,
         ):
             pass
 
