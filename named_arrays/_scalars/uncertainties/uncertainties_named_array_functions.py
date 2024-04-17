@@ -1,4 +1,4 @@
-from typing import Callable
+from typing import Callable, Sequence
 import numpy as np
 import numpy.typing as npt
 import matplotlib.axes
@@ -145,6 +145,119 @@ def interp(
     )
 
     return result
+
+
+@_implements(na.histogram2d)
+def histogram2d(
+    x: na.AbstractScalar,
+    y: na.AbstractScalar,
+    bins: dict[str, int] | na.AbstractCartesian2dVectorArray,
+    axis: None | str | Sequence[str] = None,
+    min: None | na.AbstractScalar | na.AbstractCartesian2dVectorArray = None,
+    max: None | na.AbstractScalar | na.AbstractCartesian2dVectorArray = None,
+    density: bool = False,
+    weights: None | na.AbstractScalar = None,
+) -> na.FunctionArray[na.Cartesian2dVectorArray, na.UncertainScalarArray]:
+    try:
+        x = uncertainties._normalize(x)
+        y = uncertainties._normalize(y)
+        weights = uncertainties._normalize(weights)
+
+        if isinstance(bins, na.AbstractCartesian2dVectorArray):
+            bins = na.Cartesian2dVectorArray(
+                x=uncertainties._normalize(bins.x),
+                y=uncertainties._normalize(bins.y),
+            )
+            bins_nominal = na.Cartesian2dVectorArray(
+                x=bins.x.nominal,
+                y=bins.y.nominal,
+            )
+            bins_distribution = na.Cartesian2dVectorArray(
+                x=bins.x.distribution,
+                y=bins.y.distribution,
+            )
+        else:
+            bins_nominal = bins_distribution = bins
+
+        if min is not None:
+            if not isinstance(min, na.AbstractCartesian2dVectorArray):
+                min = na.Cartesian2dVectorArray.from_scalar(min)
+            min = na.Cartesian2dVectorArray(
+                x=uncertainties._normalize(min.x),
+                y=uncertainties._normalize(min.y),
+            )
+            min_nominal = na.Cartesian2dVectorArray(
+                x=min.x.nominal,
+                y=min.y.nominal,
+            )
+            min_distribution = na.Cartesian2dVectorArray(
+                x=min.x.distribution,
+                y=min.y.distribution,
+            )
+        else:
+            min_nominal = min_distribution = min
+
+        if max is not None:
+            if not isinstance(max, na.AbstractCartesian2dVectorArray):
+                max = na.Cartesian2dVectorArray.from_scalar(max)
+            max = na.Cartesian2dVectorArray(
+                x=uncertainties._normalize(max.x),
+                y=uncertainties._normalize(max.y),
+            )
+            max_nominal = na.Cartesian2dVectorArray(
+                x=max.x.nominal,
+                y=max.y.nominal,
+            )
+            max_distribution = na.Cartesian2dVectorArray(
+                x=max.x.distribution,
+                y=max.y.distribution,
+            )
+        else:
+            max_nominal = max_distribution = max
+
+    except na.UncertainScalarTypeError:
+        return NotImplemented
+
+    result_nominal = na.histogram2d(
+        x=x.nominal,
+        y=y.nominal,
+        bins=bins_nominal,
+        axis=axis,
+        min=min_nominal,
+        max=max_nominal,
+        density=density,
+        weights=weights.nominal,
+    )
+
+    result_distribution = na.histogram2d(
+        x=x.distribution,
+        y=y.distribution,
+        bins=bins_distribution,
+        axis=axis,
+        min=min_distribution,
+        max=max_distribution,
+        density=density,
+        weights=weights.distribution,
+    )
+
+    return na.FunctionArray(
+        inputs=na.Cartesian2dVectorArray(
+            x=na.UncertainScalarArray(
+                nominal=result_nominal.inputs.x,
+                distribution=result_distribution.inputs.x,
+            ),
+            y=na.UncertainScalarArray(
+                nominal=result_nominal.inputs.y,
+                distribution=result_distribution.inputs.y,
+            ),
+        ),
+        outputs=na.UncertainScalarArray(
+            nominal=result_nominal.outputs,
+            distribution=result_distribution.outputs,
+        ),
+    )
+
+
 
 
 def random(

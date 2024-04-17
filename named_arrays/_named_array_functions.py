@@ -22,6 +22,7 @@ __all__ = [
     'concatenate',
     'add_axes',
     "interp",
+    "histogram2d",
     'jacobian',
 ]
 
@@ -639,6 +640,109 @@ def interp(
         left=left,
         right=right,
         period=period,
+    )
+
+
+def histogram2d(
+    x: na.AbstractScalarArray,
+    y: na.AbstractScalarArray,
+    bins: dict[str, int] | na.AbstractCartesian2dVectorArray,
+    axis: None | str | Sequence[str] = None,
+    min: None | na.AbstractScalarArray | na.AbstractCartesian2dVectorArray = None,
+    max: None | na.AbstractScalarArray | na.AbstractCartesian2dVectorArray = None,
+    density: bool = False,
+    weights: None | na.AbstractScalarArray = None,
+) -> na.FunctionArray[na.Cartesian2dVectorArray, na.ScalarArray]:
+    """
+    A thin wrapper around :func:`numpy.histogram2d` which adds an `axis` argument.
+
+    Parameters
+    ----------
+    x
+        An array containing the x coordinates of the points to be sampled.
+    y
+        An array containing the y coordinates of the points to be sampled.
+    bins
+        The bin specification of the histogram:
+         * If `bins` is a dictionary, the keys are interpreted as the axis names
+           and the values are the number of bins along each axis.
+         * If `bins` is a 2D Cartesian vector, each component of the vector
+           represents the bin edges in each dimension.
+    axis
+        The logical axes along which to histogram the data points.
+        If :obj:`None` (the default), the histogram will be computed along
+        all the axes of `x` and `y`.
+    min
+        The lower boundary of the histogram along each dimension.
+        If :obj:`None` (the default), the minimum of `x` and `y` is used.
+    max
+        The upper boundary of the histogram along each dimension.
+        If :obj:`None` (the default), the maximum of `x` and `y` is used.
+    density
+        If :obj:`False` (the default), returns the number of samples in each bin.
+        If :obj:`True`, returns the probability density in each bin.
+    weights
+        An optional array weighting each sample.
+
+    Examples
+    --------
+
+    Construct a 2D histogram with constant bin width.
+
+    .. jupyter-execute::
+
+        import numpy as np
+        import matplotlib.pyplot as plt
+        import named_arrays as na
+
+        # Define the bin edges
+        bins = dict(x=6, y=5)
+
+        # Define random points to collect into a histogram
+        x = na.random.normal(0, 2, shape_random=dict(h=101))
+        y = na.random.normal(0, 3, shape_random=dict(h=101))
+
+        # Compute the 2D histogram
+        hist = na.histogram2d(x, y, bins=bins)
+
+        # Plot the resulting histogram
+        fig, ax = plt.subplots()
+        na.plt.pcolormesh(C=hist);
+
+    Construct a 2D histogram with variable bin width.
+
+    .. jupyter-execute::
+
+        import matplotlib.pyplot as plt
+        import named_arrays as na
+
+        # Define the bin edges
+        bins = na.Cartesian2dVectorArray(
+            x=np.square(na.linspace(0, 2, axis="x", num=6)),
+            y=np.square(na.linspace(0, 2, axis="y", num=5)),
+        )
+
+        # Define random points to collect into a histogram
+        x = na.random.normal(0, 2, shape_random=dict(h=101))
+        y = na.random.normal(0, 3, shape_random=dict(h=101))
+
+        # Compute the 2D histogram
+        hist = na.histogram2d(x, y, bins=bins)
+
+        # Plot the resulting histogram
+        fig, ax = plt.subplots()
+        na.plt.pcolormesh(C=hist);
+    """
+    return _named_array_function(
+        func=histogram2d,
+        x=x,
+        y=y,
+        axis=axis,
+        bins=bins,
+        min=min,
+        max=max,
+        density=density,
+        weights=weights,
     )
 
 

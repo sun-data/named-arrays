@@ -1,4 +1,4 @@
-from typing import Callable, TypeVar
+from typing import Callable, Sequence
 import numpy as np
 import numpy.typing as npt
 import matplotlib.axes
@@ -207,6 +207,127 @@ def interp(
         )
 
     return result
+
+
+@_implements(na.histogram2d)
+def histogram2d(
+    x: na.AbstractScalarArray,
+    y: na.AbstractScalarArray,
+    bins: dict[str, int] | na.AbstractCartesian2dVectorArray,
+    axis: None | str | Sequence[str] = None,
+    min: None | na.AbstractScalarArray | na.AbstractCartesian2dVectorArray = None,
+    max: None | na.AbstractScalarArray | na.AbstractCartesian2dVectorArray = None,
+    density: bool = False,
+    weights: None | na.AbstractScalarArray = None,
+) -> na.FunctionArray[na.Cartesian2dVectorArray, na.ScalarArray]:
+    try:
+        x = scalars._normalize(x)
+        y = scalars._normalize(y)
+        weights = scalars._normalize(weights) if weights is not None else weights
+    except scalars.ScalarTypeError:
+        return NotImplemented
+
+    shape = na.shape_broadcasted(x, y, weights)
+
+    x = na.broadcast_to(x, shape)
+    y = na.broadcast_to(y, shape)
+    weights = na.broadcast_to(weights, shape) if weights is not None else weights
+
+    if axis is None:
+        axis = tuple(shape)
+    elif isinstance(axis, str):
+        axis = (axis, )
+
+    shape_orthogonal = {a: shape[a] for a in shape if a not in axis}
+
+    if isinstance(bins, na.AbstractCartesian2dVectorArray):
+        shape_bins = bins.shape
+        if bins.x.ndim != 1:
+            raise ValueError(
+                f"The x component of `bins` must have only one dimension, "
+                f"got {bins.x.shape}."
+            )
+        if bins.y.ndim != 1:
+            raise ValueError(
+                f"The y component of `bins` must have only one dimension, "
+                f"got {bins.y.shape}."
+            )
+        bins = (
+            bins.x.ndarray,
+            bins.y.ndarray,
+        )
+    else:
+        shape_bins = {ax: bins[ax] + 1 for ax in bins}
+        bins = tuple(bins.values())
+
+    if set(shape_bins).issubset(shape_orthogonal):
+        raise ValueError(
+            f"The histogram axes, {shape_bins}, should not be a subset of "
+            f"the orthogonal axes, {shape_orthogonal}."
+        )
+
+    axis_x, axis_y = shape_bins
+
+    a = na.Cartesian2dVectorArray(x, y)
+
+    if min is None:
+        min = a.min(axis)
+    elif not isinstance(min, na.AbstractCartesian2dVectorArray):
+        min = na.broadcast_to(min, shape_orthogonal)
+        min = na.Cartesian2dVectorArray.from_scalar(min)
+
+    if max is None:
+        max = a.max(axis)
+    elif not isinstance(max, na.AbstractCartesian2dVectorArray):
+        max = na.broadcast_to(max, shape_orthogonal)
+        max = na.Cartesian2dVectorArray.from_scalar(max)
+
+    shape_hist = {ax: shape_bins[ax] - 1 for ax in shape_bins}
+    shape_hist = na.broadcast_shapes(shape_orthogonal, shape_hist)
+
+    shape_x = na.broadcast_shapes(shape_orthogonal, {axis_x: shape_bins[axis_x]})
+    shape_y = na.broadcast_shapes(shape_orthogonal, {axis_y: shape_bins[axis_y]})
+
+    hist = na.ScalarArray.empty(shape_hist)
+    xedges = na.ScalarArray.empty(shape_x)
+    yedges = na.ScalarArray.empty(shape_y)
+
+    for i in na.ndindex(shape_orthogonal):
+        min_i = min[i]
+        max_i = max[i]
+        hist_i, xedges_i, yedges_i = np.histogram2d(
+            x=x[i].ndarray_aligned(axis).reshape(-1),
+            y=y[i].ndarray_aligned(axis).reshape(-1),
+            bins=bins,
+            range=[
+                [min_i.x.ndarray, max_i.x.ndarray],
+                [min_i.y.ndarray, max_i.y.ndarray],
+            ],
+            density=density,
+            weights=weights[i].ndarray_aligned(axis).reshape(-1) if weights is not None else weights,
+        )
+
+        hist[i] = na.ScalarArray(
+            ndarray=hist_i,
+            axes=tuple(shape_bins),
+        )
+        xedges[i] = na.ScalarArray(
+            ndarray=xedges_i,
+            axes=axis_x
+        )
+        yedges[i] = na.ScalarArray(
+            ndarray=yedges_i,
+            axes=axis_y,
+        )
+
+    return na.FunctionArray(
+        inputs=na.Cartesian2dVectorArray(
+            x=xedges,
+            y=yedges,
+        ),
+        outputs=hist,
+    )
+
 
 
 def random(
@@ -551,11 +672,19 @@ def pcolormesh(
         if axis_rgb not in C.shape:
             raise ValueError(f"`{axis_rgb=}` must be a member of `{C.shape=}`")
 
-    shape_C = na.shape_broadcasted(*XY, C, ax)
-    shape = {a: shape_C[a] for a in shape_C if a != axis_rgb}
     shape_orthogonal = ax.shape
 
-    XY = tuple(arg.broadcast_to(shape) for arg in XY)
+    shape_XY = na.shape_broadcasted(ax, *XY)
+    shape_C = na.shape_broadcasted(ax, C)
+
+    axes_XY = tuple(ax for ax in shape_C if ax not in shape_orthogonal)
+    axes_XY = tuple(ax for ax in axes_XY if ax != axis_rgb)
+
+    axes_C = axes_XY
+    if axis_rgb is not None:
+        axes_C = axes_C + (axis_rgb,)
+
+    XY = tuple(arg.broadcast_to(shape_XY) for arg in XY)
     C = C.broadcast_to(shape_C)
     vmin = vmin.broadcast_to(shape_orthogonal) if vmin is not None else vmin
     vmax = vmax.broadcast_to(shape_orthogonal) if vmax is not None else vmax
@@ -564,8 +693,8 @@ def pcolormesh(
 
     for index in na.ndindex(shape_orthogonal):
         result[index] = ax[index].ndarray.pcolormesh(
-            *[arg[index].ndarray for arg in XY],
-            C[index].ndarray,
+            *[arg[index].ndarray_aligned(axes_XY) for arg in XY],
+            C[index].ndarray_aligned(axes_C),
             cmap=cmap,
             norm=norm,
             vmin=vmin[index].ndarray if vmin is not None else vmin,
