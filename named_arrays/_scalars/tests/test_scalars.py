@@ -168,8 +168,8 @@ class AbstractTestAbstractScalar(
             argvalues=[
                 (
                     dict(hx=11, hy=12),
-                    None,
-                    None,
+                    -10,
+                    10,
                 ),
                 (
                     na.Cartesian2dVectorArray(
@@ -185,6 +185,7 @@ class AbstractTestAbstractScalar(
             argnames="axis",
             argvalues=[
                 None,
+                "y",
             ]
         )
         @pytest.mark.parametrize(
@@ -208,6 +209,10 @@ class AbstractTestAbstractScalar(
 
                 if isinstance(bins, na.AbstractCartesian2dVectorArray):
                     bins = bins * array.unit_normalized
+                if min is not None:
+                    min = min * array.unit_normalized
+                if max is not None:
+                    max = max * array.unit_normalized
 
                 result = na.histogram2d(
                     x=array,

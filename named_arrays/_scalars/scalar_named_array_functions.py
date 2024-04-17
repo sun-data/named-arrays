@@ -224,7 +224,7 @@ def histogram2d(
         x = scalars._normalize(x)
         y = scalars._normalize(y)
         weights = scalars._normalize(weights) if weights is not None else weights
-    except scalars.ScalarTypeError:
+    except scalars.ScalarTypeError:  # pragma: nocover
         return NotImplemented
 
     shape = na.shape_broadcasted(x, y, weights)
@@ -242,12 +242,12 @@ def histogram2d(
 
     if isinstance(bins, na.AbstractCartesian2dVectorArray):
         shape_bins = bins.shape
-        if bins.x.ndim != 1:
+        if bins.x.ndim != 1:    # pragma: nocover
             raise ValueError(
                 f"The x component of `bins` must have only one dimension, "
                 f"got {bins.x.shape}."
             )
-        if bins.y.ndim != 1:
+        if bins.y.ndim != 1:    # pragma: nocover
             raise ValueError(
                 f"The y component of `bins` must have only one dimension, "
                 f"got {bins.y.shape}."
