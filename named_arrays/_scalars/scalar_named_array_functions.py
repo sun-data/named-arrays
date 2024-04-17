@@ -333,7 +333,6 @@ def histogram2d(
     )
 
 
-
 def random(
         func: Callable,
         *args: float | u.Quantity | na.AbstractScalarArray,
