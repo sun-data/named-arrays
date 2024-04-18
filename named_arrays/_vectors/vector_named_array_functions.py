@@ -311,7 +311,17 @@ def pcolormesh(
     XY = XY[0]
 
     components_XY = XY.components
-    components = [components_XY[c] for c in components]
+
+    if components is None:
+        if len(components_XY) == 2:
+            components = components_XY.values()
+        else:   # pragma: nocover
+            raise ValueError(
+                f"if `XY` is a vector and `components` is `None`, "
+                f"`XY` must have exactly 2 components, got {len(components_XY)}."
+            )
+    else:
+        components = [components_XY[c] for c in components]
 
     return na.plt.pcolormesh(
         *components,

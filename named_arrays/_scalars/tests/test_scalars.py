@@ -160,6 +160,73 @@ class AbstractTestAbstractScalar(
 
         super().test_interp_linear_identity(array=array)
 
+    class TestNamedArrayFunctions(
+        tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions,
+    ):
+        @pytest.mark.parametrize(
+            argnames="bins,min,max",
+            argvalues=[
+                (
+                    dict(hx=11, hy=12),
+                    -10,
+                    10,
+                ),
+                (
+                    na.Cartesian2dVectorArray(
+                        x=na.linspace(-10, 10, axis="hx", num=11),
+                        y=na.linspace(-10, 10, axis="hy", num=11),
+                    ),
+                    None,
+                    None,
+                )
+            ]
+        )
+        @pytest.mark.parametrize(
+            argnames="axis",
+            argvalues=[
+                None,
+                "y",
+            ]
+        )
+        @pytest.mark.parametrize(
+            argnames="weights",
+            argvalues=[
+                None,
+            ]
+        )
+        class TestHistogram2d:
+            def test_histogram2d(
+                self,
+                array: na.AbstractScalar,
+                bins: dict[str, int] | na.AbstractCartesian2dVectorArray,
+                axis: None | str | Sequence[str],
+                min: None | na.AbstractScalarArray | na.AbstractCartesian2dVectorArray,
+                max: None | na.AbstractScalarArray | na.AbstractCartesian2dVectorArray,
+                weights: None | na.AbstractScalarArray,
+            ):
+                if not array.shape:
+                    return
+
+                if isinstance(bins, na.AbstractCartesian2dVectorArray):
+                    bins = bins * array.unit_normalized
+                if min is not None:
+                    min = min * array.unit_normalized
+                if max is not None:
+                    max = max * array.unit_normalized
+
+                result = na.histogram2d(
+                    x=array,
+                    y=array,
+                    bins=bins,
+                    axis=axis,
+                    min=min,
+                    max=max,
+                    weights=weights,
+                )
+
+                assert np.all(result.outputs >= 0)
+                assert result.outputs.sum() > 0
+
 
 class AbstractTestAbstractScalarArray(
     AbstractTestAbstractScalar,
