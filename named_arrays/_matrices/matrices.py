@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Type
+from typing import Type, Self
 import abc
 import dataclasses
 import named_arrays as na
@@ -386,7 +386,9 @@ class AbstractImplicitMatrixArray(
     AbstractMatrixArray,
     na.AbstractImplicitVectorArray
 ):
-    pass
+    @property
+    def centers(self: Self) -> Self:
+        return self
 
 
 @dataclasses.dataclass(eq=False, repr=False)

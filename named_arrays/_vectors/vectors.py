@@ -830,3 +830,7 @@ class AbstractWcsVector(
         components = self._components_explicit | self._components_wcs
         return self.type_explicit.from_components(components)
 
+    @property
+    def centers(self: Self) -> Self:
+        return self
+
