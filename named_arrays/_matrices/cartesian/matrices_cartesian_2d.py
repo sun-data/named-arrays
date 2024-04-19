@@ -110,6 +110,7 @@ class Cartesian2dMatrixArray(
 @dataclasses.dataclass(eq=False, repr=False)
 class AbstractImplicitCartesian2dMatrixArray(
     na.AbstractImplicitCartesian2dVectorArray,
+    na.AbstractImplicitMatrixArray,
     AbstractCartesian2dMatrixArray,
 ):
     pass
