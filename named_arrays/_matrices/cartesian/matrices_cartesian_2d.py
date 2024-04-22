@@ -128,6 +128,12 @@ class Cartesian2dIdentityMatrixArray(
             y=na.Cartesian2dVectorArray(x=0, y=1),
         )
 
+    def power(
+        self,
+        exponent: float | na.AbstractScalar,
+    ) -> AbstractCartesian2dMatrixArray:
+        return self
+
 
 @dataclasses.dataclass(eq=False, repr=False)
 class AbstractCartesian2dRotationMatrixArray(
