@@ -98,12 +98,6 @@ class Cartesian3dIdentityMatrixArray(
             z=na.Cartesian3dVectorArray(x=0, y=0, z=1),
         )
 
-    def power(
-        self,
-        exponent: float | na.AbstractScalar,
-    ) -> AbstractCartesian3dMatrixArray:
-        return self
-
 
 @dataclasses.dataclass(eq=False, repr=False)
 class AbstractCartesian3dRotationMatrixArray(
