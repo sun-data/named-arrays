@@ -16,32 +16,6 @@ _num_y = named_arrays.tests.test_core.num_y
 _num_distribution = named_arrays.tests.test_core.num_distribution
 
 
-class AbstractTestAbstractCartesian2dMatrixArray(
-    test_matrices_cartesian.AbstractTestAbstractCartesianMatrixArray,
-    named_arrays._vectors.cartesian.tests.test_vectors_cartesian_2d.AbstractTestAbstractCartesian2dVectorArray,
-):
-
-    @pytest.mark.parametrize("exponent", [1, 2, 5])
-    def test_power(
-        self,
-        array: na.AbstractCartesian2dMatrixArray,
-        exponent: int
-    ):
-        if na.unit(array.length) is not None:
-            return
-
-        if len(array.cartesian_nd.entries) != 4:
-            return
-
-        result = array.power(exponent)
-
-        result_expected = na.Cartesian2dIdentityMatrixArray()
-        for i in range(exponent):
-            result_expected = result_expected @ array
-
-        assert np.allclose(result, result_expected)
-
-
 def _cartesian_2d_matrices():
     arrays_xx = [
         4,
@@ -164,19 +138,13 @@ def _cartesian_2d_matrices_2():
         )
     )
 
-
     return scalars + matrices
 
 
-@pytest.mark.parametrize(
-    argnames='array',
-    argvalues=_cartesian_2d_matrices()
-)
-class TestCartesian2dMatrixArray(
-    AbstractTestAbstractCartesian2dMatrixArray,
+class AbstractTestAbstractCartesian2dMatrixArray(
     test_matrices_cartesian.AbstractTestAbstractCartesianMatrixArray,
+    named_arrays._vectors.cartesian.tests.test_vectors_cartesian_2d.AbstractTestAbstractCartesian2dVectorArray,
 ):
-
     @pytest.mark.parametrize(
         argnames='item',
         argvalues=[
@@ -227,7 +195,7 @@ class TestCartesian2dMatrixArray(
                     y=na.ScalarLinearSpace(0, 1, axis='y', num=_num_y) > 0.6,
                 ),
             ),
-        ]
+            ]
     )
     def test__getitem__(
             self,
@@ -248,6 +216,37 @@ class TestCartesian2dMatrixArray(
     ):
         pass
 
+    @pytest.mark.parametrize("exponent", [1, 2, 5])
+    def test_power(
+        self,
+        array: na.AbstractCartesian2dMatrixArray,
+        exponent: int
+    ):
+        if na.unit(array.length) is not None:
+            return
+
+        if len(array.cartesian_nd.entries) != 4:
+            return
+
+        result = array.power(exponent)
+
+        result_expected = na.Cartesian2dIdentityMatrixArray()
+        for i in range(exponent):
+            result_expected = result_expected @ array
+
+        assert np.allclose(result, result_expected)
+
+
+@pytest.mark.parametrize(
+    argnames='array',
+    argvalues=_cartesian_2d_matrices()
+)
+class TestCartesian2dMatrixArray(
+    AbstractTestAbstractCartesian2dMatrixArray,
+    test_matrices_cartesian.AbstractTestAbstractCartesianMatrixArray,
+):
+    pass
+
 
 @pytest.mark.parametrize("type_array", [na.Cartesian2dMatrixArray])
 class TestCartesian2dMatrixArrayCreation(
@@ -259,3 +258,16 @@ class TestCartesian2dMatrixArrayCreation(
         test_matrices_cartesian.AbstractTestAbstractExplicitCartesianMatrixArrayCreation.TestFromScalarArray,
     ):
         pass
+
+
+@pytest.mark.parametrize(
+    argnames="array",
+    argvalues=[
+        na.Cartesian2dIdentityMatrixArray(),
+    ],
+)
+class TestCartesian2dIdentityMatrixArray(
+    test_matrices_cartesian.AbstractTestAbstractImplicitCartesianMatrixArray,
+    AbstractTestAbstractCartesian2dMatrixArray,
+):
+    pass

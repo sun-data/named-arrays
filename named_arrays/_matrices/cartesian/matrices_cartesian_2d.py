@@ -110,6 +110,7 @@ class Cartesian2dMatrixArray(
 @dataclasses.dataclass(eq=False, repr=False)
 class AbstractImplicitCartesian2dMatrixArray(
     na.AbstractImplicitCartesian2dVectorArray,
+    na.AbstractImplicitMatrixArray,
     AbstractCartesian2dMatrixArray,
 ):
     pass
@@ -126,6 +127,12 @@ class Cartesian2dIdentityMatrixArray(
             x=na.Cartesian2dVectorArray(x=1, y=0),
             y=na.Cartesian2dVectorArray(x=0, y=1),
         )
+
+    def power(
+        self,
+        exponent: float | na.AbstractScalar,
+    ) -> AbstractCartesian2dMatrixArray:
+        return self
 
 
 @dataclasses.dataclass(eq=False, repr=False)

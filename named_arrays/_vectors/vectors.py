@@ -138,17 +138,6 @@ class AbstractVectorArray(
         return self.type_explicit.from_components(components)
 
     @property
-    def centers(self: Self) -> AbstractExplicitVectorArray:
-        components = self.components
-        components_result = dict()
-        for c in components:
-            if isinstance(components[c], na.AbstractArray):
-                components_result[c] = components[c].centers
-            else:
-                components_result[c] = components[c]
-        return self.type_explicit.from_components(components_result)
-
-    @property
     def prototype_vector(self) -> na.AbstractExplicitVectorArray:
         """
         Return vector of same type with all components zeroed.
@@ -561,6 +550,17 @@ class AbstractExplicitVectorArray(
                 components_result[c] = components[c]
         return self.type_explicit.from_components(components_result)
 
+    @property
+    def centers(self: Self) -> AbstractExplicitVectorArray:
+        components = self.components
+        components_result = dict()
+        for c in components:
+            if isinstance(components[c], na.AbstractArray):
+                components_result[c] = components[c].centers
+            else:
+                components_result[c] = components[c]
+        return self.type_explicit.from_components(components_result)
+
     def __setitem__(
             self,
             item: dict[str, int | slice | AbstractScalarOrVectorArray] | AbstractScalarOrVectorArray,
@@ -829,4 +829,8 @@ class AbstractWcsVector(
     def explicit(self) -> na.AbstractExplicitArray:
         components = self._components_explicit | self._components_wcs
         return self.type_explicit.from_components(components)
+
+    @property
+    def centers(self: Self) -> Self:
+        return self
 

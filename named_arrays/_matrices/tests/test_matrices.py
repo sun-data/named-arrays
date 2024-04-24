@@ -26,7 +26,7 @@ class AbstractTestAbstractMatrixArray(
 
         assert array.is_consistent
 
-        array_2 = array.copy()
+        array_2 = array.explicit.copy()
         array_2.x = 5
         assert not array_2.is_consistent
 
@@ -67,7 +67,7 @@ class AbstractTestAbstractMatrixArray(
         if array.is_square:
             result = array.determinant
 
-            assert isinstance(result, (float, complex, u.Quantity, na.AbstractScalar))
+            assert isinstance(result, (int, float, complex, u.Quantity, na.AbstractScalar))
 
             assert np.all((2 ** 2) * result == (2 * array).determinant)
             assert np.all(result == array.matrix_transpose.determinant)
