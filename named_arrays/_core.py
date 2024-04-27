@@ -1253,7 +1253,7 @@ class AbstractStratifiedRandomSpace(
 
     @property
     def explicit(self: Self) -> AbstractExplicitArray:
-        result = self.centers
+        result = self.strata
 
         step_size = self.step
 
