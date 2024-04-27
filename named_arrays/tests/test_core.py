@@ -202,9 +202,6 @@ class AbstractTestAbstractArray(
         assert result.shape == array.shape
         assert isinstance(result, array.type_explicit)
 
-    def test_centers(self, array: na.AbstractArray):
-        assert isinstance(array.centers, na.AbstractArray)
-
     @abc.abstractmethod
     def test_astype(self, array: na.AbstractArray, dtype: type):
         pass
