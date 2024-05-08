@@ -1236,7 +1236,7 @@ def strata(a: AbstractArray) -> AbstractArray:
             strata.x,
             strata.y,
             ax=ax,
-        )
+        );
     """
     if isinstance(a, AbstractStratifiedRandomSpace):
         return a.strata
