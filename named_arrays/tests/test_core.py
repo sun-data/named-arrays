@@ -1096,6 +1096,10 @@ class AbstractTestAbstractArray(
             result = na.unit_normalized(array)
             assert isinstance(result, (u.UnitBase, na.AbstractArray))
 
+        def test_strata(self, array: na.AbstractArray):
+            result = na.strata(array)
+            assert result.type_abstract == array.type_abstract
+
         @pytest.mark.parametrize(
             argnames="slope",
             argvalues=[
