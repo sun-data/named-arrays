@@ -39,7 +39,7 @@ jobs:
       - name: Upload coverage
         uses: actions/upload-artifact@v4
         with:
-          name: coverage${{ matrix.group }}
+          name: coverage_python${{matrix.python-version}}_${{ matrix.os }}_${{ matrix.group }}
           path: .coverage
 
   coverage:
