@@ -8,12 +8,12 @@ on:
   pull_request:
 
 jobs:
-  build:
+  test:
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        array-type: ["tests", "_scalars", "_vectors", "_matrices", "_functions"]
+        group: [1, 2, 3, 4, 5, 6]
         os: [
           ubuntu-latest,
           windows-latest,
@@ -35,7 +35,12 @@ jobs:
       - name: Test with pytest
         run: |
           pip install pytest pytest-cov
-          pytest -c pytest.ini --cov=. --cov-report=xml  named_arrays/${{ matrix.array-type }}
+          pytest -c pytest.ini --cov=. --cov-report=xml  --splits 6 --group ${{matrix.group}}
+      - name: Upload coverage
+        uses: actions/upload-artifact
+        with:
+          name: coverage${{ matrix.group }}
+          path: .coverage
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
         with:
@@ -45,3 +50,24 @@ jobs:
           env_vars: OS,PYTHON
           name: codecov-umbrella
           fail_ci_if_error: true
+
+  coverage:
+      needs: test
+      runs-on: ubuntu-latest
+      steps:
+        - uses: actions/setup-python
+        - name: Install deps
+          run: |
+            python -m pip install --upgrade pip
+            pip install -r pytest-cov
+        - name: Download coverage artifacts
+          uses: actions/download-artifact@v2
+        - name: Run coverage
+          run: |
+            coverage combine coverage*/.coverage*
+            coverage report --fail-under=100
+            coverage xml
+        - uses: codecov/codecov-action
+          with:
+            token: ${{ secrets.CODECOV_TOKEN }}
+            fail_ci_if_error: true
