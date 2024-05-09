@@ -37,7 +37,7 @@ jobs:
           pip install pytest pytest-cov
           pytest -c pytest.ini --cov=. --cov-report=xml  --splits 6 --group ${{matrix.group}}
       - name: Upload coverage
-        uses: actions/upload-artifact
+        uses: actions/upload-artifact@v4
         with:
           name: coverage${{ matrix.group }}
           path: .coverage
@@ -61,13 +61,13 @@ jobs:
             python -m pip install --upgrade pip
             pip install -r pytest-cov
         - name: Download coverage artifacts
-          uses: actions/download-artifact@v2
+          uses: actions/download-artifact@v4
         - name: Run coverage
           run: |
             coverage combine coverage*/.coverage*
             coverage report --fail-under=100
             coverage xml
-        - uses: codecov/codecov-action
+        - uses: codecov/codecov-action@v4
           with:
             token: ${{ secrets.CODECOV_TOKEN }}
             fail_ci_if_error: true
