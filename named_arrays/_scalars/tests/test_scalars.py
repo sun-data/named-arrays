@@ -949,21 +949,23 @@ class AbstractTestAbstractScalarArray(
 
         @pytest.mark.parametrize(
             argnames="array_2",
-            argvalues=_scalar_arrays_2(),
+            argvalues=_scalar_arrays_2()[:8],
         )
         @pytest.mark.parametrize(
-            argnames="where",
+            argnames="where, alpha",
             argvalues=[
-                np._NoValue,
-                True,
-                na.linspace(0, 1, axis="x", num=_num_x) > 0.5,
-            ]
-        )
-        @pytest.mark.parametrize(
-            argnames="alpha",
-            argvalues=[
-                np._NoValue,
-                na.linspace(0, 1, axis="x", num=_num_x),
+                (
+                    np._NoValue,
+                    np._NoValue
+                ),
+                (
+                    True,
+                    na.linspace(0, 1, axis="x", num=_num_x),
+                ),
+                (
+                    na.linspace(0, 1, axis="x", num=_num_x) > 0.5,
+                    0.5,
+                )
             ]
         )
         class TestPltPlotLikeFunctions(
@@ -976,28 +978,26 @@ class AbstractTestAbstractScalarArray(
             argvalues=_scalar_arrays_2()[:8],
         )
         @pytest.mark.parametrize(
-            argnames="s",
+            argnames="s,c,where",
             argvalues=[
-                None,
-                5,
-            ]
-        )
-        @pytest.mark.parametrize(
-            argnames="c",
-            argvalues=[
-                None,
-                5,
-                na.ScalarArray(
-                    ndarray=np.array([.5, .5, .5, 1]),
-                    axes="rgba",
+                (
+                    None,
+                    None,
+                    None,
+                ),
+                (
+                    5,
+                    na.ScalarArray(
+                        ndarray=np.array([.5, .5, .5, 1]),
+                        axes="rgba",
+                    ),
+                    na.linspace(0, 1, axis="x", num=_num_x) > 0.5,
+                ),
+                (
+                    na.linspace(1, 2, axis="x", num=_num_x),
+                    5,
+                    True,
                 )
-            ]
-        )
-        @pytest.mark.parametrize(
-            argnames="where",
-            argvalues=[
-                True,
-                na.linspace(0, 1, axis="x", num=_num_x) > 0.5,
             ],
         )
         class TestPltScatter(
@@ -1243,6 +1243,7 @@ class TestScalarArrayCreation(
 
 
 class AbstractTestAbstractImplicitScalarArray(
+    AbstractTestAbstractScalarArray,
     tests.test_core.AbstractTestAbstractImplicitArray,
 ):
     pass

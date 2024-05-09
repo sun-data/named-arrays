@@ -386,9 +386,7 @@ class AbstractImplicitMatrixArray(
     AbstractMatrixArray,
     na.AbstractImplicitVectorArray
 ):
-    @property
-    def centers(self: Self) -> Self:
-        return self
+    pass
 
 
 @dataclasses.dataclass(eq=False, repr=False)

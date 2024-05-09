@@ -855,10 +855,6 @@ class ScalarArray(
     def explicit(self: Self) -> Self:
         return self
 
-    @property
-    def centers(self: Self) -> Self:
-        return self
-
     def __setitem__(
             self: Self,
             item: dict[str, int | slice | AbstractScalarArray] | AbstractScalarArray,

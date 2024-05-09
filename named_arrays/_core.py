@@ -38,6 +38,7 @@ __all__ = [
     'AbstractArrayRange',
     'AbstractSpace',
     'AbstractLinearSpace',
+    'strata',
     'AbstractStratifiedRandomSpace',
     'AbstractLogarithmicSpace',
     'AbstractGeometricSpace',
@@ -359,14 +360,6 @@ class AbstractArray(
         """
         a = self.explicit
         return a.broadcast_to(a.shape)
-
-    @property
-    @abc.abstractmethod
-    def centers(self: Self) -> AbstractArray:
-        """
-        The central value for this array. Usually returns this array unless an instance of
-        :class:`named_arrays.AbstractStratifiedRandomSpace`
-        """
 
     @abc.abstractmethod
     def astype(
@@ -1051,10 +1044,6 @@ class AbstractUniformRandomSample(
             seed=self.seed,
         )
 
-    @property
-    def centers(self: Self) -> Self:
-        return self
-
 
 @dataclasses.dataclass
 class AbstractNormalRandomSample(
@@ -1079,10 +1068,6 @@ class AbstractNormalRandomSample(
             seed=self.seed,
         )
 
-    @property
-    def centers(self: Self) -> Self:
-        return self
-
 
 @dataclasses.dataclass
 class AbstractPoissonRandomSample(
@@ -1102,10 +1087,6 @@ class AbstractPoissonRandomSample(
             shape_random=self.shape_random,
             seed=self.seed,
         )
-
-    @property
-    def centers(self: Self) -> Self:
-        return self
 
 
 @dataclasses.dataclass(eq=False, repr=False)
@@ -1165,10 +1146,6 @@ class AbstractArrayRange(
         )
 
     @property
-    def centers(self: Self) -> Self:
-        return self
-
-    @property
     def num(self: Self) -> int:
         return np.ceil((self.stop - self.start) / self.step).astype(int)
 
@@ -1209,15 +1186,62 @@ class AbstractLinearSpace(
         )
 
     @property
-    def centers(self: Self) -> Self:
-        return self
-
-    @property
     def step(self: Self) -> AbstractArray:
         if self.endpoint:
             return self.range / (self.num - 1)
         else:
             return self.range / self.num
+
+
+def strata(a: AbstractArray) -> AbstractArray:
+    """
+    If ``a`` is an instance of :class:`AbstractStratifiedRandomSpace`,
+    return ``a.strata``, otherwise return ``a``
+
+    Parameters
+    ----------
+    a
+        An array to isolate the strata of.
+
+    Examples
+    --------
+
+    Make a scatterplot of a 2D stratified random array and the centers of
+    the strata.
+
+    .. jupyter-execute::
+
+        import matplotlib.pyplot as plt
+        import named_arrays as na
+
+        # Define a 2D stratified random array.
+        a = na.Cartesian2dVectorStratifiedRandomSpace(
+            start=-1,
+            stop=1,
+            axis=na.Cartesian2dVectorArray("x", "y"),
+            num=11,
+        )
+
+        # Isolate the strata of the array
+        strata = na.strata(a)
+
+        # Plot the array and the strata
+        fig, ax = plt.subplots()
+        na.plt.scatter(
+            a.x,
+            a.y,
+            ax=ax,
+        )
+        na.plt.scatter(
+            strata.x,
+            strata.y,
+            ax=ax,
+        );
+    """
+    if isinstance(a, AbstractStratifiedRandomSpace):
+        return a.strata
+    else:
+        return a
 
 
 @dataclasses.dataclass(eq=False, repr=False)
@@ -1229,7 +1253,7 @@ class AbstractStratifiedRandomSpace(
 
     @property
     def explicit(self: Self) -> AbstractExplicitArray:
-        result = self.centers
+        result = self.strata
 
         step_size = self.step
 
@@ -1243,7 +1267,7 @@ class AbstractStratifiedRandomSpace(
         return result + delta
 
     @property
-    def centers(self: Self) -> AbstractExplicitArray:
+    def strata(self: Self) -> AbstractExplicitArray:
         return na.linspace(
             start=self._attr_normalized("start"),
             stop=self._attr_normalized("stop"),
@@ -1278,10 +1302,6 @@ class AbstractLogarithmicSpace(
         )
 
     @property
-    def centers(self: Self) -> Self:
-        return self
-
-    @property
     def start(self: Self) -> ArrayLike:
         return self.base ** self.start_exponent
 
@@ -1311,7 +1331,3 @@ class AbstractGeometricSpace(
             num=self.num,
             endpoint=self.endpoint,
         )
-
-    @property
-    def centers(self: Self) -> Self:
-        return self

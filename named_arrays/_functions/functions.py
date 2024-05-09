@@ -60,13 +60,6 @@ class AbstractFunctionArray(
             outputs=self.outputs.value,
         )
 
-    @property
-    def centers(self) -> FunctionArray:
-        return self.type_explicit(
-            inputs=self.inputs.centers,
-            outputs=self.outputs.centers,
-        )
-
     def astype(
             self,
             dtype: str | np.dtype | type,

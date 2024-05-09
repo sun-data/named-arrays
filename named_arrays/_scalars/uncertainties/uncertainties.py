@@ -569,10 +569,6 @@ class UncertainScalarArray(
     def explicit(self) -> Self:
         return self.copy_shallow()
 
-    @property
-    def centers(self) -> Self:
-        return self
-
     def __setitem__(
             self,
             item: dict[str, int | slice | na.AbstractScalar] | na.AbstractScalar,
@@ -705,10 +701,6 @@ class UniformUncertainScalarArray(
             distribution=na.explicit(self.distribution),
         )
 
-    @property
-    def centers(self) -> Self:
-        return self
-
 
 @dataclasses.dataclass(eq=False, repr=False)
 class NormalUncertainScalarArray(
@@ -736,10 +728,6 @@ class NormalUncertainScalarArray(
             nominal=na.explicit(self.nominal),
             distribution=na.explicit(self.distribution),
         )
-
-    @property
-    def centers(self) -> Self:
-        return self
 
 
 @dataclasses.dataclass(eq=False, repr=False)
