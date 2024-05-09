@@ -44,7 +44,17 @@ jobs:
 
   coverage:
     needs: test
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: [ "3.12", ]
+        os: [
+          ubuntu-latest,
+          windows-latest,
+          macOS-latest,
+        ]
+    name: Python ${{ matrix.python-version }}, ${{ matrix.os }} coverage upload
     steps:
       - uses: actions/checkout@v4
       - run: pwd
@@ -58,6 +68,8 @@ jobs:
           pip install pytest-cov
       - name: Download coverage artifacts
         uses: actions/download-artifact@v4
+        with:
+          pattern: coverage_python${{matrix.python-version}}_${{ matrix.os }}*
       - name: Run coverage
         run: |
           coverage combine coverage*/.coverage*
