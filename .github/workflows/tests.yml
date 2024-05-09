@@ -20,7 +20,7 @@ jobs:
           macOS-latest,
         ]
         python-version: ["3.12", ]
-    name: ${{ matrix.array-type }}, ${{ matrix.os }}, Python ${{ matrix.python-version }} lint and test
+    name: Python ${{ matrix.python-version }}, ${{ matrix.os }}, Group ${{matrix.group}} test
     steps:
       - uses: actions/checkout@v2
       - name: Set up Python ${{ matrix.python-version }}
@@ -41,15 +41,6 @@ jobs:
         with:
           name: coverage${{ matrix.group }}
           path: .coverage
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          file: coverage.xml
-          flags: unittests
-          env_vars: OS,PYTHON
-          name: codecov-umbrella
-          fail_ci_if_error: true
 
   coverage:
       needs: test
