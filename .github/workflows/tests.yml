@@ -57,10 +57,6 @@ jobs:
     name: Python ${{ matrix.python-version }}, ${{ matrix.os }} coverage upload
     steps:
       - uses: actions/checkout@v4
-      - run: pwd
-      - run: ls
-      - run: |
-          ls /Users/runner/work/named-arrays/named-arrays
       - uses: actions/setup-python@v5
       - name: Install deps
         run: |
