@@ -1459,7 +1459,7 @@ class AbstractTestAbstractExplicitArrayCreation(
 
 
 class AbstractTestAbstractImplicitArray(
-    AbstractTestAbstractArray,
+    abc.ABC,
 ):
     def test_explicit(self, array: na.AbstractArray):
         result = array.explicit
