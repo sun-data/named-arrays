@@ -13,13 +13,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        group: [1, 2, 3, 4, 5, 6]
+        python-version: ["3.12", ]
         os: [
           ubuntu-latest,
           windows-latest,
           macOS-latest,
         ]
-        python-version: ["3.12", ]
+        group: [1, 2, 3, 4, 5, 6]
     name: Python ${{ matrix.python-version }}, ${{ matrix.os }}, Group ${{matrix.group}} test
     steps:
       - uses: actions/checkout@v2
