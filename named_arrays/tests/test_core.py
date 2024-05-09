@@ -1132,10 +1132,10 @@ class AbstractTestAbstractArray(
                 assert np.allclose(result, slope * array)
 
         @pytest.mark.parametrize(
-            argnames="func",
+            argnames="func,axis,transformation",
             argvalues=[
-                na.plt.plot,
-                na.plt.fill,
+                (na.plt.plot, np._NoValue, np._NoValue),
+                (na.plt.fill, "y", na.transformations.Translation(0))
             ]
         )
         @pytest.mark.parametrize(
@@ -1144,20 +1144,6 @@ class AbstractTestAbstractArray(
                 np._NoValue,
                 plt.subplots()[1],
                 na.plt.subplots(axis_cols="x", ncols=num_x)[1],
-            ]
-        )
-        @pytest.mark.parametrize(
-            argnames="axis",
-            argvalues=[
-                np._NoValue,
-                "y",
-            ]
-        )
-        @pytest.mark.parametrize(
-            argnames="transformation",
-            argvalues=[
-                np._NoValue,
-                na.transformations.Translation(0),
             ]
         )
         class TestPltPlotLikeFunctions(abc.ABC):
@@ -1235,22 +1221,23 @@ class AbstractTestAbstractArray(
                 assert isinstance(result, na.AbstractArray)
                 assert result.dtype == matplotlib.artist.Artist
 
+                if where is None or where is np._NoValue:
+                    where_normalized = True
+                else:
+                    where_normalized = where
+                where_normalized = na.broadcast_to(where_normalized, shape_orthogonal)
+
                 for index in ax_normalized.ndindex():
-                    assert ax_normalized[index].ndarray.has_data()
+                    if np.any(where_normalized[index]):
+                        assert ax_normalized[index].ndarray.has_data()
+                    ax_normalized[index].ndarray.clear()
 
         @pytest.mark.parametrize(
-            argnames="ax",
+            argnames="ax, transformation",
             argvalues=[
-                None,
-                na.plt.subplots(axis_cols="x", ncols=num_x)[1],
+                (None, None),
+                (na.plt.subplots(axis_cols="x", ncols=num_x)[1], na.transformations.Translation(0))
             ],
-        )
-        @pytest.mark.parametrize(
-            argnames="transformation",
-            argvalues=[
-                None,
-                na.transformations.Translation(0),
-            ]
         )
         class TestPltScatter(abc.ABC):
             def test_plt_scatter(
@@ -1277,6 +1264,16 @@ class AbstractTestAbstractArray(
                         where=where,
                         transformation=transformation,
                     )
+
+                if ax is None or ax is np._NoValue:
+                    ax_normalized = plt.gca()
+                else:
+                    ax_normalized = ax
+                ax_normalized = na.as_named_array(ax_normalized)
+
+                for index in ax_normalized.ndindex():
+                    assert ax_normalized[index].ndarray.has_data()
+                    ax_normalized[index].ndarray.clear()
 
         class TestPltPcolormesh:
 
@@ -1462,7 +1459,7 @@ class AbstractTestAbstractExplicitArrayCreation(
 
 
 class AbstractTestAbstractImplicitArray(
-    abc.ABC,
+    AbstractTestAbstractArray,
 ):
     def test_explicit(self, array: na.AbstractArray):
         result = array.explicit
