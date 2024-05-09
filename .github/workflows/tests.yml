@@ -47,6 +47,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - run: |
+          ls /Users/runner/work/named-arrays/named-arrays/named_arrays
       - uses: actions/setup-python@v5
       - name: Install deps
         run: |
