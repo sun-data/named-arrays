@@ -68,7 +68,7 @@ jobs:
           pattern: coverage_python${{matrix.python-version}}_${{ matrix.os }}*
       - name: Run coverage
         run: |
-          cd coverage
+          ls
           coverage combine .coverage*
           coverage xml
       - uses: codecov/codecov-action@v4
