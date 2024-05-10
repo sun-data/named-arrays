@@ -36,43 +36,10 @@ jobs:
         run: |
           pip install pytest pytest-cov
           pytest -c pytest.ini --cov=. --cov-report=xml  --splits 6 --group ${{matrix.group}}
-      - name: Upload coverage
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage_python${{matrix.python-version}}_${{ matrix.os }}_${{ matrix.group }}
-          path: .coverage
-
-  coverage:
-    needs: test
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: [ "3.12", ]
-        os: [
-          ubuntu-latest,
-          windows-latest,
-          macOS-latest,
-        ]
-    name: Python ${{ matrix.python-version }}, ${{ matrix.os }} coverage upload
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-      - name: Install deps
-        run: |
-          python -m pip install --upgrade pip
-          pip install pytest-cov
-      - name: Download coverage artifacts
-        uses: actions/download-artifact@v4
-        with:
-          pattern: coverage_python${{matrix.python-version}}_${{ matrix.os }}*
-          merge-multiple: true
-      - name: Combine coverage files
-        run: |
-          ls
-          coverage combine .coverage*
-          coverage xml
       - uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          fail_ci_if_error: true
+          file: coverage.xml
+          flags: unittests
+          env_vars: OS,PYTHON
+          name: codecov-umbrella
