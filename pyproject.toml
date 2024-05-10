@@ -26,6 +26,7 @@ dynamic = ["version"]
 [project.optional-dependencies]
 test = [
     "pytest",
+    "pytest-split",
 ]
 doc = [
     "pytest",

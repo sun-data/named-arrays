@@ -8,19 +8,19 @@ on:
   pull_request:
 
 jobs:
-  build:
+  test:
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        array-type: ["tests", "_scalars", "_vectors", "_matrices", "_functions"]
+        python-version: ["3.12", ]
         os: [
           ubuntu-latest,
           windows-latest,
           macOS-latest,
         ]
-        python-version: ["3.12", ]
-    name: ${{ matrix.array-type }}, ${{ matrix.os }}, Python ${{ matrix.python-version }} lint and test
+        group: [1, 2, 3, 4, 5, 6]
+    name: Python ${{ matrix.python-version }}, ${{ matrix.os }}, Group ${{matrix.group}} test
     steps:
       - uses: actions/checkout@v2
       - name: Set up Python ${{ matrix.python-version }}
@@ -35,9 +35,8 @@ jobs:
       - name: Test with pytest
         run: |
           pip install pytest pytest-cov
-          pytest -c pytest.ini --cov=. --cov-report=xml  named_arrays/${{ matrix.array-type }}
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
+          pytest -c pytest.ini --cov=. --cov-report=xml  --splits 6 --group ${{matrix.group}}
+      - uses: codecov/codecov-action@v3
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           file: coverage.xml
