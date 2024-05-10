@@ -168,8 +168,8 @@ class AbstractTestAbstractScalar(
             argvalues=[
                 (
                     dict(hx=11, hy=12),
-                    -10,
-                    10,
+                    -100,
+                    100,
                 ),
                 (
                     na.Cartesian2dVectorArray(
