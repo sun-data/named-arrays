@@ -22,9 +22,9 @@ jobs:
         group: [1, 2, 3, 4, 5, 6]
     name: Python ${{ matrix.python-version }}, ${{ matrix.os }}, Group ${{matrix.group}} test
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v2
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install package
@@ -36,10 +36,11 @@ jobs:
         run: |
           pip install pytest pytest-cov
           pytest -c pytest.ini --cov=. --cov-report=xml  --splits 6 --group ${{matrix.group}}
-      - uses: codecov/codecov-action@v4
+      - uses: codecov/codecov-action@v3
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           file: coverage.xml
           flags: unittests
           env_vars: OS,PYTHON
           name: codecov-umbrella
+          fail_ci_if_error: true
