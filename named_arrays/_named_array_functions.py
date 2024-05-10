@@ -359,9 +359,9 @@ def linspace(
 
         # Plot the results as a scatterplot
         fig, ax = plt.subplots()
-        na.plt.scatter(edges_x, edges_y, ax=ax, label="edges")
-        na.plt.scatter(centers_x, centers_y, ax=ax, label="centers")
-        ax.legend()
+        na.plt.scatter(edges_x, edges_y, ax=ax, label="edges");
+        na.plt.scatter(centers_x, centers_y, ax=ax, label="centers");
+        ax.legend();
     """
 
     if centers:
