@@ -1174,6 +1174,7 @@ class AbstractLinearSpace(
     axis: AxisT = dataclasses.MISSING
     num: NumT = 11
     endpoint: bool = True
+    centers: bool = False
 
     @property
     def explicit(self: Self) -> AbstractExplicitArray:
@@ -1182,7 +1183,8 @@ class AbstractLinearSpace(
             stop=self._attr_normalized("stop"),
             axis=self.axis,
             num=self.num,
-            endpoint=self.endpoint
+            endpoint=self.endpoint,
+            centers=self.centers,
         )
 
     @property

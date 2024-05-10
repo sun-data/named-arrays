@@ -307,6 +307,7 @@ def linspace(
         num: NumT = 50,
         endpoint: bool = True,
         dtype: None | type | np.dtype = None,
+        centers: bool = False,
 ) -> na.StartT | na.StopT | AxisT | NumT:
     """
     Create an array of evenly-spaced numbers between :attr:`start` and :attr:`stop`
@@ -325,6 +326,9 @@ def linspace(
         Flag controlling whether :attr:`stop` should be included in the sequence.
     dtype
         :class:`numpy.dtype` of the result
+    centers
+        Flag controlling whether the returned values should be on cell centers.
+        The default is to return values on cell edges.
 
     See Also
     --------
@@ -333,7 +337,42 @@ def linspace(
     :class:`named_arrays.ScalarLinearSpace` : Corresponding implicit scalar array.
 
     :class:`named_arrays.UncertainScalarLinearSpace`: Corresponding implicit uncertain scalar array.
+
+    Examples
+    --------
+
+    Compare the points returned using ``centers=False`` to those returned
+    using ``centers=True``.
+
+    .. jupyter-execute::
+
+        import named_arrays as na
+        import matplotlib.pyplot as plt
+
+        # Define an array of cell edges
+        edges_x = na.linspace(0, 1, axis="x", num=11)
+        edges_y = na.linspace(0, 1, axis="y", num=11)
+
+        # Define an array of cell centers
+        centers_x = na.linspace(0, 1, axis="x", num=10, centers=True)
+        centers_y = na.linspace(0, 1, axis="y", num=10, centers=True)
+
+        # Plot the results as a scatterplot
+        fig, ax = plt.subplots()
+        na.plt.scatter(edges_x, edges_y, ax=ax, label="edges")
+        na.plt.scatter(centers_x, centers_y, ax=ax, label="centers")
+        ax.legend()
     """
+
+    if centers:
+        if not endpoint:    # pragma: nocover
+            raise ValueError(
+                "if `centers` is `True`, then `endpoint` must be `False`"
+            )
+        step = (stop - start) / num
+        start = start + step / 2
+        stop = stop - step / 2
+
     return np.linspace(
         start=na.as_named_array(start),
         stop=stop,
