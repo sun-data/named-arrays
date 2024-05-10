@@ -66,10 +66,15 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           pattern: coverage_python${{matrix.python-version}}_${{ matrix.os }}*
-      - name: Run coverage
+      - name: If not Windows, upload coverage
+        if: runner.os != 'Windows'
         run: |
-          cd coverage*
-          coverage combine .coverage*
+          coverage combine coverage*/.coverage*
+          coverage xml
+      - name: If Windows, upload coverage
+        if: runner.os == 'Windows'
+        run: |
+          coverage combine coverage*\.coverage*
           coverage xml
       - uses: codecov/codecov-action@v4
         with:
