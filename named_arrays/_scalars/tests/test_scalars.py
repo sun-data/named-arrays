@@ -994,7 +994,7 @@ class AbstractTestAbstractScalarArray(
                     na.linspace(0, 1, axis="x", num=_num_x) > 0.5,
                 ),
                 (
-                    na.linspace(1, 2, axis="x", num=_num_x),
+                    na.linspace(1, 2, axis="x", num=_num_x, endpoint=False, centers=True),
                     5,
                     True,
                 )
