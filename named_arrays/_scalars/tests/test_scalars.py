@@ -994,7 +994,7 @@ class AbstractTestAbstractScalarArray(
                     na.linspace(0, 1, axis="x", num=_num_x) > 0.5,
                 ),
                 (
-                    na.linspace(1, 2, axis="x", num=_num_x),
+                    na.linspace(1, 2, axis="x", num=_num_x, endpoint=False, centers=True),
                     5,
                     True,
                 )
@@ -1380,7 +1380,12 @@ def _scalar_linear_spaces():
         na.ScalarArray(10 * np.random.random(_num_x) + 1, axes=('x', )),
     ]
     units = [None, u.mm]
+    nums = [_num_y]
     endpoints = [
+        False,
+        True,
+    ]
+    centers = [
         False,
         True,
     ]
@@ -1389,9 +1394,15 @@ def _scalar_linear_spaces():
             start=start << unit if unit is not None else start,
             stop=stop << unit if unit is not None else stop,
             axis='y',
-            num=_num_y,
-            endpoint=endpoint
-        ) for start in starts for stop in stops for unit in units for endpoint in endpoints
+            num=num,
+            endpoint=endpoint,
+            centers=center,
+        )
+        for start in starts
+        for stop in stops
+        for unit in units
+        for num in nums
+        for endpoint, center in zip(endpoints, centers)
     ]
 
 

@@ -1189,10 +1189,15 @@ class AbstractLinearSpace(
 
     @property
     def step(self: Self) -> AbstractArray:
-        if self.endpoint:
-            return self.range / (self.num - 1)
+        if self.num == 1:
+            return self.range
         else:
-            return self.range / self.num
+            num = self.num
+            if self.endpoint:
+                num = num - 1
+            if self.centers:
+                num = num - 1
+            return self.range / num
 
 
 def strata(a: AbstractArray) -> AbstractArray:
@@ -1251,6 +1256,7 @@ class AbstractStratifiedRandomSpace(
     AbstractRandomMixin,
     AbstractLinearSpace[StartT, StopT, AxisT, NumT],
 ):
+    centers: bool = True
     seed: None | int = None
 
     @property
@@ -1276,6 +1282,7 @@ class AbstractStratifiedRandomSpace(
             num=self.num,
             endpoint=self.endpoint,
             axis=self.axis,
+            centers=self.centers,
         )
 
 

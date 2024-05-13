@@ -365,11 +365,10 @@ def linspace(
     """
 
     if centers:
-        if not endpoint:    # pragma: nocover
-            raise ValueError(
-                "if `centers` is `True`, then `endpoint` must be `False`"
-            )
-        step = (stop - start) / num
+        if endpoint:
+            step = (stop - start) / (num - 1)
+        else:
+            step = (stop - start) / num
         start = start + step / 2
         stop = stop - step / 2
 
