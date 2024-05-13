@@ -1194,9 +1194,9 @@ class AbstractLinearSpace(
         else:
             num = self.num
             if self.endpoint:
-                num -= 1
+                num = num - 1
             if self.centers:
-                num -= 1
+                num = num - 1
             return self.range / num
 
 
