@@ -1401,7 +1401,8 @@ def _scalar_linear_spaces():
         for start in starts
         for stop in stops
         for unit in units
-        for num, endpoint, center in zip(nums, endpoints, centers)
+        for num in nums
+        for endpoint, center in zip(endpoints, centers)
     ]
 
 
