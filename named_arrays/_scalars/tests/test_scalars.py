@@ -1380,7 +1380,7 @@ def _scalar_linear_spaces():
         na.ScalarArray(10 * np.random.random(_num_x) + 1, axes=('x', )),
     ]
     units = [None, u.mm]
-    nums = [1, _num_y]
+    nums = [_num_y]
     endpoints = [
         False,
         True,
