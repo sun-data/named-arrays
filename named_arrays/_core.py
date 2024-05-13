@@ -1282,6 +1282,7 @@ class AbstractStratifiedRandomSpace(
             num=self.num,
             endpoint=self.endpoint,
             axis=self.axis,
+            centers=self.centers,
         )
 
 
