@@ -58,6 +58,45 @@ class AbstractCartesian2dVectorArray(
     def type_matrix(self) -> Type[na.Cartesian2dMatrixArray]:
         return na.Cartesian2dMatrixArray
 
+    def area(self, axes: tuple[str, str]) -> na.AbstractScalar:
+        """
+        The area of each cell formed by interpreting the array values
+        as vertices of the cell.
+        Returns a scalar with one less element along each axis in `axes`.
+
+        Parameters
+        ----------
+        axes
+            The two axes along which to compute the area.
+        """
+        if not set(axes).issubset(self.shape):
+            raise ValueError(
+                f"{axes=} should be a subset of {self.shape=}."
+            )
+
+        a1, a2 = axes
+
+        slices = [
+            {a1: slice(None, ~0), a2: slice(None, ~0)},
+            {a1: slice(+1, None), a2: slice(None, ~0)},
+            {a1: slice(+1, None), a2: slice(+1, None)},
+            {a1: slice(None, ~0), a2: slice(+1, None)},
+        ]
+
+        array = self.broadcasted
+        x = array.x
+        y = array.y
+
+        x = [x[s] for s in slices]
+        y = [y[s] for s in slices]
+
+        result = 0
+        n = len(slices)
+        for i in range(n):
+            result = result + y[i] * (x[i - 1] - x[(i + 1) % n])
+
+        return result / 2
+
 
 @dataclasses.dataclass(eq=False, repr=False)
 class Cartesian2dVectorArray(
@@ -149,7 +188,13 @@ class Cartesian2dVectorLinearSpace(
     AbstractCartesian2dVectorSpace,
     na.AbstractCartesianVectorLinearSpace,
 ):
-    pass
+    def area(self, axes: tuple[str, str]) -> na.AbstractScalar:
+        axes_self = self.axes
+        if isinstance(axes_self, self.type_abstract):
+            if set(axes) == set(axes_self.components.values()):
+                step = self.step
+                return step.x * step.y
+        return super().area(axes=axes)
 
 
 @dataclasses.dataclass(eq=False, repr=False)
