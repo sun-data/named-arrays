@@ -194,6 +194,35 @@ class AbstractTestAbstractCartesian2dVectorArray(
         ):
             pass
 
+    @pytest.mark.parametrize(
+        argnames="axes",
+        argvalues=[
+            ("x",),
+            ("x", "y"),
+        ],
+    )
+    def test_area(
+        self,
+        array: na.AbstractCartesian2dVectorArray,
+        axes: tuple[str, str],
+    ):
+        if not set(axes).issubset(array.shape):
+            with pytest.raises(ValueError):
+                array.area(axes)
+            return
+
+        if len(axes) != 2:
+            with pytest.raises(ValueError):
+                array.area(axes)
+            return
+
+        result = array.area(axes=axes)
+
+        sh = array.shape
+        shape_expected = {ax: sh[ax] - 1 if ax in axes else sh[ax] for ax in sh}
+        assert not result.shape or result.shape == shape_expected
+        assert np.allclose(result, array.explicit.area(axes=axes))
+
 
 @pytest.mark.parametrize('array', _cartesian2d_arrays())
 class TestCartesian2dVectorArray(
