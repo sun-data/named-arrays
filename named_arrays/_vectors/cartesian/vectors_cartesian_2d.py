@@ -189,9 +189,9 @@ class Cartesian2dVectorLinearSpace(
     na.AbstractCartesianVectorLinearSpace,
 ):
     def area(self, axes: tuple[str, str]) -> na.AbstractScalar:
-        axes_self = self.axes
-        if isinstance(axes_self, self.type_abstract):
-            if set(axes) == set(axes_self.components.values()):
+        axis = self.axis
+        if isinstance(axis, self.type_abstract):
+            if set(axes) == set(axis.components.values()):
                 step = self.step
                 return step.x * step.y
         return super().area(axes=axes)

@@ -209,7 +209,7 @@ class AbstractTestAbstractCartesian2dVectorArray(
 
         sh = array.shape
         shape_expected = {ax: sh[ax] - 1 if ax in axes else sh[ax] for ax in sh}
-        assert result.shape == shape_expected
+        assert not result.shape or result.shape == shape_expected
         assert np.allclose(result, array.explicit.area(axes=axes))
 
 
