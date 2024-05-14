@@ -194,13 +194,24 @@ class AbstractTestAbstractCartesian2dVectorArray(
         ):
             pass
 
-    @pytest.mark.parametrize("axes", [("x", "y")])
+    @pytest.mark.parametrize(
+        argnames="axes",
+        argvalues=[
+            ("x",),
+            ("x", "y"),
+        ],
+    )
     def test_area(
         self,
         array: na.AbstractCartesian2dVectorArray,
         axes: tuple[str, str],
     ):
         if not set(axes).issubset(array.shape):
+            with pytest.raises(ValueError):
+                array.area(axes)
+            return
+
+        if len(axes) != 2:
             with pytest.raises(ValueError):
                 array.area(axes)
             return
