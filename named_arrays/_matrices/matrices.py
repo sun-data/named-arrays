@@ -1,9 +1,8 @@
 from __future__ import annotations
-from typing import Type, Self
+from typing import Type
 import abc
 import dataclasses
 import named_arrays as na
-import numpy as np
 
 __all__ = [
     'AbstractMatrixArray',
