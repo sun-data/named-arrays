@@ -148,18 +148,6 @@ class AbstractTestAbstractScalar(
             assert np.all(result == result_out)
             assert result_out is out
 
-    def test_interp_linear_identity(
-            self,
-            array: na.AbstractArray,
-    ):
-        if np.issubdtype(array.dtype, bool):
-            with pytest.raises(TypeError):
-                item = array.indices
-                array.interp_linear(item)
-            return
-
-        super().test_interp_linear_identity(array=array)
-
     class TestNamedArrayFunctions(
         tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions,
     ):
