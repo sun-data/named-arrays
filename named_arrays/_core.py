@@ -779,8 +779,8 @@ class AbstractArray(
             y0 = self._interp_linear_recursive(item=item, item_base=item_base_0, )
             y1 = self._interp_linear_recursive(item=item, item_base=item_base_1, )
         else:
-            y0 = self[item_base_0]
-            y1 = self[item_base_1]
+            y0 = self[item_base_0].astype(float)
+            y1 = self[item_base_1].astype(float)
 
         result = y0 + (x - x0) * (y1 - y0)
         return result
