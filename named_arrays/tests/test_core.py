@@ -976,7 +976,13 @@ class AbstractTestAbstractArray(
             axis: str,
         ):
             if not array.shape:
-                return
+                with pytest.raises(ValueError):
+                    np.repeat(
+                        a=array,
+                        repeats=repeats,
+                        axis=axis,
+                    )
+
             result = np.repeat(
                 a=array,
                 repeats=repeats,
