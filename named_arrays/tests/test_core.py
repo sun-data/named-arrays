@@ -982,6 +982,7 @@ class AbstractTestAbstractArray(
                         repeats=repeats,
                         axis=axis,
                     )
+                return
 
             result = np.repeat(
                 a=array,
