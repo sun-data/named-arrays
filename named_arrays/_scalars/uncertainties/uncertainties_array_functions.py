@@ -828,3 +828,26 @@ def convolve(
         mode: str = 'full',
 ) -> na.UncertainScalarArray:
     raise ValueError("`numpy.convolve` is not supported for instances of `named_arrays.AbstractUncertainScalarArray`")
+
+
+@implements(np.repeat)
+def repeat(
+    a: na.AbstractUncertainScalarArray,
+    repeats: int | na.AbstractScalarArray,
+    axis: str,
+) -> na.UncertainScalarArray:
+
+    a = a.broadcasted
+
+    return a.type_explicit(
+        nominal=np.repeat(
+            a=a.nominal,
+            repeats=repeats,
+            axis=axis,
+        ),
+        distribution=np.repeat(
+            a=a.distribution,
+            repeats=repeats,
+            axis=axis,
+        )
+    )
