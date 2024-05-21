@@ -806,3 +806,23 @@ def nan_to_num(
         if not isinstance(x, na.AbstractExplicitArray):
             raise ValueError("can't write to an array that is not an instance of `named_array.AbstractExplictArray`")
         return x
+
+
+@implements(np.repeat)
+def repeat(
+    a: na.AbstractVectorArray,
+    repeats: int | na.AbstractScalarArray,
+    axis: str,
+) -> na.AbstractExplicitVectorArray:
+
+    components = a.broadcasted.components
+
+    components_result = dict()
+    for c in components:
+        components_result[c] = np.repeat(
+            a=components[c],
+            repeats=repeats,
+            axis=axis,
+        )
+
+    return a.type_explicit.from_components(components_result)

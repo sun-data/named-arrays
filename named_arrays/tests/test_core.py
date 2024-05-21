@@ -956,6 +956,41 @@ class AbstractTestAbstractArray(
         def test_convolve(self, array: na.AbstractArray, v: na.AbstractArray, mode: str):
             pass
 
+        @pytest.mark.parametrize(
+            argnames="repeats",
+            argvalues=[
+                2,
+                na.random.poisson(2, shape_random=dict(y=num_y))
+            ]
+        )
+        @pytest.mark.parametrize(
+            argnames="axis",
+            argvalues=[
+                "y",
+            ]
+        )
+        def test_repeat(
+            self,
+            array: na.AbstractArray,
+            repeats: int | na.AbstractScalarArray,
+            axis: str,
+        ):
+            if not array.shape:
+                return
+            result = np.repeat(
+                a=array,
+                repeats=repeats,
+                axis=axis,
+            )
+
+            repeats_ = na.broadcast_to(repeats, shape={axis: array.shape[axis]})
+            assert result.type_abstract == array.type_abstract
+            for ax in result.shape:
+                if ax == axis:
+                    assert result.shape[ax] == repeats_.sum()
+                else:
+                    assert result.shape[ax] == array.shape[ax]
+
     @pytest.mark.parametrize(
         argnames='shape',
         argvalues=[

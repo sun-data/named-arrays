@@ -878,3 +878,27 @@ def convolve(
         ndarray=result_ndarray,
         axes=tuple(shape_broadcasted.keys()),
     )
+
+
+@implements(np.repeat)
+def repeat(
+    a: na.AbstractScalarArray,
+    repeats: int | na.AbstractScalarArray,
+    axis: str,
+) -> na.ScalarArray:
+
+    if axis not in a.axes:
+        raise ValueError(
+            f"{axis=} must be a member of {a.axes=}"
+        )
+
+    repeats = na.as_named_array(repeats)
+
+    return a.type_explicit(
+        ndarray=np.repeat(
+            a=a.ndarray,
+            repeats=repeats.ndarray,
+            axis=a.axes.index(axis),
+        ),
+        axes=a.axes,
+    )

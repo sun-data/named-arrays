@@ -473,3 +473,26 @@ def allclose(
 @_implements(np.nonzero)
 def nonzero(a: na.AbstractFunctionArray) -> dict[str, na.AbstractArray]:
     return np.nonzero(a.outputs)
+
+
+@_implements(np.repeat)
+def repeat(
+    a: na.AbstractFunctionArray,
+    repeats: int | na.AbstractScalarArray,
+    axis: str,
+) -> na.FunctionArray:
+
+    a = a.broadcasted
+
+    return a.type_explicit(
+        inputs=np.repeat(
+            a=a.inputs,
+            repeats=repeats,
+            axis=axis,
+        ),
+        outputs=np.repeat(
+            a=a.outputs,
+            repeats=repeats,
+            axis=axis,
+        )
+    )
