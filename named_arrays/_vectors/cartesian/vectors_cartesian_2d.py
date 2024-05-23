@@ -58,23 +58,21 @@ class AbstractCartesian2dVectorArray(
     def type_matrix(self) -> Type[na.Cartesian2dMatrixArray]:
         return na.Cartesian2dMatrixArray
 
-    def area(self, axes: tuple[str, str]) -> na.AbstractScalar:
-        """
-        The area of each cell formed by interpreting the array values
-        as vertices of the cell.
-        Returns a scalar with one less element along each axis in `axes`.
+    def volume_cell(self, axis: None | tuple[str, str]) -> na.AbstractScalar:
 
-        Parameters
-        ----------
-        axes
-            The two axes along which to compute the area.
-        """
-        if not set(axes).issubset(self.shape):
+        if axis is None:
+            if self.ndim != 2:
+                raise ValueError(
+                    f"If {axis=}, then {self.ndim=} must be two-dimensional"
+                )
+            axis = self.axes
+
+        if not set(axis).issubset(self.shape):
             raise ValueError(
-                f"{axes=} should be a subset of {self.shape=}."
+                f"{axis=} should be a subset of {self.shape=}."
             )
 
-        a1, a2 = axes
+        a1, a2 = axis
 
         slices = [
             {a1: slice(None, ~0), a2: slice(None, ~0)},
@@ -86,6 +84,16 @@ class AbstractCartesian2dVectorArray(
         array = self.broadcasted
         x = array.x
         y = array.y
+
+        if not isinstance(x, na.AbstractScalar):
+            raise TypeError(
+                f"{type(self.x)=} must be a scalar."
+            )
+
+        if not isinstance(y, na.AbstractScalar):
+            raise TypeError(
+                f"{type(self.y)=} must be a scalar."
+            )
 
         x = [x[s] for s in slices]
         y = [y[s] for s in slices]

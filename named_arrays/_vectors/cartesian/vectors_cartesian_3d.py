@@ -61,6 +61,53 @@ class AbstractCartesian3dVectorArray(
     def explicit(self) -> Cartesian3dVectorArray:
         return super().explicit
 
+    def volume_cell(
+        self,
+        axis: None | tuple[str, str, str],
+    ) -> na.AbstractScalar:
+
+        shape = self.shape
+
+        if axis is None:
+            axis = tuple(shape)
+        else:
+            if not set(axis).issubset(shape):
+                raise ValueError(
+                    f"{axis=} should be a subset of {self.shape=}."
+                )
+
+        result = 0
+
+        ax, ay, az = axis
+
+        axes_face = [
+            (ax, ay, az),
+            (ay, az, ax),
+            (az, ax, ay),
+        ]
+
+        for axis_face in axes_face:
+            a1, a2, a3 = axis_face
+            face = [
+                {a1: slice(None, ~0), a2: slice(None, ~0)},
+                {a1: slice(+1, None), a2: slice(None, ~0)},
+                {a1: slice(+1, None), a2: slice(+1, None)},
+                {a1: slice(None, ~0), a2: slice(+1, None)},
+            ]
+            triangles = [
+                [face[0], face[1], face[2]],
+                [face[2], face[3], face[0]],
+            ]
+            for triangle in triangles:
+                v1, v2, v3 = triangle
+                vol = v1 @ v2.cross(v3)
+                result = result + vol[{a3: slice(None, ~0)}]
+                result = result - vol[{a3: slice(+1, None)}]
+
+        result = result / 6
+
+        return result
+
     def cross(
             self,
             other: AbstractCartesian3dVectorArray,
