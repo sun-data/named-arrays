@@ -842,7 +842,7 @@ def diff(
         a = vectors._normalize(a, prototype)
         prepend = vectors._normalize(prepend, prototype)
         append = vectors._normalize(append, prototype)
-    except vectors.VectorTypeError:
+    except vectors.VectorTypeError:     # pragma: nocover
         return NotImplemented
 
     components_a = a.broadcasted.components

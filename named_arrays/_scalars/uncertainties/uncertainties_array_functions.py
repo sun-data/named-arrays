@@ -866,7 +866,7 @@ def diff(
         a = uncertainties._normalize(a)
         prepend = uncertainties._normalize(prepend)
         append = uncertainties._normalize(append)
-    except uncertainties.UncertainScalarTypeError:
+    except uncertainties.UncertainScalarTypeError:  # pragma: nocover
         return NotImplemented
 
     a = a.broadcasted

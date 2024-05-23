@@ -635,7 +635,7 @@ class AbstractTestAbstractFunctionArray(
             array: na.AbstractArray,
             axis: str,
         ):
-            pass
+            pass    # pragma: nocover
 
     class TestNamedArrayFunctions(
         named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions

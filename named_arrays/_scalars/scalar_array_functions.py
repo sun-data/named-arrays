@@ -924,7 +924,7 @@ def diff(
         a = scalars._normalize(a)
         prepend = scalars._normalize(prepend) if prepend is not None else None
         append = scalars._normalize(append) if append is not None else None
-    except scalars.ScalarTypeError:
+    except scalars.ScalarTypeError: # pragma: nocover
         return NotImplemented
 
     shape_ends = {ax: 1 if axis in shape else shape[ax] for ax in shape}
