@@ -927,7 +927,7 @@ def diff(
     except scalars.ScalarTypeError: # pragma: nocover
         return NotImplemented
 
-    shape_ends = {ax: 1 if axis in shape else shape[ax] for ax in shape}
+    shape_ends = {ax: 1 if ax == axis else shape[ax] for ax in shape}
 
     kwargs = dict()
     if prepend is not None:

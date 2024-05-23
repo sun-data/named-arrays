@@ -526,7 +526,10 @@ def array_function_stack_like(
             break
 
     arrays = [
-        vector_prototype.type_explicit.from_scalar(a) if not isinstance(a, na.AbstractVectorArray) else a
+        vector_prototype.type_explicit.from_scalar(
+            scalar=a,
+            like=vector_prototype,
+        ) if not isinstance(a, na.AbstractVectorArray) else a
         for a in arrays
     ]
     arrays = [a.broadcasted for a in arrays]
