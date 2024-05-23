@@ -55,11 +55,11 @@ def _normalize(
             else:
                 raise VectorTypeError
         elif isinstance(a, na.AbstractScalar):
-            result = prototype.type_explicit.from_scalar(a)
+            result = prototype.type_explicit.from_scalar(a, like=prototype)
         else:
             raise VectorTypeError
     else:
-        result = prototype.type_explicit.from_scalar(a)
+        result = prototype.type_explicit.from_scalar(a, like=prototype)
 
     return result
 

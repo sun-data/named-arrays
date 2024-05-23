@@ -629,6 +629,14 @@ class AbstractTestAbstractFunctionArray(
         def test_convolve(self, array: na.AbstractFunctionArray, v: na.AbstractArray, mode: str):
             pass
 
+        @pytest.mark.skip
+        def test_diff_1st_order(
+            self,
+            array: na.AbstractArray,
+            axis: str,
+        ):
+            pass
+
     class TestNamedArrayFunctions(
         named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions
     ):

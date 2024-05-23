@@ -998,6 +998,25 @@ class AbstractTestAbstractArray(
                 else:
                     assert result.shape[ax] == array.shape[ax]
 
+        @pytest.mark.parametrize("axis", ["y"])
+        def test_diff_1st_order(
+            self,
+            array: na.AbstractArray,
+            axis: str,
+        ):
+            if axis not in array.shape:
+                with pytest.raises(ValueError):
+                    np.diff(array, axis=axis)
+                return
+
+            result = np.diff(array, axis=axis)
+
+            array_left = array[{axis: slice(1, None)}]
+            array_right = array[{axis: slice(None, ~0)}]
+            result_expected = array_left.astype(float) - array_right.astype(float)
+
+            assert np.all(np.abs(result.astype(float)) == np.abs(result_expected))
+
     @pytest.mark.parametrize(
         argnames='shape',
         argvalues=[

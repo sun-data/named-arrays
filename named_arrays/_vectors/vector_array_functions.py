@@ -826,3 +826,37 @@ def repeat(
         )
 
     return a.type_explicit.from_components(components_result)
+
+
+@implements(np.diff)
+def diff(
+    a: na.AbstractVectorArray,
+    axis: str,
+    n: int = 1,
+    prepend: None | float | na.AbstractScalar | na.AbstractVectorArray = None,
+    append: None | float | na.AbstractScalar | na.AbstractVectorArray = None,
+) -> na.AbstractExplicitVectorArray:
+
+    try:
+        prototype = vectors._prototype(a, prepend, append)
+        a = vectors._normalize(a, prototype)
+        prepend = vectors._normalize(prepend, prototype)
+        append = vectors._normalize(append, prototype)
+    except vectors.VectorTypeError:
+        return NotImplemented
+
+    components_a = a.broadcasted.components
+    components_prepend = prepend.components
+    components_append = append.components
+
+    result = dict()
+    for c in components_a:
+        result[c] = np.diff(
+            a=components_a[c],
+            axis=axis,
+            n=n,
+            prepend=components_prepend[c],
+            append=components_append[c],
+        )
+
+    return prototype.type_explicit.from_components(result)

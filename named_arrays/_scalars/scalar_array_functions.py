@@ -902,3 +902,45 @@ def repeat(
         ),
         axes=a.axes,
     )
+
+
+@implements(np.diff)
+def diff(
+    a: na.AbstractScalarArray,
+    axis: str,
+    n: int = 1,
+    prepend: None | float | na.AbstractScalarArray = None,
+    append: None | float | na.AbstractScalarArray = None,
+) -> na.ScalarArray:
+
+    shape = a.shape
+
+    if axis not in shape:
+        raise ValueError(
+            f"{axis=} must be a member of {a.axes=}"
+        )
+
+    try:
+        a = scalars._normalize(a)
+        prepend = scalars._normalize(prepend) if prepend is not None else None
+        append = scalars._normalize(append) if append is not None else None
+    except scalars.ScalarTypeError:
+        return NotImplemented
+
+    shape_ends = {ax: 1 if axis in shape else shape[ax] for ax in shape}
+
+    kwargs = dict()
+    if prepend is not None:
+        kwargs["prepend"] = na.broadcast_to(prepend, shape_ends).ndarray
+    if append is not None:
+        kwargs["append"] = na.broadcast_to(append, shape_ends).ndarray
+
+    return a.type_explicit(
+        ndarray=np.diff(
+            a=a.ndarray,
+            n=n,
+            axis=tuple(shape).index(axis),
+            **kwargs,
+        ),
+        axes=tuple(shape),
+    )

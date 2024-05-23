@@ -851,3 +851,39 @@ def repeat(
             axis=axis,
         )
     )
+
+
+@implements(np.diff)
+def diff(
+    a: na.AbstractUncertainScalarArray,
+    axis: str,
+    n: int = 1,
+    prepend: None | float | na.AbstractScalar = None,
+    append: None | float | na.AbstractScalar = None,
+) -> na.UncertainScalarArray:
+
+    try:
+        a = uncertainties._normalize(a)
+        prepend = uncertainties._normalize(prepend)
+        append = uncertainties._normalize(append)
+    except uncertainties.UncertainScalarTypeError:
+        return NotImplemented
+
+    a = a.broadcasted
+
+    return a.type_explicit(
+        nominal=np.diff(
+            a=na.as_named_array(a.nominal),
+            axis=axis,
+            n=n,
+            prepend=prepend.nominal,
+            append=append.nominal,
+        ),
+        distribution=np.diff(
+            a=na.as_named_array(a.distribution),
+            axis=axis,
+            n=n,
+            prepend=prepend.distribution,
+            append=append.distribution,
+        ),
+    )
