@@ -48,7 +48,6 @@ def weights(
         axis_output: None | Sequence[str] = None,
         method: Literal['multilinear', 'conservative'] = 'multilinear',
 ) -> na.AbstractArray:
-
     if axis_output is not None:
         return NotImplementedError
 
@@ -124,8 +123,6 @@ def regrid_from_weights(
     if axis_output is None:
         axis_output = axis_input
 
-
-    #broadcast values along any new input coordinate dimensions
     values_input_broadcasted_shape = na.broadcast_shapes(values_input.shape, shape_input)
     values_input = values_input.broadcast_to(values_input_broadcasted_shape)
     shape_input = values_input_broadcasted_shape
@@ -134,12 +131,12 @@ def regrid_from_weights(
     for key in shape_input:
         if key not in axis_input:
             shape_orthogonal[key] = shape_input[key]
+        else:
+            shape_orthogonal[key] = 1
 
     weights = weights.broadcast_to(shape_orthogonal)
 
-    for key in shape_input:
-        if key not in shape_output:
-            shape_output[key] = shape_input[key]
+    shape_output = shape_output | {k: shape_input[k] for k in shape_input if k not in shape_output}
 
     values_input_ndarray = values_input.ndarray
     interp_axes_input = tuple(list(shape_input).index(key) for key in axis_input)
