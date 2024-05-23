@@ -998,6 +998,51 @@ class AbstractTestAbstractArray(
                 else:
                     assert result.shape[ax] == array.shape[ax]
 
+        @pytest.mark.parametrize("axis", ["y"])
+        @pytest.mark.parametrize("prepend", [None, 0])
+        @pytest.mark.parametrize("append", [None, 0])
+        def test_diff_1st_order(
+            self,
+            array: na.AbstractArray,
+            axis: str,
+            prepend: None | float | na.AbstractArray,
+            append: None | float | na.AbstractArray,
+        ):
+            unit = na.unit_normalized(array)
+            if prepend is not None:
+                prepend = prepend * unit
+            if append is not None:
+                append = append * unit
+
+            kwargs = dict(
+                a=array,
+                axis=axis,
+                prepend=prepend,
+                append=append,
+            )
+
+            if axis not in array.shape:
+                with pytest.raises(ValueError):
+                    np.diff(**kwargs)
+                return
+
+            result = np.diff(**kwargs)
+
+            array_ = [array]
+            if prepend is not None:
+                prepend_ = na.as_named_array(prepend).add_axes(axis)
+                array_ = [prepend_] + array_
+            if append is not None:
+                append_ = na.as_named_array(append).add_axes(axis)
+                array_ = array_ + [append_]
+            array_ = np.concatenate(array_, axis=axis)
+
+            array_left = array_[{axis: slice(1, None)}]
+            array_right = array_[{axis: slice(None, ~0)}]
+            result_expected = array_left.astype(float) - array_right.astype(float)
+
+            assert np.all(np.abs(result.astype(float)) == np.abs(result_expected))
+
     @pytest.mark.parametrize(
         argnames='shape',
         argvalues=[
