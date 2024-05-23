@@ -6,6 +6,7 @@ import named_arrays as na
 import named_arrays.tests.test_core
 import named_arrays._vectors.tests.test_vectors
 from . import test_vectors_cartesian
+from . import test_vectors_cartesian_2d
 
 __all__ = [
     'AbstractTestAbstractCartesian3dVectorArray',
@@ -127,7 +128,7 @@ def _cartesian3d_items() -> list[na.AbstractArray | dict[str, int, slice, na.Abs
 
 
 class AbstractTestAbstractCartesian3dVectorArray(
-    test_vectors_cartesian.AbstractTestAbstractCartesianVectorArray,
+    test_vectors_cartesian_2d.AbstractTestAbstractCartesian2dVectorArray,
 ):
 
     def test_xy(self, array: na.AbstractCartesian3dVectorArray):

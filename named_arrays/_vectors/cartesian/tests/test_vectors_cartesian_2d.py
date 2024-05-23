@@ -125,6 +125,47 @@ class AbstractTestAbstractCartesian2dVectorArray(
 ):
 
     @pytest.mark.parametrize(
+        argnames="axis",
+        argvalues=[
+            None,
+            "y",
+            ("y", ),
+            ("x", "y"),
+        ]
+    )
+    def test_volume_cell(
+            self,
+            array: na.AbstractVectorArray,
+            axis: None | str | Sequence[str],
+    ):
+        axis_ = na.axis_normalized(array, axis)
+
+        if not set(axis_).issubset(array.axes):
+            with pytest.raises(ValueError):
+                array.volume_cell(axis)
+            return
+
+        if len(axis_) != len(array.components):
+            with pytest.raises(ValueError):
+                array.volume_cell(axis)
+            return
+
+        if len(array.components) != len(array.cartesian_nd.entries):
+            with pytest.raises(TypeError):
+                array.volume_cell(axis)
+            return
+
+        result = array.volume_cell(axis)
+
+        for ax in array.shape:
+            if ax in axis_:
+                assert result.shape[ax] == array.shape[ax] - 1
+            else:
+                assert result.shape[ax] == array.shape[ax]
+
+        assert isinstance(result, na.AbstractScalar)
+
+    @pytest.mark.parametrize(
         argnames='item',
         argvalues=_cartesian2d_items()
     )
@@ -193,35 +234,6 @@ class AbstractTestAbstractCartesian2dVectorArray(
             TestPercentileLikeFunctions,
         ):
             pass
-
-    @pytest.mark.parametrize(
-        argnames="axes",
-        argvalues=[
-            ("x",),
-            ("x", "y"),
-        ],
-    )
-    def test_area(
-        self,
-        array: na.AbstractCartesian2dVectorArray,
-        axes: tuple[str, str],
-    ):
-        if not set(axes).issubset(array.shape):
-            with pytest.raises(ValueError):
-                array.area(axes)
-            return
-
-        if len(axes) != 2:
-            with pytest.raises(ValueError):
-                array.area(axes)
-            return
-
-        result = array.area(axes=axes)
-
-        sh = array.shape
-        shape_expected = {ax: sh[ax] - 1 if ax in axes else sh[ax] for ax in sh}
-        assert not result.shape or result.shape == shape_expected
-        assert np.allclose(result, array.explicit.area(axes=axes))
 
 
 @pytest.mark.parametrize('array', _cartesian2d_arrays())

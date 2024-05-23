@@ -256,6 +256,24 @@ class AbstractTestAbstractArray(
             with pytest.raises(ValueError):
                 array.combine_axes(axes=axes, axis_new=axis_new)
 
+    @pytest.mark.parametrize(
+        argnames="axis",
+        argvalues=[
+            None,
+            "y",
+            ("y", ),
+            ("x", "y"),
+            ("x", "y", "z"),
+        ]
+    )
+    def test_volume_cell(
+        self,
+        array: na.AbstractArray,
+        axis: None | str | Sequence[str],
+    ):
+        with pytest.raises(NotImplementedError):
+            array.volume_cell(axis=axis)
+
     def test__repr__(self, array: na.AbstractArray):
         assert isinstance(repr(array), str)
 

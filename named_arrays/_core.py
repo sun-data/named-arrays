@@ -455,6 +455,29 @@ class AbstractArray(
         Array with the specified axes combined
         """
 
+    def volume_cell(self, axis: None | str | Sequence[str]) -> na.AbstractScalar:
+        """
+        Computes the n-dimensional volume of each cell formed by interpreting
+        this array as a logically-rectangular grid of vertices.
+
+        Note that this method is usually only used for sorted arrays.
+
+        If `self` is a scalar, this method computes the length of each edge,
+        and is equivalent to :func:`numpy.diff`.
+        If `self` is a 2d vector, this method computes the area of each
+        quadrilateral, and if `self` is a 3d vector, this method computes
+        the volume of each cuboid.
+
+        Parameters
+        ----------
+        axis
+            The axis or axes defining the logically-rectangular grid.
+            If `self` is a physical scalar, there should only be one axis.
+            If `self` is a physical vector, there should be one axis for each
+            component of the vector.
+        """
+        raise NotImplementedError
+
     def to_string(
             self,
             prefix: None | str = None,

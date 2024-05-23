@@ -111,6 +111,43 @@ class AbstractTestAbstractScalar(
         assert isinstance(length, (int, float, np.ndarray, na.AbstractScalar))
         assert np.all(length >= 0)
 
+    @pytest.mark.parametrize(
+        argnames="axis",
+        argvalues=[
+            None,
+            "y",
+            ("y", ),
+            ("x", "y"),
+        ]
+    )
+    def test_volume_cell(
+            self,
+            array: na.AbstractArray,
+            axis: None | str | Sequence[str],
+    ):
+        axis_ = na.axis_normalized(array, axis)
+
+        if not set(axis_).issubset(array.axes):
+            with pytest.raises(ValueError):
+                array.volume_cell(axis)
+            return
+
+        if len(axis_) != 1:
+            with pytest.raises(ValueError):
+                array.volume_cell(axis)
+            return
+
+        result = array.volume_cell(axis)
+
+        for ax in array.shape:
+            if ax in axis_:
+                assert result.shape[ax] == array.shape[ax] - 1
+            else:
+                assert result.shape[ax] == array.shape[ax]
+
+        assert isinstance(result, na.AbstractScalar)
+        assert np.all(result == np.diff(array, axis=axis_[0]))
+
     def test__bool__(self, array: na.AbstractScalarArray):
         if array.shape or array.unit is not None:
             with pytest.raises(

@@ -104,6 +104,18 @@ class AbstractScalar(
         else:
             raise ValueError('Can only compute length of numeric arrays')
 
+    def volume_cell(self, axis: None | str | tuple[str]) -> na.AbstractScalar:
+        if axis is None:
+            if self.ndim != 1:
+                raise ValueError(
+                    f"If {axis=}, then {self.ndim=} must be one dimensional"
+                )
+            axis = self.axes[0]
+        elif not isinstance(axis, str):
+            axis, = axis
+
+        return np.diff(self, axis=axis)
+
     def __array_matmul__(
             self: Self,
             x1: na.ArrayLike,
