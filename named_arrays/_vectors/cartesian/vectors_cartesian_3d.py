@@ -89,10 +89,10 @@ class AbstractCartesian3dVectorArray(
         for axis_face in axes_face:
             a1, a2, a3 = axis_face
             face = [
-                {a1: slice(None, ~0), a2: slice(None, ~0)},
-                {a1: slice(+1, None), a2: slice(None, ~0)},
-                {a1: slice(+1, None), a2: slice(+1, None)},
-                {a1: slice(None, ~0), a2: slice(+1, None)},
+                self[{a1: slice(None, ~0), a2: slice(None, ~0)}],
+                self[{a1: slice(+1, None), a2: slice(None, ~0)}],
+                self[{a1: slice(+1, None), a2: slice(+1, None)}],
+                self[{a1: slice(None, ~0), a2: slice(+1, None)}],
             ]
             triangles = [
                 [face[0], face[1], face[2]],
@@ -101,8 +101,8 @@ class AbstractCartesian3dVectorArray(
             for triangle in triangles:
                 v1, v2, v3 = triangle
                 vol = v1 @ v2.cross(v3)
-                result = result + vol[{a3: slice(None, ~0)}]
-                result = result - vol[{a3: slice(+1, None)}]
+                result = result - vol[{a3: slice(None, ~0)}]
+                result = result + vol[{a3: slice(+1, None)}]
 
         result = result / 6
 

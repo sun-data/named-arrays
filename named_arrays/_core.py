@@ -1212,15 +1212,13 @@ class AbstractLinearSpace(
 
     @property
     def step(self: Self) -> AbstractArray:
-        if self.num == 1:
-            return self.range
-        else:
-            num = self.num
-            if self.endpoint:
-                num = num - 1
-            if self.centers:
-                num = num - 1
-            return self.range / num
+        return na.step(
+            start=self.start,
+            stop=self.stop,
+            num=self.num,
+            endpoint=self.endpoint,
+            centers=self.centers,
+        )
 
 
 def strata(a: AbstractArray) -> AbstractArray:

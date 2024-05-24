@@ -1,5 +1,6 @@
 from __future__ import annotations
-from typing import TypeVar, Type, Generic
+from typing import TypeVar, Type, Generic, Sequence
+import math
 import numpy as np
 from typing_extensions import Self
 import abc
@@ -156,7 +157,26 @@ class Cartesian2dVectorUniformRandomSample(
     AbstractCartesian2dVectorRandomSample,
     na.AbstractCartesianVectorUniformRandomSample,
 ):
-    pass
+    def volume_cell(self, axis: None | Sequence[str]) -> na.AbstractScalar:
+
+        components = self.components
+
+        axis = na.axis_normalized(self, axis)
+        if len(axis) != len(components):
+            raise ValueError(
+                f"{axis=} must have exactly two elements"
+            )
+
+        shape_random = self.shape_random
+        if set(axis).issubset(shape_random):
+            start = na.asanyarray(self.start, like=self)
+            stop = na.asanyarray(self.stop, like=self)
+            result = (stop - start) / shape_random[axis]
+            result = math.prod(result.components.values())
+        else:
+            result = super().volume_cell(axis)
+
+        return result
 
 
 @dataclasses.dataclass(eq=False, repr=False)
@@ -196,13 +216,23 @@ class Cartesian2dVectorLinearSpace(
     AbstractCartesian2dVectorSpace,
     na.AbstractCartesianVectorLinearSpace,
 ):
-    def area(self, axes: tuple[str, str]) -> na.AbstractScalar:
-        axis = self.axis
-        if isinstance(axis, self.type_abstract):
-            if set(axes) == set(axis.components.values()):
-                step = self.step
-                return step.x * step.y
-        return super().area(axes=axes)
+    def volume_cell(self, axis: None | Sequence[str]) -> na.AbstractScalar:
+
+        components = self.components
+
+        axis = na.axis_normalized(self, axis)
+        if len(axis) != len(components):
+            raise ValueError(
+                f"{axis=} must have exactly two elements"
+            )
+
+        if set(axis).issubset(self.axis.components.values()):
+            result = self.step
+            result = math.prod(result.components.values())
+        else:
+            result = super().volume_cell(axis)
+
+        return result
 
 
 @dataclasses.dataclass(eq=False, repr=False)

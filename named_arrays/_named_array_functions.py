@@ -10,6 +10,7 @@ __all__ = [
     'asarray',
     'asanyarray',
     'arange',
+    'step',
     'linspace',
     'logspace',
     'geomspace',
@@ -300,6 +301,41 @@ def arange(
     )
 
 
+def step(
+    start: na.StartT,
+    stop: na.StopT,
+    num: NumT,
+    endpoint: bool = True,
+    centers: bool = False,
+) -> na.StartT | na.StopT | NumT:
+    """
+    Helper function to compute the step size for :func:`linspace`.
+
+    Parameters
+    ----------
+    start
+        The starting value of the sequence.
+    stop
+        The last value of the sequence, unless :attr:`endpoint` is :class:`False`.
+    num
+        The number of values in the sequence.
+    endpoint
+        Flag controlling whether :attr:`stop` should be included in the sequence.
+    centers
+        Flag controlling whether the returned values should be on cell centers.
+        The default is to return values on cell edges.
+    """
+    if num == 1:
+        result = stop - start
+    else:
+        if endpoint:
+            num = num - 1
+        if centers:
+            num = num + 1
+        result = (stop - start) / num
+    return result
+
+
 def linspace(
         start: na.StartT,
         stop: na.StopT,
@@ -365,12 +401,15 @@ def linspace(
     """
 
     if centers:
-        if endpoint:
-            step = (stop - start) / (num - 1)
-        else:
-            step = (stop - start) / num
-        start = start + step / 2
-        stop = stop - step / 2
+        halfstep = step(
+            start=start,
+            stop=stop,
+            num=num,
+            endpoint=endpoint,
+            centers=centers,
+        ) / 2
+        start = start + halfstep
+        stop = stop - halfstep
 
     return np.linspace(
         start=na.as_named_array(start),

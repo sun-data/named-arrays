@@ -994,7 +994,21 @@ class ScalarUniformRandomSample(
     AbstractScalarRandomSample,
     na.AbstractUniformRandomSample[ScalarStartT, ScalarStopT],
 ):
-    pass
+    def volume_cell(self, axis: None | str | tuple[str]) -> na.AbstractScalar:
+        axis = na.axis_normalized(self, axis)
+        if len(axis) != 1:
+            raise ValueError(
+                f"{axis=} must have exactly one element for scalars."
+            )
+        axis, = axis
+
+        shape_random = self.shape_random
+        if axis in shape_random:
+            result = (self.stop - self.start) / shape_random[axis]
+        else:
+            result = super().volume_cell(axis)
+
+        return result
 
 
 @dataclasses.dataclass(eq=False, repr=False)
@@ -1089,6 +1103,22 @@ class ScalarLinearSpace(
         wavelength = (1240 * u.eV * u.nm / photon_energy).to(u.nm)
         print(wavelength)
     """
+
+    def volume_cell(self, axis: None | str | tuple[str]) -> na.AbstractScalar:
+        axis = na.axis_normalized(self, axis)
+        if len(axis) != 1:
+            raise ValueError(
+                f"{axis=} must have exactly one element for scalars."
+            )
+        axis, = axis
+
+        if axis == self.axis:
+            result = self.step
+
+        else:
+            result = super().volume_cell(axis)
+
+        return result
 
     # def index(
     #         self: ScalarLinearSpaceT,

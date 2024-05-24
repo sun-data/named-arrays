@@ -156,14 +156,16 @@ class AbstractTestAbstractCartesian2dVectorArray(
             return
 
         result = array.volume_cell(axis)
+        shape_result = na.shape(result)
 
         for ax in array.shape:
-            if ax in axis_:
-                assert result.shape[ax] == array.shape[ax] - 1
-            else:
-                assert result.shape[ax] == array.shape[ax]
+            if ax in shape_result:
+                if ax in axis_:
+                    assert shape_result[ax] == array.shape[ax] - 1
+                else:
+                    assert shape_result[ax] == array.shape[ax]
 
-        assert isinstance(result, na.AbstractScalar)
+        assert isinstance(na.as_named_array(result), na.AbstractScalar)
 
     @pytest.mark.parametrize(
         argnames='item',
@@ -460,4 +462,31 @@ class TestCartesian2dVectorLinearSpace(
     named_arrays._vectors.tests.test_vectors.AbstractTestAbstractVectorArray,
     named_arrays.tests.test_core.AbstractTestAbstractArray,
 ):
-    pass
+    @pytest.mark.parametrize(
+        argnames="axis",
+        argvalues=[
+            None,
+            "y",
+            ("x", "y"),
+            ("x", "y", "z"),
+        ]
+    )
+    def test_volume_cell(
+            self,
+            array: na.AbstractVectorLinearSpace,
+            axis: None | str | Sequence[str],
+    ):
+        super().test_volume_cell(array=array, axis=axis)
+
+        axis_ = na.axis_normalized(array, axis)
+        if len(axis_) != len(array.components):
+            with pytest.raises(ValueError):
+                array.volume_cell(axis)
+            return
+
+        if not set(axis_).issubset(array.shape):
+            with pytest.raises(ValueError):
+                array.volume_cell(axis)
+            return
+
+        assert np.allclose(array.volume_cell(axis), array.explicit.volume_cell(axis))
