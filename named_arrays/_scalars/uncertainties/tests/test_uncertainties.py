@@ -1077,8 +1077,9 @@ class TestUncertainScalarLinearSpace(
         argnames="axis",
         argvalues=[
             None,
-            "y",
             "x",
+            "y",
+            "z",
         ]
     )
     def test_volume_cell(

@@ -466,6 +466,7 @@ class TestCartesian2dVectorLinearSpace(
         argnames="axis",
         argvalues=[
             None,
+            "x",
             "y",
             ("x", "y"),
             ("x", "y", "z"),

@@ -115,6 +115,7 @@ class AbstractTestAbstractScalar(
         argnames="axis",
         argvalues=[
             None,
+            "x",
             "y",
             ("y", ),
             ("x", "y"),

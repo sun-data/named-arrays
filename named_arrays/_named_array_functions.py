@@ -325,14 +325,11 @@ def step(
         Flag controlling whether the returned values should be on cell centers.
         The default is to return values on cell edges.
     """
-    if num == 1:
-        result = stop - start
-    else:
-        if endpoint:
-            num = num - 1
-        if centers:
-            num = num + 1
-        result = (stop - start) / num
+    if endpoint:
+        num = num - 1
+    if centers:
+        num = num + 1
+    result = (stop - start) / num
     return result
 
 

@@ -1065,7 +1065,7 @@ class AbstractTestAbstractArray(
         argnames='shape',
         argvalues=[
             dict(x=num_x, y=num_y),
-            dict(x=num_x, y=num_y, z=13),
+            dict(x=num_x, y=num_y, z=num_z),
         ]
     )
     def test_broadcast_to(

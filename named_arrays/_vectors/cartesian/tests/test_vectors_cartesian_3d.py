@@ -440,10 +440,10 @@ def _cartesian_3d_vector_linear_spaces() -> tuple[na.Cartesian3dVectorLinearSpac
         na.Cartesian3dVectorArray(5, 5, 5)
     )
     axes = (
-        na.Cartesian3dVectorArray('x', 'y', 'x'),
+        na.Cartesian3dVectorArray('x', 'y', 'z'),
     )
     nums = (
-        na.Cartesian3dVectorArray(_num_x, _num_y, _num_x),
+        na.Cartesian3dVectorArray(_num_x, _num_y, _num_z),
     )
     return tuple(
         na.Cartesian3dVectorLinearSpace(
