@@ -291,6 +291,7 @@ class TestCartesian2dVectorArrayCreation(
 
 
 class AbstractTestAbstractImplicitCartesian2dVectorArray(
+    AbstractTestAbstractCartesian2dVectorArray,
     test_vectors_cartesian.AbstractTestAbstractImplicitCartesianVectorArray,
 ):
     pass
@@ -469,6 +470,7 @@ class TestCartesian2dVectorLinearSpace(
             "x",
             "y",
             ("x", "y"),
+            ("x", "z"),
             ("x", "y", "z"),
         ]
     )

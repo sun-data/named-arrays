@@ -86,12 +86,12 @@ class AbstractCartesian2dVectorArray(
         x = array.x
         y = array.y
 
-        if not isinstance(x, na.AbstractScalar):
+        if not isinstance(x, na.AbstractScalar):    # pragma: nocover
             raise TypeError(
                 f"{type(self.x)=} must be a scalar."
             )
 
-        if not isinstance(y, na.AbstractScalar):
+        if not isinstance(y, na.AbstractScalar):    # pragma: nocover
             raise TypeError(
                 f"{type(self.y)=} must be a scalar."
             )
