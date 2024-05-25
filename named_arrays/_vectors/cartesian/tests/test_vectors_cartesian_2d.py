@@ -131,6 +131,7 @@ class AbstractTestAbstractCartesian2dVectorArray(
             "y",
             ("y", ),
             ("x", "y"),
+            ("y", 'z'),
         ]
     )
     def test_volume_cell(
@@ -358,7 +359,7 @@ def _cartesian_2d_normal_random_samples() -> list[na.Cartesian2dVectorNormalRand
         ),
     ]
     units = [None, u.mm]
-    shapes_random = [dict(y=_num_y)]
+    shapes_random = [dict(y=_num_y, z=_num_z)]
     return [
         na.Cartesian2dVectorNormalRandomSample(
             center=center << unit if unit is not None else center,
