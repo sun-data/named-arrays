@@ -323,7 +323,7 @@ def _cartesian_2d_uniform_random_samples() -> list[na.Cartesian2dVectorUniformRa
         ),
     ]
     units = [None, u.mm]
-    shapes_random = [dict(y=_num_y)]
+    shapes_random = [dict(y=_num_y, z=_num_z)]
     return [
         na.Cartesian2dVectorUniformRandomSample(
             start=start << unit if unit is not None else start,
@@ -359,7 +359,7 @@ def _cartesian_2d_normal_random_samples() -> list[na.Cartesian2dVectorNormalRand
         ),
     ]
     units = [None, u.mm]
-    shapes_random = [dict(y=_num_y, z=_num_z)]
+    shapes_random = [dict(y=_num_y)]
     return [
         na.Cartesian2dVectorNormalRandomSample(
             center=center << unit if unit is not None else center,
