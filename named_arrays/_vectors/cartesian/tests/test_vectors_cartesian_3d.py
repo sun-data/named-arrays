@@ -6,6 +6,7 @@ import named_arrays as na
 import named_arrays.tests.test_core
 import named_arrays._vectors.tests.test_vectors
 from . import test_vectors_cartesian
+from . import test_vectors_cartesian_2d
 
 __all__ = [
     'AbstractTestAbstractCartesian3dVectorArray',
@@ -127,7 +128,7 @@ def _cartesian3d_items() -> list[na.AbstractArray | dict[str, int, slice, na.Abs
 
 
 class AbstractTestAbstractCartesian3dVectorArray(
-    test_vectors_cartesian.AbstractTestAbstractCartesianVectorArray,
+    test_vectors_cartesian_2d.AbstractTestAbstractCartesian2dVectorArray,
 ):
 
     def test_xy(self, array: na.AbstractCartesian3dVectorArray):
@@ -439,10 +440,10 @@ def _cartesian_3d_vector_linear_spaces() -> tuple[na.Cartesian3dVectorLinearSpac
         na.Cartesian3dVectorArray(5, 5, 5)
     )
     axes = (
-        na.Cartesian3dVectorArray('x', 'y', 'x'),
+        na.Cartesian3dVectorArray('x', 'y', 'z'),
     )
     nums = (
-        na.Cartesian3dVectorArray(_num_x, _num_y, _num_x),
+        na.Cartesian3dVectorArray(_num_x, _num_y, _num_z),
     )
     return tuple(
         na.Cartesian3dVectorLinearSpace(

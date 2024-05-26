@@ -1,5 +1,6 @@
 from __future__ import annotations
-from typing import TypeVar, Type, Generic
+from typing import TypeVar, Type, Generic, Sequence
+import math
 import numpy as np
 from typing_extensions import Self
 import abc
@@ -58,23 +59,21 @@ class AbstractCartesian2dVectorArray(
     def type_matrix(self) -> Type[na.Cartesian2dMatrixArray]:
         return na.Cartesian2dMatrixArray
 
-    def area(self, axes: tuple[str, str]) -> na.AbstractScalar:
-        """
-        The area of each cell formed by interpreting the array values
-        as vertices of the cell.
-        Returns a scalar with one less element along each axis in `axes`.
+    def volume_cell(self, axis: None | tuple[str, str]) -> na.AbstractScalar:
 
-        Parameters
-        ----------
-        axes
-            The two axes along which to compute the area.
-        """
-        if not set(axes).issubset(self.shape):
+        if axis is None:
+            if self.ndim != 2:
+                raise ValueError(
+                    f"If {axis=}, then {self.ndim=} must be two-dimensional"
+                )
+            axis = self.axes
+
+        if not set(axis).issubset(self.shape):
             raise ValueError(
-                f"{axes=} should be a subset of {self.shape=}."
+                f"{axis=} should be a subset of {self.shape=}."
             )
 
-        a1, a2 = axes
+        a1, a2 = axis
 
         slices = [
             {a1: slice(None, ~0), a2: slice(None, ~0)},
@@ -86,6 +85,16 @@ class AbstractCartesian2dVectorArray(
         array = self.broadcasted
         x = array.x
         y = array.y
+
+        if not isinstance(x, na.AbstractScalar):    # pragma: nocover
+            raise TypeError(
+                f"{type(self.x)=} must be a scalar."
+            )
+
+        if not isinstance(y, na.AbstractScalar):    # pragma: nocover
+            raise TypeError(
+                f"{type(self.y)=} must be a scalar."
+            )
 
         x = [x[s] for s in slices]
         y = [y[s] for s in slices]
@@ -148,7 +157,27 @@ class Cartesian2dVectorUniformRandomSample(
     AbstractCartesian2dVectorRandomSample,
     na.AbstractCartesianVectorUniformRandomSample,
 ):
-    pass
+    def volume_cell(self, axis: None | Sequence[str]) -> na.AbstractScalar:
+
+        components = self.components
+
+        axis = na.axis_normalized(self, axis)
+        if len(axis) != len(components):
+            raise ValueError(
+                f"{axis=} must have exactly two elements"
+            )
+
+        shape_random = self.shape_random
+        if set(axis).issubset(shape_random):
+            start = na.asanyarray(self.start, like=self)
+            stop = na.asanyarray(self.stop, like=self)
+            span = stop - start
+            size = math.prod(shape_random[ax] for ax in axis)
+            result = math.prod(span.components.values()) / size
+        else:
+            result = super().volume_cell(axis)
+
+        return result
 
 
 @dataclasses.dataclass(eq=False, repr=False)
@@ -188,13 +217,23 @@ class Cartesian2dVectorLinearSpace(
     AbstractCartesian2dVectorSpace,
     na.AbstractCartesianVectorLinearSpace,
 ):
-    def area(self, axes: tuple[str, str]) -> na.AbstractScalar:
-        axis = self.axis
-        if isinstance(axis, self.type_abstract):
-            if set(axes) == set(axis.components.values()):
-                step = self.step
-                return step.x * step.y
-        return super().area(axes=axes)
+    def volume_cell(self, axis: None | Sequence[str]) -> na.AbstractScalar:
+
+        components = self.components
+
+        axis = na.axis_normalized(self, axis)
+        if len(axis) != len(components):
+            raise ValueError(
+                f"{axis=} must have exactly two elements"
+            )
+
+        if set(axis).issubset(self.axis.components.values()):
+            result = self.step
+            result = math.prod(result.components.values())
+        else:
+            result = super().volume_cell(axis)
+
+        return result
 
 
 @dataclasses.dataclass(eq=False, repr=False)

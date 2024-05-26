@@ -125,6 +125,50 @@ class AbstractTestAbstractCartesian2dVectorArray(
 ):
 
     @pytest.mark.parametrize(
+        argnames="axis",
+        argvalues=[
+            None,
+            "y",
+            ("y", ),
+            ("x", "y"),
+            ("y", 'z'),
+        ]
+    )
+    def test_volume_cell(
+            self,
+            array: na.AbstractVectorArray,
+            axis: None | str | Sequence[str],
+    ):
+        axis_ = na.axis_normalized(array, axis)
+
+        if not set(axis_).issubset(array.axes):
+            with pytest.raises(ValueError):
+                array.volume_cell(axis)
+            return
+
+        if len(axis_) != len(array.components):
+            with pytest.raises(ValueError):
+                array.volume_cell(axis)
+            return
+
+        if len(array.components) != len(array.cartesian_nd.entries):
+            with pytest.raises(TypeError):
+                array.volume_cell(axis)
+            return
+
+        result = array.volume_cell(axis)
+        shape_result = na.shape(result)
+
+        for ax in array.shape:
+            if ax in shape_result:
+                if ax in axis_:
+                    assert shape_result[ax] == array.shape[ax] - 1
+                else:
+                    assert shape_result[ax] == array.shape[ax]
+
+        assert isinstance(na.as_named_array(result), na.AbstractScalar)
+
+    @pytest.mark.parametrize(
         argnames='item',
         argvalues=_cartesian2d_items()
     )
@@ -194,35 +238,6 @@ class AbstractTestAbstractCartesian2dVectorArray(
         ):
             pass
 
-    @pytest.mark.parametrize(
-        argnames="axes",
-        argvalues=[
-            ("x",),
-            ("x", "y"),
-        ],
-    )
-    def test_area(
-        self,
-        array: na.AbstractCartesian2dVectorArray,
-        axes: tuple[str, str],
-    ):
-        if not set(axes).issubset(array.shape):
-            with pytest.raises(ValueError):
-                array.area(axes)
-            return
-
-        if len(axes) != 2:
-            with pytest.raises(ValueError):
-                array.area(axes)
-            return
-
-        result = array.area(axes=axes)
-
-        sh = array.shape
-        shape_expected = {ax: sh[ax] - 1 if ax in axes else sh[ax] for ax in sh}
-        assert not result.shape or result.shape == shape_expected
-        assert np.allclose(result, array.explicit.area(axes=axes))
-
 
 @pytest.mark.parametrize('array', _cartesian2d_arrays())
 class TestCartesian2dVectorArray(
@@ -277,6 +292,7 @@ class TestCartesian2dVectorArrayCreation(
 
 
 class AbstractTestAbstractImplicitCartesian2dVectorArray(
+    AbstractTestAbstractCartesian2dVectorArray,
     test_vectors_cartesian.AbstractTestAbstractImplicitCartesianVectorArray,
 ):
     pass
@@ -307,7 +323,7 @@ def _cartesian_2d_uniform_random_samples() -> list[na.Cartesian2dVectorUniformRa
         ),
     ]
     units = [None, u.mm]
-    shapes_random = [dict(y=_num_y)]
+    shapes_random = [dict(y=_num_y, z=_num_z)]
     return [
         na.Cartesian2dVectorUniformRandomSample(
             start=start << unit if unit is not None else start,
@@ -448,4 +464,33 @@ class TestCartesian2dVectorLinearSpace(
     named_arrays._vectors.tests.test_vectors.AbstractTestAbstractVectorArray,
     named_arrays.tests.test_core.AbstractTestAbstractArray,
 ):
-    pass
+    @pytest.mark.parametrize(
+        argnames="axis",
+        argvalues=[
+            None,
+            "x",
+            "y",
+            ("x", "y"),
+            ("x", "z"),
+            ("x", "y", "z"),
+        ]
+    )
+    def test_volume_cell(
+            self,
+            array: na.AbstractVectorLinearSpace,
+            axis: None | str | Sequence[str],
+    ):
+        super().test_volume_cell(array=array, axis=axis)
+
+        axis_ = na.axis_normalized(array, axis)
+        if len(axis_) != len(array.components):
+            with pytest.raises(ValueError):
+                array.volume_cell(axis)
+            return
+
+        if not set(axis_).issubset(array.shape):
+            with pytest.raises(ValueError):
+                array.volume_cell(axis)
+            return
+
+        assert np.allclose(array.volume_cell(axis), array.explicit.volume_cell(axis))

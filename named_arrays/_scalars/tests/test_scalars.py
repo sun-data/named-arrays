@@ -111,6 +111,45 @@ class AbstractTestAbstractScalar(
         assert isinstance(length, (int, float, np.ndarray, na.AbstractScalar))
         assert np.all(length >= 0)
 
+    @pytest.mark.parametrize(
+        argnames="axis",
+        argvalues=[
+            None,
+            "x",
+            "y",
+            ("y", ),
+            ("x", "y"),
+        ]
+    )
+    def test_volume_cell(
+            self,
+            array: na.AbstractArray,
+            axis: None | str | Sequence[str],
+    ):
+        axis_ = na.axis_normalized(array, axis)
+
+        if not set(axis_).issubset(array.axes):
+            with pytest.raises(ValueError):
+                array.volume_cell(axis)
+            return
+
+        if len(axis_) != 1:
+            with pytest.raises(ValueError):
+                array.volume_cell(axis)
+            return
+
+        result = array.volume_cell(axis)
+        shape_result = na.shape(result)
+
+        for ax in array.shape:
+            if ax in shape_result:
+                if ax in axis_:
+                    assert shape_result[ax] == array.shape[ax] - 1
+                else:
+                    assert shape_result[ax] == array.shape[ax]
+
+        assert isinstance(na.as_named_array(result), na.AbstractScalar)
+
     def test__bool__(self, array: na.AbstractScalarArray):
         if array.shape or array.unit is not None:
             with pytest.raises(
@@ -1401,7 +1440,35 @@ class TestScalarLinearSpace(
     tests.test_core.AbstractTestAbstractLinearSpace,
     tests.test_core.AbstractTestAbstractArray,
 ):
-    pass
+
+    @pytest.mark.parametrize(
+        argnames="axis",
+        argvalues=[
+            None,
+            "y",
+            "x",
+        ]
+    )
+    def test_volume_cell(
+        self,
+        array: na.ScalarLinearSpace,
+        axis: None | str | Sequence[str],
+    ):
+        super().test_volume_cell(array=array, axis=axis)
+
+        axis_ = na.axis_normalized(array, axis)
+        if len(axis_) != 1:
+            with pytest.raises(ValueError):
+                array.volume_cell(axis)
+            return
+
+        if not set(axis_).issubset(array.shape):
+            with pytest.raises(ValueError):
+                array.volume_cell(axis)
+            return
+
+        assert np.allclose(array.volume_cell(axis), array.explicit.volume_cell(axis))
+
 
 def _scalar_stratified_random_spaces():
     starts = [

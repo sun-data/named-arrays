@@ -824,6 +824,7 @@ class TestUncertainScalarArrayCreation(
 
 
 class AbstractTestAbstractImplicitUncertainScalarArray(
+    AbstractTestAbstractUncertainScalarArray,
     named_arrays.tests.test_core.AbstractTestAbstractImplicitArray,
 ):
     pass
@@ -832,14 +833,15 @@ class AbstractTestAbstractImplicitUncertainScalarArray(
 def _uniform_uncertain_scalar_arrays():
     arrays_exact = [
         4,
-        na.ScalarArray(4),
         na.ScalarUniformRandomSample(-4, 4, shape_random=dict(x=_num_x, y=_num_y)),
     ]
     widths = [
         1,
         na.ScalarLinearSpace(1, 2, axis='y', num=_num_y)
     ]
-    units = [1, u.mm]
+    units = [
+        1,
+    ]
     arrays = [
         na.UniformUncertainScalarArray(
             nominal=array_exact * unit,
@@ -856,16 +858,12 @@ def _uniform_uncertain_scalar_arrays():
 @pytest.mark.parametrize('array', _uniform_uncertain_scalar_arrays())
 class TestUniformUncertainScalarArray(
     AbstractTestAbstractImplicitUncertainScalarArray,
-    AbstractTestAbstractUncertainScalarArray,
-    named_arrays._scalars.tests.test_scalars.AbstractTestAbstractScalar,
-    named_arrays.tests.test_core.AbstractTestAbstractArray,
 ):
     pass
 
 
 def _normal_uncertain_scalar_arrays():
     arrays_exact = [
-        4,
         na.ScalarArray(4),
         na.ScalarUniformRandomSample(-4, 4, shape_random=dict(x=_num_x, y=_num_y)),
     ]
@@ -873,7 +871,9 @@ def _normal_uncertain_scalar_arrays():
         1,
         na.ScalarLinearSpace(1, 2, axis='y', num=_num_y)
     ]
-    units = [1, u.mm]
+    units = [
+        u.mm,
+    ]
     arrays = [
         na.NormalUncertainScalarArray(
             nominal=array_exact * unit,
@@ -912,15 +912,15 @@ def _uncertain_scalar_uniform_random_samples() -> tuple[na.UncertainScalarUnifor
     )
     stops = (
         2,
-        na.ScalarArray(2),
-        na.ScalarLinearSpace(2, 3, axis='x', num=_num_x),
         na.UniformUncertainScalarArray(
             na.ScalarLinearSpace(2, 3, axis='x', num=_num_x),
             width=0.1,
             num_distribution=_num_distribution,
         ),
     )
-    units = (1, u.mm)
+    units = [
+        u.mm,
+    ]
     arrays = tuple(
         na.UncertainScalarUniformRandomSample(
             start=start * unit,
@@ -952,8 +952,6 @@ def _uncertain_scalar_normal_random_samples() -> tuple[na.UncertainScalarNormalR
         ),
     )
     widths = (
-        2,
-        na.ScalarArray(2),
         na.ScalarLinearSpace(2, 3, axis='x', num=_num_x),
         na.UniformUncertainScalarArray(
             na.ScalarLinearSpace(2, 3, axis='x', num=_num_x),
@@ -961,7 +959,9 @@ def _uncertain_scalar_normal_random_samples() -> tuple[na.UncertainScalarNormalR
             num_distribution=_num_distribution,
         ),
     )
-    units = (1, u.mm)
+    units = [
+        1,
+    ]
     arrays = tuple(
         na.UncertainScalarNormalRandomSample(
             center=center * unit,
@@ -976,7 +976,7 @@ def _uncertain_scalar_normal_random_samples() -> tuple[na.UncertainScalarNormalR
 
 
 @pytest.mark.parametrize("array", _uncertain_scalar_normal_random_samples())
-class TestUncertainScalarNormalmRandomSample(
+class TestUncertainScalarNormalRandomSample(
     AbstractTestAbstractUncertainScalarRandomSample,
     named_arrays.tests.test_core.AbstractTestAbstractNormalRandomSample,
 ):
@@ -1046,7 +1046,6 @@ def _uncertain_scalar_linear_spaces() -> tuple[na.UncertainScalarLinearSpace, ..
     )
     stops = (
         2,
-        na.ScalarArray(2),
         na.ScalarLinearSpace(2, 3, axis='x', num=_num_x),
         na.UniformUncertainScalarArray(
             na.ScalarLinearSpace(2, 3, axis='x', num=_num_x),
@@ -1074,4 +1073,31 @@ class TestUncertainScalarLinearSpace(
     AbstractTestAbstractScalarSpace,
     named_arrays.tests.test_core.AbstractTestAbstractLinearSpace,
 ):
-    pass
+    @pytest.mark.parametrize(
+        argnames="axis",
+        argvalues=[
+            None,
+            "x",
+            "y",
+            "z",
+        ]
+    )
+    def test_volume_cell(
+            self,
+            array: na.ScalarLinearSpace,
+            axis: None | str | Sequence[str],
+    ):
+        super().test_volume_cell(array=array, axis=axis)
+
+        axis_ = na.axis_normalized(array, axis)
+        if len(axis_) != 1:
+            with pytest.raises(ValueError):
+                array.volume_cell(axis)
+            return
+
+        if not set(axis_).issubset(array.shape):
+            with pytest.raises(ValueError):
+                array.volume_cell(axis)
+            return
+
+        assert np.allclose(array.volume_cell(axis), array.explicit.volume_cell(axis))
