@@ -171,8 +171,9 @@ class Cartesian2dVectorUniformRandomSample(
         if set(axis).issubset(shape_random):
             start = na.asanyarray(self.start, like=self)
             stop = na.asanyarray(self.stop, like=self)
-            result = (stop - start) / shape_random[axis]
-            result = math.prod(result.components.values())
+            span = stop - start
+            size = math.prod(shape_random[ax] for ax in axis)
+            result = math.prod(span.components.values()) / size
         else:
             result = super().volume_cell(axis)
 
