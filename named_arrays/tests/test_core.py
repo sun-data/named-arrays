@@ -1473,6 +1473,25 @@ class AbstractTestAbstractArray(
                 assert np.allclose(na.value(result), expected)
                 assert out is result
 
+        class TestMeanFilter:
+            def test_mean_filter(self, array: na.AbstractArray):
+
+                size = dict(y=1)
+
+                kwargs = dict(
+                    array=array,
+                    size=size,
+                )
+
+                if not set(size).issubset(array.shape):
+                    with pytest.raises(ValueError):
+                        na.ndfilters.mean_filter(**kwargs)
+                    return
+
+                result = na.ndfilters.mean_filter(**kwargs)
+
+                assert np.all(result == array)
+
 
 class AbstractTestAbstractExplicitArray(
     AbstractTestAbstractArray,

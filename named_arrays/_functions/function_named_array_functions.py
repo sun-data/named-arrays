@@ -133,3 +133,36 @@ def pcolormesh(
         vmax=vmax,
         **kwargs,
     )
+
+
+@_implements(na.ndfilters.mean_filter)
+def mean_filter(
+    array: na.AbstractFunctionArray,
+    size: dict[str, int],
+    where: bool | na.AbstractFunctionArray,
+) -> na.FunctionArray:
+
+    if isinstance(array, na.AbstractFunctionArray):
+        pass
+    else:
+        return NotImplemented
+
+    if isinstance(where, bool):
+        where = na.FunctionArray(None, where)
+    elif isinstance(where, na.AbstractFunctionArray):
+        if np.all(where.inputs != array.inputs):
+            raise ValueError(
+                f"if `where` is an instance of `na.AbstractFunctionArray`, "
+                f"its inputs must match `array`."
+            )
+    else:
+        return NotImplemented
+
+    return array.type_explicit(
+        inputs=array.inputs.copy(),
+        outputs=na.ndfilters.mean_filter(
+            array=array.outputs,
+            size=size,
+            where=where.outputs,
+        )
+    )

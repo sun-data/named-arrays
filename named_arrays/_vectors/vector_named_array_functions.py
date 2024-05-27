@@ -514,3 +514,33 @@ def optimize_minimum_gradient_descent(
         f = function(x)
 
     raise ValueError("Max iterations exceeded")  # pragma: nocover
+
+
+@_implements(na.ndfilters.mean_filter)
+def mean_filter(
+    array: na.AbstractVectorArray,
+    size: dict[str, int],
+    where: na.AbstractVectorArray,
+) -> na.AbstractExplicitVectorArray:
+
+    try:
+        prototype = vectors._prototype(array, where)
+        array = vectors._normalize(array, prototype)
+        where = vectors._normalize(where, prototype)
+    except vectors.VectorTypeError:
+        return NotImplemented
+
+    components_array = array.broadcasted.components
+    components_where = where.broadcasted.components
+
+    result = dict()
+    for c in components_array:
+        result[c] = na.ndfilters.mean_filter(
+            array=components_array[c],
+            size=size,
+            where=components_where[c],
+        )
+
+    result = prototype.type_explicit.from_components(result)
+
+    return result

@@ -582,3 +582,33 @@ def optimize_root_secant(
         f0 = f1
 
     raise ValueError("Max iterations exceeded")
+
+
+@_implements(na.ndfilters.mean_filter)
+def mean_filter(
+    array: na.AbstractScalar,
+    size: dict[str, int],
+    where: na.AbstractScalar,
+) -> na.UncertainScalarArray:
+
+    try:
+        array = uncertainties._normalize(array)
+        where = uncertainties._normalize(where)
+    except uncertainties.UncertainScalarTypeError:
+        return NotImplemented
+
+    array = array.broadcasted
+    where = where.broadcasted
+
+    return array.type_explicit(
+        nominal=na.ndfilters.mean_filter(
+            array=array.nominal,
+            size=size,
+            where=where.nominal,
+        ),
+        distribution=na.ndfilters.mean_filter(
+            array=array.distribution,
+            size=size,
+            where=where.distribution,
+        )
+    )
