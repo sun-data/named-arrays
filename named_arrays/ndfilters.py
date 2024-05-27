@@ -35,11 +35,15 @@ def mean_filter(
 
     .. jupyter-execute::
 
+        import warnings
         import matplotlib.pyplot as plt
         import scipy.datasets
         import named_arrays as na
 
-        img = na.ScalarArray(scipy.datasets.ascent(), axes=("x", "y"))
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            img = na.ScalarArray(scipy.datasets.ascent(), axes=("x", "y"))
+
         img_filtered = na.ndfilters.mean_filter(img, size=dict(x=21, y=21))
 
         fig, axs = plt.subplots(
