@@ -37,7 +37,7 @@ def mean_filter(
 
         import matplotlib.pyplot as plt
         import scipy.datasets
-        import ndfilters
+        import named_arrays as na
 
         img = na.ScalarArray(scipy.datasets.ascent(), axes=("x", "y"))
         img_filtered = na.ndfilters.mean_filter(img, size=dict(x=21, y=21))
