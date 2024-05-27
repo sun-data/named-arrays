@@ -145,18 +145,18 @@ def mean_filter(
     if isinstance(array, na.AbstractFunctionArray):
         pass
     else:
-        return NotImplemented
+        return NotImplemented   # pragma: nocover
 
     if isinstance(where, bool):
         where = na.FunctionArray(None, where)
     elif isinstance(where, na.AbstractFunctionArray):
-        if np.all(where.inputs != array.inputs):
+        if np.all(where.inputs != array.inputs):    # pragma: nocover
             raise ValueError(
                 f"if `where` is an instance of `na.AbstractFunctionArray`, "
                 f"its inputs must match `array`."
             )
     else:
-        return NotImplemented
+        return NotImplemented   # pragma: nocover
 
     return array.type_explicit(
         inputs=array.inputs.copy(),

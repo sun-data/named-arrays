@@ -527,7 +527,7 @@ def mean_filter(
         prototype = vectors._prototype(array, where)
         array = vectors._normalize(array, prototype)
         where = vectors._normalize(where, prototype)
-    except vectors.VectorTypeError:
+    except vectors.VectorTypeError:     # pragma: nocover
         return NotImplemented
 
     components_array = array.broadcasted.components

@@ -934,7 +934,7 @@ def mean_filter(
     try:
         array = scalars._normalize(array)
         where = scalars._normalize(where)
-    except scalars.ScalarTypeError:
+    except scalars.ScalarTypeError:   # pragma: nocover
         return NotImplemented
 
     shape = na.shape_broadcasted(array, where)

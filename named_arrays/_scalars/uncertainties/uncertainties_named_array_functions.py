@@ -594,7 +594,7 @@ def mean_filter(
     try:
         array = uncertainties._normalize(array)
         where = uncertainties._normalize(where)
-    except uncertainties.UncertainScalarTypeError:
+    except uncertainties.UncertainScalarTypeError:  # pragma: nocover
         return NotImplemented
 
     array = array.broadcasted
