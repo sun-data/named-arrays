@@ -20,6 +20,7 @@ dependencies = [
     "matplotlib",
     "scipy",
     'astropy',
+    "ndfilters",
 ]
 dynamic = ["version"]
 
@@ -36,6 +37,7 @@ doc = [
     "ipykernel",
     "jupyter-sphinx",
     "sphinx-favicon",
+    "pooch",
 ]
 
 [project.urls]

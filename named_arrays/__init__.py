@@ -3,6 +3,7 @@ from . import random
 from . import plt
 from . import optimize
 from . import transformations
+from . import ndfilters
 from ._core import *
 from ._scalars.scalars import *
 from ._scalars.uncertainties.uncertainties import *

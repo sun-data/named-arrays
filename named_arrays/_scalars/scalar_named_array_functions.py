@@ -5,6 +5,7 @@ import matplotlib.axes
 import matplotlib.artist
 import matplotlib.pyplot as plt
 import astropy.units as u
+import ndfilters
 import named_arrays as na
 from . import scalars
 
@@ -921,3 +922,37 @@ def optimize_root_secant(
         f0 = f1
 
     raise ValueError("Max iterations exceeded")
+
+
+@_implements(na.ndfilters.mean_filter)
+def mean_filter(
+    array: na.AbstractScalarArray,
+    size: dict[str, int],
+    where: bool | na.AbstractScalarArray
+) -> na.ScalarArray:
+
+    try:
+        array = scalars._normalize(array)
+        where = scalars._normalize(where)
+    except scalars.ScalarTypeError:   # pragma: nocover
+        return NotImplemented
+
+    shape = na.shape_broadcasted(array, where)
+    axes = tuple(shape)
+    if not set(size).issubset(axes):
+        raise ValueError(
+            f"the keys in {size=} must be a subset of the keys in {shape=}."
+        )
+
+    array = array.broadcast_to(shape)
+    where = where.broadcast_to(shape)
+
+    return array.type_explicit(
+        ndarray=ndfilters.mean_filter(
+            array=array.ndarray,
+            size=tuple(size.values()),
+            axis=tuple(axes.index(ax) for ax in size),
+            where=where.ndarray,
+        ),
+        axes=axes,
+    )
