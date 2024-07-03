@@ -10,13 +10,13 @@ authors = [
 ]
 description = "Numpy arrays with labeled axes, similar to xarray but with support for uncertainties"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.9"
 classifiers = [
     "Programming Language :: Python :: 3",
 ]
 dependencies = [
     "typing_extensions",
-    "numpy",
+    "numpy<2",
     "matplotlib",
     "scipy",
     'astropy',
