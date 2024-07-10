@@ -160,7 +160,7 @@ def binomial(
     return na._named_array_function(
         func=binomial,
         n=n,
-        p=p,
+        p=na.as_named_array(p),
         shape_random=shape_random,
         seed=seed,
     )
