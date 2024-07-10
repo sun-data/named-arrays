@@ -9,6 +9,7 @@ __all__ = [
     "uniform",
     "normal",
     "poisson",
+    "binomial",
 ]
 
 
@@ -16,6 +17,8 @@ RandomLowT = TypeVar("RandomLowT", bound="float | complex | u.Quantity | na.Abst
 RandomHighT = TypeVar("RandomHighT", bound="float | complex | u.Quantity | na.AbstractArray")
 RandomCenterT = TypeVar("RandomCenterT", bound="float | complex | u.Quantity | na.AbstractArray")
 RandomWidthT = TypeVar("RandomWidthT", bound="float | complex | u.Quantity | na.AbstractArray")
+NumTrialsT = TypeVar("NumTrialsT", bound="int | na.AbstractArray")
+ProbabilityT = TypeVar("ProbabilityT", bound="float | na.AbstractArray")
 
 
 def uniform(
@@ -124,6 +127,40 @@ def poisson(
     return na._named_array_function(
         func=poisson,
         lam=na.as_named_array(lam),
+        shape_random=shape_random,
+        seed=seed,
+    )
+
+
+def binomial(
+    n: NumTrialsT,
+    p: ProbabilityT,
+    shape_random: None | dict[str, int] = None,
+    seed: None | int = None,
+) -> NumTrialsT | ProbabilityT:
+    """
+    Draw samples from a binomial distribution.
+
+    Parameters
+    ----------
+    n
+        The number of independent trials.
+    p
+        The probability of a trial being successful.
+    shape_random
+        Additional dimensions to be broadcast against ``n`` and ``p``.
+    seed
+        Optional seed for the random number generator,
+        can be provided for repeatability.
+
+    See Also
+    --------
+    :func:`numpy.random.binomial` : Equivalent numpy function
+    """
+    return na._named_array_function(
+        func=binomial,
+        n=n,
+        p=p,
         shape_random=shape_random,
         seed=seed,
     )

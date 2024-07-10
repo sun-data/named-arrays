@@ -26,6 +26,7 @@ RANDOM_FUNCTIONS = (
     na.random.uniform,
     na.random.normal,
     na.random.poisson,
+    na.random.binomial,
 )
 PLT_PLOT_LIKE_FUNCTIONS = (
     na.plt.plot,
