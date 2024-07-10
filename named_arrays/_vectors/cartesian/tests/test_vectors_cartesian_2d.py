@@ -73,7 +73,7 @@ def _cartesian2d_arrays_2():
     arrays_vector_x = [a * unit for a in arrays_vector_x for unit in units]
     arrays_vector_y = [
         8,
-        na.ScalarUniformRandomSample(-8, 8, shape_random=dict(y=_num_y, x=_num_x)),
+        na.random.binomial(10, .65, shape_random=dict(x=_num_x, y=_num_y)),
     ]
     arrays_vector_y = [a * unit for a in arrays_vector_y for unit in units]
     arrays_vector = [na.Cartesian2dVectorArray(x=ax, y=ay) for ax in arrays_vector_x for ay in arrays_vector_y]
