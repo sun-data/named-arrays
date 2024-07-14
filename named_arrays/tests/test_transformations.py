@@ -70,6 +70,13 @@ class AbstractTestAbstractTransformation(
     abc.ABC,
 ):
 
+    def test_shape(self, a: na.transformations.AbstractTransformation):
+        result = a.shape
+        assert isinstance(result, dict)
+        for k in result:
+            assert isinstance(k, str)
+            assert isinstance(result[k], int)
+
     @pytest.mark.parametrize(
         argnames="x",
         argvalues=[

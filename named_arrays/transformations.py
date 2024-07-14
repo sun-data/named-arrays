@@ -33,6 +33,11 @@ class AbstractTransformation(
     An interface for an arbitrary vector transform
     """
 
+    @property
+    @abc.abstractmethod
+    def shape(self) -> dict[str, int]:
+        """The shape of the transformation."""
+
     @abc.abstractmethod
     def __call__(
             self,
@@ -110,6 +115,11 @@ class IdentityTransformation(
     """
     The identity transformation just returns its inputs.
     """
+
+    @property
+    def shape(self) -> dict[str, int]:
+        return dict()
+
     def __call__(
         self,
         a: na.AbstractVectorArray,
@@ -137,6 +147,10 @@ class AbstractTranslation(
         """
         the vector representing the translation
         """
+
+    @property
+    def shape(self) -> dict[str, int]:
+        return self.vector.shape
 
     def __call__(self, a: na.AbstractVectorArray) -> na.AbstractVectorArray:
         return a + self.vector
@@ -243,6 +257,10 @@ class AbstractLinearTransformation(
         """
         the matrix representing the linear transformation
         """
+
+    @property
+    def shape(self) -> dict[str, int]:
+        return self.matrix.shape
 
     def __call__(self, a: na.AbstractVectorArray) -> na.AbstractVectorArray:
         return self.matrix @ a
@@ -399,6 +417,13 @@ class AbstractAffineTransformation(
         the translation component of this affine transformation
         """
 
+    @property
+    def shape(self) -> dict[str, int]:
+        return na.broadcast_shapes(
+            self.transformation_linear.shape,
+            self.translation.shape,
+        )
+
     def __call__(self, a: na.AbstractVectorArray) -> na.AbstractVectorArray:
         return self.translation(self.transformation_linear(a))
 
@@ -480,6 +505,10 @@ class AbstractTransformationList(
         flag controlling whether the transformation should be applied to the
         coordinates or the coordinate system
         """
+
+    @property
+    def shape(self) -> dict[str, int]:
+        return na.broadcast_shapes(*[t.shape for t in self.transformations])
 
     def __iter__(self) -> Iterator[AbstractTransformation]:
         if self.intrinsic:
