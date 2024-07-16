@@ -124,9 +124,9 @@ class AbstractCartesian3dVectorArray(
         c_ = c.length
 
         d0 = a_ * b_ * c_
-        d1 = (a @ b) * c
-        d2 = (a @ c) * b
-        d3 = (b @ c) * a
+        d1 = (a @ b) * c_
+        d2 = (a @ c) * b_
+        d3 = (b @ c) * a_
         denomerator = d0 + d1 + d2 + d3
 
         angle = 2 * np.arctan2(numerator, denomerator)
@@ -173,14 +173,14 @@ class AbstractCartesian3dVectorArray(
         Notes
         -----
         The solid angle :math:`\Omega` of a triangle formed by the vertices
-        :math:`\vec{a}`, :math:`\vec{b}`, and :math:`\vec{c} is given by
+        :math:`\vec{a}`, :math:`\vec{b}`, and :math:`\vec{c}` is given by
         :cite:t:`Eriksson1990` as
 
         .. math::
 
             \tan \left( \frac{1}{2} \Omega \right)
-                = \frac{\vec{a} \cdot (\vec{b} \cross \vec{c})}
-                    {a b c + (\vec{a} \cdot \vec{b}) c + (\vec{a} \cdot \vec{c}) b + (\vec[b] \cdot \vec{c}) a}.
+                = \frac{\vec{a} \cdot (\vec{b} \times \vec{c})}
+                    {a b c + (\vec{a} \cdot \vec{b}) c + (\vec{a} \cdot \vec{c}) b + (\vec{b} \cdot \vec{c}) a}.
 
         Each rectangular cell is decomposed into two triangles and then the
         solid angle of each triangle is computed.
