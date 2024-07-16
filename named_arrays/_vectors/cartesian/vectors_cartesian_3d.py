@@ -150,26 +150,6 @@ class AbstractCartesian3dVectorArray(
             If :obj:`None` (the default), :attr:`axes` is used and must have
             only two elements.
 
-        Examples
-        --------
-
-        Compute the solid angle of one octant.
-
-        .. jupyter-execute::
-
-            import named_arrays as na
-
-            # Define a set of four vectors
-            a = na.Cartesian3dVectorArray(
-                x=na.linspace(-1, 1, axis="x", num=2),
-                y=na.linspace(-1, 1, axis="y", num=2),
-                z=1,
-            )
-
-            # Compute the solid angle subtended by
-            # the four vectors
-            a.solid_angle_cell()
-
         Notes
         -----
         The solid angle :math:`\Omega` of a triangle formed by the vertices
