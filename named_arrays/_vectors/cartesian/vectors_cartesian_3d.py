@@ -171,7 +171,7 @@ class AbstractCartesian3dVectorArray(
         if axis is None:
             axis = tuple(shape)
         else:
-            if not set(axis).issubset(shape):
+            if not set(axis).issubset(shape):   # pragma: nocover
                 raise ValueError(
                     f"{axis=} should be a subset of {self.shape=}."
                 )
