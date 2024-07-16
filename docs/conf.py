@@ -46,11 +46,9 @@ autosummary_ignore_module_all = False
 # autoclass_content = 'both'
 autodoc_typehints = "description"
 
-# autosummary_filename_map = {
-#     'kgpy.optics.Surface': 'kgpy.optics.Surface_cls',
-# }
-
-# typehints_fully_qualified = True
+suppress_warnings = [
+    'autosummary.import_cycle',
+]
 
 graphviz_output_format = 'png'
 inheritance_graph_attrs = dict(rankdir='TB')
