@@ -147,6 +147,7 @@ class AbstractTestAbstractCartesian3dVectorArray(
         result = array.solid_angle_cell()
         assert isinstance(result, na.AbstractScalar)
         assert np.all(result >= 0)
+        assert result.unit.is_equivalent(u.sr)
 
     @pytest.mark.parametrize("array_2", _cartesian3d_arrays_2())
     def test_cross(

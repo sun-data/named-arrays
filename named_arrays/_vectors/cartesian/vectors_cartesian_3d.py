@@ -4,6 +4,7 @@ from typing_extensions import Self
 import abc
 import dataclasses
 import numpy as np
+import astropy.units as u
 import named_arrays as na
 
 __all__ = [
@@ -129,9 +130,15 @@ class AbstractCartesian3dVectorArray(
         d3 = (b @ c) * a_
         denomerator = d0 + d1 + d2 + d3
 
+        unit = numerator.unit
+
+        if unit is not None:
+            numerator = numerator.to(unit).value
+            denomerator = denomerator.to(unit).value
+
         angle = 2 * np.arctan2(numerator, denomerator)
 
-        return angle
+        return angle << u.sr
 
     def solid_angle_cell(
         self,
