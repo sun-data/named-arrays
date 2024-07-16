@@ -36,6 +36,7 @@ extensions = [
     'sphinx.ext.autosummary',
     'sphinx.ext.intersphinx',
     'sphinx.ext.inheritance_diagram',
+    'sphinxcontrib.bibtex',
     'jupyter_sphinx',
     'sphinx_favicon'
 ]
@@ -105,6 +106,10 @@ favicons = [
 
 # https://github.com/readthedocs/readthedocs.org/issues/2569
 master_doc = 'index'
+
+bibtex_bibfiles = ['refs.bib']
+bibtex_default_style = 'plain'
+bibtex_reference_style = 'author_year'
 
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3', None),
