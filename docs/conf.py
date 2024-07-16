@@ -36,6 +36,7 @@ extensions = [
     'sphinx.ext.autosummary',
     'sphinx.ext.intersphinx',
     'sphinx.ext.inheritance_diagram',
+    'sphinxcontrib.bibtex',
     'jupyter_sphinx',
     'sphinx_favicon'
 ]
@@ -45,11 +46,9 @@ autosummary_ignore_module_all = False
 # autoclass_content = 'both'
 autodoc_typehints = "description"
 
-# autosummary_filename_map = {
-#     'kgpy.optics.Surface': 'kgpy.optics.Surface_cls',
-# }
-
-# typehints_fully_qualified = True
+suppress_warnings = [
+    'autosummary.import_cycle',
+]
 
 graphviz_output_format = 'png'
 inheritance_graph_attrs = dict(rankdir='TB')
@@ -105,6 +104,10 @@ favicons = [
 
 # https://github.com/readthedocs/readthedocs.org/issues/2569
 master_doc = 'index'
+
+bibtex_bibfiles = ['refs.bib']
+bibtex_default_style = 'plain'
+bibtex_reference_style = 'author_year'
 
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3', None),

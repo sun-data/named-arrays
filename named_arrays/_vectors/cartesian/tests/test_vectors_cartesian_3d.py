@@ -134,6 +134,21 @@ class AbstractTestAbstractCartesian3dVectorArray(
     def test_xy(self, array: na.AbstractCartesian3dVectorArray):
         assert isinstance(array.xy, na.Cartesian2dVectorArray)
 
+    def test_solid_area_cell(
+        self,
+        array: na.AbstractCartesian3dVectorArray,
+    ):
+        for c in array.components:
+            component = na.as_named_array(array.components[c])
+            if not isinstance(component, na.AbstractScalar):
+                return
+        if array.ndim != 2:
+            return
+        result = array.solid_angle_cell()
+        assert isinstance(result, na.AbstractScalar)
+        assert np.all(result >= 0)
+        assert result.unit.is_equivalent(u.sr)
+
     @pytest.mark.parametrize("array_2", _cartesian3d_arrays_2())
     def test_cross(
             self,

@@ -3,6 +3,8 @@ from typing import TypeVar, Type, Generic
 from typing_extensions import Self
 import abc
 import dataclasses
+import numpy as np
+import astropy.units as u
 import named_arrays as na
 
 __all__ = [
@@ -107,6 +109,94 @@ class AbstractCartesian3dVectorArray(
         result = result / 6
 
         return result
+
+    @classmethod
+    def _sold_angle(
+        cls,
+        a: na.AbstractCartesian3dVectorArray,
+        b: na.AbstractCartesian3dVectorArray,
+        c: na.AbstractCartesian3dVectorArray,
+    ) -> na.ScalarLike:
+
+        numerator = a @ b.cross(c)
+
+        a_ = a.length
+        b_ = b.length
+        c_ = c.length
+
+        d0 = a_ * b_ * c_
+        d1 = (a @ b) * c_
+        d2 = (a @ c) * b_
+        d3 = (b @ c) * a_
+        denomerator = d0 + d1 + d2 + d3
+
+        unit = numerator.unit
+
+        if unit is not None:
+            numerator = numerator.to(unit).value
+            denomerator = denomerator.to(unit).value
+
+        angle = 2 * np.arctan2(numerator, denomerator)
+
+        return angle << u.sr
+
+    def solid_angle_cell(
+        self,
+        axis: None | tuple[str, str] = None,
+    ) -> na.AbstractScalar:
+        r"""
+        Compute the solid angle of each cell formed by interpreting this
+        array as a logically-rectangular 2D grid of vertices.
+
+        Note that this method is usually only used for sorted arrays
+
+        Parameters
+        ----------
+        axis
+            The two axes defining the logically-rectangular 2D grid.
+            If :obj:`None` (the default), :attr:`axes` is used and must have
+            only two elements.
+
+        Notes
+        -----
+        The solid angle :math:`\Omega` of a triangle formed by the vertices
+        :math:`\vec{a}`, :math:`\vec{b}`, and :math:`\vec{c}` is given by
+        :cite:t:`Eriksson1990` as
+
+        .. math::
+
+            \tan \left( \frac{1}{2} \Omega \right)
+                = \frac{\vec{a} \cdot (\vec{b} \times \vec{c})}
+                    {a b c + (\vec{a} \cdot \vec{b}) c + (\vec{a} \cdot \vec{c}) b + (\vec{b} \cdot \vec{c}) a}.
+
+        Each rectangular cell is decomposed into two triangles and then the
+        solid angle of each triangle is computed.
+        """
+
+        shape = self.shape
+
+        if axis is None:
+            axis = tuple(shape)
+        else:
+            if not set(axis).issubset(shape):   # pragma: nocover
+                raise ValueError(
+                    f"{axis=} should be a subset of {self.shape=}."
+                )
+
+        ax, ay = axis
+
+        s0 = slice(None, ~0)
+        s1 = slice(+1, None)
+
+        a = self[{ax: s0, ay: s0}]
+        b = self[{ax: s1, ay: s0}]
+        c = self[{ax: s1, ay: s1}]
+        d = self[{ax: s0, ay: s1}]
+
+        angle_1 = self._sold_angle(a, b, c)
+        angle_2 = self._sold_angle(c, d, a)
+
+        return angle_1 + angle_2
 
     def cross(
             self,
