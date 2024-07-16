@@ -137,7 +137,7 @@ class AbstractCartesian3dVectorArray(
         self,
         axis: None | tuple[str, str] = None,
     ) -> na.AbstractScalar:
-        """
+        r"""
         Compute the solid angle of each cell formed by interpreting this
         array as a logically-rectangular 2D grid of vertices.
 
