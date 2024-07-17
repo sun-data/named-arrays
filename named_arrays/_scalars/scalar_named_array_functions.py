@@ -298,6 +298,17 @@ def histogram2d(
     xedges = na.ScalarArray.empty(shape_x)
     yedges = na.ScalarArray.empty(shape_y)
 
+    unit_weights = na.unit(weights)
+    unit_x = na.unit(x)
+    unit_y = na.unit(y)
+
+    if unit_weights is not None:
+        hist = hist << unit_weights
+    if unit_x is not None:
+        xedges = xedges << unit_x
+    if unit_y is not None:
+        yedges = yedges << unit_y
+
     for i in na.ndindex(shape_orthogonal):
         min_i = min[i]
         max_i = max[i]

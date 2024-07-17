@@ -254,6 +254,12 @@ class AbstractTestAbstractScalar(
                 assert np.all(result.outputs >= 0)
                 assert result.outputs.sum() > 0
 
+                unit = array.unit_normalized
+                unit_weights = na.unit_normalized(weights)
+                assert result.inputs.x.unit_normalized.is_equivalent(unit)
+                assert result.inputs.y.unit_normalized.is_equivalent(unit)
+                assert result.outputs.unit_normalized.is_equivalent(unit_weights)
+
 
 class AbstractTestAbstractScalarArray(
     AbstractTestAbstractScalar,
