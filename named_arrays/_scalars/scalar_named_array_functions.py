@@ -302,12 +302,9 @@ def histogram2d(
     unit_x = na.unit(x)
     unit_y = na.unit(y)
 
-    if unit_weights is not None:
-        hist = hist << unit_weights
-    if unit_x is not None:
-        xedges = xedges << unit_x
-    if unit_y is not None:
-        yedges = yedges << unit_y
+    hist = hist if unit_weights is None else hist << unit_weights
+    xedges = xedges if unit_x is None else xedges << unit_x
+    yedges = yedges if unit_y is None else yedges << unit_y
 
     for i in na.ndindex(shape_orthogonal):
         min_i = min[i]
