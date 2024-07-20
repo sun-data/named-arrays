@@ -6,6 +6,7 @@ import matplotlib.artist
 import matplotlib.pyplot as plt
 import astropy.units as u
 import ndfilters
+import colorsynth
 import named_arrays as na
 from . import scalars
 
@@ -16,6 +17,7 @@ __all__ = [
     "HANDLED_FUNCTIONS",
     "random",
     "jacobian",
+    "colorsynth_rgb",
 ]
 
 ASARRAY_LIKE_FUNCTIONS = (
@@ -931,6 +933,68 @@ def optimize_root_secant(
         f0 = f1
 
     raise ValueError("Max iterations exceeded")
+
+
+@_implements(na.colorsynth.rgb)
+def colorsynth_rgb(
+    spd: na.AbstractScalarArray,
+    wavelength: None | na.AbstractScalarArray = None,
+    axis: None | str = None,
+    spd_min: None | float | u.Quantity | na.AbstractScalarArray = None,
+    spd_max: None | float | u.Quantity | na.AbstractScalarArray = None,
+    spd_norm: None | Callable = None,
+    wavelength_min: None | float | u.Quantity | na.AbstractScalarArray = None,
+    wavelength_max: None | float | u.Quantity | na.AbstractScalarArray = None,
+    wavelength_norm: None | Callable = None,
+) -> na.ScalarArray:
+    try:
+        spd = scalars._normalize(spd).astype(float)
+        wavelength = scalars._normalize(wavelength) if wavelength is not None else wavelength
+        spd_min = scalars._normalize(spd_min) if spd_min is not None else spd_min
+        spd_max = scalars._normalize(spd_max) if spd_max is not None else spd_max
+        wavelength_min = scalars._normalize(wavelength_min) if wavelength_min is not None else wavelength_min
+        wavelength_max = scalars._normalize(wavelength_max) if wavelength_max is not None else wavelength_max
+    except na.ScalarTypeError:  # pragma: nocover
+        return NotImplemented
+
+    shape = na.shape_broadcasted(
+        spd,
+        wavelength,
+        spd_min,
+        spd_max,
+        wavelength_min,
+        wavelength_max,
+    )
+
+    axes = tuple(shape)
+    if axis is None:
+        if len(axes) != 1:
+            raise ValueError(
+                f"If `axis` is `None`, the broadcasted shape of the other"
+                f"arguments must have exactly one axis, got {shape=}"
+            )
+        else:
+            axis = axes[0]
+    axis_ndarray = axes.index(axis)
+
+    result_ndarray = colorsynth.rgb(
+        spd=spd.ndarray_aligned(shape),
+        wavelength=wavelength.ndarray_aligned(shape) if wavelength is not None else wavelength,
+        axis=axis_ndarray,
+        spd_min=spd_min.ndarray_aligned(shape) if spd_min is not None else spd_min,
+        spd_max=spd_max.ndarray_aligned(shape) if spd_max is not None else spd_max,
+        spd_norm=spd_norm,
+        wavelength_min=wavelength_min.ndarray_aligned(shape) if wavelength_min is not None else wavelength_min,
+        wavelength_max=wavelength_max.ndarray_aligned(shape) if wavelength_max is not None else wavelength_max,
+        wavelength_norm=wavelength_norm,
+    )
+
+    result = na.ScalarArray(
+        ndarray=result_ndarray,
+        axes=axes,
+    )
+
+    return result
 
 
 @_implements(na.ndfilters.mean_filter)

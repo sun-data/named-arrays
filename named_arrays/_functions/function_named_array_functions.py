@@ -166,3 +166,31 @@ def mean_filter(
             where=where.outputs,
         )
     )
+
+
+@_implements(na.colorsynth.rgb)
+def colorsynth_rgb(
+    spd: na.AbstractFunctionArray,
+    wavelength: None | na.AbstractScalarArray = None,
+    axis: None | str = None,
+    spd_min: None | float | u.Quantity | na.AbstractScalarArray = None,
+    spd_max: None | float | u.Quantity | na.AbstractScalarArray = None,
+    spd_norm: None | Callable = None,
+    wavelength_min: None | float | u.Quantity | na.AbstractScalarArray = None,
+    wavelength_max: None | float | u.Quantity | na.AbstractScalarArray = None,
+    wavelength_norm: None | Callable = None,
+) -> na.FunctionArray:
+    return na.FunctionArray(
+        inputs=spd.inputs.mean(axis),
+        outputs=na.colorsynth.rgb(
+            spd=spd.outputs,
+            wavelength=wavelength,
+            axis=axis,
+            spd_min=spd_min,
+            spd_max=spd_max,
+            spd_norm=spd_norm,
+            wavelength_min=wavelength_min,
+            wavelength_max=wavelength_max,
+            wavelength_norm=wavelength_norm,
+        )
+    )

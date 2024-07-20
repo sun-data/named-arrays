@@ -1492,6 +1492,22 @@ class AbstractTestAbstractArray(
 
                 assert np.all(result == array)
 
+        @pytest.mark.parametrize("axis", [None, "y"])
+        class TestColorsynth:
+            def test_rgb(self, array: na.AbstractArray, axis: None | str):
+                if axis is None:
+                    if array.ndim != 1:
+                        with pytest.raises(ValueError):
+                            na.colorsynth.rgb(array, axis=axis)
+                        return
+                    else:
+                        result = na.colorsynth.rgb(array, axis=axis)
+                        assert result.size == 3
+                else:
+                    if array.shape:
+                        result = na.colorsynth.rgb(array, axis=axis)
+                        assert result.shape[axis] == 3
+
 
 class AbstractTestAbstractExplicitArray(
     AbstractTestAbstractArray,

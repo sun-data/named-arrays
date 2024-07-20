@@ -584,6 +584,78 @@ def optimize_root_secant(
     raise ValueError("Max iterations exceeded")
 
 
+@_implements(na.colorsynth.rgb)
+def colorsynth_rgb(
+    spd: na.AbstractScalar,
+    wavelength: None | na.AbstractScalar = None,
+    axis: None | str = None,
+    spd_min: None | na.ScalarLike = None,
+    spd_max: None | na.ScalarLike = None,
+    spd_norm: None | Callable = None,
+    wavelength_min: None | na.ScalarLike = None,
+    wavelength_max: None | na.ScalarLike = None,
+    wavelength_norm: None | Callable = None,
+) -> na.UncertainScalarArray:
+    try:
+        spd = uncertainties._normalize(spd)
+        wavelength = uncertainties._normalize(wavelength) if wavelength is not None else None
+        spd_min = uncertainties._normalize(spd_min) if spd_min is not None else None
+        spd_max = uncertainties._normalize(spd_max) if spd_max is not None else None
+        wavelength_min = uncertainties._normalize(wavelength_min) if wavelength_min is not None else None
+        wavelength_max = uncertainties._normalize(wavelength_max) if wavelength_max is not None else None
+    except na.UncertainScalarArray:     # pragma: nocover
+        return NotImplemented
+
+    spd = spd.broadcasted
+    wavelength = wavelength.broadcasted if wavelength is not None else None
+    spd_min = spd_min.broadcasted if spd_min is not None else None
+    spd_max = spd_max.broadcasted if spd_max is not None else None
+    wavelength_min = wavelength_min.broadcasted if wavelength_min is not None else None
+    wavelength_max = wavelength_max.broadcasted if wavelength_max is not None else None
+
+    shape = na.shape_broadcasted(
+        spd,
+        wavelength,
+        spd_min,
+        spd_max,
+        wavelength_min,
+        wavelength_max,
+    )
+    if axis is None:
+        if len(shape) != 1:
+            raise ValueError(
+                f"If `axis` is `None`, the broadcasted shape of the other"
+                f"arguments must have exactly one axis, got {shape=}"
+            )
+        else:
+            axis = next(iter(shape))
+
+    return na.UncertainScalarArray(
+        nominal=na.colorsynth.rgb(
+            spd=na.as_named_array(spd.nominal),
+            wavelength=wavelength.nominal if wavelength is not None else None,
+            axis=axis,
+            spd_min=spd_min.nominal if spd_min is not None else None,
+            spd_max=spd_max.nominal if spd_max is not None else None,
+            spd_norm=spd_norm if spd_norm is not None else None,
+            wavelength_min=wavelength_min.nominal if wavelength_min is not None else None,
+            wavelength_max=wavelength_max.nominal if wavelength_max is not None else None,
+            wavelength_norm=wavelength_norm if wavelength_norm is not None else None,
+        ),
+        distribution=na.colorsynth.rgb(
+            spd=na.as_named_array(spd.distribution),
+            wavelength=wavelength.distribution if wavelength is not None else None,
+            axis=axis,
+            spd_min=spd_min.distribution if spd_min is not None else None,
+            spd_max=spd_max.distribution if spd_max is not None else None,
+            spd_norm=spd_norm if spd_norm is not None else None,
+            wavelength_min=wavelength_min.distribution if wavelength_min is not None else None,
+            wavelength_max=wavelength_max.distribution if wavelength_max is not None else None,
+            wavelength_norm=wavelength_norm if wavelength_norm is not None else None,
+        ),
+    )
+
+
 @_implements(na.ndfilters.mean_filter)
 def mean_filter(
     array: na.AbstractScalar,
