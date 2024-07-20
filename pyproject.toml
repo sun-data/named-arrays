@@ -21,7 +21,7 @@ dependencies = [
     "scipy",
     'astropy',
     "ndfilters",
-    "colorsynth",
+    "colorsynth==0.0.1",
 ]
 dynamic = ["version"]
 
