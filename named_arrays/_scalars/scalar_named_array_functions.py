@@ -997,6 +997,73 @@ def colorsynth_rgb(
     return result
 
 
+@_implements(na.colorsynth.colorbar)
+def colorsynth_colorbar(
+    spd: na.AbstractScalarArray,
+    wavelength: None | na.AbstractScalarArray = None,
+    axis: None | str = None,
+    spd_min: None | float | u.Quantity | na.AbstractScalarArray = None,
+    spd_max: None | float | u.Quantity | na.AbstractScalarArray = None,
+    spd_norm: None | Callable = None,
+    wavelength_min: None | float | u.Quantity | na.AbstractScalarArray = None,
+    wavelength_max: None | float | u.Quantity | na.AbstractScalarArray = None,
+    wavelength_norm: None | Callable = None,
+) -> na.FunctionArray[na.Cartesian2dVectorArray, na.ScalarArray]:
+    try:
+        spd = scalars._normalize(spd).astype(float)
+        wavelength = scalars._normalize(wavelength) if wavelength is not None else wavelength
+        spd_min = scalars._normalize(spd_min) if spd_min is not None else spd_min
+        spd_max = scalars._normalize(spd_max) if spd_max is not None else spd_max
+        wavelength_min = scalars._normalize(wavelength_min) if wavelength_min is not None else wavelength_min
+        wavelength_max = scalars._normalize(wavelength_max) if wavelength_max is not None else wavelength_max
+    except na.ScalarTypeError:  # pragma: nocover
+        return NotImplemented
+
+    shape = na.shape_broadcasted(
+        spd,
+        wavelength,
+        spd_min,
+        spd_max,
+        wavelength_min,
+        wavelength_max,
+    )
+
+    axes = tuple(shape)
+    if axis is None:
+        if len(axes) != 1:
+            raise ValueError(
+                f"If `axis` is `None`, the broadcasted shape of the other"
+                f"arguments must have exactly one axis, got {shape=}"
+            )
+        else:
+            axis = axes[0]
+    axis_ndarray = axes.index(axis)
+
+    intensity, wavelength, rgb = colorsynth.colorbar(
+        spd=spd.ndarray_aligned(shape),
+        wavelength=wavelength.ndarray_aligned(shape) if wavelength is not None else wavelength,
+        axis=axis_ndarray,
+        spd_min=spd_min.ndarray_aligned(shape) if spd_min is not None else spd_min,
+        spd_max=spd_max.ndarray_aligned(shape) if spd_max is not None else spd_max,
+        spd_norm=spd_norm,
+        wavelength_min=wavelength_min.ndarray_aligned(shape) if wavelength_min is not None else wavelength_min,
+        wavelength_max=wavelength_max.ndarray_aligned(shape) if wavelength_max is not None else wavelength_max,
+        wavelength_norm=wavelength_norm,
+    )
+
+    intensity = na.ScalarArray(intensity, ("wavelength", "intensity"))
+    wavelength = na.ScalarArray(wavelength, ("wavelength", "intensity"))
+    rgb = na.ScalarArray(rgb, ("wavelength", "intensity", "rgb"))
+
+    return na.FunctionArray(
+        inputs=na.Cartesian2dVectorArray(
+            x=intensity,
+            y=wavelength,
+        ),
+        outputs=rgb,
+    )
+
+
 @_implements(na.ndfilters.mean_filter)
 def mean_filter(
     array: na.AbstractScalarArray,

@@ -713,6 +713,15 @@ class AbstractTestAbstractFunctionArray(
         ):
             pass
 
+        class TestColorsynth(
+            named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestColorsynth,
+        ):
+
+            def test_colorbar(self, array: na.AbstractFunctionArray, axis: None | str):
+                if isinstance(array.outputs, na.AbstractVectorArray):
+                    return
+                super().test_colorbar(array=array, axis=axis)
+
 
 @pytest.mark.parametrize("array", _function_arrays())
 class TestFunctionArray(

@@ -2,6 +2,7 @@ from __future__ import annotations
 from typing import Sequence, Type, Callable
 import pytest
 import abc
+import warnings
 import dataclasses
 import numpy as np
 import matplotlib.axes
@@ -1508,6 +1509,19 @@ class AbstractTestAbstractArray(
                         result = na.colorsynth.rgb(array, axis=axis)
                         assert result.shape[axis] == 3
 
+            def test_colorbar(self, array: na.AbstractArray, axis: None | str):
+                if axis is None:
+                    if array.ndim != 1:
+                        with pytest.raises(ValueError):
+                            na.colorsynth.colorbar(array, axis=axis)
+                        return
+
+                if array.shape:
+                    with warnings.catch_warnings(action="ignore", category=RuntimeWarning):
+                        result = na.colorsynth.colorbar(array, axis=axis)
+                    assert isinstance(result, na.FunctionArray)
+                    assert isinstance(result.inputs, na.Cartesian2dVectorArray)
+                    assert isinstance(result.outputs, na.AbstractArray)
 
 class AbstractTestAbstractExplicitArray(
     AbstractTestAbstractArray,

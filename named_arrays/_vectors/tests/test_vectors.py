@@ -607,6 +607,14 @@ class AbstractTestAbstractVectorArray(
         ):
             pass
 
+        class TestColorsynth(
+            named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestColorsynth,
+        ):
+
+            @pytest.mark.skip
+            def test_colorbar(self, array: na.AbstractArray, axis: None | str):
+                pass
+
 
 class AbstractTestAbstractExplicitVectorArray(
     AbstractTestAbstractVectorArray,
