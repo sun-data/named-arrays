@@ -75,18 +75,9 @@ def rgb(
             shape_random=dict(x=16, y=16, wavelength=11)
         )
 
-        # Define the wavelength coordinate array
-        wavelength = na.linspace(
-            start=-1,
-            stop=1,
-            axis="wavelength",
-            num=a.shape["wavelength"],
-        )
-
         # Compute the RGB colors of the 3d cube
         rgb = na.colorsynth.rgb(
             spd=a,
-            wavelength=wavelength,
             axis="wavelength",
         )
 
