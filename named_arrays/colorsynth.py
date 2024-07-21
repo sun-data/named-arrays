@@ -192,7 +192,7 @@ def colorbar(
         with astropy.visualization.quantity_support():
             fig, ax = plt.subplots()
             na.plt.pcolormesh(
-                C=rgb,
+                C=colorbar,
                 axis_rgb="rgb",
                 ax=ax,
             )
