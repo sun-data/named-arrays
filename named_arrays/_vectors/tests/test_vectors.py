@@ -613,7 +613,7 @@ class AbstractTestAbstractVectorArray(
 
             @pytest.mark.skip
             def test_colorbar(self, array: na.AbstractArray, axis: None | str):
-                pass
+                pass    # pragma: nocover
 
 
 class AbstractTestAbstractExplicitVectorArray(
