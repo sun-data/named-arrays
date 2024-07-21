@@ -1496,18 +1496,19 @@ class AbstractTestAbstractArray(
         @pytest.mark.parametrize("axis", [None, "y"])
         class TestColorsynth:
             def test_rgb(self, array: na.AbstractArray, axis: None | str):
-                if axis is None:
-                    if array.ndim != 1:
-                        with pytest.raises(ValueError):
-                            na.colorsynth.rgb(array, axis=axis)
-                        return
+                with warnings.catch_warnings(action="ignore", category=RuntimeWarning):
+                    if axis is None:
+                        if array.ndim != 1:
+                            with pytest.raises(ValueError):
+                                na.colorsynth.rgb(array, axis=axis)
+                            return
+                        else:
+                            result = na.colorsynth.rgb(array, axis=axis)
+                            assert result.size == 3
                     else:
-                        result = na.colorsynth.rgb(array, axis=axis)
-                        assert result.size == 3
-                else:
-                    if array.shape:
-                        result = na.colorsynth.rgb(array, axis=axis)
-                        assert result.shape[axis] == 3
+                        if array.shape:
+                            result = na.colorsynth.rgb(array, axis=axis)
+                            assert result.shape[axis] == 3
 
             def test_colorbar(self, array: na.AbstractArray, axis: None | str):
                 if axis is None:
