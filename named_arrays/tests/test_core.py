@@ -2,6 +2,7 @@ from __future__ import annotations
 from typing import Sequence, Type, Callable
 import pytest
 import abc
+import warnings
 import dataclasses
 import numpy as np
 import matplotlib.axes
@@ -1491,6 +1492,58 @@ class AbstractTestAbstractArray(
                 result = na.ndfilters.mean_filter(**kwargs)
 
                 assert np.all(result == array)
+
+        @pytest.mark.parametrize("axis", [None, "y"])
+        class TestColorsynth:
+            def test_rgb(self, array: na.AbstractArray, axis: None | str):
+                with warnings.catch_warnings(action="ignore", category=RuntimeWarning):
+                    if axis is None:
+                        if array.ndim != 1:
+                            with pytest.raises(ValueError):
+                                na.colorsynth.rgb(array, axis=axis)
+                            return
+                        else:
+                            result = na.colorsynth.rgb(array, axis=axis)
+                            assert result.size == 3
+                    else:
+                        if array.shape:
+                            result = na.colorsynth.rgb(array, axis=axis)
+                            assert result.shape[axis] == 3
+
+            def test_colorbar(self, array: na.AbstractArray, axis: None | str):
+                if axis is None:
+                    if array.ndim != 1:
+                        with pytest.raises(ValueError):
+                            na.colorsynth.colorbar(array, axis=axis)
+                        return
+
+                if array.shape:
+                    with warnings.catch_warnings(action="ignore", category=RuntimeWarning):
+                        result = na.colorsynth.colorbar(array, axis=axis)
+                    assert isinstance(result, na.FunctionArray)
+                    assert isinstance(result.inputs, na.Cartesian2dVectorArray)
+                    assert isinstance(result.outputs, na.AbstractArray)
+
+            def test_rgb_and_colorbar(self, array: na.AbstractArray, axis: None | str):
+                with warnings.catch_warnings(action="ignore", category=RuntimeWarning):
+
+                    if not array.shape:
+                        return
+
+                    if axis is None:
+                        if array.ndim != 1:
+                            return
+
+                    try:
+                        rgb_expected = na.colorsynth.rgb(array, axis=axis)
+                        colorbar_expected = na.colorsynth.colorbar(array, axis=axis)
+                    except TypeError:
+                        return
+
+                    rgb, colorbar = na.colorsynth.rgb_and_colorbar(array, axis=axis)
+
+                    assert np.allclose(rgb, rgb_expected, equal_nan=True)
+                    assert np.allclose(colorbar, colorbar_expected, equal_nan=True)
 
 
 class AbstractTestAbstractExplicitArray(

@@ -460,6 +460,53 @@ def optimize_root_newton(
     raise ValueError("Max iterations exceeded")
 
 
+@_implements(na.colorsynth.rgb)
+def colorsynth_rgb(
+    spd: na.AbstractVectorArray,
+    wavelength: None | na.AbstractScalar = None,
+    axis: None | str = None,
+    spd_min: None | float | u.Quantity | na.AbstractVectorArray = None,
+    spd_max: None | float | u.Quantity | na.AbstractVectorArray = None,
+    spd_norm: None | Callable = None,
+    wavelength_min: None | float | u.Quantity | na.AbstractScalar = None,
+    wavelength_max: None | float | u.Quantity | na.AbstractScalar = None,
+    wavelength_norm: None | float | u.Quantity | na.AbstractScalar = None,
+) -> na.AbstractVectorArray:
+    try:
+        p = vectors._prototype(
+            spd,
+            spd_min,
+            spd_max,
+        )
+        spd = vectors._normalize(spd, prototype=p)
+        spd_min = vectors._normalize(spd_min, prototype=p) if spd_min is not None else None
+        spd_max = vectors._normalize(spd_max, prototype=p) if spd_max is not None else None
+    except na.VectorTypeError:  # pragma: nocover
+        return NotImplemented
+
+    spd = spd.broadcasted.components
+    spd_min = spd_min.broadcasted.components if spd_min is not None else None
+    spd_max = spd_max.broadcasted.components if spd_max is not None else None
+
+    result = dict()
+    for c in spd:
+        result[c] = na.colorsynth.rgb(
+            spd=na.as_named_array(spd[c]),
+            wavelength=wavelength,
+            axis=axis,
+            spd_min=spd_min[c] if spd_min is not None else None,
+            spd_max=spd_max[c] if spd_max is not None else None,
+            spd_norm=spd_norm,
+            wavelength_min=wavelength_min,
+            wavelength_max=wavelength_max,
+            wavelength_norm=wavelength_norm,
+        )
+
+    result = p.type_explicit.from_components(result)
+
+    return result
+
+
 @_implements(na.optimize.minimum_gradient_descent)
 def optimize_minimum_gradient_descent(
     function: Callable[[na.AbstractVectorArray], na.AbstractScalar],
