@@ -1524,6 +1524,28 @@ class AbstractTestAbstractArray(
                     assert isinstance(result.inputs, na.Cartesian2dVectorArray)
                     assert isinstance(result.outputs, na.AbstractArray)
 
+            def test_rgb_and_colorbar(self, array: na.AbstractArray, axis: None | str):
+                with warnings.catch_warnings(action="ignore", category=RuntimeWarning):
+
+                    if not array.shape:
+                        return
+
+                    if axis is None:
+                        if array.ndim != 1:
+                            return
+
+                    try:
+                        rgb_expected = na.colorsynth.rgb(array, axis=axis)
+                        colorbar_expected = na.colorsynth.colorbar(array, axis=axis)
+                    except TypeError:
+                        return
+
+                    rgb, colorbar = na.colorsynth.rgb_and_colorbar(array, axis=axis)
+
+                    assert np.allclose(rgb, rgb_expected, equal_nan=True)
+                    assert np.allclose(colorbar, colorbar_expected, equal_nan=True)
+
+
 class AbstractTestAbstractExplicitArray(
     AbstractTestAbstractArray,
 ):
