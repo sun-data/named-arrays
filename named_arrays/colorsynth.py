@@ -9,6 +9,7 @@ import named_arrays as na
 __all__ = [
     "rgb",
     "colorbar",
+    "rgb_and_colorbar",
 ]
 
 
