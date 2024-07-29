@@ -35,7 +35,7 @@ def array_function_default(
         axis: None | str | Sequence[str] = None,
         dtype: None | type | np.dtype = np._NoValue,
         out: None | na.AbstractFunctionArray = None,
-        keepdims: bool = False,
+        keepdims: bool = True,
         initial: None | bool | int | float | complex | u.Quantity = np._NoValue,
         where: na.AbstractFunctionArray = np._NoValue,
 ) -> na.FunctionArray:
