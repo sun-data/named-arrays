@@ -22,6 +22,7 @@ dependencies = [
     'astropy',
     "ndfilters",
     "colorsynth==0.1.3",
+    "regridding==0.0.4",
 ]
 dynamic = ["version"]
 
