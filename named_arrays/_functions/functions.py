@@ -43,11 +43,7 @@ class AbstractFunctionArray(
         The arrays representing the outputs of this function.
         """
 
-    __named_array_priority__: ClassVar[float] = 100 * na.AbstractVectorArray.__named_array_priority__
-
-    @property
-    def all_axes(self):
-        return set(self.inputs.shape | self.outputs.shape)
+    __named_array_priority__: ClassVar[float] = (100 * na.AbstractVectorArray.__named_array_priority__)
 
     @property
     def axes_center(self) -> tuple(str):
@@ -58,15 +54,19 @@ class AbstractFunctionArray(
         input_shape = self.inputs.shape
         output_shape = self.outputs.shape
 
-        for axis in self.all_axes:
+        for axis in self.axes:
             if axis in input_shape:
                 if axis in output_shape:
                     if input_shape[axis] == output_shape[axis]:
                         axes_center += (axis,)
-                    elif input_shape[axis] != output_shape[axis] + 1:
-                        raise ValueError(
-                            'Output axis dimension must either match Input axis dimension (representing'
-                            ' bin centers, or exceed by one (representing bin vertices).')
+                    else:
+                        if input_shape[axis] == 1 or output_shape[axis] == 1:
+                            axes_center += (axis,)
+                        elif input_shape[axis] != output_shape[axis] + 1:
+                            raise ValueError(
+                                "Output axis dimension must either match Input axis dimension (representing"
+                                " bin centers, or exceed by one (representing bin vertices)."
+                            )
                 else:
                     axes_center += (axis,)
             else:
@@ -77,11 +77,11 @@ class AbstractFunctionArray(
     @property
     def axes_vertex(self) -> tuple(str):
         """
-       Return keys corresponding to all input axes representing bin vertices
-       """
+        Return keys corresponding to all input axes representing bin vertices
+        """
         axes_vertex = tuple()
 
-        for axis in self.all_axes:
+        for axis in self.axes:
             if axis not in self.axes_center:
                 axes_vertex += (axis,)
 
@@ -169,18 +169,15 @@ class AbstractFunctionArray(
             axis_new: str = None,
     ) -> FunctionArray:
 
-        a = self.explicit
-        shape = a.shape
+        axes = tuple(self.shape) if axes is None else axes
 
-        axes = tuple(shape) if axes is None else axes
+        for axis in axes:
+            if axis in self.axes_vertex:
+                raise ValueError('Axis "{}" describes input vertices and cannot be used in combine_axes.'.format(axis))
 
-        shape_base = {ax: shape[ax] for ax in shape if ax in axes}
-
-        inputs = a.inputs.broadcast_to(na.broadcast_shapes(a.inputs.shape, shape_base))
-        outputs = a.outputs.broadcast_to(na.broadcast_shapes(a.outputs.shape, shape_base))
         return self.type_explicit(
-            inputs=inputs.combine_axes(axes=axes, axis_new=axis_new),
-            outputs=outputs.combine_axes(axes=axes, axis_new=axis_new),
+            inputs=self.broadcasted.inputs.combine_axes(axes=axes, axis_new=axis_new),
+            outputs=self.broadcasted.outputs.combine_axes(axes=axes, axis_new=axis_new),
         )
 
     def __call__(self, new_inputs: na.AbstractArray, interp_axes: tuple[str] = None) -> AbstractFunctionArray:
@@ -759,16 +756,22 @@ class FunctionArray(
     def shape(self) -> dict[str, int]:
         outputs_shape = self.outputs.shape
         inputs_shape = self.inputs.shape
-        vertex_shape = {axis: outputs_shape[axis] for axis in self.axes_vertex}
 
-        center_shape = {}
-        for axis in self.axes_center:
-            if axis in inputs_shape:
-                center_shape[axis] = inputs_shape[axis]
-            elif axis in outputs_shape:
-                center_shape[axis] = outputs_shape[axis]
+        shape = {}
+        for axis in self.axes:
+            if axis in self.axes_vertex:
+                shape[axis] = outputs_shape[axis]
 
-        return center_shape | vertex_shape
+            for axis in self.axes_center:
+                if axis in inputs_shape:
+                    if axis in outputs_shape:
+                        shape[axis] = max([outputs_shape[axis], inputs_shape[axis]])
+                    else:
+                        shape[axis] = inputs_shape[axis]
+                elif axis in outputs_shape:
+                    shape[axis] = outputs_shape[axis]
+
+        return shape
 
     @property
     def ndim(self) -> int:
