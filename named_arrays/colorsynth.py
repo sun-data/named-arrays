@@ -194,7 +194,7 @@ def colorbar(
             fig, ax = plt.subplots()
             na.plt.pcolormesh(
                 C=colorbar,
-                axis_rgb="rgb",
+                axis_rgb="wavelength",
                 ax=ax,
             )
     """
@@ -314,7 +314,7 @@ def rgb_and_colorbar(
             );
             na.plt.pcolormesh(
                 C=colorbar,
-                axis_rgb="rgb",
+                axis_rgb="wavelength",
                 ax=axs[1],
             )
             axs[1].yaxis.tick_right()
