@@ -304,11 +304,8 @@ class AbstractFunctionArray(
         else:
             return NotImplemented
 
-        # This final broadcast doesn't seem necessary
-
-        # new_shape = na.broadcast_shapes(shape_inputs, shape_item_inputs)
-        # inputs = na.broadcast_to(inputs, new_shape)
-        # outputs = na.broadcast_to(outputs, na.broadcast_shapes(shape_outputs, shape_item_outputs))
+        inputs = na.broadcast_to(inputs, na.broadcast_shapes(shape_inputs, shape_item_inputs))
+        outputs = na.broadcast_to(outputs, na.broadcast_shapes(shape_outputs, shape_item_outputs))
 
         return self.type_explicit(
             inputs=inputs[item_inputs],
@@ -750,7 +747,7 @@ class FunctionArray(
 
     @property
     def axes(self) -> tuple[str, ...]:
-        return tuple(self.shape.keys())
+        return tuple(self.inputs.shape | self.outputs.shape)
 
     @property
     def shape(self) -> dict[str, int]:
