@@ -652,6 +652,9 @@ def pcolormovie(
     Animate a sequence of images using :class:`matplotlib.animation.FuncAnimation`
     and repeated calls to :func:`pcolormesh`.
 
+    This function closes the :class:`matplotlib.Figure` instance associated with
+    the provided axis so the figure is not plotted twice.
+
     Parameters
     ----------
     TXY
@@ -724,7 +727,6 @@ def pcolormovie(
         astropy.visualization.quantity_support()
         fig, ax = plt.subplots(constrained_layout=True)
         ani = na.plt.pcolormovie(t, x, y, C=a, axis_time="t", ax=ax);
-        plt.close(fig);
         IPython.display.HTML(ani.to_jshtml())
 
     |
@@ -767,7 +769,6 @@ def pcolormovie(
             constrained_layout=True,
         )
         ani = na.plt.pcolormovie(t, x, y, C=a, axis_time="t", ax=ax);
-        plt.close(fig);
         IPython.display.HTML(ani.to_jshtml())
     """
     return na._named_array_function(
