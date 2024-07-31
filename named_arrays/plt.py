@@ -724,6 +724,7 @@ def pcolormovie(
         astropy.visualization.quantity_support()
         fig, ax = plt.subplots(constrained_layout=True)
         ani = na.plt.pcolormovie(t, x, y, C=a, axis_time="t", ax=ax);
+        plt.close(fig);
         IPython.display.HTML(ani.to_jshtml())
 
     |
@@ -758,14 +759,15 @@ def pcolormovie(
         astropy.visualization.quantity_support()
         fig, ax = na.plt.subplots(
             axis_rows="row",
-            nrows=shape["row"],
             axis_cols="col",
+            nrows=shape["row"],
             ncols=shape["col"],
             sharex=True,
             sharey=True,
             constrained_layout=True,
         )
         ani = na.plt.pcolormovie(t, x, y, C=a, axis_time="t", ax=ax);
+        plt.close(fig);
         IPython.display.HTML(ani.to_jshtml())
     """
     return na._named_array_function(
