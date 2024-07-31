@@ -1,6 +1,6 @@
 from __future__ import annotations
 from typing import Literal, Any
-import matplotlib
+import matplotlib.animation
 import matplotlib.pyplot as plt
 import astropy.units as u
 import numpy as np
@@ -14,6 +14,7 @@ __all__ = [
     "scatter",
     "imshow",
     "pcolormesh",
+    "pcolormovie",
     "text",
     "brace_vertical",
 ]
@@ -518,9 +519,9 @@ def imshow(
 def pcolormesh(
     *XY: na.AbstractArray,
     C: na.AbstractArray,
-    components: None | tuple[str, str] = None,
     axis_rgb: None | str = None,
     ax: None | matplotlib.axes.Axes | na.AbstractArray = None,
+    components: None | tuple[str, str] = None,
     cmap: None | str | matplotlib.colors.Colormap = None,
     norm: None | str | matplotlib.colors.Normalize = None,
     vmin: None | na.ArrayLike = None,
@@ -540,10 +541,6 @@ def pcolormesh(
         see below.
     C
         The mesh data.
-    components
-        If `XY` is not specified as two scalars, this parameter should
-        be a tuple of two strings, specifying the vector components of `XY`
-        to use as the horizontal and vertical components of the mesh.
     axis_rgb
         The optional logical axis along which the RGB color channels are
         distributed.
@@ -552,6 +549,10 @@ def pcolormesh(
         If :obj:`None`, calls :func:`matplotlib.pyplot.gca` to get the current axes.
         If an instance of :class:`named_arrays.ScalarArray`, ``ax.shape`` should be a subset of the broadcasted shape of
         ``*args``.
+    components
+        If `XY` is not specified as two scalars, this parameter should
+        be a tuple of two strings, specifying the vector components of `XY`
+        to use as the horizontal and vertical components of the mesh.
     cmap
         The colormap used to map scalar data to colors.
     norm
@@ -624,12 +625,163 @@ def pcolormesh(
         C=C,
         axis_rgb=axis_rgb,
         ax=ax,
+        components=components,
+        cmap=cmap,
+        norm=norm,
+        vmin=vmin,
+        vmax=vmax,
+        **kwargs,
+    )
+
+
+def pcolormovie(
+    *TXY: na.AbstractArray,
+    C: na.AbstractArray,
+    axis_time: str,
+    axis_rgb: None | str = None,
+    ax: None | matplotlib.axes.Axes | na.AbstractArray = None,
+    components: None | tuple[str, str] = None,
+    cmap: None | str | matplotlib.colors.Colormap = None,
+    norm: None | str | matplotlib.colors.Normalize = None,
+    vmin: None | na.ArrayLike = None,
+    vmax: None | na.ArrayLike = None,
+    kwargs_pcolormesh: None | dict[str, Any] = None,
+    kwargs_animation: None | dict[str, Any] = None,
+) -> matplotlib.animation.FuncAnimation:
+    """
+    Animate a sequence of images using :class:`matplotlib.animation.FuncAnimation`
+    and repeated calls to :func:`pcolormesh`.
+
+    Parameters
+    ----------
+    TXY
+        The coordinates of the mesh, including the temporal coordinate.
+        If `C` is a scalar, `TXY` can either be three scalars or one scalar and
+        one vector.
+        If `C` is a function, `TXY` is not specified.
+        If `XY` is not specified as two scalars, the `components` must be given,
+        see below.
+    C
+        The mesh data.
+    axis_time
+        The logical axis corresponding to the different frames in the animation.
+    axis_rgb
+        The optional logical axis along which the RGB color channels are
+        distributed.
+    ax
+        The instances of :class:`matplotlib.axes.Axes` to use.
+        If :obj:`None`, calls :func:`matplotlib.pyplot.gca` to get the current axes.
+        If an instance of :class:`named_arrays.ScalarArray`, ``ax.shape`` should be a subset of the broadcasted shape of
+        ``*args``.
+    components
+        If `XY` is not specified as two scalars, this parameter should
+        be a tuple of two strings, specifying the vector components of `XY`
+        to use as the horizontal and vertical components of the mesh.
+    cmap
+        The colormap used to map scalar data to colors.
+    norm
+        The normalization method used to scale data into the range [0, 1] before
+        mapping to colors.
+    vmin
+        The minimum value of the data range.
+    vmax
+        The maximum value of the data range.
+    kwargs_pcolormesh
+        Additional keyword arguments accepted by :func:`pcolormesh`.
+    kwargs_animation
+        Additional keyword arguments accepted by
+        :class:`matplotlib.animation.FuncAnimation`.
+
+    Examples
+    --------
+
+    Plot a random 2D mesh
+
+    .. jupyter-execute::
+
+        import matplotlib.pyplot as plt
+        import IPython.display
+        import astropy.units as u
+        import astropy.visualization
+        import named_arrays as na
+
+        # Define the size of the grid
+        shape = dict(
+            t=3,
+            x=16,
+            y=16,
+        )
+
+        # Define a simple coordinate grid
+        t = na.linspace(-1, 1, axis="t", num=shape["t"]) * u.s
+        x = na.linspace(-2, 2, axis="x", num=shape["x"]) * u.mm
+        y = na.linspace(-1, 1, axis="y", num=shape["y"]) * u.mm
+
+        # Define a random 2D array of values to plot
+        a = na.random.uniform(-1, 1, shape_random=shape)
+
+        # Plot the coordinates and values using pcolormesh
+        astropy.visualization.quantity_support()
+        fig, ax = plt.subplots(constrained_layout=True)
+        ani = na.plt.pcolormovie(t, x, y, C=a, axis_time="t", ax=ax);
+        IPython.display.HTML(ani.to_jshtml())
+
+    |
+
+    Plot a grid of random 2D meshes
+
+    .. jupyter-execute::
+
+        import IPython.display
+        import astropy.units as u
+        import astropy.visualization
+        import named_arrays as na
+
+        # Define the size of the grid
+        shape = dict(
+            t=3,
+            row=2,
+            col=3,
+            x=16,
+            y=16,
+        )
+
+        # Define a simple coordinate grid
+        t = na.linspace(-1, 1, axis="t", num=shape["t"]) * u.s
+        x = na.linspace(-2, 2, axis="x", num=shape["x"]) * u.mm
+        y = na.linspace(-1, 1, axis="y", num=shape["y"]) * u.mm
+
+        # Define a random 2D array of values to plot
+        a = na.random.uniform(-1, 1, shape_random=shape)
+
+        # Plot the coordinates and values using pcolormesh
+        astropy.visualization.quantity_support()
+        fig, ax = na.plt.subplots(
+            axis_rows="row",
+            nrows=shape["row"],
+            axis_cols="col",
+            ncols=shape["col"],
+            sharex=True,
+            sharey=True,
+            constrained_layout=True,
+        )
+        ani = na.plt.pcolormovie(t, x, y, C=a, axis_time="t", ax=ax);
+        IPython.display.HTML(ani.to_jshtml())
+    """
+    return na._named_array_function(
+        pcolormovie,
+        *TXY,
+        C=C,
+        axis_time=axis_time,
+        axis_rgb=axis_rgb,
+        ax=ax,
         cmap=cmap,
         norm=norm,
         vmin=vmin,
         vmax=vmax,
         components=components,
-        **kwargs,
+        kwargs_pcolormesh=kwargs_pcolormesh,
+        kwargs_animation=kwargs_animation,
     )
 
 

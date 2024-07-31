@@ -1,9 +1,10 @@
-from typing import Callable, Sequence
+from typing import Callable, Sequence, Any
 import numpy as np
 import numpy.typing as npt
 import matplotlib.axes
 import matplotlib.artist
 import matplotlib.pyplot as plt
+import matplotlib.animation
 import astropy.units as u
 import ndfilters
 import colorsynth
@@ -658,9 +659,9 @@ def plt_imshow(
 def pcolormesh(
     *XY: na.AbstractScalarArray,
     C: na.AbstractScalarArray,
-    components: None | tuple[str, str] = None,
     axis_rgb: None | str = None,
     ax: None | matplotlib.axes.Axes | na.AbstractScalarArray = None,
+    components: None | tuple[str, str] = None,
     cmap: None | str | matplotlib.colors.Colormap = None,
     norm: None | str | matplotlib.colors.Normalize = None,
     vmin: None | float | u.Quantity | na.AbstractScalarArray = None,
@@ -716,6 +717,80 @@ def pcolormesh(
             vmax=vmax[index].ndarray if vmax is not None else vmax,
             **kwargs,
         )
+
+    return result
+
+
+@_implements(na.plt.pcolormovie)
+def pcolormovie(
+    *TXY: na.AbstractScalarArray,
+    C: na.AbstractScalarArray,
+    axis_time: str,
+    axis_rgb: None | str = None,
+    ax: None | matplotlib.axes.Axes | na.AbstractScalarArray = None,
+    components: None | tuple[str, str] = None,
+    cmap: None | str | matplotlib.colors.Colormap = None,
+    norm: None | str | matplotlib.colors.Normalize = None,
+    vmin: None | float | u.Quantity | na.AbstractScalarArray = None,
+    vmax: None | float | u.Quantity | na.AbstractScalarArray = None,
+    kwargs_pcolormesh: None | dict[str, Any] = None,
+    kwargs_animation: None | dict[str, Any] = None,
+) -> matplotlib.animation.FuncAnimation:
+
+    t, x, y = TXY
+
+    if ax is None:
+        ax = plt.gca()
+    ax = na.asanyarray(ax)
+
+    ax0 = ax.ndarray.flat[0]
+    fig = ax0.figure
+
+    try:
+        t = scalars._normalize(t)
+        x = scalars._normalize(x)
+        y = scalars._normalize(y)
+        C = scalars._normalize(C)
+    except na.ScalarTypeError:  # pragma: nocover
+        return NotImplemented
+
+    shape = na.shape_broadcasted(t, x, y, C)
+    t = t.broadcast_to(na.shape_broadcasted(t, ax))
+    x = x.broadcast_to(shape)
+    y = y.broadcast_to(shape)
+    C = C.broadcast_to(shape)
+
+    if kwargs_pcolormesh is None:
+        kwargs_pcolormesh = dict()
+    if kwargs_animation is None:
+        kwargs_animation = dict()
+
+    def func(frame: int):
+        index_frame = {axis_time: frame}
+        for i in ax.ndindex():
+            ax[i].ndarray.clear()
+            ax[i].ndarray.set_title(t[index_frame][i].ndarray)
+
+        na.plt.pcolormesh(
+            x[index_frame],
+            y[index_frame],
+            C=C[index_frame],
+            axis_rgb=axis_rgb,
+            ax=ax,
+            components=components,
+            cmap=cmap,
+            norm=norm,
+            vmin=vmin,
+            vmax=vmax,
+            **kwargs_pcolormesh,
+        )
+
+    result = matplotlib.animation.FuncAnimation(
+        fig=fig,
+        func=func,
+        frames=shape[axis_time],
+        **kwargs_animation,
+    )
 
     return result
 
