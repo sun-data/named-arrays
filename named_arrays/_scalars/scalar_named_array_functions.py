@@ -792,6 +792,8 @@ def pcolormovie(
         **kwargs_animation,
     )
 
+    plt.close(fig)
+
     return result
 
 
