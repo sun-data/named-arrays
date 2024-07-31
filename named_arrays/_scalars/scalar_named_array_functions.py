@@ -1002,6 +1002,8 @@ def colorsynth_colorbar(
     spd: na.AbstractScalarArray,
     wavelength: None | na.AbstractScalarArray = None,
     axis: None | str = None,
+    axis_wavelength: str = "_wavelength",
+    axis_intensity: str = "_intensity",
     spd_min: None | float | u.Quantity | na.AbstractScalarArray = None,
     spd_max: None | float | u.Quantity | na.AbstractScalarArray = None,
     spd_norm: None | Callable = None,
@@ -1049,11 +1051,22 @@ def colorsynth_colorbar(
         wavelength_min=wavelength_min.ndarray_aligned(shape) if wavelength_min is not None else wavelength_min,
         wavelength_max=wavelength_max.ndarray_aligned(shape) if wavelength_max is not None else wavelength_max,
         wavelength_norm=wavelength_norm,
+        squeeze=False,
     )
 
-    intensity = na.ScalarArray(intensity, ("wavelength", "intensity"))
-    wavelength = na.ScalarArray(wavelength, ("wavelength", "intensity"))
-    rgb = na.ScalarArray(rgb, ("wavelength", "intensity", "rgb"))
+    axes_new = (axis_wavelength, axis_intensity) + axes
+
+    intensity = na.ScalarArray(intensity, axes_new)
+    wavelength = na.ScalarArray(wavelength, axes_new)
+    rgb = na.ScalarArray(rgb, axes_new)
+
+    shape_intensity = intensity.shape
+    shape_wavelength = wavelength.shape
+    shape_rgb = rgb.shape
+
+    intensity = intensity[{ax: 0 for ax in shape_intensity if shape_intensity[ax] == 1}]
+    wavelength = wavelength[{ax: 0 for ax in shape_wavelength if shape_wavelength[ax] == 1}]
+    rgb = rgb[{ax: 0 for ax in shape_rgb if shape_rgb[ax] == 1}]
 
     return na.FunctionArray(
         inputs=na.Cartesian2dVectorArray(
