@@ -652,9 +652,6 @@ def pcolormovie(
     Animate a sequence of images using :class:`matplotlib.animation.FuncAnimation`
     and repeated calls to :func:`pcolormesh`.
 
-    This function closes the :class:`matplotlib.Figure` instance associated with
-    the provided axis so the figure is not plotted twice.
-
     Parameters
     ----------
     TXY

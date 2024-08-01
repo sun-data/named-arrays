@@ -754,11 +754,10 @@ def pcolormovie(
     except na.ScalarTypeError:  # pragma: nocover
         return NotImplemented
 
-    shape = na.shape_broadcasted(t, x, y, C)
+    shape = na.shape_broadcasted(t, x, y)
     t = t.broadcast_to(na.shape_broadcasted(t, ax))
     x = x.broadcast_to(shape)
     y = y.broadcast_to(shape)
-    C = C.broadcast_to(shape)
 
     if kwargs_pcolormesh is None:
         kwargs_pcolormesh = dict()
@@ -769,7 +768,7 @@ def pcolormovie(
         index_frame = {axis_time: frame}
         for i in ax.ndindex():
             ax[i].ndarray.clear()
-            ax[i].ndarray.set_title(t[index_frame][i].ndarray)
+            ax[i].ndarray.set_title(t[index_frame | i].ndarray)
 
         na.plt.pcolormesh(
             x[index_frame],
@@ -791,8 +790,6 @@ def pcolormovie(
         frames=shape[axis_time],
         **kwargs_animation,
     )
-
-    plt.close(fig)
 
     return result
 
