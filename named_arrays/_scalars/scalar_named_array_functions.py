@@ -767,8 +767,11 @@ def pcolormovie(
     def func(frame: int):
         index_frame = {axis_time: frame}
         for i in ax.ndindex():
-            ax[i].ndarray.clear()
-            ax[i].ndarray.set_title(t[index_frame | i].ndarray)
+            ax_i = ax[i].ndarray
+            for artist in ax_i.collections:
+                artist.remove()
+            ax_i.relim()
+            ax_i.set_title(t[index_frame | i].ndarray)
 
         na.plt.pcolormesh(
             x[index_frame],
@@ -783,6 +786,8 @@ def pcolormovie(
             vmax=vmax,
             **kwargs_pcolormesh,
         )
+
+    func(0)
 
     result = matplotlib.animation.FuncAnimation(
         fig=fig,
