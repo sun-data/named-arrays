@@ -252,16 +252,6 @@ class AbstractFunctionArray(
         shape_inputs = inputs.shape
         shape_outputs = outputs.shape
 
-        # #broadcast along get_item axes if missing
-        # for key in shape:
-        #     if key not in shape_inputs:
-        #         shape_inputs[key] = shape[key]
-        #     if key not in shape_outputs:
-        #         shape_outputs[key] = shape[key]
-        #
-        # inputs = inputs.broadcast_to(shape_inputs)
-        # outputs = outputs.broadcast_to(shape_outputs)
-
         if isinstance(item, na.AbstractFunctionArray):
             if np.any(item.inputs != self.inputs):
                 raise ValueError("boolean advanced index does not have the same inputs as the array")
