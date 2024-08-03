@@ -1496,7 +1496,8 @@ class AbstractTestAbstractArray(
         @pytest.mark.parametrize("axis", [None, "y"])
         class TestColorsynth:
             def test_rgb(self, array: na.AbstractArray, axis: None | str):
-                with warnings.catch_warnings(action="ignore", category=RuntimeWarning):
+                with warnings.catch_warnings():
+                    warnings.simplefilter(action="ignore", category=RuntimeWarning)
                     if axis is None:
                         if array.ndim != 1:
                             with pytest.raises(ValueError):
@@ -1518,14 +1519,16 @@ class AbstractTestAbstractArray(
                         return
 
                 if array.shape:
-                    with warnings.catch_warnings(action="ignore", category=RuntimeWarning):
+                    with warnings.catch_warnings():
+                        warnings.simplefilter(action="ignore", category=RuntimeWarning)
                         result = na.colorsynth.colorbar(array, axis=axis)
                     assert isinstance(result, na.FunctionArray)
                     assert isinstance(result.inputs, na.Cartesian2dVectorArray)
                     assert isinstance(result.outputs, na.AbstractArray)
 
             def test_rgb_and_colorbar(self, array: na.AbstractArray, axis: None | str):
-                with warnings.catch_warnings(action="ignore", category=RuntimeWarning):
+                with warnings.catch_warnings():
+                    warnings.simplefilter(action="ignore", category=RuntimeWarning)
 
                     if not array.shape:
                         return
