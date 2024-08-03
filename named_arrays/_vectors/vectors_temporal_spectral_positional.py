@@ -100,10 +100,10 @@ class ExplicitTemporalWcsSpectralPositionalVectorArray(
     na.AbstractWcsVector,
 ):
     time: na.AbstractScalar = dataclasses.MISSING
-    crval: AbstractTemporalSpectralPositionalVectorArray = dataclasses.MISSING
+    crval: na.AbstractSpectralPositionalVectorArray = dataclasses.MISSING
     crpix: na.AbstractCartesianNdVectorArray = dataclasses.MISSING
-    cdelt: AbstractTemporalSpectralPositionalVectorArray = dataclasses.MISSING
-    pc: na.AbstractTemporalSpectralPositionalMatrixArray = dataclasses.MISSING
+    cdelt: na.AbstractSpectralPositionalVectorArray = dataclasses.MISSING
+    pc: na.AbstractSpectralPositionalMatrixArray = dataclasses.MISSING
     shape_wcs: dict[str, int] = dataclasses.MISSING
 
     @property
