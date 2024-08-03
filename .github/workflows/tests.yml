@@ -36,7 +36,7 @@ jobs:
         run: |
           pip install pytest pytest-cov
           pytest -c pytest.ini --cov=. --cov-report=xml  --splits 6 --group ${{matrix.group}}
-      - uses: codecov/codecov-action@v3
+      - uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           file: coverage.xml

@@ -334,6 +334,7 @@ class AbstractVectorArray(
                 components_x2 = x2.cartesian_nd.components
                 components_x1 = x1.cartesian_nd.components
 
+
                 if components_x1.keys() == components_x2.keys():
                     result = 0
                     for c in components_x1:
