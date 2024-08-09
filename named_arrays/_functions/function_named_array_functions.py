@@ -10,6 +10,7 @@ __all__ = [
 ]
 
 ASARRAY_LIKE_FUNCTIONS = named_arrays._scalars.scalar_named_array_functions.ASARRAY_LIKE_FUNCTIONS
+NDFILTER_FUNCTIONS = named_arrays._scalars.scalar_named_array_functions.NDFILTER_FUNCTIONS
 HANDLED_FUNCTIONS = dict()
 
 def _implements(function: Callable):
@@ -135,11 +136,12 @@ def pcolormesh(
     )
 
 
-@_implements(na.ndfilters.mean_filter)
-def mean_filter(
+def ndfilter(
+    func: Callable,
     array: na.AbstractFunctionArray,
     size: dict[str, int],
     where: bool | na.AbstractFunctionArray,
+    **kwargs,
 ) -> na.FunctionArray:
 
     if isinstance(array, na.AbstractFunctionArray):
@@ -160,10 +162,11 @@ def mean_filter(
 
     return array.type_explicit(
         inputs=array.inputs.copy(),
-        outputs=na.ndfilters.mean_filter(
+        outputs=func(
             array=array.outputs,
             size=size,
             where=where.outputs,
+            **kwargs,
         )
     )
 
