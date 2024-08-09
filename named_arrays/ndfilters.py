@@ -4,6 +4,7 @@ import named_arrays as na
 
 __all__ = [
     "mean_filter",
+    "trimmed_mean_filter",
 ]
 
 ArrayT = TypeVar("ArrayT", bound="na.AbstractArray")
