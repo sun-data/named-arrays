@@ -59,7 +59,7 @@ def mean_filter(
             ax=axs[0],
             cmap="gray",
         );
-        axs[1].set_title(filtered image");
+        axs[1].set_title("filtered image");
         na.plt.imshow(
             X=img_filtered,
             axis_x="x",
