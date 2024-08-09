@@ -110,7 +110,7 @@ def trimmed_mean_filter(
 
         img_filtered = na.ndfilters.trimmed_mean_filter(
             array=img,
-            size=dict(x=21, y=21).
+            size=dict(x=21, y=21),
         )
 
         fig, axs = plt.subplots(
