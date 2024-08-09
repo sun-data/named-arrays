@@ -1,3 +1,7 @@
+"""
+A thin wrapper around the :mod:`ndfilters` package for named arrays.
+"""
+
 from __future__ import annotations
 from typing import TypeVar
 import named_arrays as na
