@@ -422,6 +422,9 @@ class AbstractVectorArray(
         if func in vector_named_array_functions.PLT_PLOT_LIKE_FUNCTIONS:
             return vector_named_array_functions.plt_plot_like(func, *args, **kwargs)
 
+        if func in vector_named_array_functions.NDFILTER_FUNCTIONS:
+            return vector_named_array_functions.ndfilter(func, *args, **kwargs)
+
         if func in vector_named_array_functions.HANDLED_FUNCTIONS:
             return vector_named_array_functions.HANDLED_FUNCTIONS[func](*args, **kwargs)
 

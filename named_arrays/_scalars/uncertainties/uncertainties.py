@@ -488,6 +488,9 @@ class AbstractUncertainScalarArray(
         if func in uncertainties_named_array_functions.PLT_PLOT_LIKE_FUNCTIONS:
             return uncertainties_named_array_functions.plt_plot_like(func, *args, **kwargs)
 
+        if func in uncertainties_named_array_functions.NDFILTER_FUNCTIONS:
+            return uncertainties_named_array_functions.ndfilter(func, *args, **kwargs)
+
         if func in uncertainties_named_array_functions.HANDLED_FUNCTIONS:
             return uncertainties_named_array_functions.HANDLED_FUNCTIONS[func](*args, **kwargs)
 

@@ -23,6 +23,7 @@ OutputT = TypeVar("OutputT", bound="float | u.Quantity | na.AbstractVectorArray"
 ASARRAY_LIKE_FUNCTIONS = named_arrays._scalars.scalar_named_array_functions.ASARRAY_LIKE_FUNCTIONS
 RANDOM_FUNCTIONS = named_arrays._scalars.scalar_named_array_functions.RANDOM_FUNCTIONS
 PLT_PLOT_LIKE_FUNCTIONS = named_arrays._scalars.scalar_named_array_functions.PLT_PLOT_LIKE_FUNCTIONS
+NDFILTER_FUNCTIONS = named_arrays._scalars.scalar_named_array_functions.NDFILTER_FUNCTIONS
 HANDLED_FUNCTIONS = dict()
 
 
@@ -563,11 +564,12 @@ def optimize_minimum_gradient_descent(
     raise ValueError("Max iterations exceeded")  # pragma: nocover
 
 
-@_implements(na.ndfilters.mean_filter)
-def mean_filter(
+def ndfilter(
+    func: Callable,
     array: na.AbstractVectorArray,
     size: dict[str, int],
     where: na.AbstractVectorArray,
+    **kwargs,
 ) -> na.AbstractExplicitVectorArray:
 
     try:
@@ -582,10 +584,11 @@ def mean_filter(
 
     result = dict()
     for c in components_array:
-        result[c] = na.ndfilters.mean_filter(
+        result[c] = func(
             array=components_array[c],
             size=size,
             where=components_where[c],
+            **kwargs,
         )
 
     result = prototype.type_explicit.from_components(result)

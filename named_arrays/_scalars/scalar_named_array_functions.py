@@ -35,6 +35,10 @@ PLT_PLOT_LIKE_FUNCTIONS = (
     na.plt.plot,
     na.plt.fill,
 )
+NDFILTER_FUNCTIONS = (
+    na.ndfilters.mean_filter,
+    na.ndfilters.trimmed_mean_filter,
+)
 HANDLED_FUNCTIONS = dict()
 
 
@@ -1156,12 +1160,15 @@ def colorsynth_colorbar(
     )
 
 
-@_implements(na.ndfilters.mean_filter)
-def mean_filter(
+def ndfilter(
+    func: Callable,
     array: na.AbstractScalarArray,
     size: dict[str, int],
-    where: bool | na.AbstractScalarArray
+    where: bool | na.AbstractScalarArray,
+    **kwargs,
 ) -> na.ScalarArray:
+
+    func = getattr(ndfilters, func.__name__)
 
     try:
         array = scalars._normalize(array)
@@ -1180,11 +1187,12 @@ def mean_filter(
     where = where.broadcast_to(shape)
 
     return array.type_explicit(
-        ndarray=ndfilters.mean_filter(
+        ndarray=func(
             array=array.ndarray,
             size=tuple(size.values()),
             axis=tuple(axes.index(ax) for ax in size),
             where=where.ndarray,
+            **kwargs,
         ),
         axes=axes,
     )

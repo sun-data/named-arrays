@@ -20,6 +20,7 @@ __all__ = [
 ASARRAY_LIKE_FUNCTIONS = named_arrays._scalars.scalar_named_array_functions.ASARRAY_LIKE_FUNCTIONS
 RANDOM_FUNCTIONS = named_arrays._scalars.scalar_named_array_functions.RANDOM_FUNCTIONS
 PLT_PLOT_LIKE_FUNCTIONS = named_arrays._scalars.scalar_named_array_functions.PLT_PLOT_LIKE_FUNCTIONS
+NDFILTER_FUNCTIONS = named_arrays._scalars.scalar_named_array_functions.NDFILTER_FUNCTIONS
 HANDLED_FUNCTIONS = dict()
 
 
@@ -796,11 +797,12 @@ def colorsynth_colorbar(
     )
 
 
-@_implements(na.ndfilters.mean_filter)
-def mean_filter(
+def ndfilter(
+    func: Callable,
     array: na.AbstractScalar,
     size: dict[str, int],
     where: na.AbstractScalar,
+    **kwargs,
 ) -> na.UncertainScalarArray:
 
     try:
@@ -813,14 +815,16 @@ def mean_filter(
     where = where.broadcasted
 
     return array.type_explicit(
-        nominal=na.ndfilters.mean_filter(
+        nominal=func(
             array=array.nominal,
             size=size,
             where=where.nominal,
+            **kwargs,
         ),
-        distribution=na.ndfilters.mean_filter(
+        distribution=func(
             array=array.distribution,
             size=size,
             where=where.distribution,
+            **kwargs,
         )
     )
