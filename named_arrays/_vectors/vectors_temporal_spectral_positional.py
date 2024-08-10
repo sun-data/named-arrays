@@ -11,6 +11,7 @@ __all__ = [
     'AbstractParameterizedTemporalSpectralPositionalVectorArray',
     'AbstractTemporalSpectralPositionalVectorSpace',
     'TemporalSpectralPositionalVectorLinearSpace',
+    'ExplicitTemporalSpectralWcsPositionalVectorArray',
     'ExplicitTemporalWcsSpectralPositionalVectorArray',
 ]
 
@@ -92,6 +93,27 @@ class TemporalSpectralPositionalVectorLinearSpace(
     na.AbstractVectorLinearSpace,
 ):
     pass
+
+
+@dataclasses.dataclass(eq=False, repr=False)
+class ExplicitTemporalSpectralWcsPositionalVectorArray(
+    AbstractImplicitTemporalSpectralPositionalVectorArray,
+    na.AbstractWcsVector,
+):
+    time: na.AbstractScalar = dataclasses.MISSING
+    wavelength: na.AbstractScalar = dataclasses.MISSING
+    crval: na.AbstractSpectralPositionalVectorArray = dataclasses.MISSING
+    crpix: na.AbstractCartesianNdVectorArray = dataclasses.MISSING
+    cdelt: na.AbstractSpectralPositionalVectorArray = dataclasses.MISSING
+    pc: na.AbstractSpectralPositionalMatrixArray = dataclasses.MISSING
+    shape_wcs: dict[str, int] = dataclasses.MISSING
+
+    @property
+    def _components_explicit(self) -> dict[str, na.ArrayLike]:
+        return dict(
+            time=self.time,
+            wavelength=self.wavelength,
+        )
 
 
 @dataclasses.dataclass(eq=False, repr=False)
