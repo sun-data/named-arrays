@@ -3,7 +3,7 @@ A thin wrapper around the :mod:`ndfilters` package for named arrays.
 """
 
 from __future__ import annotations
-from typing import TypeVar
+from typing import TypeVar, Literal
 import named_arrays as na
 
 __all__ = [
@@ -84,6 +84,8 @@ def trimmed_mean_filter(
     array: ArrayT,
     size: dict[str, int],
     where: WhereT = True,
+    mode: Literal["mirror", "nearest", "wrap", "truncate"] = "mirror",
+    proportion: float = 0.25,
 ) -> ArrayT | WhereT:
     """
     A thin wrapper around :func:`ndfilters.trimmed_mean_filter` for named arrays.
@@ -97,6 +99,13 @@ def trimmed_mean_filter(
     where
         A boolean mask used to select which elements of the input array are to
         be filtered.
+    mode
+        The method used to extend the input array beyond its boundaries.
+        See :func:`scipy.ndimage.generic_filter` for the definitions.
+        Currently, only "mirror", "nearest", "wrap", and "truncate" modes are
+        supported.
+    proportion
+        The proportion to cut from the top and bottom of the distribution.
 
     Examples
     --------
@@ -145,4 +154,6 @@ def trimmed_mean_filter(
         array=array,
         size=size,
         where=where,
+        mode=mode,
+        proportion=proportion,
     )
