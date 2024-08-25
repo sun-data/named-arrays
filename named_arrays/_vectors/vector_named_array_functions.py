@@ -232,10 +232,10 @@ def random(
     components_args = {c: tuple(arg.components[c] for arg in args) for c in components_prototype}
     components_kwargs = {c: {k: kwargs[k].components[c] for k in kwargs} for c in components_prototype}
 
-    if seed is not None:
-        components_seed = {c: seed + i for i, c in enumerate(components_prototype)}
-    else:
-        components_seed = {c: seed for c in components_prototype}
+    components_seed = {
+        c: seed if seed is None else seed + i
+        for i, c in enumerate(components_prototype)
+    }
 
     components = {
         c: func(
