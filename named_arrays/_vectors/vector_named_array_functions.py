@@ -450,7 +450,7 @@ def optimize_root_newton(
         if callback is not None:
             callback(i, x, f, converged)
 
-        converged |= np.abs(f) < max_abs_error
+        converged = np.abs(f) < max_abs_error
 
         if np.all(converged):
             return x
@@ -555,7 +555,7 @@ def optimize_minimum_gradient_descent(
 
         grad = gradient(x)
 
-        converged |= np.abs(grad) < min_gradient
+        converged = np.abs(grad) < min_gradient
 
         if np.all(converged):
             return x
