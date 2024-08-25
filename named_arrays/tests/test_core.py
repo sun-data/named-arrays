@@ -1471,7 +1471,7 @@ class AbstractTestAbstractArray(
                     callback=callback,
                 )
 
-                assert np.allclose(na.value(result), expected)
+                assert np.allclose(result, expected * na.unit_normalized(array))
                 assert out is result
 
         @pytest.mark.parametrize(
