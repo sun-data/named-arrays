@@ -525,6 +525,7 @@ class AbstractArray(
             elif isinstance(val, np.ndarray):
                 val_str = np.array2string(
                     a=val,
+                    max_line_width=120,
                     separator=", ",
                     prefix=field_str,
                 )
