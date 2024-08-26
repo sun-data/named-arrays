@@ -518,6 +518,7 @@ def optimize_minimum_gradient_descent(
     function: Callable[[na.AbstractVectorArray], na.AbstractScalar],
     guess: na.AbstractVectorArray,
     step_size: float | na.AbstractScalar,
+    momentum: float | na.AbstractScalar,
     gradient: None | Callable[[na.AbstractVectorArray], na.AbstractScalar],
     min_gradient: na.ScalarLike,
     max_iterations: int,
@@ -547,6 +548,7 @@ def optimize_minimum_gradient_descent(
     converged = na.broadcast_to(0 * na.value(x), shape=shape).astype(bool)
 
     x = na.broadcast_to(x, shape).astype(float)
+    z = 0
 
     for i in range(max_iterations):
 
@@ -560,7 +562,9 @@ def optimize_minimum_gradient_descent(
         if np.all(converged):
             return x
 
-        correction = step_size * grad
+        z = momentum * z + grad
+
+        correction = step_size * z
 
         x = x - correction
 
