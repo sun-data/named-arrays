@@ -195,7 +195,7 @@ def minimum_gradient_descent(
     .. math::
         :label: momentum-equation
 
-        z_{k + 1} = \beta z_k + \del f(x_k)
+        z_{k + 1} = \beta z_k + \nabla f(x_k)
 
     .. math::
         :label: gradient-descent
