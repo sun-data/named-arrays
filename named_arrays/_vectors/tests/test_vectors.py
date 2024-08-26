@@ -597,8 +597,11 @@ class AbstractTestAbstractVectorArray(
         @pytest.mark.parametrize(
             argnames="function,expected",
             argvalues=[
-                (lambda x: (np.square(na.value(x) - shift_horizontal) + shift_vertical).length, shift_horizontal)
-                for shift_horizontal in [20,]
+                (
+                    lambda x: (np.square((na.value(x) - shift_horizontal).length) + shift_vertical) * u.ph,
+                    shift_horizontal,
+                )
+                for shift_horizontal in [2,]
                 for shift_vertical in [1,]
             ]
         )

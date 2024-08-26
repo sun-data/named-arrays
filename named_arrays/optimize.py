@@ -142,12 +142,13 @@ def minimum_gradient_descent(
     function: Callable[[InputT], OutputT],
     guess: InputT,
     step_size: None | InputT = None,
+    momentum: float | OutputT = 0,
     gradient: None | Callable[[InputT], InputT] = None,
     min_gradient: None | InputT = None,
     max_iterations: int = 1000,
     callback: None | Callable[[int, InputT, OutputT, na.AbstractArray], None] = None,
 ) -> InputT:
-    """
+    r"""
     Find the local minimum of the given function using the
     `gradient descent <https://en.wikipedia.org/wiki/Gradient_descent>`_ method.
 
@@ -161,7 +162,12 @@ def minimum_gradient_descent(
         The learning rate for the gradient descent algorithm.
         This should have the same units as ``x / gradient(x)``.
         If :obj:`None` (the default), this takes the value
-        ``0.1 * na.unit(x / gradient(x))``.
+        ``0.01 * na.unit(x / gradient(x))``.
+    momentum
+        The momentum constant, :math:`\beta` for the gradient descent algorithm.
+        Should be a dimensionless number between zero and one.
+        Defaults to zero, which equivalent to vanilla gradient descent with
+        no momentum.
     gradient
         The gradient of `function`.
         If :obj:`None` (the default), the gradient is computed using
@@ -180,6 +186,26 @@ def minimum_gradient_descent(
         ``x`` is the current guess, ``f`` is the current function value,
         and ``converged`` is an array storing the convergence state for every
         minimum being computed.
+
+    Notes
+    -----
+
+    This function uses the update rules described in :cite:t:`Goh2017`,
+
+    .. math::
+        :label: momentum-equation
+
+        z_{k + 1} = \beta z_k + \nabla f(x_k)
+
+    .. math::
+        :label: gradient-descent
+
+        x_{k + 1} = x_k - \alpha z_k,
+
+    where :math:`x_k` is the current guess for iteration :math:`k`,
+    :math:`f` is the objective function,
+    :math:`\alpha` is the learning rate,
+    and :math:`\beta` is the momentum constant.
     """
 
     x = guess
@@ -191,7 +217,7 @@ def minimum_gradient_descent(
     unit_grad = unit_f / unit_x
 
     if step_size is None:
-        step_size = 0.1 * (unit_x / unit_grad)
+        step_size = 0.01 * (unit_x / unit_grad)
 
     if gradient is None:
         def gradient(x: float | na.AbstractScalar | na.AbstractVectorArray):
@@ -209,6 +235,7 @@ def minimum_gradient_descent(
         function=function,
         guess=guess,
         step_size=step_size,
+        momentum=momentum,
         gradient=gradient,
         min_gradient=min_gradient,
         max_iterations=max_iterations,

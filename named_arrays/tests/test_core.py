@@ -1469,9 +1469,10 @@ class AbstractTestAbstractArray(
                     function=function,
                     guess=array,
                     callback=callback,
+                    momentum=0.5,
                 )
 
-                assert np.allclose(na.value(result), expected)
+                assert np.allclose(result, expected * na.unit_normalized(array))
                 assert out is result
 
         @pytest.mark.parametrize(
