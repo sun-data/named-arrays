@@ -193,8 +193,12 @@ def minimum_gradient_descent(
     This function uses the update rules described in :cite:t:`Goh2017`,
 
     .. math::
+        :label: momentum-equation
 
-        z_{k + 1} = \beta z_k + \grad f(x_k) \\
+        z_{k + 1} = \beta z_k + \del f(x_k)
+
+    .. math::
+        :label: gradient-descent
 
         x_{k + 1} = x_k - \alpha z_k,
 
