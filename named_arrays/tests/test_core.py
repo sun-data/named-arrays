@@ -1469,6 +1469,7 @@ class AbstractTestAbstractArray(
                     function=function,
                     guess=array,
                     callback=callback,
+                    momentum=0.5,
                 )
 
                 assert np.allclose(result, expected * na.unit_normalized(array))
