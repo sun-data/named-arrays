@@ -1480,6 +1480,7 @@ class AbstractTestAbstractArray(
             argvalues=[
                 na.ndfilters.mean_filter,
                 na.ndfilters.trimmed_mean_filter,
+                na.ndfilters.variance_filter,
             ]
         )
         class TestNdfilter:
@@ -1489,7 +1490,7 @@ class AbstractTestAbstractArray(
                 array: na.AbstractArray,
             ):
 
-                size = dict(y=1)
+                size = dict(y=3)
 
                 kwargs = dict(
                     array=array,
@@ -1503,7 +1504,8 @@ class AbstractTestAbstractArray(
 
                 result = function(**kwargs)
 
-                assert np.all(result == array)
+                assert result.type_abstract == array.type_abstract
+                assert result.shape == array.shape
 
         @pytest.mark.parametrize("axis", [None, "y"])
         class TestColorsynth:

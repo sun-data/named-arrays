@@ -38,6 +38,7 @@ PLT_PLOT_LIKE_FUNCTIONS = (
 NDFILTER_FUNCTIONS = (
     na.ndfilters.mean_filter,
     na.ndfilters.trimmed_mean_filter,
+    na.ndfilters.variance_filter,
 )
 HANDLED_FUNCTIONS = dict()
 
