@@ -9,6 +9,7 @@ import named_arrays as na
 __all__ = [
     "mean_filter",
     "trimmed_mean_filter",
+    "variance_filter",
 ]
 
 ArrayT = TypeVar("ArrayT", bound="na.AbstractArray")
@@ -156,4 +157,69 @@ def trimmed_mean_filter(
         where=where,
         mode=mode,
         proportion=proportion,
+    )
+
+
+def variance_filter(
+    array: ArrayT,
+    size: dict[str, int],
+    where: WhereT = True,
+) -> ArrayT | WhereT:
+    """
+    A thin wrapper around :func:`ndfilters.variance_filter` for named arrays.
+
+    Parameters
+    ----------
+    array
+        The input array to be filtered.
+    size
+        The shape of the kernel over which the variance will be calculated.
+    where
+        A boolean mask used to select which elements of the input array are to
+        be filtered.
+
+    Examples
+    --------
+
+    Filter a sample image.
+
+    .. jupyter-execute::
+        :stderr:
+
+        import matplotlib.pyplot as plt
+        import scipy.datasets
+        import named_arrays as na
+
+        img = na.ScalarArray(scipy.datasets.ascent(), axes=("y", "x"))
+
+        img_filtered = na.ndfilters.variance_filter(img, size=dict(x=21, y=21))
+
+        fig, axs = plt.subplots(
+            ncols=2,
+            sharex=True,
+            sharey=True,
+            constrained_layout=True,
+        )
+        axs[0].set_title("original image");
+        na.plt.imshow(
+            X=img,
+            axis_x="x",
+            axis_y="y",
+            ax=axs[0],
+            cmap="gray",
+        );
+        axs[1].set_title("filtered image");
+        na.plt.imshow(
+            X=img_filtered,
+            axis_x="x",
+            axis_y="y",
+            ax=axs[1],
+            cmap="gray",
+        );
+    """
+    return na._named_array_function(
+        func=variance_filter,
+        array=array,
+        size=size,
+        where=where,
     )
