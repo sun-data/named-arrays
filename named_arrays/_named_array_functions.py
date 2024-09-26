@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Sequence, overload, Type, Any, Callable, TypeVar
+from typing import Sequence, overload, Type, Any, Callable, TypeVar, Literal
 import functools
 import numpy as np
 import astropy.units as u
@@ -73,7 +73,6 @@ def _asarray_like(
         *,
         like: None | LikeT = None,
 ) -> ArrayT | LikeT:
-
     if a is None:
         return None
 
@@ -670,7 +669,7 @@ def add_axes(array: na.ArrayLike, axes: str | Sequence[str]):
 
 def interp(
         x: float | u.Quantity | na.AbstractArray,
-        xp:  na.AbstractArray,
+        xp: na.AbstractArray,
         fp: na.AbstractArray,
         axis: None | str = None,
         left: None | float | u.Quantity | na.AbstractArray = None,
