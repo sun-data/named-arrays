@@ -8,10 +8,16 @@ import named_arrays as na
 
 __all__ = [
     "AbstractTransformation",
+    "IdentityTransformation",
     "AbstractTranslation",
     "Translation",
+    "Cartesian3dTranslation",
     "AbstractLinearTransformation",
     "LinearTransformation",
+    "AbstractCartesian3dRotation",
+    "Cartesian3dRotationX",
+    "Cartesian3dRotationY",
+    "Cartesian3dRotationZ",
     "AbstractAffineTransformation",
     "AffineTransformation",
     "AbstractTransformationList",
