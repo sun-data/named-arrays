@@ -1062,6 +1062,16 @@ class AbstractTestAbstractArray(
 
             assert np.all(np.abs(result.astype(float)) == np.abs(result_expected))
 
+        @pytest.mark.parametrize(
+            argnames="a",
+            argvalues=[
+                "%.2f",
+            ]
+        )
+        def test_char_mod(self, array: na.AbstractArray, a: na.AbstractArray):
+            result = np.char.mod(a, array)
+            assert isinstance(result, na.AbstractArray)
+
     @pytest.mark.parametrize(
         argnames='shape',
         argvalues=[
