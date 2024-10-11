@@ -879,7 +879,7 @@ def set_xlabel(
     """
     return na._named_array_function(
         set_xlabel,
-        xlabel=xlabel,
+        xlabel=na.as_named_array(xlabel),
         ax=ax,
         **kwargs,
     )
@@ -902,7 +902,7 @@ def set_ylabel(
     """
     return na._named_array_function(
         set_ylabel,
-        ylabel=ylabel,
+        ylabel=na.as_named_array(ylabel),
         ax=ax,
         **kwargs,
     )
@@ -925,7 +925,7 @@ def set_title(
     """
     return na._named_array_function(
         set_title,
-        label=label,
+        label=na.as_named_array(label),
         ax=ax,
         **kwargs,
     )
@@ -948,7 +948,7 @@ def set_xscale(
     """
     return na._named_array_function(
         set_xscale,
-        value=value,
+        value=na.as_named_array(value),
         ax=ax,
         **kwargs,
     )
@@ -971,7 +971,7 @@ def set_yscale(
     """
     return na._named_array_function(
         set_yscale,
-        value=value,
+        value=na.as_named_array(value),
         ax=ax,
         **kwargs,
     )
@@ -994,7 +994,7 @@ def set_aspect(
     """
     return na._named_array_function(
         set_aspect,
-        aspect=aspect,
+        aspect=na.as_named_array(aspect),
         ax=ax,
         **kwargs,
     )

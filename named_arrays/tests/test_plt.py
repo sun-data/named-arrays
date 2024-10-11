@@ -49,6 +49,7 @@ def test_pcolormovie(
 @pytest.mark.parametrize(
     argnames="xlabel,ax",
     argvalues=[
+        ("foo", None),
         ("foo", na.plt.subplots(ncols=3)[1]),
     ]
 )
@@ -62,6 +63,7 @@ def test_set_xlabel(
 @pytest.mark.parametrize(
     argnames="ylabel,ax",
     argvalues=[
+        ("foo", None),
         ("foo", na.plt.subplots(ncols=3)[1]),
     ]
 )
@@ -75,6 +77,7 @@ def test_set_ylabel(
 @pytest.mark.parametrize(
     argnames="label,ax",
     argvalues=[
+        ("foo", None),
         ("foo", na.plt.subplots(ncols=3)[1]),
     ]
 )
@@ -88,6 +91,7 @@ def test_set_title(
 @pytest.mark.parametrize(
     argnames="value,ax",
     argvalues=[
+        ("log", None),
         ("log", na.plt.subplots(ncols=3)[1]),
     ]
 )
@@ -101,6 +105,7 @@ def test_set_xscale(
 @pytest.mark.parametrize(
     argnames="value,ax",
     argvalues=[
+        ("log", None),
         ("log", na.plt.subplots(ncols=3)[1]),
     ]
 )
@@ -114,6 +119,7 @@ def test_set_yscale(
 @pytest.mark.parametrize(
     argnames="aspect,ax",
     argvalues=[
+        ("equal", None),
         ("equal", na.plt.subplots(ncols=3)[1]),
         (2, na.plt.subplots(ncols=3)[1]),
     ]
