@@ -35,6 +35,14 @@ PLT_PLOT_LIKE_FUNCTIONS = (
     na.plt.plot,
     na.plt.fill,
 )
+PLT_AXES_SETTERS = (
+    na.plt.set_xlabel,
+    na.plt.set_ylabel,
+    na.plt.set_title,
+    na.plt.set_xscale,
+    na.plt.set_yscale,
+    na.plt.set_aspect,
+)
 NDFILTER_FUNCTIONS = (
     na.ndfilters.mean_filter,
     na.ndfilters.trimmed_mean_filter,
@@ -842,6 +850,34 @@ def plt_text(
         )
 
     return result
+
+
+def plt_axes_setter(
+    method: str,
+    *args,
+    ax: None | matplotlib.axes.Axes | na.AbstractScalarArray = None,
+    **kwargs,
+) -> None:
+
+    if ax is None:
+        ax = plt.gca()
+
+    try:
+        args = [scalars._normalize(arg) for arg in args]
+        ax = scalars._normalize(ax)
+        kwargs = {k: scalars._normalize(kwargs[k]) for k in kwargs}
+    except na.ScalarTypeError:  # pragma: nocover
+        return NotImplemented
+
+    shape = ax.shape
+
+    args = [arg.broadcast_to(shape) for arg in args]
+    kwargs = {k: kwargs[k].broadcast_to(shape) for k in kwargs}
+
+    for index in na.ndindex(shape):
+        args_index = [arg[index].ndarray for arg in args]
+        kwargs_index = {k: kwargs[k][index].ndarray for k in kwargs}
+        getattr(ax[index].ndarray, method.__name__)(*args_index, **kwargs_index)
 
 
 @_implements(na.jacobian)
