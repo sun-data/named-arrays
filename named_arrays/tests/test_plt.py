@@ -1,4 +1,5 @@
 import pytest
+import matplotlib.axes
 import matplotlib.animation
 import named_arrays as na
 
@@ -43,3 +44,82 @@ def test_pcolormovie(
     )
     assert isinstance(result, matplotlib.animation.FuncAnimation)
     assert isinstance(result.to_jshtml(), str)
+
+
+@pytest.mark.parametrize(
+    argnames="xlabel,ax",
+    argvalues=[
+        ("foo", na.plt.subplots(ncols=3)[1]),
+    ]
+)
+def test_set_xlabel(
+    xlabel: str | na.AbstractScalar,
+    ax: None | matplotlib.axes.Axes | na.AbstractScalar,
+):
+    na.plt.set_xlabel(xlabel, ax=ax)
+
+
+@pytest.mark.parametrize(
+    argnames="ylabel,ax",
+    argvalues=[
+        ("foo", na.plt.subplots(ncols=3)[1]),
+    ]
+)
+def test_set_ylabel(
+    ylabel: str | na.AbstractScalar,
+    ax: None | matplotlib.axes.Axes | na.AbstractScalar,
+):
+    na.plt.set_ylabel(ylabel, ax=ax)
+
+
+@pytest.mark.parametrize(
+    argnames="label,ax",
+    argvalues=[
+        ("foo", na.plt.subplots(ncols=3)[1]),
+    ]
+)
+def test_set_title(
+    label: str | na.AbstractScalar,
+    ax: None | matplotlib.axes.Axes | na.AbstractScalar,
+):
+    na.plt.set_title(label, ax=ax)
+
+
+@pytest.mark.parametrize(
+    argnames="value,ax",
+    argvalues=[
+        ("log", na.plt.subplots(ncols=3)[1]),
+    ]
+)
+def test_set_xscale(
+    value: str | na.AbstractScalar,
+    ax: None | matplotlib.axes.Axes | na.AbstractScalar,
+):
+    na.plt.set_xscale(value, ax=ax)
+
+
+@pytest.mark.parametrize(
+    argnames="value,ax",
+    argvalues=[
+        ("log", na.plt.subplots(ncols=3)[1]),
+    ]
+)
+def test_set_yscale(
+    value: str | na.AbstractScalar,
+    ax: None | matplotlib.axes.Axes | na.AbstractScalar,
+):
+    na.plt.set_yscale(value, ax=ax)
+
+
+@pytest.mark.parametrize(
+    argnames="aspect,ax",
+    argvalues=[
+        ("equal", na.plt.subplots(ncols=3)[1]),
+        (2, na.plt.subplots(ncols=3)[1]),
+    ]
+)
+def test_set_aspect(
+    aspect: str | na.AbstractScalar,
+    ax: None | matplotlib.axes.Axes | na.AbstractScalar,
+):
+    na.plt.set_aspect(aspect, ax=ax)

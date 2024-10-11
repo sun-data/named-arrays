@@ -17,13 +17,19 @@ __all__ = [
     "pcolormovie",
     "text",
     "brace_vertical",
+    "set_xlabel",
+    "set_ylabel",
+    "set_title",
+    "set_xscale",
+    "set_yscale",
+    "set_aspect",
 ]
 
 
 def subplots(
         axis_rows: str = "subplots_row",
-        ncols: int = 1,
         axis_cols: str = "subplots_col",
+        ncols: int = 1,
         nrows: int = 1,
         *,
         sharex: bool | Literal["none", "all", "row", "col"] = False,
@@ -851,6 +857,144 @@ def text(
         x=x,
         y=y,
         s=s,
+        ax=ax,
+        **kwargs,
+    )
+
+
+def set_xlabel(
+    xlabel: str | na.AbstractScalar,
+    ax: None | matplotlib.axes.Axes | na.AbstractScalar = None,
+    **kwargs,
+) -> na.AbstractScalar:
+    """
+    A thin wrapper around :meth:`matplotlib.axes.Axes.set_xlabel` for named arrays.
+
+    Parameters
+    ----------
+    xlabel
+        The horizontal axis label for each axis.
+    ax
+        The matplotlib axes instance on which to apply the label.
+    """
+    return na._named_array_function(
+        set_xlabel,
+        xlabel=xlabel,
+        ax=ax,
+        **kwargs,
+    )
+
+
+def set_ylabel(
+    ylabel: str | na.AbstractScalar,
+    ax: None | matplotlib.axes.Axes | na.AbstractScalar = None,
+    **kwargs,
+) -> na.AbstractScalar:
+    """
+    A thin wrapper around :meth:`matplotlib.axes.Axes.set_ylabel` for named arrays.
+
+    Parameters
+    ----------
+    ylabel
+        The vertical axis label for each axis.
+    ax
+        The matplotlib axes instance on which to apply the label.
+    """
+    return na._named_array_function(
+        set_ylabel,
+        ylabel=ylabel,
+        ax=ax,
+        **kwargs,
+    )
+
+
+def set_title(
+    label: str | na.AbstractScalar,
+    ax: None | matplotlib.axes.Axes | na.AbstractScalar = None,
+    **kwargs,
+) -> na.AbstractScalar:
+    """
+    A thin wrapper around :meth:`matplotlib.axes.Axes.set_title` for named arrays.
+
+    Parameters
+    ----------
+    label
+        The title for each axis.
+    ax
+        The matplotlib axes instance on which to apply the label.
+    """
+    return na._named_array_function(
+        set_title,
+        label=label,
+        ax=ax,
+        **kwargs,
+    )
+
+
+def set_xscale(
+    value: str | na.AbstractScalar,
+    ax: None | matplotlib.axes.Axes | na.AbstractScalar = None,
+    **kwargs,
+) -> na.AbstractScalar:
+    """
+    A thin wrapper around :meth:`matplotlib.axes.Axes.set_xscale` for named arrays.
+
+    Parameters
+    ----------
+    value
+        The scale type to apply to the horizontal scale of each axis.
+    ax
+        The matplotlib axes instance on which to apply the label.
+    """
+    return na._named_array_function(
+        set_xscale,
+        value=value,
+        ax=ax,
+        **kwargs,
+    )
+
+
+def set_yscale(
+    value: str | na.AbstractScalar,
+    ax: None | matplotlib.axes.Axes | na.AbstractScalar = None,
+    **kwargs,
+) -> na.AbstractScalar:
+    """
+    A thin wrapper around :meth:`matplotlib.axes.Axes.set_yscale` for named arrays.
+
+    Parameters
+    ----------
+    value
+        The scale type to apply to the vertical scale of each axis.
+    ax
+        The matplotlib axes instance on which to apply the label.
+    """
+    return na._named_array_function(
+        set_yscale,
+        value=value,
+        ax=ax,
+        **kwargs,
+    )
+
+
+def set_aspect(
+    aspect: float | str | na.AbstractScalar,
+    ax: None | matplotlib.axes.Axes | na.AbstractScalar = None,
+    **kwargs,
+) -> na.AbstractScalar:
+    """
+    A thin wrapper around :meth:`matplotlib.axes.Axes.set_aspect` for named arrays.
+
+    Parameters
+    ----------
+    aspect
+        The aspect ratio to apply to each axis
+    ax
+        The matplotlib axes instance on which to apply the label.
+    """
+    return na._named_array_function(
+        set_aspect,
+        aspect=aspect,
         ax=ax,
         **kwargs,
     )
