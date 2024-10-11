@@ -637,6 +637,10 @@ class AbstractTestAbstractFunctionArray(
         ):
             pass    # pragma: nocover
 
+        @pytest.mark.skip
+        def test_char_mod(self, array: na.AbstractArray, a: na.AbstractArray):
+            pass    # pragma: nocover
+
     class TestNamedArrayFunctions(
         named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions
     ):

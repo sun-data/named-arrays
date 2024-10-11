@@ -944,3 +944,28 @@ def diff(
         ),
         axes=tuple(shape),
     )
+
+
+@implements(np.char.mod)
+def char_mod(
+    a: str | na.AbstractScalarArray,
+    values: str | na.AbstractScalarArray,
+) -> na.ScalarArray:
+
+    try:
+        a = scalars._normalize(a)
+        values = scalars._normalize(values)
+    except na.ScalarTypeError:  # pragma: nocover
+        return NotImplemented
+
+    shape = na.shape_broadcasted(a, values)
+
+    result_ndarray = np.char.mod(
+        a=a.ndarray_aligned(shape),
+        values=values.ndarray_aligned(shape),
+    )
+
+    return na.ScalarArray(
+        ndarray=result_ndarray,
+        axes=tuple(shape),
+    )

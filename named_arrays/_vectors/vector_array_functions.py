@@ -863,3 +863,29 @@ def diff(
         )
 
     return prototype.type_explicit.from_components(result)
+
+
+@implements(np.char.mod)
+def char_mod(
+        a: str | na.AbstractScalar,
+        values: str | na.AbstractScalar,
+) -> na.ScalarArray:
+
+    try:
+        prototype = vectors._prototype(a, values)
+        a = vectors._normalize(a, prototype)
+        values = vectors._normalize(values, prototype)
+    except vectors.VectorTypeError:  # pragma: nocover
+        return NotImplemented
+
+    components_a = a.components
+    components_values = values.components
+
+    result = dict()
+    for c in components_a:
+        result[c] = np.char.mod(
+            a=components_a[c],
+            values=components_values[c],
+        )
+
+    return prototype.type_explicit.from_components(result)

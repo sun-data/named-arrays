@@ -887,3 +887,21 @@ def diff(
             append=append.distribution,
         ),
     )
+
+
+@implements(np.char.mod)
+def char_mod(
+    a: str | na.AbstractScalar,
+    values: str | na.AbstractScalar,
+) -> na.ScalarArray:
+
+    try:
+        a = uncertainties._normalize(a)
+        values = uncertainties._normalize(values)
+    except uncertainties.UncertainScalarTypeError:  # pragma: nocover
+        return NotImplemented
+
+    return na.UncertainScalarArray(
+        nominal=np.char.mod(a.nominal, values.nominal),
+        distribution=np.char.mod(a.distribution, values.distribution),
+    )
