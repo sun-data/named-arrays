@@ -144,7 +144,6 @@ class AbstractFunctionArray(
             outputs=na.as_named_array(self.outputs).to_string_array(**kwargs),
         )
 
-
     def _getitem(
             self,
             item: dict[str, int | slice | na.AbstractArray] | na.AbstractFunctionArray,
