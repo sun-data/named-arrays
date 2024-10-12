@@ -1,4 +1,5 @@
 import pytest
+import numpy as np
 import matplotlib.axes
 import matplotlib.animation
 import named_arrays as na
@@ -58,6 +59,8 @@ def test_set_xlabel(
     ax: None | matplotlib.axes.Axes | na.AbstractScalar,
 ):
     na.plt.set_xlabel(xlabel, ax=ax)
+    result = na.plt.get_xlabel(ax)
+    assert np.all(result == xlabel)
 
 
 @pytest.mark.parametrize(
@@ -72,6 +75,8 @@ def test_set_ylabel(
     ax: None | matplotlib.axes.Axes | na.AbstractScalar,
 ):
     na.plt.set_ylabel(ylabel, ax=ax)
+    result = na.plt.get_ylabel(ax)
+    assert np.all(result == ylabel)
 
 
 @pytest.mark.parametrize(
@@ -86,6 +91,8 @@ def test_set_title(
     ax: None | matplotlib.axes.Axes | na.AbstractScalar,
 ):
     na.plt.set_title(label, ax=ax)
+    result = na.plt.get_title(ax)
+    assert np.all(result == label)
 
 
 @pytest.mark.parametrize(
@@ -100,6 +107,8 @@ def test_set_xscale(
     ax: None | matplotlib.axes.Axes | na.AbstractScalar,
 ):
     na.plt.set_xscale(value, ax=ax)
+    result = na.plt.get_xscale(ax)
+    assert np.all(result == value)
 
 
 @pytest.mark.parametrize(
@@ -114,13 +123,15 @@ def test_set_yscale(
     ax: None | matplotlib.axes.Axes | na.AbstractScalar,
 ):
     na.plt.set_yscale(value, ax=ax)
+    result = na.plt.get_yscale(ax)
+    assert np.all(result == value)
 
 
 @pytest.mark.parametrize(
     argnames="aspect,ax",
     argvalues=[
-        ("equal", None),
-        ("equal", na.plt.subplots(ncols=3)[1]),
+        (1, None),
+        (1, na.plt.subplots(ncols=3)[1]),
         (2, na.plt.subplots(ncols=3)[1]),
     ]
 )
@@ -129,3 +140,35 @@ def test_set_aspect(
     ax: None | matplotlib.axes.Axes | na.AbstractScalar,
 ):
     na.plt.set_aspect(aspect, ax=ax)
+    result = na.plt.get_aspect(ax)
+    assert np.all(result == aspect)
+
+
+@pytest.mark.parametrize(
+    argnames="ax",
+    argvalues=[
+        None,
+        na.plt.subplots(ncols=3)[1]
+    ]
+)
+def test_transAxes(
+    ax: None | matplotlib.axes.Axes | na.AbstractScalar,
+):
+    result = na.plt.transAxes(ax)
+    assert isinstance(result, na.AbstractArray)
+    assert result.shape == na.shape(ax)
+
+
+@pytest.mark.parametrize(
+    argnames="ax",
+    argvalues=[
+        None,
+        na.plt.subplots(ncols=3)[1]
+    ]
+)
+def test_transData(
+    ax: None | matplotlib.axes.Axes | na.AbstractScalar,
+):
+    result = na.plt.transData(ax)
+    assert isinstance(result, na.AbstractArray)
+    assert result.shape == na.shape(ax)
