@@ -1264,7 +1264,7 @@ class AbstractTestAbstractArray(
             argvalues=[
                 np._NoValue,
                 plt.subplots()[1],
-                na.plt.subplots(axis_cols="x", ncols=num_x)[1],
+                na.plt.subplots(axis_rows="x", nrows=num_x)[1],
             ]
         )
         class TestPltPlotLikeFunctions(abc.ABC):

@@ -54,6 +54,10 @@ def subplots(
     A thin wrapper around :func:`matplotlib.pyplot.subplots()` which allows for
     providing axis names to the rows and columns.
 
+    Unlike :func:`matplotlib.pyplot.subplots()`,
+    this function arranges the subplot grid with the origin in the lower-left
+    corner as opposed to the upper-left corner.
+
     Parameters
     ----------
     axis_rows
@@ -94,7 +98,12 @@ def subplots(
         **kwargs,
     )
 
-    return fig, na.ScalarArray(axs, axes=tuple(shape.keys()))
+    axs = na.ScalarArray(axs, axes=tuple(shape.keys()))
+
+    if axis_rows in shape:
+        axs = axs[{axis_rows: slice(None, None, -1)}]
+
+    return fig, axs
 
 
 def plot(
