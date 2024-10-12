@@ -1117,7 +1117,7 @@ def transAxes(
     ax: None | matplotlib.axes.Axes | na.AbstractScalar = None,
 ) -> matplotlib.transforms.Transform | na.AbstractScalar:
     """
-    A thin wrapper around :meth:`matplotlib.axes.Axes.transAxes` for named arrays.
+    A thin wrapper around :attr:`matplotlib.axes.Axes.transAxes` for named arrays.
 
     Parameters
     ----------
@@ -1134,7 +1134,7 @@ def transData(
     ax: None | matplotlib.axes.Axes | na.AbstractScalar = None,
 ) -> matplotlib.transforms.Transform | na.AbstractScalar:
     """
-    A thin wrapper around :meth:`matplotlib.axes.Axes.transData` for named arrays.
+    A thin wrapper around :attr:`matplotlib.axes.Axes.transData` for named arrays.
 
     Parameters
     ----------
