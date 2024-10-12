@@ -459,14 +459,17 @@ def plt_plot_like(
         ax = plt.gca()
     ax = na.as_named_array(ax)
 
-    shape = na.shape_broadcasted(*args)
+    shape_args = na.shape_broadcasted(*args)
+
+    shape = na.broadcast_shapes(ax.shape, shape_args)
 
     if axis is None:
-        if len(shape) != 1:
+        if len(shape_args) != 1:
             raise ValueError(
-                f"if `axis` is `None`, the broadcasted shape of `*args`, {shape}, should have one element"
+                f"if `axis` is `None`, the broadcasted shape of `*args`, "
+                f"{shape_args}, should have one element"
             )
-        axis = next(iter(shape))
+        axis = next(iter(shape_args))
 
     shape_orthogonal = {a: shape[a] for a in shape if a != axis}
 
