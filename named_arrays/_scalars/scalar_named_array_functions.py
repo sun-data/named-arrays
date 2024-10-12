@@ -459,7 +459,7 @@ def plt_plot_like(
         ax = plt.gca()
     ax = na.as_named_array(ax)
 
-    shape = na.shape_broadcasted(*args)
+    shape = na.shape_broadcasted(ax, *args)
 
     if axis is None:
         if len(shape) != 1:
