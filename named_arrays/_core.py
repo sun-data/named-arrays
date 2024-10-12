@@ -543,6 +543,27 @@ class AbstractArray(
     def __repr__(self):
         return self.to_string()
 
+    @abc.abstractmethod
+    def to_string_array(
+        self,
+        format_value: str = ".3f",
+        format_unit: str = "latex_inline",
+        pad_unit: str = r"$\,$",
+    ):
+        """
+        Convert to an array of strings where each string has an
+        appropriately-formatted unit attached to the value.
+
+        Parameters
+        ----------
+        format_value
+            The string used to format the numeric value of each element.
+        format_unit
+            The string used to format the units of each element.
+        pad_unit
+            The string used to add horizontal space between the value and unit.
+        """
+
     def copy_shallow(self: Self) -> Self:
         return copy.copy(self)
 

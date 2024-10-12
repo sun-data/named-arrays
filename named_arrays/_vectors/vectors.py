@@ -226,6 +226,26 @@ class AbstractVectorArray(
 
         return self.type_explicit.from_components(components_result)
 
+    def to_string_array(
+        self,
+        format_value: str = ".3f",
+        format_unit: str = "latex_inline",
+        pad_unit: str = r"$\,$",
+    ) -> AbstractExplicitVectorArray:
+
+        components = self.components
+
+        components_result = dict()
+        for c in components:
+            component_c = na.as_named_array(components[c])
+            components_result[c] = component_c.to_string_array(
+                format_value=format_value,
+                format_unit=format_unit,
+                pad_unit=pad_unit
+            )
+
+        return self.type_explicit.from_components(components_result)
+
     def _getitem(
             self: Self,
             item: dict[str, int | slice | AbstractScalarOrVectorArray] | AbstractScalarOrVectorArray,

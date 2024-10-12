@@ -187,6 +187,22 @@ class AbstractUncertainScalarArray(
             distribution=distribution.combine_axes(axes=axes, axis_new=axis_new),
         )
 
+    def to_string_array(
+        self,
+        format_value: str = ".3f",
+        format_unit: str = "latex_inline",
+        pad_unit: str = r"$\,$",
+    ) -> UncertainScalarArray:
+        kwargs = dict(
+            format_value=format_value,
+            format_unit=format_unit,
+            pad_unit=pad_unit,
+        )
+        return self.type_explicit(
+            nominal=na.as_named_array(self.nominal).to_string_array(**kwargs),
+            distribution=na.as_named_array(self.distribution).to_string_array(**kwargs),
+        )
+
     def _getitem(
             self,
             item: dict[str, int | slice | na.AbstractScalar] | na.AbstractScalar,
