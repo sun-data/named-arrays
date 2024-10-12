@@ -1,5 +1,7 @@
 from __future__ import annotations
 from typing import Literal, Any
+import matplotlib.axes
+import matplotlib.transforms
 import matplotlib.animation
 import matplotlib.pyplot as plt
 import astropy.units as u
@@ -18,11 +20,19 @@ __all__ = [
     "text",
     "brace_vertical",
     "set_xlabel",
+    "get_xlabel",
     "set_ylabel",
+    "get_ylabel",
     "set_title",
+    "get_title",
     "set_xscale",
+    "get_xscale",
     "set_yscale",
+    "get_yscale",
     "set_aspect",
+    "get_aspect",
+    "transAxes",
+    "transData",
 ]
 
 
@@ -885,6 +895,24 @@ def set_xlabel(
     )
 
 
+def get_xlabel(
+    ax: None | matplotlib.axes.Axes | na.AbstractScalar = None,
+) -> str | na.AbstractScalar:
+    """
+    A thin wrapper around :meth:`matplotlib.axes.Axes.get_xlabel` for named arrays.
+
+    Parameters
+    ----------
+    ax
+        The matplotlib axes instance(s) to get the horizontal axis label from.
+    """
+    return na._named_array_function(
+        get_xlabel,
+        ax=na.as_named_array(ax),
+    )
+
+
+
 def set_ylabel(
     ylabel: str | na.AbstractScalar,
     ax: None | matplotlib.axes.Axes | na.AbstractScalar = None,
@@ -905,6 +933,23 @@ def set_ylabel(
         ylabel=na.as_named_array(ylabel),
         ax=ax,
         **kwargs,
+    )
+
+
+def get_ylabel(
+    ax: None | matplotlib.axes.Axes | na.AbstractScalar = None,
+) -> str | na.AbstractScalar:
+    """
+    A thin wrapper around :meth:`matplotlib.axes.Axes.get_ylabel` for named arrays.
+
+    Parameters
+    ----------
+    ax
+        The matplotlib axes instance(s) to get the vertical axis label from.
+    """
+    return na._named_array_function(
+        get_ylabel,
+        ax=na.as_named_array(ax),
     )
 
 
@@ -931,6 +976,23 @@ def set_title(
     )
 
 
+def get_title(
+    ax: None | matplotlib.axes.Axes | na.AbstractScalar = None,
+) -> str | na.AbstractScalar:
+    """
+    A thin wrapper around :meth:`matplotlib.axes.Axes.get_title` for named arrays.
+
+    Parameters
+    ----------
+    ax
+        The matplotlib axes instance(s) to get the title label from.
+    """
+    return na._named_array_function(
+        get_title,
+        ax=na.as_named_array(ax),
+    )
+
+
 def set_xscale(
     value: str | na.AbstractScalar,
     ax: None | matplotlib.axes.Axes | na.AbstractScalar = None,
@@ -951,6 +1013,23 @@ def set_xscale(
         value=na.as_named_array(value),
         ax=ax,
         **kwargs,
+    )
+
+
+def get_xscale(
+    ax: None | matplotlib.axes.Axes | na.AbstractScalar = None,
+) -> str | na.AbstractScalar:
+    """
+    A thin wrapper around :meth:`matplotlib.axes.Axes.get_xscale` for named arrays.
+
+    Parameters
+    ----------
+    ax
+        The matplotlib axes instance(s) to get the horizontal axis scale from.
+    """
+    return na._named_array_function(
+        get_xscale,
+        ax=na.as_named_array(ax),
     )
 
 
@@ -977,6 +1056,23 @@ def set_yscale(
     )
 
 
+def get_yscale(
+    ax: None | matplotlib.axes.Axes | na.AbstractScalar = None,
+) -> str | na.AbstractScalar:
+    """
+    A thin wrapper around :meth:`matplotlib.axes.Axes.get_yscale` for named arrays.
+
+    Parameters
+    ----------
+    ax
+        The matplotlib axes instance(s) to get the vertical axis scale from.
+    """
+    return na._named_array_function(
+        get_yscale,
+        ax=na.as_named_array(ax),
+    )
+
+
 def set_aspect(
     aspect: float | str | na.AbstractScalar,
     ax: None | matplotlib.axes.Axes | na.AbstractScalar = None,
@@ -997,6 +1093,57 @@ def set_aspect(
         aspect=na.as_named_array(aspect),
         ax=ax,
         **kwargs,
+    )
+
+
+def get_aspect(
+    ax: None | matplotlib.axes.Axes | na.AbstractScalar = None,
+) -> str | na.AbstractScalar:
+    """
+    A thin wrapper around :meth:`matplotlib.axes.Axes.get_aspect` for named arrays.
+
+    Parameters
+    ----------
+    ax
+        The matplotlib axes instance(s) to get the aspect ratio from.
+    """
+    return na._named_array_function(
+        get_aspect,
+        ax=na.as_named_array(ax),
+    )
+
+
+def transAxes(
+    ax: None | matplotlib.axes.Axes | na.AbstractScalar = None,
+) -> matplotlib.transforms.Transform | na.AbstractScalar:
+    """
+    A thin wrapper around :meth:`matplotlib.axes.Axes.transAxes` for named arrays.
+
+    Parameters
+    ----------
+    ax
+        The matplotlib axes instance(s) to get the axes transformation from.
+    """
+    return na._named_array_function(
+        transAxes,
+        ax=na.as_named_array(ax),
+    )
+
+
+def transData(
+    ax: None | matplotlib.axes.Axes | na.AbstractScalar = None,
+) -> matplotlib.transforms.Transform | na.AbstractScalar:
+    """
+    A thin wrapper around :meth:`matplotlib.axes.Axes.transData` for named arrays.
+
+    Parameters
+    ----------
+    ax
+        The matplotlib axes instance(s) to get the axes transformation from.
+    """
+    return na._named_array_function(
+        transData,
+        ax=na.as_named_array(ax),
     )
 
 

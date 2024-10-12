@@ -15,6 +15,9 @@ __all__ = [
     "ASARRAY_LIKE_FUNCTIONS",
     "RANDOM_FUNCTIONS",
     "PLT_PLOT_LIKE_FUNCTIONS",
+    "PLT_AXES_SETTERS",
+    "PLT_AXES_GETTERS",
+    "PLT_AXES_ATTRIBUTES",
     "HANDLED_FUNCTIONS",
     "random",
     "jacobian",
@@ -42,6 +45,18 @@ PLT_AXES_SETTERS = (
     na.plt.set_xscale,
     na.plt.set_yscale,
     na.plt.set_aspect,
+)
+PLT_AXES_GETTERS = (
+    na.plt.get_xlabel,
+    na.plt.get_ylabel,
+    na.plt.get_title,
+    na.plt.get_xscale,
+    na.plt.get_yscale,
+    na.plt.get_aspect,
+)
+PLT_AXES_ATTRIBUTES = (
+    na.plt.transAxes,
+    na.plt.transData,
 )
 NDFILTER_FUNCTIONS = (
     na.ndfilters.mean_filter,
@@ -829,6 +844,7 @@ def plt_text(
         y = scalars._normalize(y)
         s = scalars._normalize(s)
         ax = scalars._normalize(ax)
+        kwargs = {k: scalars._normalize(kwargs[k]) for k in kwargs}
     except na.ScalarTypeError:  # pragma: nocover
         return NotImplemented
 
@@ -838,15 +854,17 @@ def plt_text(
     y = y.broadcast_to(shape)
     s = s.broadcast_to(shape)
     ax = ax.broadcast_to(shape)
+    kwargs = {k: kwargs[k].broadcast_to(shape) for k in kwargs}
 
     result = na.ScalarArray.empty(shape, dtype=matplotlib.axes.Axes)
 
     for index in na.ndindex(shape):
+        kwargs_index = {k: kwargs[k][index].ndarray for k in kwargs}
         result[index] = ax[index].ndarray.text(
             x=x[index].ndarray,
             y=y[index].ndarray,
             s=s[index].ndarray,
-            **kwargs,
+            **kwargs_index,
         )
 
     return result
@@ -878,6 +896,48 @@ def plt_axes_setter(
         args_index = [arg[index].ndarray for arg in args]
         kwargs_index = {k: kwargs[k][index].ndarray for k in kwargs}
         getattr(ax[index].ndarray, method.__name__)(*args_index, **kwargs_index)
+
+
+def plt_axes_getter(
+    method: str,
+    ax: na.AbstractScalarArray,
+) -> na.ScalarArray:
+
+    try:
+        ax = scalars._normalize(ax)
+    except na.ScalarTypeError:  # pragma: nocover
+        return NotImplemented
+
+    result = na.ScalarArray.empty(shape=ax.shape, dtype=object)
+
+    for index in na.ndindex(ax.shape):
+        ax_index = ax[index].ndarray
+        if ax_index is None:
+            ax_index = plt.gca()
+        result[index] = getattr(ax_index, method.__name__)()
+
+    return result
+
+
+def plt_axes_attribute(
+    method: str,
+    ax: na.AbstractScalarArray,
+) -> na.ScalarArray:
+
+    try:
+        ax = scalars._normalize(ax)
+    except na.ScalarTypeError:  # pragma: nocover
+        return NotImplemented
+
+    result = na.ScalarArray.empty(shape=ax.shape, dtype=object)
+
+    for index in na.ndindex(ax.shape):
+        ax_index = ax[index].ndarray
+        if ax_index is None:
+            ax_index = plt.gca()
+        result[index] = getattr(ax_index, method.__name__)
+
+    return result
 
 
 @_implements(na.jacobian)

@@ -565,6 +565,12 @@ class AbstractScalarArray(
         if func in scalar_named_array_functions.PLT_AXES_SETTERS:
             return scalar_named_array_functions.plt_axes_setter(func, *args, **kwargs)
 
+        if func in scalar_named_array_functions.PLT_AXES_GETTERS:
+            return scalar_named_array_functions.plt_axes_getter(func, *args, **kwargs)
+
+        if func in scalar_named_array_functions.PLT_AXES_ATTRIBUTES:
+            return scalar_named_array_functions.plt_axes_attribute(func, *args, **kwargs)
+
         if func in scalar_named_array_functions.NDFILTER_FUNCTIONS:
             return scalar_named_array_functions.ndfilter(func, *args, **kwargs)
 
