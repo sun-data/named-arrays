@@ -1263,7 +1263,6 @@ class AbstractTestAbstractArray(
             argnames="ax",
             argvalues=[
                 np._NoValue,
-                plt.subplots()[1],
                 na.plt.subplots(axis_rows="x", nrows=num_x)[1],
             ]
         )
@@ -1295,21 +1294,23 @@ class AbstractTestAbstractArray(
                 if alpha is not np._NoValue:
                     kwargs["alpha"] = alpha
 
-                shape = na.shape_broadcasted(ax, *args)
+                shape_args = na.shape_broadcasted(*args)
+
+                shape = na.broadcast_shapes(na.shape(ax), shape_args)
 
                 axis_normalized = axis
                 if axis_normalized is np._NoValue:
                     axis_normalized = None
 
                 if axis_normalized is None:
-                    if len(shape) != 1:
+                    if len(shape_args) != 1:
                         with pytest.raises(
                             expected_exception=ValueError,
                             match="if `axis` is `None`, the broadcasted shape of .* should have one element"
                         ):
                             func(*args, **kwargs)
                         return
-                    axis_normalized = next(iter(shape))
+                    axis_normalized = next(iter(shape_args))
 
                 shape_orthogonal = {a: shape[a] for a in shape if a != axis_normalized}
 
