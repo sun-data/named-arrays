@@ -1295,7 +1295,7 @@ class AbstractTestAbstractArray(
                 if alpha is not np._NoValue:
                     kwargs["alpha"] = alpha
 
-                shape = na.shape_broadcasted(*args)
+                shape = na.shape_broadcasted(ax, *args)
 
                 axis_normalized = axis
                 if axis_normalized is np._NoValue:
