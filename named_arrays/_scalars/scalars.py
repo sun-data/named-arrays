@@ -302,11 +302,11 @@ class AbstractScalarArray(
 
     def to_string_array(
             self,
-            format_value: str = ".3f",
+            format_value: str = "%.2f",
             format_unit: str = "latex_inline",
             pad_unit: str = r"$\,$"
     ):
-        a = f"%{format_value}"
+        a = format_value
 
         unit = self.unit
         if unit is not None:
