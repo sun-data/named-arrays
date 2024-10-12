@@ -300,6 +300,23 @@ class AbstractScalarArray(
             axes=tuple(axes_new),
         )
 
+    def to_string_array(
+            self,
+            format_value: str = ".3f",
+            format_unit: str = "latex_inline",
+            pad_unit: str = r"$\,$"
+    ):
+        a = f"%{format_value}"
+
+        unit = self.unit
+        if unit is not None:
+            a = f"{a}{pad_unit}{unit:{format_unit}}"
+
+        return np.char.mod(
+            a=a,
+            values=self.value,
+        )
+
     def _getitem(
             self: Self,
             item: dict[str, int | slice | AbstractScalarArray] | AbstractScalarArray,

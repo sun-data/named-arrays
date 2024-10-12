@@ -278,6 +278,11 @@ class AbstractTestAbstractArray(
     def test__repr__(self, array: na.AbstractArray):
         assert isinstance(repr(array), str)
 
+    def test_to_string_array(self, array: na.AbstractArray):
+        result = array.to_string_array()
+        assert array.type_explicit == result.type_explicit
+        assert result.shape == array.shape
+
     def test_copy_shallow(self, array: na.AbstractArray):
         array_copy = array.copy_shallow()
         assert isinstance(array_copy, na.AbstractArray)
