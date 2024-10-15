@@ -1156,6 +1156,74 @@ def transData(
     )
 
 
+def twinx(
+    ax: None | matplotlib.axes.Axes | na.AbstractScalar = None,
+) -> na.AbstractScalar:
+    """
+    A thin wrapper around :meth:`matplotlib.axes.Axes.twinx` for named arrays.
+
+    Parameters
+    ----------
+    ax
+        The matplotlib axes instance(s) to make the twin axes from.
+    """
+    return na._named_array_function(
+        twinx,
+        ax=na.as_named_array(ax),
+    )
+
+
+def twiny(
+    ax: None | matplotlib.axes.Axes | na.AbstractScalar = None,
+) -> na.AbstractScalar:
+    """
+    A thin wrapper around :meth:`matplotlib.axes.Axes.twiny` for named arrays.
+
+    Parameters
+    ----------
+    ax
+        The matplotlib axes instance(s) to make the twin axes from.
+    """
+    return na._named_array_function(
+        twiny,
+        ax=na.as_named_array(ax),
+    )
+
+
+def invert_xaxis(
+    ax: None | matplotlib.axes.Axes | na.AbstractScalar = None,
+) -> na.AbstractScalar:
+    """
+    A thin wrapper around :meth:`matplotlib.axes.Axes.invert_xaxis` for named arrays.
+
+    Parameters
+    ----------
+    ax
+        The matplotlib axes instance(s) to invert the horizontal axis of.
+    """
+    return na._named_array_function(
+        invert_xaxis,
+        ax=na.as_named_array(ax),
+    )
+
+
+def invert_yaxis(
+    ax: None | matplotlib.axes.Axes | na.AbstractScalar = None,
+) -> na.AbstractScalar:
+    """
+    A thin wrapper around :meth:`matplotlib.axes.Axes.invert_yaxis` for named arrays.
+
+    Parameters
+    ----------
+    ax
+        The matplotlib axes instance(s) to invert the vertical axis of.
+    """
+    return na._named_array_function(
+        invert_xaxis,
+        ax=na.as_named_array(ax),
+    )
+
+
 def brace_vertical(
     x: float | u.Quantity | na.AbstractScalar,
     width: float | u.Quantity | na.AbstractScalar,

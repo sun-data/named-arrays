@@ -53,6 +53,10 @@ PLT_AXES_GETTERS = (
     na.plt.get_xscale,
     na.plt.get_yscale,
     na.plt.get_aspect,
+    na.plt.twinx,
+    na.plt.twiny,
+    na.plt.invert_xaxis,
+    na.plt.invert_yaxis,
 )
 PLT_AXES_ATTRIBUTES = (
     na.plt.transAxes,

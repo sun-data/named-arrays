@@ -172,3 +172,59 @@ def test_transData(
     result = na.plt.transData(ax)
     assert isinstance(result, na.AbstractArray)
     assert result.shape == na.shape(ax)
+
+
+@pytest.mark.parametrize(
+    argnames="ax",
+    argvalues=[
+        None,
+        na.plt.subplots(ncols=3)[1]
+    ]
+)
+def test_twinx(
+    ax: None | matplotlib.axes.Axes | na.AbstractScalar,
+):
+    result = na.plt.twinx(ax)
+    for r in np.nditer(result.ndarray, flags=("refs_ok",)):
+        assert isinstance(r.item(), matplotlib.axes.Axes)
+
+
+@pytest.mark.parametrize(
+    argnames="ax",
+    argvalues=[
+        None,
+        na.plt.subplots(ncols=3)[1]
+    ]
+)
+def test_twiny(
+    ax: None | matplotlib.axes.Axes | na.AbstractScalar,
+):
+    result = na.plt.twiny(ax)
+    for r in np.nditer(result.ndarray, flags=("refs_ok",)):
+        assert isinstance(r.item(), matplotlib.axes.Axes)
+
+
+@pytest.mark.parametrize(
+    argnames="ax",
+    argvalues=[
+        None,
+        na.plt.subplots(ncols=3)[1]
+    ]
+)
+def test_invert_xaxis(
+    ax: None | matplotlib.axes.Axes | na.AbstractScalar,
+):
+    na.plt.invert_xaxis(ax)
+
+
+@pytest.mark.parametrize(
+    argnames="ax",
+    argvalues=[
+        None,
+        na.plt.subplots(ncols=3)[1]
+    ]
+)
+def test_invert_yaxis(
+    ax: None | matplotlib.axes.Axes | na.AbstractScalar,
+):
+    na.plt.invert_yaxis(ax)
