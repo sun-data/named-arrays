@@ -33,6 +33,10 @@ __all__ = [
     "get_aspect",
     "transAxes",
     "transData",
+    "twinx",
+    "twiny",
+    "invert_xaxis",
+    "invert_yaxis",
 ]
 
 
