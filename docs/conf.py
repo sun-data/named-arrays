@@ -115,6 +115,7 @@ intersphinx_mapping = {
     'scipy': ('https://docs.scipy.org/doc/scipy/', None),
     'matplotlib': ('https://matplotlib.org/stable', None),
     'astropy': ('https://docs.astropy.org/en/stable/', None),
+    'astroscrappy': ('https://astroscrappy.readthedocs.io/en/stable/', None),
     'xarray': ('https://docs.xarray.dev/en/stable/', None),
     'ndfilters': ('https://ndfilters.readthedocs.io/en/stable', None),
     'colorsynth': ('https://colorsynth.readthedocs.io/en/stable', None),

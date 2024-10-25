@@ -1,4 +1,4 @@
-from typing import Callable, Sequence, Any
+from typing import Callable, Sequence, Any, Literal
 import numpy as np
 import numpy.typing as npt
 import matplotlib.axes
@@ -6,6 +6,7 @@ import matplotlib.artist
 import matplotlib.pyplot as plt
 import matplotlib.animation
 import astropy.units as u
+import astroscrappy
 import ndfilters
 import colorsynth
 import named_arrays as na
@@ -1300,3 +1301,86 @@ def ndfilter(
         ),
         axes=axes,
     )
+
+
+@_implements(na.despike)
+def despike(
+    array: na.AbstractScalarArray,
+    axis: tuple[str, str],
+    where: None | bool | na.AbstractScalarArray,
+    inbkg: None | na.AbstractScalarArray,
+    invar: None | float | na.AbstractScalarArray,
+    sigclip: float,
+    sigfrac: float,
+    objlim: float,
+    gain: float,
+    readnoise: float,
+    satlevel: float,
+    niter: int,
+    sepmed: bool,
+    cleantype: Literal["median", "medmask", "meanmask", "idw"],
+    fsmode: Literal["median", "convolve"],
+    psfmodel: Literal["gauss", "gaussx", "gaussy", "moffat"],
+    psffwhm: float,
+    psfsize: int,
+    psfk: None | na.AbstractScalarArray,
+    psfbeta: float,
+    verbose: bool,
+) -> na.ScalarArray:
+
+    try:
+        array = scalars._normalize(array)
+        where = scalars._normalize(where) if where is not None else where
+        inbkg = scalars._normalize(inbkg) if inbkg is not None else inbkg
+        invar = scalars._normalize(invar) if invar is not None else invar
+        psfk = scalars._normalize(psfk) if psfk is not None else psfk
+    except scalars.ScalarTypeError:
+        return NotImplemented
+
+    shape = na.shape_broadcasted(
+        array,
+        where,
+        inbkg,
+        invar,
+    )
+
+    array = array.broadcast_to(shape)
+    where = where.broadcast_to(shape) if where is not None else where
+    inbkg = inbkg.broadcast_to(shape) if inbkg is not None else inbkg
+    invar = invar.broadcast_to(shape) if invar is not None else invar
+
+    if psfk is not None:
+        shape_orthogonal = {ax: shape[ax] for ax in shape if ax not in axis}
+        shape_psfk = na.broadcast_shapes(shape_orthogonal, psfk.shape)
+        psfk = na.broadcast_to(psfk, shape_psfk)
+
+    result = array.copy()
+    inmask = ~where if where is not None else where
+
+    for index in na.ndindex(shape, axis_ignored=axis):
+        result_ndarray = astroscrappy.detect_cosmics(
+            indat=array[index].ndarray,
+            inmask=inmask[index].ndarray if inmask is not None else inmask,
+            inbkg=inbkg[index].ndarray if inbkg is not None else inbkg,
+            invar=invar[index].ndarray if invar is not None else invar,
+            sigclip=sigclip,
+            sigfrac=sigfrac,
+            objlim=objlim,
+            gain=gain,
+            readnoise=readnoise,
+            satlevel=satlevel,
+            niter=niter,
+            sepmed=sepmed,
+            cleantype=cleantype,
+            fsmode=fsmode,
+            psfmodel=psfmodel,
+            psffwhm=psffwhm,
+            psfsize=psfsize,
+            psfk=psfk[index].ndarray if psfk is not None else psfk,
+            psfbeta=psfbeta,
+            verbose=verbose,
+        )
+
+        result[index].value.ndarray[:] = result_ndarray[1]
+
+    return result
