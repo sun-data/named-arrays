@@ -864,7 +864,7 @@ def despike(
         inbkg = uncertainties._normalize(inbkg)
         invar = uncertainties._normalize(invar)
         psfk = uncertainties._normalize(psfk)
-    except uncertainties.UncertainScalarTypeError:
+    except uncertainties.UncertainScalarTypeError:  # pragma: nocover
         return NotImplemented
 
     kwargs = dict(

@@ -1334,7 +1334,7 @@ def despike(
         inbkg = scalars._normalize(inbkg) if inbkg is not None else inbkg
         invar = scalars._normalize(invar) if invar is not None else invar
         psfk = scalars._normalize(psfk) if psfk is not None else psfk
-    except scalars.ScalarTypeError:
+    except scalars.ScalarTypeError:  # pragma: nocover
         return NotImplemented
 
     shape = na.shape_broadcasted(

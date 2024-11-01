@@ -27,7 +27,10 @@ spikes = 1000 * na.random.poisson(0.001, shape)
 @pytest.mark.parametrize("where", [None])
 @pytest.mark.parametrize("inbkg", [None])
 @pytest.mark.parametrize("invar", [None])
-@pytest.mark.parametrize("psfk", [None])
+@pytest.mark.parametrize("psfk", [
+    None,
+    na.ScalarArray.ones(dict(x=5, y=5)),
+])
 def test_despike(
     array: na.AbstractArray,
     axis: tuple[str, str],
