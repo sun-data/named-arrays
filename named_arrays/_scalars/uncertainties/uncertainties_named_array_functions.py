@@ -1,4 +1,4 @@
-from typing import Callable, Sequence
+from typing import Callable, Sequence, Literal
 import numpy as np
 import numpy.typing as npt
 import matplotlib.axes
@@ -831,3 +831,77 @@ def ndfilter(
             **kwargs,
         )
     )
+
+
+@_implements(na.despike)
+def despike(
+    array: na.AbstractScalar,
+    axis: tuple[str, str],
+    where: None | bool | na.AbstractScalar,
+    inbkg: None | na.AbstractScalar,
+    invar: None | float | na.AbstractScalar,
+    sigclip: float,
+    sigfrac: float,
+    objlim: float,
+    gain: float,
+    readnoise: float,
+    satlevel: float,
+    niter: int,
+    sepmed: bool,
+    cleantype: Literal["median", "medmask", "meanmask", "idw"],
+    fsmode: Literal["median", "convolve"],
+    psfmodel: Literal["gauss", "gaussx", "gaussy", "moffat"],
+    psffwhm: float,
+    psfsize: int,
+    psfk: None | na.AbstractScalar,
+    psfbeta: float,
+    verbose: bool,
+) -> na.ScalarArray:
+
+    try:
+        array = uncertainties._normalize(array)
+        where = uncertainties._normalize(where)
+        inbkg = uncertainties._normalize(inbkg)
+        invar = uncertainties._normalize(invar)
+        psfk = uncertainties._normalize(psfk)
+    except uncertainties.UncertainScalarTypeError:  # pragma: nocover
+        return NotImplemented
+
+    kwargs = dict(
+        axis=axis,
+        sigclip=sigclip,
+        sigfrac=sigfrac,
+        objlim=objlim,
+        gain=gain,
+        readnoise=readnoise,
+        satlevel=satlevel,
+        niter=niter,
+        sepmed=sepmed,
+        cleantype=cleantype,
+        fsmode=fsmode,
+        psfmodel=psfmodel,
+        psffwhm=psffwhm,
+        psfsize=psfsize,
+        psfbeta=psfbeta,
+        verbose=verbose,
+    )
+
+    result = array.copy_shallow()
+    result.nominal = na.despike(
+        array=array.nominal,
+        where=where.nominal,
+        inbkg=inbkg.nominal,
+        invar=invar.nominal,
+        psfk=psfk.nominal,
+        **kwargs,
+    )
+    result.distribution = na.despike(
+        array=array.distribution,
+        where=where.distribution,
+        inbkg=inbkg.distribution,
+        invar=invar.distribution,
+        psfk=psfk.distribution,
+        **kwargs,
+    )
+
+    return result

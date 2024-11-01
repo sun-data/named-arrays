@@ -1,4 +1,4 @@
-from typing import Callable
+from typing import Callable, Literal
 import numpy as np
 import matplotlib
 import astropy.units as u
@@ -222,3 +222,66 @@ def colorsynth_colorbar(
         wavelength_max=wavelength_max,
         wavelength_norm=wavelength_norm,
     )
+
+
+@_implements(na.despike)
+def despike(
+    array: na.AbstractScalar | na.AbstractFunctionArray,
+    axis: tuple[str, str],
+    where: None | bool | na.AbstractScalar | na.AbstractFunctionArray,
+    inbkg: None | na.AbstractScalar | na.AbstractFunctionArray,
+    invar: None | float | na.AbstractScalar | na.AbstractFunctionArray,
+    sigclip: float,
+    sigfrac: float,
+    objlim: float,
+    gain: float,
+    readnoise: float,
+    satlevel: float,
+    niter: int,
+    sepmed: bool,
+    cleantype: Literal["median", "medmask", "meanmask", "idw"],
+    fsmode: Literal["median", "convolve"],
+    psfmodel: Literal["gauss", "gaussx", "gaussy", "moffat"],
+    psffwhm: float,
+    psfsize: int,
+    psfk: None | na.AbstractScalar,
+    psfbeta: float,
+    verbose: bool,
+) -> na.ScalarArray:
+
+    result = array.copy_shallow()
+
+    if isinstance(array, na.AbstractFunctionArray):
+        array = array.outputs
+    if isinstance(where, na.AbstractFunctionArray):
+        where = where.outputs
+    if isinstance(inbkg, na.AbstractFunctionArray):
+        inbkg = inbkg.outputs
+    if isinstance(invar, na.AbstractFunctionArray):
+        invar = invar.outputs
+
+    result.outputs = na.despike(
+        array=array,
+        axis=axis,
+        where=where,
+        inbkg=inbkg,
+        invar=invar,
+        sigclip=sigclip,
+        sigfrac=sigfrac,
+        objlim=objlim,
+        gain=gain,
+        readnoise=readnoise,
+        satlevel=satlevel,
+        niter=niter,
+        sepmed=sepmed,
+        cleantype=cleantype,
+        fsmode=fsmode,
+        psfmodel=psfmodel,
+        psffwhm=psffwhm,
+        psfsize=psfsize,
+        psfk=psfk,
+        psfbeta=psfbeta,
+        verbose=verbose,
+    )
+
+    return result
