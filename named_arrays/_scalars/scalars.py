@@ -782,7 +782,10 @@ class ScalarArray(
         if isinstance(self.axes, str):
             self.axes = (self.axes, )
         if getattr(self.ndarray, 'ndim', 0) != len(self.axes):
-            raise ValueError('The number of axis names must match the number of dimensions.')
+            raise ValueError(
+                f'The number of axis names, {self.axes}, '
+                f'must match the number of dimensions, {np.ndim(self.ndarray)}.'
+            )
         if len(self.axes) != len(set(self.axes)):
             raise ValueError(f'Each axis name must be unique, got {self.axes}.')
 
