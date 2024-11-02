@@ -211,7 +211,7 @@ class TestTemporalSpectralVectorLinearSpace(
                 wavelength=1 * u.nm,
             ),
             pc=na.SpectralMatrixArray(
-                wavelength=na.CartesianNdVectorArray(dict(wavelength=1, x=0, y=0)),
+                wavelength=na.CartesianNdVectorArray(dict(wavelength=1, x=0, y=0.1)),
             ),
             shape_wcs=dict(wavelength=5, x=_num_x, y=_num_y),
         ),
