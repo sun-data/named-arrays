@@ -132,9 +132,6 @@ class AbstractScalar(
             unit_2 = na.unit(x2, unit_dimensionless=1)
             return 0 * unit_1 * unit_2
 
-        if np.all(x2 == 0):
-            return 0
-
         return np.multiply(
             x1,
             x2,
