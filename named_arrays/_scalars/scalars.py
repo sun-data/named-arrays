@@ -127,6 +127,12 @@ class AbstractScalar(
         if result is not NotImplemented:
             return result
 
+        if np.all(x1 == 0):
+            return 0
+
+        if np.all(x2 == 0):
+            return 0
+
         return np.multiply(
             x1,
             x2,
