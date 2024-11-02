@@ -241,7 +241,7 @@ def interp(
                 right=right_index,
                 period=period_index,
             ),
-            axes=x.axes,
+            axes=x_index.axes,
         )
 
     return result
