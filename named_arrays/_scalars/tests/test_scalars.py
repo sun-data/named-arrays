@@ -180,7 +180,7 @@ class AbstractTestAbstractScalar(
 
             result_expected = np.multiply(array, array_2)
 
-            out = 0 * result
+            out = na.as_named_array(0 * result)
             result_out = np.matmul(array, array_2, out=out)
 
             assert np.all(result == result_expected)
