@@ -456,6 +456,116 @@ def plt_scatter(
     return result
 
 
+@_implements(na.plt.stairs)
+def plt_stairs(
+        *args: na.AbstractScalar,
+        ax: None | matplotlib.axes.Axes = None,
+        axis: None | str = None,
+        where: bool | na.AbstractScalarArray = True,
+        **kwargs,
+) -> na.UncertainScalarArray[
+    npt.NDArray[matplotlib.artist.Artist],
+    npt.NDArray[matplotlib.artist.Artist]
+]:
+
+    if len(args) == 1:
+        edges = None
+        values, = args
+    elif len(args) == 2:
+        edges, values = args
+    else:   # pragma: nocover
+        raise ValueError(
+            f"incorrect number of arguments, expected 1 or 2, got {len(args)}"
+        )
+
+    try:
+        values = uncertainties._normalize(values)
+        edges = uncertainties._normalize(edges) if edges is not None else edges
+        where = uncertainties._normalize(where)
+        kwargs = {k: uncertainties._normalize(kwargs[k]) for k in kwargs}
+    except na.UncertainScalarTypeError:     # pragma: nocover
+        return NotImplemented
+
+    if axis is None:
+        if len(values.shape) != 1:
+            raise ValueError(
+                f"if {axis=}, {values.shape=} should have only one element."
+            )
+        axis = next(iter(values.shape))
+    else:
+        if axis not in values.shape:
+            raise ValueError(
+                f"{axis=} must be an element of {values.shape}"
+            )
+
+    shape_values = na.shape(values)
+    shape_edges = na.shape(edges)
+    shape_args = na.broadcast_shapes(
+        shape_values,
+        {a: shape_edges[a] for a in shape_edges if a != axis},
+    )
+
+    shape = na.broadcast_shapes(na.shape(ax), shape_args)
+
+    values = na.broadcast_to(values, shape)
+
+    if edges is not None:
+        edges = na.broadcast_to(
+            array=edges,
+            shape={a: shape[a] + 1 if a == axis else shape[a] for a in shape},
+        )
+
+    axis_distribution = values.axis_distribution
+    dshape_edges = na.shape(edges.distribution) if edges is not None else dict()
+    shape_distribution = na.broadcast_shapes(
+        na.shape(values.distribution),
+        {a: dshape_edges[a] for a in dshape_edges if a != axis},
+    )
+
+    if axis_distribution in shape_distribution:
+        num_distribution = shape_distribution[axis_distribution]
+    else:
+        num_distribution = 1
+
+    if num_distribution == 0:
+        alpha = 1
+    else:
+        alpha = max(1 / num_distribution, 1/255)
+    if "alpha" in kwargs:
+        kwargs["alpha"] *= alpha
+    else:
+        kwargs["alpha"] = na.UncertainScalarArray(1, alpha)
+
+    if "color" not in kwargs:
+        color_cycle = plt.rcParams['axes.prop_cycle'].by_key()['color']
+        shape_orthogonal = {a: shape[a] for a in shape if a != axis}
+        color = na.ScalarArray.empty(shape=shape_orthogonal, dtype=object)
+        for i, index in enumerate(color.ndindex()):
+            color[index] = color_cycle[i % len(color_cycle)]
+        kwargs["color"] = uncertainties._normalize(color)
+
+    result = na.UncertainScalarArray(
+        nominal=na.plt.stairs(
+            edges.nominal if edges is not None else edges,
+            values.nominal,
+            ax=ax,
+            axis=axis,
+            where=where.nominal,
+            **{k: kwargs[k].nominal for k in kwargs}
+        ),
+        distribution=na.plt.stairs(
+            edges.distribution if edges is not None else edges,
+            values.distribution,
+            ax=ax,
+            axis=axis,
+            where=where.distribution,
+            **{k: kwargs[k].distribution for k in kwargs}
+        )
+    )
+
+    return result
+
+
 @_implements(na.jacobian)
 def jacobian(
         function: Callable[[na.AbstractScalar], na.AbstractScalar],
