@@ -331,7 +331,7 @@ def stairs(
 
         x = na.linspace(0, 2 * np.pi, axis="x",  num=101)
 
-        a = na.linspace(0, 2 * np.pi, axis="x, num=100, centers=True)
+        a = na.linspace(0, 2 * np.pi, axis="x", num=100, centers=True)
         y = np.sin(a)
 
         plt.figure();
