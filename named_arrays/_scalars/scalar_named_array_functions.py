@@ -1145,6 +1145,13 @@ def colorsynth_rgb(
     except na.ScalarTypeError:  # pragma: nocover
         return NotImplemented
 
+    if wavelength is not None:
+        if axis in spd.shape:
+            if wavelength.shape[axis] == spd.shape[axis] + 1:
+                below = {axis: slice(None, ~0)}
+                above = {axis: slice(+1, None)}
+                wavelength = (wavelength[below] + wavelength[above]) / 2
+
     shape = na.shape_broadcasted(
         spd,
         wavelength,
@@ -1208,6 +1215,13 @@ def colorsynth_colorbar(
         wavelength_max = scalars._normalize(wavelength_max) if wavelength_max is not None else wavelength_max
     except na.ScalarTypeError:  # pragma: nocover
         return NotImplemented
+
+    if wavelength is not None:
+        if axis in spd.shape:
+            if wavelength.shape[axis] == spd.shape[axis] + 1:
+                below = {axis: slice(None, ~0)}
+                above = {axis: slice(+1, None)}
+                wavelength = (wavelength[below] + wavelength[above]) / 2
 
     shape = na.shape_broadcasted(
         spd,
