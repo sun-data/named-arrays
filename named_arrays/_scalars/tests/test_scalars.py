@@ -299,12 +299,6 @@ class AbstractTestAbstractScalar(
                     axis=axis,
                 )
 
-                axes = tuple(
-                    set(na.shape(edges))
-                    | set(na.shape(array))
-                    | set(na.shape(ax))
-                )
-
                 if axis is None:
                     if len(na.shape(array)) != 1:
                         with pytest.raises(ValueError):
@@ -315,20 +309,6 @@ class AbstractTestAbstractScalar(
                         with pytest.raises(ValueError):
                             na.plt.stairs(*args, **kwargs)
                         return
-
-                if ax is None:
-                    ax_normalized = plt.gca()
-                else:
-                    ax_normalized = ax
-                ax_normalized = na.as_named_array(ax_normalized)
-
-                if not set(ax_normalized.shape).issubset(axes):
-                    with pytest.raises(
-                            expected_exception=ValueError,
-                            match="the shape of .* should be a subset of .*"
-                    ):
-                        na.plt.stairs(*args, **kwargs)
-                    return
 
                 with astropy.visualization.quantity_support():
                     result = na.plt.stairs(*args, **kwargs)

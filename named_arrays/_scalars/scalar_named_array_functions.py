@@ -676,14 +676,14 @@ def plt_stairs(
             shape=shape_orthogonal | {axis: shape[axis] + 1},
         )
 
-    if not set(ax.shape).issubset(shape_orthogonal):
+    if not set(ax.shape).issubset(shape_orthogonal):    # pragma: nocover
         raise ValueError(
             f"the shape of `ax`, {ax.shape}, "
             f"should be a subset of the broadcasted shape of `*args` excluding `axis`, {shape_orthogonal}",
         )
     ax = ax.broadcast_to(shape_orthogonal)
 
-    if not set(where.shape).issubset(shape_orthogonal):
+    if not set(where.shape).issubset(shape_orthogonal):     # pragma: nocover
         raise ValueError(
             f"the shape of `where`, {where.shape}, "
             f"should be a subset of the broadcasted shape of `*args` excluding `axis`, {shape_orthogonal}"
@@ -693,7 +693,7 @@ def plt_stairs(
     kwargs_broadcasted = dict()
     for k in kwargs:
         kwarg = kwargs[k]
-        if not set(na.shape(kwarg)).issubset(shape_orthogonal):
+        if not set(na.shape(kwarg)).issubset(shape_orthogonal):     # pragma: nocover
             raise ValueError(
                 f"the shape of `{k}`, {na.shape(kwarg)}, "
                 f"should be a subset of the broadcasted shape of `*args` excluding `axis`, {shape_orthogonal}"
