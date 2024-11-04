@@ -14,6 +14,7 @@ __all__ = [
     "plot",
     "fill",
     "scatter",
+    "stairs",
     "imshow",
     "pcolormesh",
     "pcolormovie",
@@ -276,6 +277,94 @@ def fill(
         axis=axis,
         where=where,
         components=components,
+        **kwargs,
+    )
+
+
+def stairs(
+    *args: na.AbstractArray,
+    ax: None | matplotlib.axes.Axes | na.ScalarArray[npt.NDArray[matplotlib.axes.Axes]] = None,
+    axis: None | str = None,
+    where: bool | na.AbstractScalar = True,
+    **kwargs,
+) -> na.ScalarArray[npt.NDArray[None | matplotlib.artist.Artist]]:
+    """
+    A thin wrapper around :meth:`matplotlib.axes.Axes.stairs` for named arrays.
+
+    The main difference of this function from :func:`matplotlib.pyplot.stairs`
+    is the addition of the ``axis`` parameter indicating along which axis the
+    lines should be connected.
+
+    Another difference is that this function swaps the order of `values`
+    and `edges` so that the signature matches :func:`plot`.
+
+    Parameters
+    ----------
+    args
+        Either a single instance of :class:`AbstractScalar` representing the step heights,
+        or a pair of instances of :class:`AbstractScalar` representing the edges and heights.
+    ax
+        The instances of :class:`matplotlib.axes.Axes` to use.
+        If :obj:`None`, calls :func:`matplotlib.pyplot.gca` to get the current axes.
+        If an instance of :class:`named_arrays.ScalarArray`, ``ax.shape`` should
+        be a subset of the broadcasted shape of ``*args``.
+    axis
+        The name of the axis that the plot lines should be connected along.
+        If :obj:`None`, the broadcasted shape of ``args`` should have only one element,
+        otherwise a :class:`ValueError` is raised.
+    where
+        A boolean array that selects which elements to plot
+    kwargs
+        Additional keyword arguments passed to :meth:`matplotlib.axes.Axes.stairs`.
+        These can be instances of :class:`named_arrays.AbstractArray`.
+
+    Examples
+    --------
+
+    Plot a single scalar
+
+    .. jupyter-execute::
+
+        import numpy as np
+        import matplotlib.pyplot as plt
+        import named_arrays as na
+
+        x = na.linspace(0, 2 * np.pi, axis="x",  num=101)
+
+        a = na.linspace(0, 2 * np.pi, axis="x", num=100, centers=True)
+        y = np.sin(a)
+
+        plt.figure();
+        na.plt.stairs(x, y);
+
+    Plot an array of scalars
+
+    .. jupyter-execute::
+
+        z = na.linspace(0, np.pi, axis="z", num=5)
+
+        y = np.sin(a - z)
+
+        plt.figure();
+        na.plt.stairs(x, y, axis="x");
+
+    Plot an uncertain scalar
+
+    .. jupyter-execute::
+
+        ua = na.NormalUncertainScalarArray(a, width=0.2)
+        uy = np.sin(ua)
+
+        plt.figure();
+        na.plt.stairs(x, uy);
+
+    """
+    return na._named_array_function(
+        stairs,
+        *args,
+        ax=ax,
+        axis=axis,
+        where=where,
         **kwargs,
     )
 

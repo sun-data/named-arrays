@@ -614,6 +614,109 @@ def plt_scatter(
     return result
 
 
+@_implements(na.plt.stairs)
+def plt_stairs(
+        *args: na.AbstractScalarArray,
+        ax: None | matplotlib.axes.Axes | na.ScalarArray[npt.NDArray[matplotlib.axes.Axes]] = None,
+        axis: None | str = None,
+        where: bool | na.AbstractScalarArray = True,
+        **kwargs,
+) -> na.ScalarArray[npt.NDArray[None | matplotlib.artist.Artist]]:
+
+    if len(args) == 1:
+        edges = None
+        values, = args
+    elif len(args) == 2:
+        edges, values = args
+    else:   # pragma: nocover
+        raise ValueError(
+            f"incorrect number of arguments, expected 1 or 2, got {len(args)}"
+        )
+
+    try:
+        values = scalars._normalize(values)
+        edges = scalars._normalize(edges) if edges is not None else edges
+        where = scalars._normalize(where)
+        kwargs = {k: scalars._normalize(kwargs[k]) for k in kwargs}
+    except na.ScalarTypeError:  # pragma: nocover
+        return NotImplemented
+
+    if ax is None:
+        ax = plt.gca()
+    ax = na.as_named_array(ax)
+
+    if axis is None:
+        if len(values.shape) != 1:
+            raise ValueError(
+                f"if {axis=}, {values.shape=} should have only one element."
+            )
+        axis = next(iter(values.shape))
+    else:
+        if axis not in values.shape:
+            raise ValueError(
+                f"{axis=} must be an element of {values.shape}"
+            )
+
+    shape_values = na.shape(values)
+    shape_edges = na.shape(edges)
+    shape_args = na.broadcast_shapes(
+        shape_values,
+        {a: shape_edges[a] for a in shape_edges if a != axis},
+    )
+
+    shape = na.broadcast_shapes(ax.shape, shape_args)
+
+    shape_orthogonal = {a: shape[a] for a in shape if a != axis}
+
+    values = na.broadcast_to(values, shape)
+
+    if edges is not None:
+        edges = na.broadcast_to(
+            array=edges,
+            shape=shape_orthogonal | {axis: shape[axis] + 1},
+        )
+
+    if not set(ax.shape).issubset(shape_orthogonal):    # pragma: nocover
+        raise ValueError(
+            f"the shape of `ax`, {ax.shape}, "
+            f"should be a subset of the broadcasted shape of `*args` excluding `axis`, {shape_orthogonal}",
+        )
+    ax = ax.broadcast_to(shape_orthogonal)
+
+    if not set(where.shape).issubset(shape_orthogonal):     # pragma: nocover
+        raise ValueError(
+            f"the shape of `where`, {where.shape}, "
+            f"should be a subset of the broadcasted shape of `*args` excluding `axis`, {shape_orthogonal}"
+        )
+    where = where.broadcast_to(shape_orthogonal)
+
+    kwargs_broadcasted = dict()
+    for k in kwargs:
+        kwarg = kwargs[k]
+        if not set(na.shape(kwarg)).issubset(shape_orthogonal):     # pragma: nocover
+            raise ValueError(
+                f"the shape of `{k}`, {na.shape(kwarg)}, "
+                f"should be a subset of the broadcasted shape of `*args` excluding `axis`, {shape_orthogonal}"
+            )
+        kwargs_broadcasted[k] = na.broadcast_to(kwarg, shape_orthogonal)
+    kwargs = kwargs_broadcasted
+
+    result = na.ScalarArray.empty(shape=shape_orthogonal, dtype=object)
+
+    for index in na.ndindex(shape_orthogonal):
+        if where[index]:
+            values_index = values[index].ndarray
+            edges_index = edges[index].ndarray if edges is not None else edges
+            kwargs_index = {k: kwargs[k][index].ndarray for k in kwargs}
+            result[index] = ax[index].ndarray.stairs(
+                values=values_index,
+                edges=edges_index,
+                **kwargs_index,
+            )
+
+    return result
+
+
 @_implements(na.plt.imshow)
 def plt_imshow(
     X: na.AbstractScalarArray,

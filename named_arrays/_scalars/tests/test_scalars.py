@@ -260,6 +260,62 @@ class AbstractTestAbstractScalar(
                 assert result.inputs.y.unit_normalized.is_equivalent(unit)
                 assert result.outputs.unit_normalized.is_equivalent(unit_weights)
 
+        @pytest.mark.parametrize(
+            argnames="edges",
+            argvalues=[
+                None,
+                na.linspace(-1, 1, axis="y", num=_num_y + 1)
+            ]
+        )
+        @pytest.mark.parametrize(
+            argnames="ax",
+            argvalues=[
+                None,
+                na.plt.subplots(axis_rows="x", nrows=_num_x)[1],
+            ],
+        )
+        @pytest.mark.parametrize(
+            argnames="axis",
+            argvalues=[
+                None,
+                "y",
+            ],
+        )
+        class TestPltStairs:
+            def test_plt_stairs(
+                self,
+                array: na.AbstractScalar,
+                edges: None | na.AbstractScalar,
+                ax: None | matplotlib.axes.Axes,
+                axis: bool | str,
+            ):
+                if edges is None:
+                    args = (array, )
+                else:
+                    args = (edges, array)
+
+                kwargs = dict(
+                    ax=ax,
+                    axis=axis,
+                )
+
+                if axis is None:
+                    if len(na.shape(array)) != 1:
+                        with pytest.raises(ValueError):
+                            na.plt.stairs(*args, **kwargs)
+                        return
+                else:
+                    if axis not in na.shape(array):
+                        with pytest.raises(ValueError):
+                            na.plt.stairs(*args, **kwargs)
+                        return
+
+                with astropy.visualization.quantity_support():
+                    result = na.plt.stairs(*args, **kwargs)
+
+                assert isinstance(result, na.AbstractArray)
+                assert result.dtype == matplotlib.artist.Artist
+
 
 class AbstractTestAbstractScalarArray(
     AbstractTestAbstractScalar,
