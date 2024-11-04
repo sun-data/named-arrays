@@ -615,13 +615,14 @@ def _colorsynth_normalize(
     shape = spd.shape
 
     if axis is None:
-        if len(shape) != 1:
+        axes = tuple(set(na.shape(spd)) | set(na.shape(wavelength)))
+        if len(axes) != 1:
             raise ValueError(
-                f"If `axis` is `None`, the shape of `array` should have only"
-                f"one element, got {shape=}"
+                f"If `axis` is `None`, the other arguments must have zero "
+                f"or one axis, got {axes}."
             )
         else:
-            axis = next(iter(shape))
+            axis = axes[0]
 
     if wavelength is None:
         wavelength = na.linspace(0, 1, axis=axis, num=shape[axis])

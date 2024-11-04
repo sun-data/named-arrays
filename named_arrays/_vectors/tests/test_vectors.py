@@ -615,7 +615,12 @@ class AbstractTestAbstractVectorArray(
         ):
 
             @pytest.mark.skip
-            def test_colorbar(self, array: na.AbstractArray, axis: None | str):
+            def test_colorbar(
+                self,
+                array: na.AbstractArray,
+                wavelength: None | na.AbstractScalar,
+                axis: None | str,
+            ):
                 pass    # pragma: nocover
 
 

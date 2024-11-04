@@ -1145,6 +1145,22 @@ def colorsynth_rgb(
     except na.ScalarTypeError:  # pragma: nocover
         return NotImplemented
 
+    if axis is None:
+        axes = tuple(set(na.shape(spd)) | set(na.shape(wavelength)))
+        if len(axes) != 1:
+            raise ValueError(
+                f"If `axis` is `None`, the other arguments must have zero"
+                f"or one axis, got {axes}."
+            )
+        axis = axes[0]
+
+    if wavelength is not None:
+        if axis in spd.shape:
+            if wavelength.shape[axis] == spd.shape[axis] + 1:
+                below = {axis: slice(None, ~0)}
+                above = {axis: slice(+1, None)}
+                wavelength = (wavelength[below] + wavelength[above]) / 2
+
     shape = na.shape_broadcasted(
         spd,
         wavelength,
@@ -1155,14 +1171,6 @@ def colorsynth_rgb(
     )
 
     axes = tuple(shape)
-    if axis is None:
-        if len(axes) != 1:
-            raise ValueError(
-                f"If `axis` is `None`, the broadcasted shape of the other"
-                f"arguments must have exactly one axis, got {shape=}"
-            )
-        else:
-            axis = axes[0]
     axis_ndarray = axes.index(axis)
 
     result_ndarray = colorsynth.rgb(
@@ -1209,6 +1217,22 @@ def colorsynth_colorbar(
     except na.ScalarTypeError:  # pragma: nocover
         return NotImplemented
 
+    if axis is None:
+        axes = tuple(set(na.shape(spd)) | set(na.shape(wavelength)))
+        if len(axes) != 1:
+            raise ValueError(
+                f"If `axis` is `None`, the other arguments must have zero "
+                f"or one axis, got {axes}."
+            )
+        axis = axes[0]
+
+    if wavelength is not None:
+        if axis in spd.shape:
+            if wavelength.shape[axis] == spd.shape[axis] + 1:
+                below = {axis: slice(None, ~0)}
+                above = {axis: slice(+1, None)}
+                wavelength = (wavelength[below] + wavelength[above]) / 2
+
     shape = na.shape_broadcasted(
         spd,
         wavelength,
@@ -1219,14 +1243,6 @@ def colorsynth_colorbar(
     )
 
     axes = tuple(shape)
-    if axis is None:
-        if len(axes) != 1:
-            raise ValueError(
-                f"If `axis` is `None`, the broadcasted shape of the other"
-                f"arguments must have exactly one axis, got {shape=}"
-            )
-        else:
-            axis = axes[0]
     axis_ndarray = axes.index(axis)
 
     intensity, wavelength, rgb = colorsynth.colorbar(

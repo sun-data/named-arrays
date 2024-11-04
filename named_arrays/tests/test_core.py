@@ -1524,39 +1524,61 @@ class AbstractTestAbstractArray(
                 assert result.shape == array.shape
 
         @pytest.mark.parametrize("axis", [None, "y"])
+        @pytest.mark.parametrize(
+            argnames="wavelength",
+            argvalues=[
+                None,
+                na.linspace(-1, 1, axis="y", num=num_y + 1)
+            ]
+        )
         class TestColorsynth:
-            def test_rgb(self, array: na.AbstractArray, axis: None | str):
+            def test_rgb(
+                self,
+                array: na.AbstractArray,
+                wavelength: None | na.AbstractScalar,
+                axis: None | str,
+            ):
                 with warnings.catch_warnings():
                     warnings.simplefilter(action="ignore", category=RuntimeWarning)
                     if axis is None:
-                        if array.ndim != 1:
+                        if len(set(na.shape(array)) | set(na.shape(wavelength))) != 1:
                             with pytest.raises(ValueError):
-                                na.colorsynth.rgb(array, axis=axis)
+                                na.colorsynth.rgb(array, wavelength, axis=axis)
                             return
                         else:
-                            result = na.colorsynth.rgb(array, axis=axis)
+                            result = na.colorsynth.rgb(array, wavelength, axis=axis)
                             assert result.size == 3
                     else:
                         if array.shape:
-                            result = na.colorsynth.rgb(array, axis=axis)
+                            result = na.colorsynth.rgb(array, wavelength, axis=axis)
                             assert result.shape[axis] == 3
 
-            def test_colorbar(self, array: na.AbstractArray, axis: None | str):
+            def test_colorbar(
+                self,
+                array: na.AbstractArray,
+                wavelength: None | na.AbstractScalar,
+                axis: None | str,
+            ):
                 if axis is None:
-                    if array.ndim != 1:
+                    if len(set(na.shape(array)) | set(na.shape(wavelength))) != 1:
                         with pytest.raises(ValueError):
-                            na.colorsynth.colorbar(array, axis=axis)
+                            na.colorsynth.colorbar(array, wavelength, axis=axis)
                         return
 
                 if array.shape:
                     with warnings.catch_warnings():
                         warnings.simplefilter(action="ignore", category=RuntimeWarning)
-                        result = na.colorsynth.colorbar(array, axis=axis)
+                        result = na.colorsynth.colorbar(array, wavelength, axis=axis)
                     assert isinstance(result, na.FunctionArray)
                     assert isinstance(result.inputs, na.Cartesian2dVectorArray)
                     assert isinstance(result.outputs, na.AbstractArray)
 
-            def test_rgb_and_colorbar(self, array: na.AbstractArray, axis: None | str):
+            def test_rgb_and_colorbar(
+                self,
+                array: na.AbstractArray,
+                wavelength: None | na.AbstractScalar,
+                axis: None | str,
+            ):
                 with warnings.catch_warnings():
                     warnings.simplefilter(action="ignore", category=RuntimeWarning)
 
@@ -1564,16 +1586,16 @@ class AbstractTestAbstractArray(
                         return
 
                     if axis is None:
-                        if array.ndim != 1:
+                        if len(set(na.shape(array)) | set(na.shape(wavelength))) != 1:
                             return
 
                     try:
-                        rgb_expected = na.colorsynth.rgb(array, axis=axis)
-                        colorbar_expected = na.colorsynth.colorbar(array, axis=axis)
+                        rgb_expected = na.colorsynth.rgb(array, wavelength, axis=axis)
+                        colorbar_expected = na.colorsynth.colorbar(array, wavelength, axis=axis)
                     except TypeError:
                         return
 
-                    rgb, colorbar = na.colorsynth.rgb_and_colorbar(array, axis=axis)
+                    rgb, colorbar = na.colorsynth.rgb_and_colorbar(array, wavelength, axis=axis)
 
                     assert np.allclose(rgb, rgb_expected, equal_nan=True)
                     assert np.allclose(colorbar, colorbar_expected, equal_nan=True)
