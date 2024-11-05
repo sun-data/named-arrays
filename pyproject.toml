@@ -22,7 +22,7 @@ dependencies = [
     'astropy',
     "astroscrappy",
     "ndfilters==0.3.0",
-    "colorsynth==0.1.3",
+    "colorsynth==0.1.5",
 ]
 dynamic = ["version"]
 
