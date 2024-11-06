@@ -128,6 +128,16 @@ class AbstractFunctionArray(
             outputs=outputs.combine_axes(axes=axes, axis_new=axis_new),
         )
 
+    def cell_centers(
+        self,
+        axis: None | str | Sequence[str] = None,
+    ) -> na.AbstractExplicitArray:
+        return dataclasses.replace(
+            self,
+            inputs=self.inputs.cell_centers(axis),
+            outputs=self.outputs.cell_centers(axis),
+        )
+
     def to_string_array(
         self,
         format_value: str = "%.2f",
