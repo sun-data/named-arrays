@@ -455,6 +455,36 @@ class AbstractArray(
         Array with the specified axes combined
         """
 
+    def cell_centers(
+        self,
+        axis: None | str | Sequence[str] = None,
+    ) -> na.AbstractExplicitArray:
+        """
+        Convert an array from cell vertices to cell centers.
+
+        Parameters
+        ----------
+        axis
+            The axes of the array to average over.
+        """
+
+        if axis is None:
+            axis = self.axes
+        elif isinstance(axis, str):
+            axis = (axis, )
+
+        result = self.explicit
+
+        shape = result.shape
+
+        for a in axis:
+            if a in shape:
+                lower = {a: slice(None, ~0)}
+                upper = {a: slice(+1, None)}
+                result = (result[lower] + result[upper]) / 2
+
+        return result
+
     def volume_cell(self, axis: None | str | Sequence[str]) -> na.AbstractScalar:
         """
         Computes the n-dimensional volume of each cell formed by interpreting
