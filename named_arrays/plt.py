@@ -892,7 +892,7 @@ def pspectralmesh(
         if isinstance(XY, na.AbstractCartesian2dVectorArray):
             x = XY.x
             y = XY.y
-        else:
+        else:   # pragma: nocover
             raise TypeError(
                 "if two positional arguments, "
                 "the second argument must be an instance of"
