@@ -776,8 +776,8 @@ def pspectralmesh(
         The coordinates of the mesh to plot.
         Allowed combinations are: an instance of :class:`named_arrays.AbstractSpectralPositionalVectorArray`,
         an instance of :class:`named_arrays.AbstractScalar` and an instance of
-        :class `named_arrays.AbstractCartesian2dVectorArray` or
-        three instances of `named_arrays.AbstractScalar`.
+        :class:`named_arrays.AbstractCartesian2dVectorArray` or
+        three instances of :class:`named_arrays.AbstractScalar`.
     C
         The mesh data.
     axis_wavelength
