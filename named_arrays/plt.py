@@ -17,7 +17,7 @@ __all__ = [
     "stairs",
     "imshow",
     "pcolormesh",
-    "pspectralmesh",
+    "rgbmesh",
     "pcolormovie",
     "text",
     "brace_vertical",
