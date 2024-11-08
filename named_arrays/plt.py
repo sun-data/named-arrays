@@ -753,7 +753,7 @@ def pcolormesh(
     )
 
 
-def pspectralmesh(
+def rgbmesh(
     *WXY: na.AbstractScalar | na.AbstractCartesian2dVectorArray | na.AbstractSpectralPositionalVectorArray,
     C: na.AbstractScalar,
     axis_wavelength: str,
@@ -769,6 +769,9 @@ def pspectralmesh(
     """
     A convenience function that calls :func:`pcolormesh` with the outputs
     from :func:`named_arrays.colorsynth.rgb` and returns a colorbar.
+
+    This allows us to plot 3D cubes, with the third dimension being represented
+    by color, using a :func:`pcolormesh`-like interface.
 
     Parameters
     ----------
@@ -849,7 +852,7 @@ def pspectralmesh(
                 gridspec_kw=dict(width_ratios=[.9,.1]),
                 constrained_layout=True,
             )
-            colorbar = na.plt.pspectralmesh(
+            colorbar = na.plt.rgbmesh(
                 wavelength, x, y,
                 C=a,
                 axis_wavelength="wavelength",

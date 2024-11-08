@@ -35,26 +35,26 @@ _num_y = 14
         na.random.uniform(-1, 1, shape_random=dict(w=_num_w, x=_num_x, y=_num_y)),
     ],
 )
-def testspectralmesh(
+def test_rgbmesh(
     W: na.AbstractScalar,
     X: na.AbstractScalar,
     Y: na.AbstractScalar,
     C: na.AbstractScalar,
 ):
-    result_1 = na.plt.pspectralmesh(
+    result_1 = na.plt.rgbmesh(
         W,
         X,
         Y,
         C=C,
         axis_wavelength="w",
     )
-    result_2 = na.plt.pspectralmesh(
+    result_2 = na.plt.rgbmesh(
         W,
         na.Cartesian2dVectorArray(X, Y),
         C=C,
         axis_wavelength="w",
     )
-    result_3 = na.plt.pspectralmesh(
+    result_3 = na.plt.rgbmesh(
         na.SpectralPositionalVectorArray(
             wavelength=W,
             position=na.Cartesian2dVectorArray(X, Y),
@@ -62,7 +62,7 @@ def testspectralmesh(
         C=C,
         axis_wavelength="w",
     )
-    result_4 = na.plt.pspectralmesh(
+    result_4 = na.plt.rgbmesh(
         C=na.FunctionArray(
             inputs=na.SpectralPositionalVectorArray(
                 wavelength=W,
