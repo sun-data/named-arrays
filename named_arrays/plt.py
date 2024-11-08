@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Literal, Any
+from typing import Literal, Any, Callable
 import matplotlib.axes
 import matplotlib.transforms
 import matplotlib.animation
@@ -17,6 +17,7 @@ __all__ = [
     "stairs",
     "imshow",
     "pcolormesh",
+    "spectralmesh",
     "pcolormovie",
     "text",
     "brace_vertical",
@@ -750,6 +751,182 @@ def pcolormesh(
         vmax=vmax,
         **kwargs,
     )
+
+
+def pspectralmesh(
+    *WXY: na.AbstractScalar | na.AbstractCartesian2dVectorArray | na.AbstractSpectralPositionalVectorArray,
+    C: na.AbstractScalar,
+    axis_wavelength: str,
+    ax: None | matplotlib.axes.Axes | na.AbstractArray = None,
+    norm: None | Callable = None,
+    vmin: None | na.ArrayLike = None,
+    vmax: None | na.ArrayLike = None,
+    wavelength_norm: None | Callable = None,
+    wavelength_min: None | float | u.Quantity | na.AbstractScalar = None,
+    wavelength_max: None | float | u.Quantity | na.AbstractScalar = None,
+    **kwargs,
+) -> na.FunctionArray[na.Cartesian2dVectorArray, na.AbstractScalar]:
+    """
+    A convenience function that calls :func:`pcolormesh` with the outputs
+    from :func:`named_arrays.colorsynth.rgb` and returns a colorbar.
+
+    Parameters
+    ----------
+    WXY
+        The coordinates of the mesh to plot.
+        Allowed combinations are
+         * An instance of :class:`named_arrays.AbstractSpectralPositionalVectorArray`
+         * An instance of :class:`named_arrays.AbstractScalar` and an instance of
+           :class `named_arrays.AbstractCartesian2dVectorArray`.
+         * Three instances of `named_arrays.AbstractScalar`.
+
+    C
+        The mesh data.
+    axis_wavelength
+        The logical axis representing changing wavelength coordinate.
+    ax
+        The instances of :class:`matplotlib.axes.Axes` to use.
+        If :obj:`None`, calls :func:`matplotlib.pyplot.gca` to get the current axes.
+        If an instance of :class:`named_arrays.ScalarArray`, ``ax.shape`` should be a subset of the broadcasted shape of
+        ``*args``.
+    norm
+        An optional function that transforms the spectral power distribution
+        values before mapping to RGB.
+        Equivalent to the `spd_norm` argument of :func:`named_arrays.colorsynth.rgb`.
+    vmin
+        The value of the spectral power distribution representing minimum
+        intensity.
+        Equivalent to the `spd_min` argument of :func:`named_arrays.colorsynth.rgb`.
+    vmax
+        The value of the spectral power distribution representing maximum
+        intensity.
+        Equivalent to the `spd_max` argument of :func:`named_arrays.colorsynth.rgb`.
+    wavelength_norm
+        An optional function to transform the wavelength values before they
+        are mapped into the human visible color range.
+    wavelength_min
+        The wavelength value that is mapped to the minimum wavelength of the
+        human visible color range, 380 nm.
+    wavelength_max
+        The wavelength value that is mapped to the maximum wavelength of the
+        human visible color range, 700 nm
+    kwargs
+        Additional keyword arguments passed to :func:`matplotlib.pyplot.pcolormesh`.
+
+    Examples
+    --------
+
+    Plot  a random, 3D cube.
+
+    .. jupyter-execute::
+
+        import matplotlib.pyplot as plt
+        import astropy.units as u
+        import astropy.visualization
+        import named_arrays as na
+
+        # Define a random 3d cube
+        a = na.random.uniform(
+            low=0 * u.photon,
+            high=1000 * u.photon,
+            shape_random=dict(x=16, y=16, wavelength=11),
+        )
+
+        # Define wavelength coordinates
+        wavelength = na.linspace(
+            start=100 * u.AA,
+            stop=200 * u.AA,
+            axis="wavelength",
+            num=a.shape["wavelength"],
+        )
+
+        # Define spatial coordinates
+        x = na.linspace(-1, 1, axis="x", num=a.shape["x"]) * u.mm
+        y = na.linspace(-1, 1, axis="y", num=a.shape["y"]) * u.mm
+
+        # Plot the colorbar
+        with astropy.visualization.quantity_support():
+            fig, axs = plt.subplots(
+                ncols=2,
+                gridspec_kw=dict(width_ratios=[.9,.1]),
+                constrained_layout=True,
+            )
+            colorbar = na.plt.pspectralmesh(
+                wavelength, x, y,
+                C=a,
+                axis_wavelength="wavelength",
+                ax=axs[0],
+            );
+            na.plt.pcolormesh(
+                C=colorbar,
+                axis_rgb="wavelength",
+                ax=axs[1],
+            )
+            axs[1].yaxis.tick_right()
+            axs[1].yaxis.set_label_position("right")
+    """
+
+    if len(WXY) == 0:
+        if isinstance(C, na.AbstractFunctionArray):
+            WXY = (C.inputs,)
+            C = C.outputs
+        else:   # pragma: nocover
+            raise TypeError(
+                "if no positional arguments, `C` must be an instance of "
+                f"`na.AbstractFunctionArray`. got {type(C)}."
+            )
+
+    if len(WXY) == 1:
+        WXY, = WXY
+        if isinstance(WXY, na.AbstractSpectralPositionalVectorArray):
+            w = WXY.wavelength
+            x = WXY.position.x
+            y = WXY.position.y
+        else:   # pragma: nocover
+            raise TypeError(
+                "if one positional argument, it must be an instance of "
+                f"`na.AbstractSpectralPositionalVectorArray`, got {type(WXY)}."
+            )
+    elif len(WXY) == 2:
+        w, XY = WXY
+        if isinstance(XY, na.AbstractCartesian2dVectorArray):
+            x = XY.x
+            y = XY.y
+        else:
+            raise TypeError(
+                "if two positional arguments, "
+                "the second argument must be an instance of"
+                f"`na.AbstractCartesian2dVectorArray`, got {type(XY)}`."
+            )
+
+    elif len(WXY) == 3:
+        w, x, y = WXY
+    else:  # pragma: nocover
+        raise ValueError(
+            f"incorrect number of arguments, expected 0 to 3, got {len(WXY)}."
+        )
+
+    rgb, colorbar = na.colorsynth.rgb_and_colorbar(
+        spd=C,
+        wavelength=w,
+        axis=axis_wavelength,
+        spd_min=vmin,
+        spd_max=vmax,
+        spd_norm=norm,
+        wavelength_min=wavelength_min,
+        wavelength_max=wavelength_max,
+        wavelength_norm=wavelength_norm,
+    )
+
+    pcolormesh(
+        x, y,
+        C=rgb,
+        axis_rgb=axis_wavelength,
+        ax=ax,
+        **kwargs,
+    )
+
+    return colorbar
 
 
 def pcolormovie(

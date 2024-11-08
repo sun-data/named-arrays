@@ -2,11 +2,80 @@ import pytest
 import numpy as np
 import matplotlib.axes
 import matplotlib.animation
+import astropy.units as u
 import named_arrays as na
 
 _num_t = 11
-_num_x = 12
-_num_y = 13
+_num_w = 12
+_num_x = 13
+_num_y = 14
+
+
+@pytest.mark.parametrize(
+    argnames="W",
+    argvalues=[
+        na.linspace(-1, 1, axis="w", num=_num_w) * u.mm,
+    ],
+)
+@pytest.mark.parametrize(
+    argnames="X",
+    argvalues=[
+        na.linspace(-2, 2, axis="x", num=_num_x),
+    ],
+)
+@pytest.mark.parametrize(
+    argnames="Y",
+    argvalues=[
+        na.linspace(-1, 1, axis="y", num=_num_y),
+    ],
+)
+@pytest.mark.parametrize(
+    argnames="C",
+    argvalues=[
+        na.random.uniform(-1, 1, shape_random=dict(w=_num_w, x=_num_x, y=_num_y)),
+    ],
+)
+def testspectralmesh(
+    W: na.AbstractScalar,
+    X: na.AbstractScalar,
+    Y: na.AbstractScalar,
+    C: na.AbstractScalar,
+):
+    result_1 = na.plt.pspectralmesh(
+        W,
+        X,
+        Y,
+        C=C,
+        axis_wavelength="w",
+    )
+    result_2 = na.plt.pspectralmesh(
+        W,
+        na.Cartesian2dVectorArray(X, Y),
+        C=C,
+        axis_wavelength="w",
+    )
+    result_3 = na.plt.pspectralmesh(
+        na.SpectralPositionalVectorArray(
+            wavelength=W,
+            position=na.Cartesian2dVectorArray(X, Y),
+        ),
+        C=C,
+        axis_wavelength="w",
+    )
+    result_4 = na.plt.pspectralmesh(
+        C=na.FunctionArray(
+            inputs=na.SpectralPositionalVectorArray(
+                wavelength=W,
+                position=na.Cartesian2dVectorArray(X, Y),
+            ),
+            outputs=C,
+        ),
+        axis_wavelength="w",
+    )
+
+    assert np.all(result_1 == result_2)
+    assert np.all(result_1 == result_3)
+    assert np.all(result_1 == result_4)
 
 
 @pytest.mark.parametrize(
