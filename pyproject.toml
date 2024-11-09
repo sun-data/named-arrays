@@ -19,7 +19,7 @@ dependencies = [
     "numpy<2",
     "matplotlib",
     "scipy",
-    'astropy',
+    'astropy<6.1.5',
     "astroscrappy",
     "ndfilters==0.3.0",
     "colorsynth==0.1.5",
