@@ -1166,8 +1166,8 @@ def rgbmovie(
 
     .. jupyter-execute::
 
-        import IPython.display
         import matplotlib.pyplot as plt
+        import IPython.display
         import astropy.units as u
         import astropy.visualization
         import named_arrays as na
