@@ -19,6 +19,7 @@ __all__ = [
     "pcolormesh",
     "rgbmesh",
     "pcolormovie",
+    "rgbmovie",
     "text",
     "brace_vertical",
     "set_xlabel",
@@ -1081,6 +1082,218 @@ def pcolormovie(
         kwargs_pcolormesh=kwargs_pcolormesh,
         kwargs_animation=kwargs_animation,
     )
+
+
+def rgbmovie(
+    *TWXY: na.AbstractArray,
+    C: na.AbstractArray,
+    axis_time: str,
+    axis_wavelength: str,
+    ax: None | matplotlib.axes.Axes | na.AbstractArray = None,
+    norm: None | Callable= None,
+    vmin: None | na.ArrayLike = None,
+    vmax: None | na.ArrayLike = None,
+    wavelength_norm: None | Callable = None,
+    wavelength_min: None | float | u.Quantity | na.AbstractScalar = None,
+    wavelength_max: None | float | u.Quantity | na.AbstractScalar = None,
+    kwargs_pcolormesh: None | dict[str, Any] = None,
+    **kwargs_animation,
+) -> tuple[
+    matplotlib.animation.FuncAnimation,
+    na.FunctionArray[na.Cartesian2dVectorArray, na.AbstractScalar]
+]:
+    """
+    A convenience function that calls :func:`pcolormovie` with the outputs
+    from :func:`named_arrays.colorsynth.rgb` and returns an animation
+    instance and a colorbar.
+
+    This allows us to plot 4D cubes, with the third dimension being represented
+    by color, using a :func:`pcolormovie`-like interface.
+
+    Parameters
+    ----------
+    TWXY
+        The coordinates of the mesh to plot.
+        Allowed combinations are:
+        an instance of :class:`named_arrays.AbstractSpectralPositionalVectorArray`,
+        an instance of :class:`named_arrays.AbstractScalar` and an instance of
+        :class:`named_arrays.AbstractSpectralPositionalVectorArray`,
+        two instances of :class:`named_arrays.AbstractScalar` and an instance of
+        :class:`named_arrays.AbstractCartesian2dVectorArray`,
+        or four instances of :class:`named_arrays.AbstractScalar`.
+    C
+        The mesh data.
+    axis_time
+        The logical axis corresponding to the different frames in the animation.
+    axis_wavelength
+        The logical axis representing changing wavelength coordinate.
+    ax
+        The instances of :class:`matplotlib.axes.Axes` to use.
+        If :obj:`None`, calls :func:`matplotlib.pyplot.gca` to get the current axes.
+        If an instance of :class:`named_arrays.ScalarArray`, ``ax.shape`` should be a subset of the broadcasted shape of
+        ``*args``.
+    norm
+        An optional function that transforms the spectral power distribution
+        values before mapping to RGB.
+        Equivalent to the `spd_norm` argument of :func:`named_arrays.colorsynth.rgb`.
+    vmin
+        The value of the spectral power distribution representing minimum
+        intensity.
+        Equivalent to the `spd_min` argument of :func:`named_arrays.colorsynth.rgb`.
+    vmax
+        The value of the spectral power distribution representing maximum
+        intensity.
+        Equivalent to the `spd_max` argument of :func:`named_arrays.colorsynth.rgb`.
+    wavelength_norm
+        An optional function to transform the wavelength values before they
+        are mapped into the human visible color range.
+    wavelength_min
+        The wavelength value that is mapped to the minimum wavelength of the
+        human visible color range, 380 nm.
+    wavelength_max
+        The wavelength value that is mapped to the maximum wavelength of the
+        human visible color range, 700 nm
+    kwargs_pcolormesh
+        Additional keyword arguments accepted by :func:`pcolormesh`.
+    kwargs_animation
+        Additional keyword arguments accepted by
+        :class:`matplotlib.animation.FuncAnimation`.
+
+    Examples
+    --------
+
+    Plot a random, 4D cube.
+
+    .. jupyter-execute::
+
+        import IPython.display
+        import matplotlib.pyplot as plt
+        import astropy.units as u
+        import astropy.visualization
+        import named_arrays as na
+
+        # Define the size of the grid
+        shape = dict(
+            t=3,
+            w=11,
+            x=16,
+            y=16,
+        )
+
+        # Define a simple coordinate grid
+        t = na.linspace(0, 2, axis="t", num=shape["t"]) * u.s
+        w = na.linspace(-1, 1, axis="w", num=shape["w"]) * u.mm
+        x = na.linspace(-2, 2, axis="x", num=shape["x"]) * u.mm
+        y = na.linspace(-1, 1, axis="y", num=shape["y"]) * u.mm
+
+        # Define a random array of values to plot
+        a = na.random.uniform(-1, 1, shape_random=shape)
+
+        # Plot the coordinates and values using rgbmovie()
+        with astropy.visualization.quantity_support():
+            fig, ax = plt.subplots(
+                ncols=2,
+                gridspec_kw=dict(width_ratios=[.9, .1]),
+                constrained_layout=True,
+            )
+            ani, colorbar = na.plt.rgbmovie(
+                t, w, x, y,
+                C=a,
+                axis_time="t",
+                axis_wavelength="w",
+                ax=ax[0],
+            );
+            na.plt.pcolormesh(
+                C=colorbar,
+                axis_rgb="w",
+                ax=ax[1],
+            )
+            ax[1].yaxis.tick_right()
+            ax[1].yaxis.set_label_position("right")
+            plt.close(fig)
+            IPython.display.HTML(ani.to_jshtml())
+
+    """
+
+    if len(TWXY) == 0:
+        if isinstance(C, na.AbstractFunctionArray):
+            TWXY = (C.inputs,)
+            C = C.outputs
+        else:   # pragma: nocover
+            raise TypeError(
+                "if no positional arguments, `C` must be an instance of "
+                f"`na.AbstractFunctionArray`. got {type(C)}."
+            )
+
+    if len(TWXY) == 1:
+        TWXY, = TWXY
+        if isinstance(TWXY, na.AbstractTemporalSpectralPositionalVectorArray):
+            t = TWXY.time
+            w = TWXY.wavelength
+            x = TWXY.position.x
+            y = TWXY.position.y
+        else:   # pragma: nocover
+            raise TypeError(
+                "if one positional argument, it must be an instance of "
+                f"`na.AbstractTemporalSpectralPositionalVectorArray`, "
+                f"got {type(TWXY)}."
+            )
+    elif len(TWXY) == 2:
+        t, WXY = TWXY
+        if isinstance(WXY, na.AbstractSpectralPositionalVectorArray):
+            w = WXY.wavelength
+            x = WXY.position.x
+            y = WXY.position.y
+        else:  # pragma: nocover
+            raise TypeError(
+                "if two positional arguments, "
+                "the second argument must be an instance of "
+                "`na.AbstarctSpectralPositionalVectorArray`, "
+                f"got {type(WXY)}.`"
+            )
+    elif len(TWXY) == 3:
+        t, w, XY = TWXY
+        if isinstance(XY, na.AbstractCartesian2dVectorArray):
+            x = XY.x
+            y = XY.y
+        else:   # pragma: nocover
+            raise TypeError(
+                "if three positional arguments, "
+                "the third argument must be an instance of"
+                f"`na.AbstractCartesian2dVectorArray`, got {type(XY)}`."
+            )
+
+    elif len(TWXY) == 4:
+        t, w, x, y = TWXY
+    else:  # pragma: nocover
+        raise ValueError(
+            f"incorrect number of arguments, expected 0, 1, 3, or 4,"
+            f" got {len(TWXY)}."
+        )
+
+    rgb, colorbar = na.colorsynth.rgb_and_colorbar(
+        spd=C,
+        wavelength=w,
+        axis=axis_wavelength,
+        spd_min=vmin,
+        spd_max=vmax,
+        spd_norm=norm,
+        wavelength_min=wavelength_min,
+        wavelength_max=wavelength_max,
+        wavelength_norm=wavelength_norm,
+    )
+
+    animation = pcolormovie(
+        t, x, y,
+        C=rgb,
+        axis_time=axis_time,
+        axis_rgb=axis_wavelength,
+        ax=ax,
+        kwargs_pcolormesh=kwargs_pcolormesh,
+        kwargs_animation=kwargs_animation,
+    )
+
+    return animation, colorbar
 
 
 def text(

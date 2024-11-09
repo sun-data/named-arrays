@@ -117,6 +117,115 @@ def test_pcolormovie(
 
 
 @pytest.mark.parametrize(
+    argnames="T",
+    argvalues=[
+        na.linspace(-1, 1, axis="t", num=_num_t) * u.s,
+    ],
+)
+@pytest.mark.parametrize(
+    argnames="W",
+    argvalues=[
+        na.linspace(-1, 1, axis="w", num=_num_w) * u.mm,
+    ],
+)
+@pytest.mark.parametrize(
+    argnames="X",
+    argvalues=[
+        na.linspace(-2, 2, axis="x", num=_num_x),
+    ],
+)
+@pytest.mark.parametrize(
+    argnames="Y",
+    argvalues=[
+        na.linspace(-1, 1, axis="y", num=_num_y),
+    ],
+)
+@pytest.mark.parametrize(
+    argnames="C",
+    argvalues=[
+        na.random.uniform(
+            low=-1,
+            high=1,
+            shape_random=dict(t=_num_t, w=_num_w, x=_num_x, y=_num_y),
+        ),
+    ],
+)
+def test_rgbmovie(
+    T: na.AbstractScalar,
+    W: na.AbstractScalar,
+    X: na.AbstractScalar,
+    Y: na.AbstractScalar,
+    C: na.AbstractScalar,
+):
+    ani_1, cbar_1 = na.plt.rgbmovie(
+        T,
+        W,
+        X,
+        Y,
+        C=C,
+        axis_time="t",
+        axis_wavelength="w",
+    )
+    ani_2, cbar_2 = na.plt.rgbmovie(
+        T,
+        na.SpectralPositionalVectorArray(
+            wavelength=W,
+            position=na.Cartesian2dVectorArray(X, Y),
+        ),
+        C=C,
+        axis_time="t",
+        axis_wavelength="w",
+    )
+    ani_3, cbar_3 = na.plt.rgbmovie(
+        T,
+        W,
+        na.Cartesian2dVectorArray(X, Y),
+        C=C,
+        axis_time="t",
+        axis_wavelength="w",
+    )
+    ani_4, cbar_4 = na.plt.rgbmovie(
+        na.TemporalSpectralPositionalVectorArray(
+            time=T,
+            wavelength=W,
+            position=na.Cartesian2dVectorArray(X, Y),
+        ),
+        C=C,
+        axis_time="t",
+        axis_wavelength="w",
+    )
+    ani_5, cbar_5 = na.plt.rgbmovie(
+        C=na.FunctionArray(
+            inputs=na.TemporalSpectralPositionalVectorArray(
+                time=T,
+                wavelength=W,
+                position=na.Cartesian2dVectorArray(X, Y),
+            ),
+            outputs=C,
+        ),
+        axis_time="t",
+        axis_wavelength="w",
+    )
+
+    assert isinstance(ani_1, matplotlib.animation.FuncAnimation)
+    assert isinstance(ani_2, matplotlib.animation.FuncAnimation)
+    assert isinstance(ani_3, matplotlib.animation.FuncAnimation)
+    assert isinstance(ani_4, matplotlib.animation.FuncAnimation)
+    assert isinstance(ani_5, matplotlib.animation.FuncAnimation)
+
+    assert isinstance(ani_1.to_jshtml(), str)
+    assert isinstance(ani_2.to_jshtml(), str)
+    assert isinstance(ani_3.to_jshtml(), str)
+    assert isinstance(ani_4.to_jshtml(), str)
+    assert isinstance(ani_5.to_jshtml(), str)
+
+    assert np.all(cbar_1 == cbar_2)
+    assert np.all(cbar_1 == cbar_3)
+    assert np.all(cbar_1 == cbar_4)
+    assert np.all(cbar_1 == cbar_5)
+
+
+@pytest.mark.parametrize(
     argnames="xlabel,ax",
     argvalues=[
         ("foo", None),
