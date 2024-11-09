@@ -740,12 +740,12 @@ class AbstractPolynomialFunctionArray(
 
     @property
     @abc.abstractmethod
-    def components_polynomial(self):
-        """the components of the input that this polynomial depends on"""
+    def components_polynomial(self) -> dict(str, na.AbstractScalar):
+        """The components of the input that this polynomial depends on."""
 
     @property
     @abc.abstractmethod
-    def axis_polynomial(self):
+    def axis_polynomial(self) -> None | str | Sequence[str]:
         """the logical axes along which this polynomial is distributed"""
 
     @abc.abstractmethod
@@ -767,7 +767,10 @@ class AbstractPolynomialFunctionArray(
             the set of independent variables to convert into the design matrix
         """
 
-    def __call__(self, inputs: na.ScalarArray | na.AbstractVectorArray):
+    def __call__(
+        self,
+        inputs: float | u.Quantity | na.ScalarArray | na.AbstractVectorArray,
+    ):
 
         inputs_self = self.inputs
         if not isinstance(inputs_self, na.AbstractVectorArray):
