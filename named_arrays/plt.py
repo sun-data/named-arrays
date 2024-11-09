@@ -1190,28 +1190,29 @@ def rgbmovie(
         a = na.random.uniform(-1, 1, shape_random=shape)
 
         # Plot the coordinates and values using rgbmovie()
-        with astropy.visualization.quantity_support():
-            fig, ax = plt.subplots(
-                ncols=2,
-                gridspec_kw=dict(width_ratios=[.9, .1]),
-                constrained_layout=True,
-            )
-            ani, colorbar = na.plt.rgbmovie(
-                t, w, x, y,
-                C=a,
-                axis_time="t",
-                axis_wavelength="w",
-                ax=ax[0],
-            );
-            na.plt.pcolormesh(
-                C=colorbar,
-                axis_rgb="w",
-                ax=ax[1],
-            )
-            ax[1].yaxis.tick_right()
-            ax[1].yaxis.set_label_position("right")
-            plt.close(fig)
-            IPython.display.HTML(ani.to_jshtml())
+        astropy.visualization.quantity_support()
+        fig, ax = plt.subplots(
+            ncols=2,
+            gridspec_kw=dict(width_ratios=[.9, .1]),
+            constrained_layout=True,
+        )
+        ani, colorbar = na.plt.rgbmovie(
+            t, w, x, y,
+            C=a,
+            axis_time="t",
+            axis_wavelength="w",
+            ax=ax[0],
+        );
+        na.plt.pcolormesh(
+            C=colorbar,
+            axis_rgb="w",
+            ax=ax[1],
+        )
+        ax[1].yaxis.tick_right()
+        ax[1].yaxis.set_label_position("right")
+        ani = ani.to_jshtml()
+        plt.close(fig)
+        IPython.display.HTML(ani)
 
     """
 
