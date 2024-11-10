@@ -1,8 +1,9 @@
-from typing import Callable, TypeVar
+from typing import Callable, TypeVar, Sequence, Literal
 import numpy as np
 import numpy.typing as npt
 import matplotlib.axes
 import astropy.units as u
+import regridding
 import named_arrays as na
 from named_arrays._scalars import scalars
 import named_arrays._scalars.scalar_named_array_functions
@@ -603,3 +604,101 @@ def ndfilter(
     result = prototype.type_explicit.from_components(result)
 
     return result
+
+
+@_implements(na.regridding.weights)
+def regridding_weights(
+    coordinates_input: na.AbstractVectorArray,
+    coordinates_output: na.AbstractVectorArray,
+    axis_input: None | str | Sequence[str] = None,
+    axis_output: None | str | Sequence[str] = None,
+    method: Literal['multilinear', 'conservative'] = 'multilinear',
+) -> tuple[na.AbstractScalar, dict[str, int], dict[str, int]]:
+
+    try:
+        prototype = vectors._prototype(coordinates_input, coordinates_output)
+        coordinates_input = vectors._normalize(coordinates_input, prototype)
+        coordinates_output = vectors._normalize(coordinates_output, prototype)
+    except vectors.VectorTypeError:  # pragma: nocover
+        return NotImplemented
+
+    try:
+        coordinates_output = coordinates_output.components
+        coordinates_output = {
+            c: scalars._normalize(coordinates_output[c])
+            for c in coordinates_output
+            if coordinates_output[c] is not None
+        }
+        coordinates_output = na.CartesianNdVectorArray(coordinates_output)
+    except scalars.ScalarTypeError:  # pragma: nocover
+        return NotImplemented
+
+    try:
+        coordinates_input = coordinates_input.components
+        coordinates_input = {
+            c: scalars._normalize(coordinates_input[c])
+            for c in coordinates_output.components
+        }
+        coordinates_input = na.CartesianNdVectorArray(coordinates_input)
+    except scalars.ScalarTypeError:  # pragma: nocover
+        return NotImplemented
+
+    coordinates_output = coordinates_output.explicit
+    coordinates_input = coordinates_input.explicit
+
+    shape_input = coordinates_input.shape
+    shape_output = coordinates_output.shape
+
+    if axis_input is None:
+        axis_input = tuple(shape_input)
+    elif isinstance(axis_input, str):
+        axis_input = (axis_input,)
+
+    if axis_output is None:
+        axis_output = tuple(shape_output)
+    elif isinstance(axis_output, str):
+        axis_output = (axis_output,)
+
+    shape_orthogonal_input = {
+        a: shape_input[a]
+        for a in shape_input if a not in axis_input
+    }
+    shape_orthogonal_output = {
+        a: shape_output[a]
+        for a in shape_output if a not in axis_output
+    }
+
+    shape_orthogonal = na.broadcast_shapes(
+        shape_orthogonal_input,
+        shape_orthogonal_output,
+    )
+
+    shape_input = na.broadcast_shapes(shape_orthogonal, shape_input)
+    shape_output = na.broadcast_shapes(shape_orthogonal, shape_output)
+
+    coordinates_input = coordinates_input.broadcast_to(shape_input)
+    coordinates_output = coordinates_output.broadcast_to(shape_output)
+
+    coordinates_input = coordinates_input.components
+    coordinates_output = coordinates_output.components
+
+    coordinates_input = tuple(coordinates_input[c].ndarray for c in coordinates_input)
+    coordinates_output = tuple(coordinates_output[c].ndarray for c in coordinates_output)
+
+    axis_input = tuple(tuple(shape_input).index(a) for a in axis_input)
+    axis_output = tuple(tuple(shape_output).index(a) for a in axis_output)
+
+    result, _shape_input, _shape_output = regridding.weights(
+        coordinates_input=coordinates_input,
+        coordinates_output=coordinates_output,
+        axis_input=axis_input,
+        axis_output=axis_output,
+        method=method,
+    )
+
+    result = na.ScalarArray(result, tuple(shape_orthogonal))
+
+    shape_input = dict(zip(shape_input, _shape_input))
+    shape_output = dict(zip(shape_output, _shape_output))
+
+    return result, shape_input, shape_output
