@@ -880,14 +880,20 @@ def rgbmesh(
 
     if len(WXY) == 1:
         WXY, = WXY
-        if isinstance(WXY, na.AbstractSpectralPositionalVectorArray):
+        if isinstance(WXY, na.AbstractSpectralVectorArray):
             w = WXY.wavelength
-            x = WXY.position.x
-            y = WXY.position.y
+            if isinstance(WXY, na.AbstractPositionalVectorArray):
+                x = WXY.position.x
+                y = WXY.position.y
+            else:  # pragma: nocover
+                raise TypeError(
+                    "if one positional argument, it must be an instance of "
+                    f"`na.AbstractPositionalVectorArray`, got {type(WXY)}."
+                )
         else:   # pragma: nocover
             raise TypeError(
                 "if one positional argument, it must be an instance of "
-                f"`na.AbstractSpectralPositionalVectorArray`, got {type(WXY)}."
+                f"`na.AbstractSpectralVectorArray`, got {type(WXY)}."
             )
     elif len(WXY) == 2:
         w, XY = WXY
