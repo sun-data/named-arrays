@@ -1,3 +1,9 @@
+"""
+Array resampling and interpolation.
+
+A wrapper around the :mod:`regridding` module for named arrays.
+"""
+
 from __future__ import annotations
 from typing import Sequence, Literal
 import astropy.units as u
