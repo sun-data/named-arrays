@@ -9,6 +9,7 @@ import astropy.units as u
 import astroscrappy
 import ndfilters
 import colorsynth
+import regridding
 import named_arrays as na
 from . import scalars
 
@@ -1420,6 +1421,83 @@ def ndfilter(
         ),
         axes=axes,
     )
+
+
+@_implements(na.regridding.weights)
+def regridding_weights(
+    coordinates_input: na.AbstractScalarArray | na.AbstractVectorArray,
+    coordinates_output: na.AbstractScalarArray | na.AbstractVectorArray,
+    axis_input: None | str | Sequence[str] = None,
+    axis_output: None | str | Sequence[str] = None,
+    method: Literal['multilinear', 'conservative'] = 'multilinear',
+) -> tuple[na.AbstractScalar, dict[str, int], dict[str, int]]:
+
+    if not isinstance(coordinates_output, na.AbstractVectorArray):
+        coordinates_output = na.CartesianNdVectorArray(dict(x=coordinates_output))
+
+    if not isinstance(coordinates_input, na.AbstractVectorArray):
+        coordinates_input = na.CartesianNdVectorArray(dict(x=coordinates_input))
+
+    return na.regridding.weights(
+        coordinates_input=coordinates_input,
+        coordinates_output=coordinates_output,
+        axis_input=axis_input,
+        axis_output=axis_output,
+        method=method,
+    )
+
+
+@_implements(na.regridding.regrid_from_weights)
+def regridding_regrid_from_weights(
+    weights: na.AbstractScalarArray,
+    shape_input: dict[str, int],
+    shape_output: dict[str, int],
+    values_input: na.AbstractScalarArray,
+) -> na.ScalarArray:
+
+    try:
+        weights = scalars._normalize(weights)
+        values_input = scalars._normalize(values_input)
+    except scalars.ScalarTypeError:  # pragma: nocover
+        return NotImplemented
+
+    shape_weights = weights.shape
+
+    axis_input = tuple(a for a in shape_input if a not in shape_weights)
+    axis_output = tuple(a for a in shape_output if a not in shape_weights)
+
+    shape_values_input = values_input.shape
+    shape_orthogonal = {
+        a: shape_values_input[a]
+        for a in shape_values_input
+        if a not in axis_input
+    }
+    shape_orthogonal = na.broadcast_shapes(shape_orthogonal, shape_weights)
+
+    shape_input = na.broadcast_shapes(shape_orthogonal, shape_input)
+    shape_output = na.broadcast_shapes(shape_orthogonal, shape_output)
+
+    weights = weights.broadcast_to({
+        a: shape_input[a] if a not in axis_input else 1
+        for a in shape_input
+    })
+    values_input = values_input.broadcast_to(shape_input)
+
+    result = regridding.regrid_from_weights(
+        weights=weights.ndarray,
+        shape_input=tuple(shape_input.values()),
+        shape_output=tuple(shape_output.values()),
+        values_input=values_input.ndarray,
+        axis_input=tuple(tuple(shape_input).index(a) for a in axis_input),
+        axis_output=tuple(tuple(shape_output).index(a) for a in axis_output),
+    )
+
+    result = na.ScalarArray(
+        ndarray=result,
+        axes=tuple(shape_output),
+    )
+
+    return result
 
 
 @_implements(na.despike)

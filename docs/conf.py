@@ -119,6 +119,7 @@ intersphinx_mapping = {
     'xarray': ('https://docs.xarray.dev/en/stable/', None),
     'ndfilters': ('https://ndfilters.readthedocs.io/en/stable', None),
     'colorsynth': ('https://colorsynth.readthedocs.io/en/stable', None),
+    'regridding': ('https://regridding.readthedocs.io/en/stable', None),
 }
 
 # plt.Axes.__module__ = matplotlib.axes.__name__
