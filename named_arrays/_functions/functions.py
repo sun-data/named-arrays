@@ -131,11 +131,12 @@ class AbstractFunctionArray(
     def cell_centers(
         self,
         axis: None | str | Sequence[str] = None,
+        random: bool = False,
     ) -> na.AbstractExplicitArray:
         return dataclasses.replace(
             self,
-            inputs=self.inputs.cell_centers(axis),
-            outputs=self.outputs.cell_centers(axis),
+            inputs=self.inputs.cell_centers(axis, random=random),
+            outputs=self.outputs.cell_centers(axis, random=random),
         )
 
     def to_string_array(
