@@ -455,9 +455,40 @@ class AbstractArray(
         Array with the specified axes combined
         """
 
+    @classmethod
+    def _lerp(
+        cls,
+        i: float | na.AbstractScalar,
+        a0: float | na.AbstractScalar,
+        a1: float | na.AbstractScalar,
+    ) -> na.AbstractScalar:
+        return a0 * (1 - i) + a1 * i
+
+    def _nlerp(
+        self,
+        i: dict[str, na.AbstractScalar],
+    ) -> na.AbstractExplicitArray:
+
+        if not i:
+            return self.explicit
+
+        axis = next(iter(i))
+
+        i_new = {ax: i[ax] for ax in i if ax != axis}
+
+        a0 = self[{axis: slice(None, ~0)}]
+        a1 = self[{axis: slice(1, None)}]
+
+        if i_new:
+            a0 = a0._nlerp(i_new)
+            a1 = a1._nlerp(i_new)
+
+        return self._lerp(i[axis], a0, a1)
+
     def cell_centers(
         self,
         axis: None | str | Sequence[str] = None,
+        random: bool = False,
     ) -> na.AbstractExplicitArray:
         """
         Convert an array from cell vertices to cell centers.
@@ -466,6 +497,9 @@ class AbstractArray(
         ----------
         axis
             The axes of the array to average over.
+        random
+            If true, select a random point within each cell instead of the
+            geometric center.
         """
 
         if axis is None:
@@ -477,13 +511,26 @@ class AbstractArray(
 
         shape = result.shape
 
-        for a in axis:
-            if a in shape:
-                lower = {a: slice(None, ~0)}
-                upper = {a: slice(+1, None)}
-                result = (result[lower] + result[upper]) / 2
+        axis = tuple(a for a in axis if a in shape)
 
-        return result
+        shape_centers = {
+            ax: shape[ax] - 1 if ax in axis
+            else shape[ax]
+            for ax in shape
+        }
+
+        if not random:
+            i = {
+                a: 0.5
+                for a in axis
+            }
+        else:
+            i = {
+                a: na.random.uniform(0, 1, shape_random=shape_centers)
+                for a in axis
+            }
+
+        return self._nlerp(i)
 
     def volume_cell(self, axis: None | str | Sequence[str]) -> na.AbstractScalar:
         """

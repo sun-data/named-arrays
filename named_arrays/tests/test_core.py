@@ -266,10 +266,15 @@ class AbstractTestAbstractArray(
             ("x", "y"),
         ]
     )
+    @pytest.mark.parametrize(
+        argnames="random",
+        argvalues=[False, True],
+    )
     def test_cell_centers(
         self,
         array: na.AbstractArray,
         axis: None | str | Sequence[str],
+        random: bool,
     ):
         if axis is None:
             axis_normalized = array.axes
@@ -278,7 +283,7 @@ class AbstractTestAbstractArray(
         else:
             axis_normalized = axis
 
-        result = array.cell_centers(axis)
+        result = array.cell_centers(axis, random=random)
 
         for a in axis_normalized:
             if a in array.shape:
