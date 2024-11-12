@@ -352,7 +352,11 @@ def histogram2d(
     )
 
     shape_edges = edges.shape
-    shape_hist = {ax: shape_edges[ax] - 1 for ax in shape_edges}
+    shape_hist = {
+        ax: shape_edges[ax] - 1
+        for ax in shape_edges
+        if ax not in shape_orthogonal
+    }
     shape_hist = na.broadcast_shapes(shape_orthogonal, shape_hist)
 
     hist = na.ScalarArray.empty(shape_hist)
