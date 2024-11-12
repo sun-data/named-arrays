@@ -741,6 +741,7 @@ def histogram2d(
         The bin specification of the histogram:
          * If `bins` is a dictionary, the keys are interpreted as the axis names
            and the values are the number of bins along each axis.
+           This dictionary must have exactly two keys.
          * If `bins` is a 2D Cartesian vector, each component of the vector
            represents the bin edges in each dimension.
     axis
