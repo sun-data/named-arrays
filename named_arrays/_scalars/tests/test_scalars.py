@@ -199,6 +199,11 @@ class AbstractTestAbstractScalar(
                     100,
                 ),
                 (
+                    dict(hx=11, hy=12),
+                    None,
+                    None,
+                ),
+                (
                     na.Cartesian2dVectorArray(
                         x=na.linspace(-100, 100, axis="hx", num=11),
                         y=na.linspace(-100, 100, axis="hy", num=11),
