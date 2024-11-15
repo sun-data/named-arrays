@@ -10,6 +10,13 @@ named_arrays is an implementation of named tensors that includes support for lin
 
     named_arrays
 
+Tutorials
+=======
+
+.. toctree::
+
+    tutorials/PolynomialFunctionArray
+
 
 References
 ==========
