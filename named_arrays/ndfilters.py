@@ -42,8 +42,8 @@ def mean_filter(
     .. jupyter-execute::
         :stderr:
 
+        import numpy as np
         import matplotlib.pyplot as plt
-        import scipy.datasets
         import named_arrays as na
 
         x = na.linspace(-5, 5, axis="x", num=201)
@@ -118,8 +118,8 @@ def trimmed_mean_filter(
     .. jupyter-execute::
         :stderr:
 
+        import numpy as np
         import matplotlib.pyplot as plt
-        import scipy.datasets
         import named_arrays as na
 
         x = na.linspace(-5, 5, axis="x", num=201)
@@ -190,8 +190,8 @@ def variance_filter(
     .. jupyter-execute::
         :stderr:
 
+        import numpy as np
         import matplotlib.pyplot as plt
-        import scipy.datasets
         import named_arrays as na
 
         x = na.linspace(-5, 5, axis="x", num=201)
