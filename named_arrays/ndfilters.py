@@ -42,11 +42,13 @@ def mean_filter(
     .. jupyter-execute::
         :stderr:
 
+        import numpy as np
         import matplotlib.pyplot as plt
-        import scipy.datasets
         import named_arrays as na
 
-        img = na.ScalarArray(scipy.datasets.ascent(), axes=("y", "x"))
+        x = na.linspace(-5, 5, axis="x", num=201)
+        y = na.linspace(-5, 5, axis="y", num=201)
+        img = np.cos(np.square(x)) * np.cos(np.square(y))
 
         img_filtered = na.ndfilters.mean_filter(img, size=dict(x=21, y=21))
 
@@ -116,11 +118,13 @@ def trimmed_mean_filter(
     .. jupyter-execute::
         :stderr:
 
+        import numpy as np
         import matplotlib.pyplot as plt
-        import scipy.datasets
         import named_arrays as na
 
-        img = na.ScalarArray(scipy.datasets.ascent(), axes=("y", "x"))
+        x = na.linspace(-5, 5, axis="x", num=201)
+        y = na.linspace(-5, 5, axis="y", num=201)
+        img = np.cos(np.square(x)) * np.cos(np.square(y))
 
         img_filtered = na.ndfilters.trimmed_mean_filter(
             array=img,
@@ -186,11 +190,13 @@ def variance_filter(
     .. jupyter-execute::
         :stderr:
 
+        import numpy as np
         import matplotlib.pyplot as plt
-        import scipy.datasets
         import named_arrays as na
 
-        img = na.ScalarArray(scipy.datasets.ascent(), axes=("y", "x"))
+        x = na.linspace(-5, 5, axis="x", num=201)
+        y = na.linspace(-5, 5, axis="y", num=201)
+        img = np.cos(np.square(x)) * np.cos(np.square(y))
 
         img_filtered = na.ndfilters.variance_filter(img, size=dict(x=21, y=21))
 
