@@ -316,14 +316,13 @@ class AbstractMatrixArray(
 
         else:
             if isinstance(x2, na.AbstractMatrixArray):
-
-                x2 = x2.matrix_transpose
-                components_x2 = x2.cartesian_nd.components
-
                 if isinstance(x1, na.AbstractVectorArray):
+                    x2 = x2.matrix_transpose
+                    components_x2 = x2.cartesian_nd.components
                     component_dict = {c: x1.cartesian_nd @ components_x2[c] for c in components_x2}
-                    result = x1.type_explicit.from_cartesian_nd(na.CartesianNdVectorArray(component_dict), like=x1)
+                    result = x2.type_vector.from_cartesian_nd(na.CartesianNdVectorArray(component_dict), like=x2.column_prototype)
                 else:
+                    components_x2 = x2.cartesian_nd.components
                     component_dict = {c: x1 @ components_x2[c] for c in components_x2}
                     result = x2.type_explicit.from_cartesian_nd(na.CartesianNdMatrixArray(component_dict), like=x2)
 
