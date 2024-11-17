@@ -1,4 +1,5 @@
 from typing import Callable, Sequence, Literal
+import collections
 import numpy as np
 import numpy.typing as npt
 import matplotlib.axes
@@ -148,6 +149,37 @@ def interp(
     return result
 
 
+@_implements(na.histogram)
+def histogram(
+    a: na.AbstractScalar,
+    bins: dict[str, int] | na.AbstractScalar,
+    axis: None | str | Sequence[str] = None,
+    min: None | na.AbstractScalar = None,
+    max: None | na.AbstractScalar = None,
+    density: bool = False,
+    weights: None | na.AbstractScalar = None,
+) -> na.FunctionArray[na.AbstractScalar, na.AbstractScalar]:
+
+    if isinstance(bins, na.AbstractArray):
+        bins = (bins, )
+
+    hist, edges = na.histogramdd(
+        a,
+        bins=bins,
+        axis=axis,
+        min=min,
+        max=max,
+        density=density,
+        weights=weights,
+    )
+    edges = edges[0]
+
+    return na.FunctionArray(
+        inputs=edges,
+        outputs=hist,
+    )
+
+
 @_implements(na.histogram2d)
 def histogram2d(
     x: na.AbstractScalar,
@@ -257,6 +289,91 @@ def histogram2d(
             distribution=result_distribution.outputs,
         ),
     )
+
+
+@_implements(na.histogramdd)
+def histogramdd(
+    *sample: na.AbstractScalar,
+    bins: dict[str, int] | na.AbstractScalar | Sequence[na.AbstractScalar],
+    axis: None | str | Sequence[str] = None,
+    min: None | na.AbstractScalar | Sequence[na.AbstractScalar] = None,
+    max: None | na.AbstractScalar | Sequence[na.AbstractScalar] = None,
+    density: bool = False,
+    weights: None | na.AbstractScalar = None,
+) -> tuple[na.AbstractScalar, tuple[na.AbstractScalar, ...]]:
+
+    try:
+        sample = [uncertainties._normalize(s) for s in sample]
+        bins = [uncertainties._normalize(b) for b in bins] if not isinstance(bins, dict) else bins
+        weights = uncertainties._normalize(weights) if weights is not None else weights
+    except uncertainties.ScalarTypeError:  # pragma: nocover
+        return NotImplemented
+
+    shape = na.shape_broadcasted(*sample, weights)
+
+    if axis is None:
+        axis = tuple(shape)
+    elif isinstance(axis, str):
+        axis = (axis,)
+
+    shape_hist = {ax: shape[ax] for ax in axis}
+
+    shape_sample = na.shape_broadcasted(*sample)
+    shape_sample = na.broadcast_shapes(shape_sample, shape_hist)
+    sample = [s.broadcast_to(shape_sample) for s in sample]
+
+    if weights is not None:
+        shape_weights = na.shape(weights)
+        shape_weights = na.broadcast_shapes(shape_weights, shape_hist)
+        weights = weights.broadcast_to(shape_weights)
+
+    if min is None:
+        min = [s.min(axis) for s in sample]
+    elif not isinstance(min, collections.abc.Sequence):
+        min = [min] * len(sample)
+
+    if max is None:
+        max = [s.max(axis) for s in sample]
+    elif not isinstance(max, collections.abc.Sequence):
+        max = [max] * len(sample)
+
+    try:
+        max = [uncertainties._normalize(m) for m in max]
+        min = [uncertainties._normalize(m) for m in min]
+    except uncertainties.ScalarTypeError:  # pragma: nocover
+        return NotImplemented
+
+    hist_nominal, edges_nominal = na.histogramdd(
+        *[na.as_named_array(s.nominal) for s in sample],
+        bins=[b.nominal for b in bins] if not isinstance(bins, dict) else bins,
+        axis=axis,
+        min=[m.nominal for m in min],
+        max=[m.nominal for m in max],
+        density=density,
+        weights=weights.nominal if weights is not None else weights,
+    )
+
+    hist_distribution, edges_distribution = na.histogramdd(
+        *[na.as_named_array(s.distribution) for s in sample],
+        bins=[b.distribution for b in bins] if not isinstance(bins, dict) else bins,
+        axis=axis,
+        min=[m.distribution for m in min],
+        max=[m.distribution for m in max],
+        density=density,
+        weights=weights.distribution if weights is not None else weights,
+    )
+
+    hist = na.UncertainScalarArray(
+        nominal=hist_nominal,
+        distribution=hist_distribution,
+    )
+
+    edges = [
+        na.UncertainScalarArray(e_n, e_d)
+        for e_n, e_d in zip(edges_nominal, edges_distribution)
+    ]
+
+    return hist, edges
 
 
 def random(

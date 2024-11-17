@@ -524,6 +524,17 @@ class AbstractTestAbstractVectorArray(
         ):
             pass
 
+        @pytest.mark.parametrize(
+            argnames="bins",
+            argvalues=[
+                na.linspace(-1, 1, axis="hist", num=11),
+            ],
+        )
+        class TestHistogram(
+            named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestHistogram,
+        ):
+            pass
+
         @pytest.mark.parametrize("array_2", [None])
         @pytest.mark.parametrize(
             argnames="where",

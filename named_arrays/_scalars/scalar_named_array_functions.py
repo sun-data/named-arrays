@@ -1,4 +1,5 @@
 from typing import Callable, Sequence, Any, Literal
+import collections
 import dataclasses
 import numpy as np
 import numpy.typing as npt
@@ -249,6 +250,37 @@ def interp(
     return result
 
 
+@_implements(na.histogram)
+def histogram(
+    a: na.AbstractScalarArray,
+    bins: dict[str, int] | na.AbstractScalarArray,
+    axis: None | str | Sequence[str] = None,
+    min: None | na.AbstractScalarArray = None,
+    max: None | na.AbstractScalarArray = None,
+    density: bool = False,
+    weights: None | na.AbstractScalarArray = None,
+) -> na.FunctionArray[na.AbstractScalarArray, na.ScalarArray]:
+
+    if isinstance(bins, na.AbstractArray):
+        bins = (bins, )
+
+    hist, edges = na.histogramdd(
+        a,
+        bins=bins,
+        axis=axis,
+        min=min,
+        max=max,
+        density=density,
+        weights=weights,
+    )
+    edges = edges[0]
+
+    return na.FunctionArray(
+        inputs=edges,
+        outputs=hist,
+    )
+
+
 @_implements(na.histogram2d)
 def histogram2d(
     x: na.AbstractScalarArray,
@@ -387,6 +419,103 @@ def histogram2d(
         inputs=edges,
         outputs=hist,
     )
+
+
+@_implements(na.histogramdd)
+def histogramdd(
+    *sample: na.AbstractScalarArray,
+    bins: dict[str, int] | na.AbstractScalarArray | Sequence[na.AbstractScalarArray],
+    axis: None | str | Sequence[str] = None,
+    min: None | na.AbstractScalarArray | Sequence[na.AbstractScalarArray] = None,
+    max: None | na.AbstractScalarArray | Sequence[na.AbstractScalarArray] = None,
+    density: bool = False,
+    weights: None | na.AbstractScalarArray = None,
+) -> tuple[na.AbstractScalarArray, tuple[na.AbstractScalarArray, ...]]:
+
+    try:
+        sample = [scalars._normalize(s) for s in sample]
+        weights = scalars._normalize(weights) if weights is not None else weights
+    except scalars.ScalarTypeError:  # pragma: nocover
+        return NotImplemented
+
+    shape = na.shape_broadcasted(*sample, weights)
+
+    sample = [s.broadcast_to(shape) for s in sample]
+    weights = na.broadcast_to(weights, shape) if weights is not None else weights
+
+    if axis is None:
+        axis = tuple(shape)
+    elif isinstance(axis, str):
+        axis = (axis,)
+
+    if isinstance(bins, dict):
+
+        if min is None:
+            min = [s.min(axis) for s in sample]
+        elif not isinstance(min, collections.abc.Sequence):
+            min = [min] * len(sample)
+
+        if max is None:
+            max = [s.max(axis) for s in sample]
+        elif not isinstance(max, collections.abc.Sequence):
+            max = [max] * len(sample)
+
+        try:
+            max = [scalars._normalize(m) for m in max]
+            min = [scalars._normalize(m) for m in min]
+        except scalars.ScalarTypeError:  # pragma: nocover
+            return NotImplemented
+
+        if len(bins) != len(sample):  # pragma: nocover
+            raise ValueError(
+                f"if {bins=} is a dictionary, it must have the same number of"
+                f"elements as {len(sample)=}."
+            )
+
+        bins = [
+            na.linspace(start, stop, axis=ax, num=bins[ax])
+            for start, stop, ax in zip(min, max, bins)
+        ]
+
+    try:
+        bins = [scalars._normalize(b) for b in bins]
+    except scalars.ScalarTypeError:  # pragma: nocover
+        return NotImplemented
+
+    shape_orthogonal = {a: shape[a] for a in shape if a not in axis}
+
+    bins_broadcasted = [
+        b.broadcast_to(na.broadcast_shapes(shape_orthogonal, b.shape))
+        for b in bins
+    ]
+
+    shape_bins = na.shape_broadcasted(*bins)
+    shape_hist = {
+        ax: shape_bins[ax] - 1
+        for ax in shape_bins
+        if ax not in shape_orthogonal
+    }
+    shape_hist = na.broadcast_shapes(shape_orthogonal, shape_hist)
+
+    hist = na.ScalarArray.empty(shape_hist)
+
+    unit_weights = na.unit(weights)
+    hist = hist if unit_weights is None else hist << unit_weights
+
+    for i in na.ndindex(shape_orthogonal):
+        hist_i, _ = np.histogramdd(
+            sample=[s[i].ndarray_aligned(axis).reshape(-1) for s in sample],
+            bins=[b[i].ndarray for b in bins_broadcasted],
+            density=density,
+            weights=weights[i].ndarray_aligned(axis).reshape(-1) if weights is not None else weights,
+        )
+
+        hist[i] = na.ScalarArray(
+            ndarray=hist_i,
+            axes=sum((b[i].axes for b in bins_broadcasted), ()),
+        )
+
+    return hist, tuple(bins)
 
 
 def random(

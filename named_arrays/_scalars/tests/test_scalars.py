@@ -190,6 +190,19 @@ class AbstractTestAbstractScalar(
     class TestNamedArrayFunctions(
         tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions,
     ):
+
+        @pytest.mark.parametrize(
+            argnames="bins",
+            argvalues=[
+                dict(hist_x=11),
+                na.linspace(-1, 1, axis="hist", num=11),
+            ],
+        )
+        class TestHistogram(
+            tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestHistogram,
+        ):
+            pass
+
         @pytest.mark.parametrize(
             argnames="bins,min,max",
             argvalues=[

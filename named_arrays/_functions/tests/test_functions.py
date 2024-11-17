@@ -650,6 +650,17 @@ class AbstractTestAbstractFunctionArray(
         ):
             pass
 
+        @pytest.mark.parametrize(
+            argnames="bins",
+            argvalues=[
+                na.linspace(-1, 1, axis="hist", num=11),
+            ],
+        )
+        class TestHistogram(
+            named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestHistogram,
+        ):
+            pass
+
         @pytest.mark.xfail
         class TestPltPlotLikeFunctions(
             named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestPltPlotLikeFunctions
