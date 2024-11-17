@@ -780,7 +780,7 @@ def histogram(
 
         # Plot the resulting histogram
         fig, ax = plt.subplots()
-        na.plt.stairs(hist);
+        na.plt.stairs(hist.inputs, hist.outputs);
     """
     return _named_array_function(
         func=histogram,
