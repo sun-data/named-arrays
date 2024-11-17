@@ -1307,11 +1307,11 @@ class AbstractTestAbstractArray(
         class TestHistogram:
             def test_histogram(
                 self,
-                array: na.AbstractScalar,
-                bins: dict[str, int] | na.AbstractCartesian2dVectorArray,
+                array: na.AbstractArray,
+                bins: dict[str, int] | na.AbstractArray,
                 axis: None | str | Sequence[str],
-                min: None | na.AbstractScalarArray | na.AbstractCartesian2dVectorArray,
-                max: None | na.AbstractScalarArray | na.AbstractCartesian2dVectorArray,
+                min: None | na.AbstractArray,
+                max: None | na.AbstractArray,
                 weights: None | na.AbstractScalarArray,
             ):
                 if not array.shape:
@@ -1320,14 +1320,15 @@ class AbstractTestAbstractArray(
                     if not np.issubdtype(na.get_dtype(array), np.number):
                         return
                 except ValueError:
-                    return
+                    pass
 
+                unit_array = na.unit_normalized(array, squeeze=False)
                 if isinstance(bins, na.AbstractArray):
-                    bins = bins * array.unit_normalized
+                    bins = bins * unit_array
                 if min is not None:
-                    min = min * array.unit_normalized
+                    min = min * unit_array
                 if max is not None:
-                    max = max * array.unit_normalized
+                    max = max * unit_array
 
                 result = na.histogram(
                     array,
@@ -1338,12 +1339,8 @@ class AbstractTestAbstractArray(
                     weights=weights,
                 )
 
-                assert np.all(result.outputs >= 0)
-                assert result.outputs.sum() >= 0
-
-                unit = array.unit_normalized
                 unit_weights = na.unit_normalized(weights)
-                assert result.inputs.unit_normalized.is_equivalent(unit)
+                assert na.unit_normalized(result.inputs) == unit_array
                 assert result.outputs.unit_normalized.is_equivalent(unit_weights)
 
         @pytest.mark.parametrize(

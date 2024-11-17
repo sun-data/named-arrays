@@ -1,4 +1,4 @@
-from typing import Type, Callable, Sequence
+from typing import Type, Callable, Sequence, Literal
 import pytest
 import abc
 import numpy as np
@@ -527,13 +527,31 @@ class AbstractTestAbstractVectorArray(
         @pytest.mark.parametrize(
             argnames="bins",
             argvalues=[
-                na.linspace(-1, 1, axis="hist", num=11),
+                "dynamic",
             ],
         )
         class TestHistogram(
             named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestHistogram,
         ):
-            pass
+            def test_histogram(
+                    self,
+                    array: na.AbstractVectorArray,
+                    bins: Literal["dynamic"],
+                    axis: None | str | Sequence[str],
+                    min: None | na.AbstractScalarArray | na.AbstractVectorArray,
+                    max: None | na.AbstractScalarArray | na.AbstractVectorArray,
+                    weights: None | na.AbstractScalarArray,
+            ):
+                if bins == "dynamic":
+                    bins = {f"axis_{c}": 11 for c in array.cartesian_nd.components}
+                super().test_histogram(
+                    array=array,
+                    bins=bins,
+                    axis=axis,
+                    min=min,
+                    max=max,
+                    weights=weights,
+                )
 
         @pytest.mark.parametrize("array_2", [None])
         @pytest.mark.parametrize(
