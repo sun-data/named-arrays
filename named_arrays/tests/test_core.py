@@ -1322,7 +1322,7 @@ class AbstractTestAbstractArray(
                 except ValueError:
                     pass
 
-                unit_array = na.unit_normalized(array, squeeze=False)
+                unit_array = 1 * na.unit_normalized(array, squeeze=False)
                 if isinstance(bins, na.AbstractArray):
                     bins = bins * unit_array
                 if min is not None:
@@ -1340,7 +1340,7 @@ class AbstractTestAbstractArray(
                 )
 
                 unit_weights = na.unit_normalized(weights)
-                assert na.unit_normalized(result.inputs) == unit_array
+                assert 1 * na.unit_normalized(result.inputs) == unit_array
                 assert result.outputs.unit_normalized.is_equivalent(unit_weights)
 
         @pytest.mark.parametrize(

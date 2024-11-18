@@ -653,7 +653,7 @@ class AbstractTestAbstractFunctionArray(
         @pytest.mark.parametrize(
             argnames="bins",
             argvalues=[
-                "dynamic",
+                "dict",
             ],
         )
         class TestHistogram(
@@ -662,13 +662,13 @@ class AbstractTestAbstractFunctionArray(
             def test_histogram(
                 self,
                 array: na.AbstractFunctionArray,
-                bins: Literal["dynamic"],
+                bins: Literal["dict"],
                 axis: None | str | Sequence[str],
                 min: None | na.AbstractScalarArray | na.AbstractVectorArray,
                 max: None | na.AbstractScalarArray | na.AbstractVectorArray,
                 weights: None | na.AbstractScalarArray,
             ):
-                if bins == "dynamic":
+                if bins == "dict":
                     if isinstance(array.inputs, na.AbstractVectorArray):
                         bins = {f"axis_{c}": 11 for c in array.inputs.cartesian_nd.components}
                     else:
