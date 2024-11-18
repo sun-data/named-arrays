@@ -114,6 +114,12 @@ class AbstractTestAbstractMatrixArray(
     ):
 
         @pytest.mark.skip
+        class TestHistogram(
+            named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestHistogram,
+        ):
+            pass
+
+        @pytest.mark.skip
         class TestPltPlotLikeFunctions(
             named_arrays._vectors.tests.test_vectors.AbstractTestAbstractVectorArray.TestNamedArrayFunctions.TestPltPlotLikeFunctions
         ):

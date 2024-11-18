@@ -214,6 +214,54 @@ def interp(
     return result
 
 
+@_implements(na.histogram)
+def histogram(
+    a: na.AbstractVectorArray,
+    bins: dict[str, int] | na.AbstractVectorArray,
+    axis: None | str | Sequence[str] = None,
+    min: None | float | na.AbstractScalar | na.AbstractVectorArray = None,
+    max: None | float | na.AbstractScalar | na.AbstractVectorArray = None,
+    density: bool = False,
+    weights: None | na.AbstractScalar = None,
+) -> na.FunctionArray[na.AbstractVectorArray, na.AbstractScalar]:
+
+    if not isinstance(a, na.AbstractVectorArray):  # pragma: nocover
+        return NotImplemented
+
+    sample = tuple(a.cartesian_nd.components.values())
+
+    if not isinstance(bins, dict):
+        bins = vectors._normalize(bins, prototype=a)
+        bins = tuple(bins.cartesian_nd.components.values())
+
+    if min is not None:
+        min = vectors._normalize(min, prototype=a)
+        min = tuple(min.cartesian_nd.components.values())
+
+    if max is not None:
+        max = vectors._normalize(max, prototype=a)
+        max = tuple(max.cartesian_nd.components.values())
+
+    hist, edges = na.histogramdd(
+        *sample,
+        bins=bins,
+        axis=axis,
+        min=min,
+        max=max,
+        density=density,
+        weights=weights,
+    )
+
+    edges = dict(zip(a.cartesian_nd.components, edges))
+    edges = na.CartesianNdVectorArray(edges)
+    edges = a.type_explicit.from_cartesian_nd(edges, like=a)
+
+    return na.FunctionArray(
+        inputs=edges,
+        outputs=hist,
+    )
+
+
 def random(
         func: Callable,
         *args: float | u.Quantity |na.AbstractScalar | na.AbstractVectorArray,

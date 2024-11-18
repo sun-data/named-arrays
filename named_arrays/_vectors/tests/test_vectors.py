@@ -1,4 +1,4 @@
-from typing import Type, Callable, Sequence
+from typing import Type, Callable, Sequence, Literal
 import pytest
 import abc
 import numpy as np
@@ -523,6 +523,43 @@ class AbstractTestAbstractVectorArray(
             named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestInterp
         ):
             pass
+
+        @pytest.mark.parametrize(
+            argnames="bins",
+            argvalues=[
+                "dict",
+                "array",
+            ],
+        )
+        class TestHistogram(
+            named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestHistogram,
+        ):
+            def test_histogram(
+                    self,
+                    array: na.AbstractVectorArray,
+                    bins: Literal["dict", "array"],
+                    axis: None | str | Sequence[str],
+                    min: None | na.AbstractScalarArray | na.AbstractVectorArray,
+                    max: None | na.AbstractScalarArray | na.AbstractVectorArray,
+                    weights: None | na.AbstractScalarArray,
+            ):
+                if bins == "dict":
+                    bins = {f"axis_{c}": 11 for c in array.cartesian_nd.components}
+                elif bins == "array":
+                    bins = {
+                        c: na.linspace(0, 1, f"axis_{c}", 11)
+                        for c in array.cartesian_nd.components
+                    }
+                    bins = na.CartesianNdVectorArray(bins)
+                    bins = array.type_explicit.from_cartesian_nd(bins, like=array)
+                super().test_histogram(
+                    array=array,
+                    bins=bins,
+                    axis=axis,
+                    min=min,
+                    max=max,
+                    weights=weights,
+                )
 
         @pytest.mark.parametrize("array_2", [None])
         @pytest.mark.parametrize(

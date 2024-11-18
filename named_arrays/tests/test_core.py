@@ -1285,6 +1285,65 @@ class AbstractTestAbstractArray(
                 assert np.allclose(result, slope * array)
 
         @pytest.mark.parametrize(
+            argnames="min,max",
+            argvalues=[
+                (-100, 100),
+                (None, None),
+            ]
+        )
+        @pytest.mark.parametrize(
+            argnames="axis",
+            argvalues=[
+                None,
+                "y",
+            ]
+        )
+        @pytest.mark.parametrize(
+            argnames="weights",
+            argvalues=[
+                None,
+            ]
+        )
+        class TestHistogram:
+            def test_histogram(
+                self,
+                array: na.AbstractArray,
+                bins: dict[str, int] | na.AbstractArray,
+                axis: None | str | Sequence[str],
+                min: None | na.AbstractArray,
+                max: None | na.AbstractArray,
+                weights: None | na.AbstractScalarArray,
+            ):
+                if not array.shape:
+                    return
+                try:
+                    if not np.issubdtype(na.get_dtype(array), np.number):
+                        return
+                except ValueError:
+                    pass
+
+                unit_array = 1 * na.unit_normalized(array, squeeze=False)
+                if isinstance(bins, na.AbstractArray):
+                    bins = bins * unit_array
+                if min is not None:
+                    min = min * unit_array
+                if max is not None:
+                    max = max * unit_array
+
+                result = na.histogram(
+                    array,
+                    bins=bins,
+                    axis=axis,
+                    min=min,
+                    max=max,
+                    weights=weights,
+                )
+
+                unit_weights = na.unit_normalized(weights)
+                assert 1 * na.unit_normalized(result.inputs) == unit_array
+                assert result.outputs.unit_normalized.is_equivalent(unit_weights)
+
+        @pytest.mark.parametrize(
             argnames="func,axis,transformation",
             argvalues=[
                 (na.plt.plot, np._NoValue, np._NoValue),

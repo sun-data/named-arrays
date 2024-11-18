@@ -1,4 +1,4 @@
-from typing import Callable, Literal
+from typing import Callable, Literal, Sequence
 import numpy as np
 import matplotlib
 import astropy.units as u
@@ -99,6 +99,32 @@ def unit_normalized(
         a.outputs,
         unit_dimensionless=unit_dimensionless,
         squeeze=squeeze,
+    )
+
+
+@_implements(na.histogram)
+def histogram(
+    a: na.AbstractFunctionArray,
+    bins: dict[str, int] | na.AbstractScalarArray,
+    axis: None | str | Sequence[str] = None,
+    min: None | na.AbstractScalarArray = None,
+    max: None | na.AbstractScalarArray = None,
+    density: bool = False,
+    weights: None = None,
+) -> na.FunctionArray[na.AbstractScalarArray, na.ScalarArray]:
+    if weights is not None:  # pragma: nocover
+        raise ValueError(
+            "`weights` must be `None` for `AbstractFunctionArray`"
+            f"inputs, got {type(weights)}."
+        )
+    return na.histogram(
+        a=a.inputs,
+        bins=bins,
+        axis=axis,
+        min=min,
+        max=max,
+        density=density,
+        weights=a.outputs,
     )
 
 

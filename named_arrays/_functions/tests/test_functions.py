@@ -1,4 +1,4 @@
-from typing import Sequence, Callable
+from typing import Sequence, Callable, Literal
 import pytest
 import numpy as np
 import astropy.units as u
@@ -649,6 +649,40 @@ class AbstractTestAbstractFunctionArray(
             named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestInterp,
         ):
             pass
+
+        @pytest.mark.parametrize(
+            argnames="bins",
+            argvalues=[
+                "dict",
+            ],
+        )
+        class TestHistogram(
+            named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestHistogram,
+        ):
+            def test_histogram(
+                self,
+                array: na.AbstractFunctionArray,
+                bins: Literal["dict"],
+                axis: None | str | Sequence[str],
+                min: None | na.AbstractScalarArray | na.AbstractVectorArray,
+                max: None | na.AbstractScalarArray | na.AbstractVectorArray,
+                weights: None | na.AbstractScalarArray,
+            ):
+                if bins == "dict":
+                    if isinstance(array.inputs, na.AbstractVectorArray):
+                        bins = {f"axis_{c}": 11 for c in array.inputs.cartesian_nd.components}
+                    else:
+                        bins = dict(axis_x=11)
+                if isinstance(array.outputs, na.AbstractVectorArray):
+                    return
+                super().test_histogram(
+                    array=array,
+                    bins=bins,
+                    axis=axis,
+                    min=min,
+                    max=max,
+                    weights=weights,
+                )
 
         @pytest.mark.xfail
         class TestPltPlotLikeFunctions(

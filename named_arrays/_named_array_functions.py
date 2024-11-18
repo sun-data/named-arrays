@@ -23,7 +23,9 @@ __all__ = [
     'concatenate',
     'add_axes',
     "interp",
+    "histogram",
     "histogram2d",
+    "histogramdd",
     'jacobian',
     'despike',
 ]
@@ -718,6 +720,80 @@ def interp(
     )
 
 
+def histogram(
+    a: na.AbstractArray,
+    bins: dict[str, int] | na.AbstractArray,
+    axis: None | str | Sequence[str] = None,
+    min: None | float | na.AbstractArray = None,
+    max: None | float | na.AbstractArray = None,
+    density: bool = False,
+    weights: None | na.AbstractArray = None,
+) -> na.FunctionArray[na.AbstractArray, na.ScalarArray]:
+    """
+    A thin wrapper around :func:`numpy.histogram` which adds an `axis` argument.
+
+    Parameters
+    ----------
+    a
+        The input data over which to compute the histogram.
+    bins
+        The bin specification of the histogram:
+         * If `bins` is a dictionary, the keys are interpreted as the axis names
+           and the values are the number of bins along each axis.
+           This dictionary must have only one key per coordinate.
+         * If `bins` is an array, it represents the bin edges.
+    axis
+        The logical axes along which to histogram the data points.
+        If :obj:`None` (the default), the histogram will be computed along
+        all the axes of `a`.
+    min
+        The lower boundary of the histogram.
+        If :obj:`None` (the default), the minimum of `a` is used.
+    max
+        The upper boundary of the histogram.
+        If :obj:`None` (the default), the maximum of `a` is used.
+    density
+        If :obj:`False` (the default), returns the number of samples in each bin.
+        If :obj:`True`, returns the probability density in each bin.
+    weights
+        An optional array weighting each sample.
+
+    Examples
+    --------
+
+    Construct a 2D histogram with constant bin width.
+
+    .. jupyter-execute::
+
+        import numpy as np
+        import matplotlib.pyplot as plt
+        import named_arrays as na
+
+        # Define the bin edges
+        bins = dict(x=6)
+
+        # Define random points to collect into a histogram
+        a = na.random.normal(0, 2, shape_random=dict(h=101))
+
+        # Compute the histogram
+        hist = na.histogram(a, bins=bins)
+
+        # Plot the resulting histogram
+        fig, ax = plt.subplots()
+        na.plt.stairs(hist.inputs, hist.outputs);
+    """
+    return _named_array_function(
+        func=histogram,
+        a=a,
+        axis=axis,
+        bins=bins,
+        min=min,
+        max=max,
+        density=density,
+        weights=weights,
+    )
+
+
 def histogram2d(
     x: na.AbstractScalarArray,
     y: na.AbstractScalarArray,
@@ -813,6 +889,61 @@ def histogram2d(
         func=histogram2d,
         x=x,
         y=y,
+        axis=axis,
+        bins=bins,
+        min=min,
+        max=max,
+        density=density,
+        weights=weights,
+    )
+
+
+def histogramdd(
+    *sample: na.AbstractScalar,
+    bins: dict[str, int] | na.AbstractScalar| Sequence[na.AbstractScalar],
+    axis: None | str | Sequence[str] = None,
+    min: None | na.AbstractScalar | Sequence[na.AbstractScalar] = None,
+    max: None | na.AbstractScalar | Sequence[na.AbstractScalar] = None,
+    density: bool = False,
+    weights: None | na.AbstractScalar = None,
+) -> tuple[na.AbstractScalar, tuple[na.AbstractScalar, ...]]:
+    """
+    A thin wrapper around :func:`numpy.histogramdd` which adds an `axis` argument.
+
+    Parameters
+    ----------
+    sample
+        The data to be histrogrammed.
+        Note the difference in signature compared to :func:`numpy.histogramdd`,
+        each component must be a separate argument,
+        instead of a single argument containing a sequence of arrays.
+        This is done so that multiple dispatch works better for this function.
+    bins
+        The bin specification of the histogram:
+         * If `bins` is a dictionary, the keys are interpreted as the axis names
+           and the values are the number of bins along each axis.
+           This dictionary must have the same number of elements as `sample`.
+         * If `bins` is an array or a sequence of arrays, it describes the
+           monotonically-increasing bin edges along each dimension
+    axis
+        The logical axes along which to histogram the data points.
+        If :obj:`None` (the default), the histogram will be computed along
+        all the axes of `sample`.
+    min
+        The lower boundary of the histogram along each dimension.
+        If :obj:`None` (the default), the minimum of each element of `sample` is used.
+    max
+        The upper boundary of the histogram along each dimension.
+        If :obj:`None` (the default), the maximum of each elemennt of `sample` is used.
+    density
+        If :obj:`False` (the default), returns the number of samples in each bin.
+        If :obj:`True`, returns the probability density in each bin.
+    weights
+        An optional array weighting each sample.
+    """
+    return _named_array_function(
+        histogramdd,
+        *sample,
         axis=axis,
         bins=bins,
         min=min,
