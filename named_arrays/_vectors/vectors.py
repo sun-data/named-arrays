@@ -505,12 +505,7 @@ class AbstractExplicitVectorArray(
         """
 
         if like is not None:
-            return like.type_explicit.from_cartesian_nd(
-                array=na.CartesianNdVectorArray(
-                    {c: scalar for c in like.cartesian_nd.components},
-                ),
-                like=like,
-            )
+            return like.type_explicit.from_components({c: scalar for c in like.components})
         else:
             return NotImplemented
 
