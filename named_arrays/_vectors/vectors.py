@@ -110,7 +110,7 @@ class AbstractVectorArray(
             if isinstance(component, na.AbstractVectorArray):
                 component2 = component.cartesian_nd.components
                 for c2 in component2:
-                    components_new[f"{c}_{c2}"] = component2[c2]
+                    components_new[f"{c}.{c2}"] = component2[c2]
             else:
                 components_new[c] = component
 
