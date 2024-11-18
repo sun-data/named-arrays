@@ -9,12 +9,14 @@ import astropy.units as u
 import astropy.visualization
 import named_arrays as na
 import itertools
+import collections
 
 __all__ = [
     "InputValueError",
     "AbstractFunctionArray",
     "FunctionArray",
     "AbstractFunctionArray",
+    "AbstractPolynomialFunctionArray",
     "PolynomialFitFunctionArray",
 ]
 
@@ -744,7 +746,7 @@ class AbstractPolynomialFunctionArray(
 
     @property
     @abc.abstractmethod
-    def components_polynomial(self) -> dict[str, na.AbstractScalar]:
+    def components_polynomial(self) -> None | str | Sequence[str]:
         """The components of the input that this polynomial depends on."""
 
     @property
@@ -774,18 +776,10 @@ class AbstractPolynomialFunctionArray(
     def __call__(
         self,
         inputs: float | u.Quantity | na.ScalarArray | na.AbstractVectorArray,
-    ):
-
-        inputs_self = self.inputs
-        if not isinstance(inputs_self, na.AbstractVectorArray):
-            pass
-
-        components_inputs = inputs.components
-        for c in components_inputs:
-            if components_inputs[c] is None:
-                pass
-
-        index = self.inputs.index(inputs)
+    ) -> na.AbstractFunctionArray:
+        return na.FunctionArray(
+            inputs, self.design_matrix(inputs) @ self.coefficients
+        )
 
 
 @dataclasses.dataclass(eq=False, repr=False)
@@ -794,7 +788,7 @@ class PolynomialFitFunctionArray(
     AbstractPolynomialFunctionArray,
 ):
     degree: int = None
-    components_polynomial: dict[str, na.AbstractScalar] = None
+    components_polynomial: None | str | Sequence[str] = None
     axis_polynomial: None | str | Sequence[str] = None
 
     """
@@ -803,7 +797,11 @@ class PolynomialFitFunctionArray(
     outputs, rather than performing interpolation.
     
     To demonstrate, start with inputs and use it to calculate a polynomial output with known coefficients.
+    
     .. jupyter-execute::
+    
+        import named_arrays as na
+        import astropy.units as u
     
         inputs = na.SpectralPositionalVectorLinearSpace(
             start=na.SpectralPositionalVectorArray(
@@ -843,6 +841,8 @@ class PolynomialFitFunctionArray(
             y=5 * u.mm + na.ScalarLinearSpace(-10 * u.s, 10 * u.s, num=3, axis='time') * (
                     u.mm / (u.arcsec * u.s)) * inputs.position.y + .05 * u.mm / (u.arcsec ** 2) * (inputs.position.x) ** 2,
         )
+    
+    |
             
     These outputs are a second degree polynomial of position_x and postion_y, and have coefficients that depend on wavelength
     and time.
@@ -860,7 +860,7 @@ class PolynomialFitFunctionArray(
             axis_polynomial=('x', 'y'),
         )
 
-        fit.coefficients
+        test  = fit.coefficients
 
     If one instead fits a linear model, the error between the fit, and the data can be easily visualized
     
@@ -874,16 +874,27 @@ class PolynomialFitFunctionArray(
 
         return dTd.inverse @ dTo
 
-    def design_matrix(self, inputs):
+    def design_matrix(
+        self,
+        inputs: float | u.Quantity | na.AbstractScalar | na.AbstractVectorArray,
+    ) -> na.AbstractVectorArray:
+
         design_matrix = {}
+
+        scalar = False
+        if isinstance(inputs, na.AbstractScalar):
+            inputs = na.CartesianNdVectorArray(dict(dummy=inputs))
+            scalar = True
+
         cartesian_nd = inputs.cartesian_nd.broadcasted
         # grab subset of components involved in polynomial fit
-        cartesian_nd = na.CartesianNdVectorArray(
-            {
-                k: cartesian_nd.components[k]
-                for k in cartesian_nd.components.keys() & self.components_polynomial
-            }
-        )
+        if self.components_polynomial:
+            cartesian_nd = na.CartesianNdVectorArray(
+                {
+                    k: cartesian_nd.components[k]
+                    for k in cartesian_nd.components.keys() & self.components_polynomial
+                }
+            )
         for i in range(self.degree + 1):
             combinations = itertools.combinations_with_replacement(
                 cartesian_nd.components, i
@@ -894,23 +905,29 @@ class PolynomialFitFunctionArray(
                 for k in combination:
                     design_matrix[key] = design_matrix[key] * cartesian_nd.components[k]
 
-        return na.CartesianNdVectorArray(design_matrix)
+
+        if scalar:
+            design_matrix = design_matrix['dummy']
+        else:
+            design_matrix = na.CartesianNdVectorArray(design_matrix)
+
+        return design_matrix
 
     @classmethod
     def _outer(cls, v1, v2, axis):
         v1_T_v2_components = {}
-        for c1 in v1.broadcasted.components:
+        v1_broadcasted = v1.broadcasted.components
+        for c1 in v1_broadcasted:
             row_components = {}
-            for c2 in v2.broadcasted.components:
+            v2_broadcasted = v2.broadcasted.components
+            for c2 in v2_broadcasted:
                 row_components[c2] = (
-                    v1.broadcasted.components[c1] * v2.broadcasted.components[c2]
+                        v1_broadcasted[c1] * v2_broadcasted[c2]
                 ).sum(axis=axis)
             v1_T_v2_components[c1] = v1.type_explicit.from_components(row_components)
 
         v1_T_v2 = v1.type_matrix.from_components(v1_T_v2_components)
         return v1_T_v2
 
-    def __call__(self, inputs) -> na.AbstractFunctionArray:
-        return na.FunctionArray(
-            inputs, self.coefficients.matrix_transpose @ self.design_matrix(inputs)
-        )
+
+
