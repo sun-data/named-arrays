@@ -537,7 +537,7 @@ def array_function_stack_like(
     components_arrays = [a.components for a in arrays]
 
     if out is None:
-        components_out = vector_prototype.type_explicit.from_scalar(out, like=vector_prototype).components
+        components_out = vector_prototype.type_explicit.from_scalar(out).components
     else:
         components_out = out.components
 
