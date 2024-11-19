@@ -872,6 +872,8 @@ class PolynomialFitFunctionArray(
         dTd = self._outer(d, d, self.axis_polynomial)
         dTo = self._outer(d, self.outputs, self.axis_polynomial)
 
+        print(dTd.inverse)
+        print(dTo)
         return dTd.inverse @ dTo
 
     def design_matrix(
@@ -881,10 +883,8 @@ class PolynomialFitFunctionArray(
 
         design_matrix = {}
 
-        scalar = False
         if isinstance(inputs, na.AbstractScalar):
-            inputs = na.CartesianNdVectorArray(dict(dummy=inputs))
-            scalar = True
+            inputs = na.CartesianNdVectorArray({'dummy': inputs})
 
         cartesian_nd = inputs.cartesian_nd.broadcasted
         # grab subset of components involved in polynomial fit
@@ -895,6 +895,7 @@ class PolynomialFitFunctionArray(
                     for k in cartesian_nd.components.keys() & self.components_polynomial
                 }
             )
+
         for i in range(self.degree + 1):
             combinations = itertools.combinations_with_replacement(
                 cartesian_nd.components, i
@@ -906,27 +907,47 @@ class PolynomialFitFunctionArray(
                     design_matrix[key] = design_matrix[key] * cartesian_nd.components[k]
 
 
-        if scalar:
-            design_matrix = design_matrix['dummy']
-        else:
-            design_matrix = na.CartesianNdVectorArray(design_matrix)
+        design_matrix = na.CartesianNdVectorArray(design_matrix)
 
         return design_matrix
 
     @classmethod
     def _outer(cls, v1, v2, axis):
         v1_T_v2_components = {}
-        v1_broadcasted = v1.broadcasted.components
-        for c1 in v1_broadcasted:
-            row_components = {}
-            v2_broadcasted = v2.broadcasted.components
-            for c2 in v2_broadcasted:
-                row_components[c2] = (
-                        v1_broadcasted[c1] * v2_broadcasted[c2]
-                ).sum(axis=axis)
-            v1_T_v2_components[c1] = v1.type_explicit.from_components(row_components)
 
-        v1_T_v2 = v1.type_matrix.from_components(v1_T_v2_components)
+        if isinstance(v1, na.AbstractVectorArray):
+            v1_broadcasted = v1.broadcasted.components
+            if isinstance(v2, na.AbstractVectorArray):
+                for c1 in v1_broadcasted:
+                    v2_broadcasted = v2.broadcasted.components
+                    row_components = {}
+                    for c2 in v2_broadcasted:
+                        row_components[c2] = (
+                                v1_broadcasted[c1] * v2_broadcasted[c2]
+                        ).sum(axis=axis)
+                    v1_T_v2_components[c1] = v2.type_explicit.from_components(row_components)
+                v1_T_v2 = v1.type_matrix.from_components(v1_T_v2_components)
+
+            else:
+                for c1 in v1_broadcasted:
+                        row_components = (v1_broadcasted[c1] * v2).sum(axis=axis)
+                        v1_T_v2_components[c1] = row_components
+                v1_T_v2 = v1.type_explicit.from_components(v1_T_v2_components)
+
+        # Not relevant to specific use case, but likely relevant to more general outer product method.
+        # else:
+        #     if isinstance(v2, na.AbstractVectorArray):
+        #         v2_broadcasted = v2.broadcasted.components
+        #         row_components = {}
+        #         for c2 in v2_broadcasted:
+        #             row_components[c2] = (
+        #                     v1 * v2_broadcasted[c2]
+        #             ).sum(axis=axis)
+        #         v1_T_v2 = v2.type_explicit.from_components(row_components)
+        #
+        #     else:
+        #         v1_T_v2 = v1 * v2
+
         return v1_T_v2
 
 

@@ -858,6 +858,7 @@ def _polynomial_function_arrays():
 
 class TestPolynomialFitFunctionArray(
     AbstractTestAbstractPolynomialFunctionArray,
+    named_arrays.tests.test_core.AbstractTestAbstractExplicitArray,
 ):
 
     @pytest.mark.parametrize(
