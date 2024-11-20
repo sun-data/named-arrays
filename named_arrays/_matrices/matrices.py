@@ -261,7 +261,7 @@ class AbstractMatrixArray(
             if isinstance(component, na.AbstractMatrixArray):
                 component2 = component.cartesian_nd.components
                 for c2 in component2:
-                    components_new[f"{c}_{c2}"] = component2[c2]
+                    components_new[f"{c}.{c2}"] = component2[c2]
             elif isinstance(component, na.AbstractVectorArray):
                 components_new[c] = component.cartesian_nd
             else:
@@ -365,7 +365,7 @@ class AbstractExplicitMatrixArray(
                 component = components[c]
                 if isinstance(component, na.AbstractVectorArray):
                     if isinstance(component, na.AbstractMatrixArray):
-                        nd_key_mod = f"{c}_"
+                        nd_key_mod = f"{c}."
                         sub_dict = {k[len(nd_key_mod):]: v for k, v in nd_components.items() if k.startswith(nd_key_mod)}
                         components_new[c] = component.type_explicit.from_cartesian_nd(
                              na.CartesianNdMatrixArray(sub_dict),
