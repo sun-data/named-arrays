@@ -787,84 +787,38 @@ class PolynomialFitFunctionArray(
     FunctionArray,
     AbstractPolynomialFunctionArray,
 ):
+    """
+    A :class:`named_arrays.PolynomialFitFunctionArray` carries the independent variables, inputs, and dependent variables, outputs,
+    of a discrete function, and a linear least squares polynomial fit of specified degree to that function.
+
+    .. nblinkgallery::
+        :caption: Relevant Tutorials
+        :name: rst-link-gallery
+
+        ../tutorials/PolynomialFunctionArray
+
+
+    Parameters
+        ----------
+        inputs
+            the set of independent variables
+        
+        outputs
+            the set of dependent variables
+        
+        degree
+            the degree of the polynomial
+        
+        components_polynomial
+            the components used in the polynomial fit
+        
+        axis_polynomial
+            the logical axis of the polynomial fit
+    """
+
     degree: int = None
     components_polynomial: None | str | Sequence[str] = None
     axis_polynomial: None | str | Sequence[str] = None
-
-    """
-    Calculate and store a polynomial fit to the inputs and outputs of a FunctionArray.  Calling a PolynomialFitFunctionArray
-    with new inputs returns new outputs based on the polynomial fit, of a specified degree, to the original inputs and
-    outputs, rather than performing interpolation.
-    
-    To demonstrate, start with inputs and use it to calculate a polynomial output with known coefficients.
-    
-    .. jupyter-execute::
-    
-        import named_arrays as na
-        import astropy.units as u
-    
-        inputs = na.SpectralPositionalVectorLinearSpace(
-            start=na.SpectralPositionalVectorArray(
-                wavelength=610 * u.AA,
-                position=na.Cartesian2dVectorArray(
-                    x=-50 * u.arcsec,
-                    y=-50 * u.arcsec,
-                )
-            ),
-            stop=na.SpectralPositionalVectorArray(
-                wavelength=650 * u.AA,
-                position=na.Cartesian2dVectorArray(
-                    x=50 * u.arcsec,
-                    y=50 * u.arcsec,
-                )
-            ),
-            num=na.SpectralPositionalVectorArray(
-                wavelength=5,
-                position=na.Cartesian2dVectorArray(
-                    x=51,
-                    y=51,
-                ),
-            ),
-            axis=na.SpectralPositionalVectorArray(
-                wavelength='wavelength',
-                position=na.Cartesian2dVectorArray(
-                    x='x',
-                    y='y',
-                ),
-            ),
-        )
-            
-        outputs = na.Cartesian2dVectorArray(
-            x=1 * u.mm + (u.mm / u.arcsec) * inputs.position.x + .001 * u.mm / (u.arcsec ** 2) * (
-                inputs.position.y) ** 2 - 1 * (
-                      u.mm / u.AA) * inputs.wavelength,
-            y=5 * u.mm + na.ScalarLinearSpace(-10 * u.s, 10 * u.s, num=3, axis='time') * (
-                    u.mm / (u.arcsec * u.s)) * inputs.position.y + .05 * u.mm / (u.arcsec ** 2) * (inputs.position.x) ** 2,
-        )
-    
-    |
-            
-    These outputs are a second degree polynomial of position_x and postion_y, and have coefficients that depend on wavelength
-    and time.
-    
-    We can fit these inputs and outputs with a second degree polynomial in position_x and position_y to demonstrate we 
-    get the same answer back.
-    
-    .. jupyter-execute::
-
-        fit = na.PolynomialFitFunctionArray(
-            inputs=inputs,
-            outputs=outputs,
-            degree=2,
-            components_polynomial=('position_x', 'position_y'),
-            axis_polynomial=('x', 'y'),
-        )
-
-        test  = fit.coefficients
-
-    If one instead fits a linear model, the error between the fit, and the data can be easily visualized
-    
-    """
 
     @functools.cached_property
     def coefficients(self) -> na.AbstractVectorArray | na.AbstractMatrixArray:
@@ -872,8 +826,6 @@ class PolynomialFitFunctionArray(
         dTd = self._outer(d, d, self.axis_polynomial)
         dTo = self._outer(d, self.outputs, self.axis_polynomial)
 
-        print(dTd.inverse)
-        print(dTo)
         return dTd.inverse @ dTo
 
     def design_matrix(

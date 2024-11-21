@@ -11,9 +11,12 @@ named_arrays is an implementation of named tensors that includes support for lin
     named_arrays
 
 Tutorials
-=======
+=========
+
+Jupyter notebook examples on how to use :mod:`named_arrays`.
 
 .. toctree::
+    :maxdepth: 1
 
     tutorials/PolynomialFunctionArray
 
