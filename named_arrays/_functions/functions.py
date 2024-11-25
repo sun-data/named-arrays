@@ -804,6 +804,9 @@ class PolynomialFitFunctionArray(
     axis_polynomial
         the logical axis of the polynomial fit
 
+    Examples
+    --------
+
     .. nblinkgallery::
         :caption: Relevant Tutorials
         :name: rst-link-gallery
