@@ -791,29 +791,24 @@ class PolynomialFitFunctionArray(
     A :class:`named_arrays.PolynomialFitFunctionArray` carries the independent variables, inputs, and dependent variables, outputs,
     of a discrete function, and a linear least squares polynomial fit of specified degree to that function.
 
+    Parameters
+    ----------
+    inputs
+        the set of independent variables
+    outputs
+        the set of dependent variables
+    degree
+        the degree of the polynomial
+    components_polynomial
+        the components used in the polynomial fit
+    axis_polynomial
+        the logical axis of the polynomial fit
+
     .. nblinkgallery::
         :caption: Relevant Tutorials
         :name: rst-link-gallery
 
         ../tutorials/PolynomialFunctionArray
-
-
-    Parameters
-        ----------
-        inputs
-            the set of independent variables
-        
-        outputs
-            the set of dependent variables
-        
-        degree
-            the degree of the polynomial
-        
-        components_polynomial
-            the components used in the polynomial fit
-        
-        axis_polynomial
-            the logical axis of the polynomial fit
     """
 
     degree: int = None
