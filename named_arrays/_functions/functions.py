@@ -849,8 +849,8 @@ class PolynomialFitFunctionArray(
 
         if components is None:
             components = tuple(inputs)
-        else:
-            components = (components,) if isinstance(components, str) else components
+        elif isinstance(components, str):
+            components = (components,)
 
         inputs = {c: inputs[c] for c in components}
 

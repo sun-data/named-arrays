@@ -832,17 +832,19 @@ class AbstractTestAbstractPolynomialFunctionArray(
         assert array.degree >= 0
 
     def test_axis_polynomial(self, array: na.AbstractPolynomialFunctionArray):
-        if array.axis_polynomial is None:
-            return
-        elif not str:
-            for ax in array.axis_polynomial:
+        result = array.axis_polynomial
+        if array.axis_polynomial is not None:
+            if isinstance(result, str):
+                result = (result, )
+            for ax in result:
                 assert isinstance(ax, str)
 
     def test_components_polynomial(self, array: na.AbstractPolynomialFunctionArray):
-        if array.components_polynomial is None:
-            return
-        elif not str:
-            for ax in array.components_polynomial:
+        result = array.components_polynomial
+        if array.components_polynomial is not None:
+            if isinstance(result, str):
+                result = (result, )
+            for ax in result:
                 assert isinstance(ax, str)
 
     def test_predictions(self, array: na.AbstractPolynomialFunctionArray):
@@ -859,6 +861,24 @@ def _polynomial_function_arrays():
             degree=2,
         )
         for function in _function_arrays()
+    ] + [
+        na.PolynomialFitFunctionArray(
+            inputs=na.Cartesian2dVectorLinearSpace(
+                start=0,
+                stop=1,
+                axis=na.Cartesian2dVectorArray('x', 'y'),
+                num=na.Cartesian2dVectorArray(_num_x, _num_y)
+            ),
+            outputs=na.Cartesian2dVectorLinearSpace(
+                start=0,
+                stop=1,
+                axis=na.Cartesian2dVectorArray('x', 'y'),
+                num=na.Cartesian2dVectorArray(_num_x, _num_y)
+            ),
+            degree=1,
+            axis_polynomial="y",
+            components_polynomial="y",
+        )
     ]
 
 
