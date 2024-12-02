@@ -783,6 +783,10 @@ class AbstractPolynomialFunctionArray(
 
     @property
     def predictions(self) -> OutputsT:
+        """
+        The outputs of the polynomial model given :attr:`inputs`.
+        Equivalent to ``self(self.inputs).outputs``.
+        """
         return self(self.inputs).outputs
 
 
