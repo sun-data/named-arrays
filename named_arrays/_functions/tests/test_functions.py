@@ -819,21 +819,25 @@ class TestFunctionArrayCreation(
     ):
         pass
 
+
 class AbstractTestAbstractPolynomialFunctionArray(
     AbstractTestAbstractFunctionArray,
 ):
 
     def test_coefficients(self, array: na.AbstractPolynomialFunctionArray):
         assert isinstance(array.coefficients, na.AbstractVectorArray)
+
     def test_degree(self, array: na.AbstractPolynomialFunctionArray):
         assert isinstance(array.degree, int)
         assert array.degree >= 0
+
     def test_axis_polynomial(self, array: na.AbstractPolynomialFunctionArray):
         if array.axis_polynomial is None:
             return
         elif not str:
             for ax in array.axis_polynomial:
                 assert isinstance(ax, str)
+
     def test_components_polynomial(self, array: na.AbstractPolynomialFunctionArray):
         if array.components_polynomial is None:
             return
@@ -841,21 +845,24 @@ class AbstractTestAbstractPolynomialFunctionArray(
             for ax in array.components_polynomial:
                 assert isinstance(ax, str)
 
+    def test_predictions(self, array: na.AbstractPolynomialFunctionArray):
+        result = array.predictions
+        assert isinstance(result, array.outputs.type_explicit)
+        assert np.any(result != 0)
 
 
 def _polynomial_function_arrays():
-
-    polynomial_function_arrays = [na.PolynomialFitFunctionArray(
-        inputs=function.inputs,
-        outputs=function.outputs,
-        degree=2)
+    return [
+        na.PolynomialFitFunctionArray(
+            inputs=function.inputs,
+            outputs=function.outputs,
+            degree=2,
+        )
         for function in _function_arrays()
     ]
 
-    return polynomial_function_arrays
 
 @pytest.mark.parametrize("array", _polynomial_function_arrays())
-
 class TestPolynomialFitFunctionArray(
     AbstractTestAbstractPolynomialFunctionArray,
     named_arrays.tests.test_core.AbstractTestAbstractExplicitArray,

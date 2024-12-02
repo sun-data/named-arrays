@@ -781,6 +781,10 @@ class AbstractPolynomialFunctionArray(
             inputs, self.design_matrix(inputs) @ self.coefficients
         )
 
+    @property
+    def predictions(self) -> OutputsT:
+        return self(self.inputs).outputs
+
 
 @dataclasses.dataclass(eq=False, repr=False)
 class PolynomialFitFunctionArray(
@@ -883,20 +887,6 @@ class PolynomialFitFunctionArray(
                         row_components = (v1_broadcasted[c1] * v2).sum(axis=axis)
                         v1_T_v2_components[c1] = row_components
                 v1_T_v2 = v1.type_explicit.from_components(v1_T_v2_components)
-
-        # Not relevant to specific use case, but likely relevant to more general outer product method.
-        # else:
-        #     if isinstance(v2, na.AbstractVectorArray):
-        #         v2_broadcasted = v2.broadcasted.components
-        #         row_components = {}
-        #         for c2 in v2_broadcasted:
-        #             row_components[c2] = (
-        #                     v1 * v2_broadcasted[c2]
-        #             ).sum(axis=axis)
-        #         v1_T_v2 = v2.type_explicit.from_components(row_components)
-        #
-        #     else:
-        #         v1_T_v2 = v1 * v2
 
         return v1_T_v2
 
