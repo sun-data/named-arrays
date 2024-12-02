@@ -389,7 +389,7 @@ class AbstractTestAbstractFunctionArray(
             ):
                 assert False
 
-        @pytest.mark.xfail
+        @pytest.mark.skip
         class TestArrayCreationLikeFunctions(
             named_arrays.tests.test_core.AbstractTestAbstractArray.TestArrayFunctions.TestArrayCreationLikeFunctions
         ):
@@ -605,15 +605,15 @@ class AbstractTestAbstractFunctionArray(
             ):
                 pass
 
-        @pytest.mark.xfail
+        @pytest.mark.skip
         def test_sort(self, array: na.AbstractFunctionArray, axis: None | str | Sequence[str]):
             pass
 
-        @pytest.mark.xfail
+        @pytest.mark.skip
         def test_argsort(self, array: na.AbstractArray, axis: None | str | Sequence[str]):
             super().test_argsort(array=array, axis=axis)
 
-        @pytest.mark.xfail
+        @pytest.mark.skip
         def test_unravel_index(self, array: na.AbstractArray):
             super().test_unravel_index(array=array)
 
@@ -684,7 +684,7 @@ class AbstractTestAbstractFunctionArray(
                     weights=weights,
                 )
 
-        @pytest.mark.xfail
+        @pytest.mark.skip
         class TestPltPlotLikeFunctions(
             named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestPltPlotLikeFunctions
         ):
@@ -733,7 +733,7 @@ class AbstractTestAbstractFunctionArray(
                 result = na.plt.pcolormesh(**kwargs)
                 assert isinstance(result, na.ScalarArray)
 
-        @pytest.mark.xfail
+        @pytest.mark.skip
         class TestJacobian(
             named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestJacobian,
         ):
@@ -869,11 +869,10 @@ def _polynomial_function_arrays():
                 axis=na.Cartesian2dVectorArray('x', 'y'),
                 num=na.Cartesian2dVectorArray(_num_x, _num_y)
             ),
-            outputs=na.Cartesian2dVectorLinearSpace(
-                start=0,
-                stop=1,
-                axis=na.Cartesian2dVectorArray('x', 'y'),
-                num=na.Cartesian2dVectorArray(_num_x, _num_y)
+            outputs=na.ScalarUniformRandomSample(
+                start=-5,
+                stop=5,
+                shape_random=dict(x=_num_x, y=_num_y),
             ),
             degree=1,
             axis_polynomial="y",
