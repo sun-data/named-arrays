@@ -842,28 +842,27 @@ class PolynomialFitFunctionArray(
         design_matrix = {}
 
         if isinstance(inputs, na.AbstractScalar):
-            inputs = na.CartesianNdVectorArray({'dummy': inputs})
+            inputs = na.CartesianNdVectorArray({"dummy": inputs})
+        inputs = inputs.cartesian_nd.broadcasted.components
 
-        cartesian_nd = inputs.cartesian_nd.broadcasted
-        # grab subset of components involved in polynomial fit
-        if self.components_polynomial:
-            cartesian_nd = na.CartesianNdVectorArray(
-                {
-                    k: cartesian_nd.components[k]
-                    for k in cartesian_nd.components.keys() & self.components_polynomial
-                }
-            )
+        components = self.components_polynomial
+
+        if components is None:
+            components = tuple(inputs)
+        else:
+            components = (components,) if isinstance(components, str) else components
+
+        inputs = {c: inputs[c] for c in components}
 
         for i in range(self.degree + 1):
             combinations = itertools.combinations_with_replacement(
-                cartesian_nd.components, i
+                inputs, i
             )
             for combination in combinations:
                 key = "*".join(combination)
                 design_matrix[key] = 1
                 for k in combination:
-                    design_matrix[key] = design_matrix[key] * cartesian_nd.components[k]
-
+                    design_matrix[key] = design_matrix[key] * inputs[k]
 
         design_matrix = na.CartesianNdVectorArray(design_matrix)
 
