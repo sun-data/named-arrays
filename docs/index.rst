@@ -1,7 +1,16 @@
 Introduction
 ============
 
-named_arrays is an implementation of named tensors that includes support for linear algebra entities such as scalars, vectors and matrices.
+`named-arrays` is an implementation of a
+`named tensor <https://nlp.seas.harvard.edu/NamedTensor>`_
+that includes first-class support for :class:`astropy.units.Quantity` along
+with many other useful features such as representations of
+scalars, vectors, and matrices.
+
+API Reference
+=============
+
+An in-depth description of the classes and functions defined in the this library.
 
 .. autosummary::
     :toctree: _autosummary
