@@ -41,6 +41,7 @@ doc = [
     "ipykernel",
     "jupyter-sphinx",
     "nbsphinx",
+    "sphinx-codeautolink",
     "sphinx-favicon",
     "pooch",
 ]
