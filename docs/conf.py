@@ -38,6 +38,8 @@ extensions = [
     'sphinx.ext.inheritance_diagram',
     'sphinxcontrib.bibtex',
     'jupyter_sphinx',
+    'nbsphinx',
+    'sphinx_codeautolink',
     'sphinx_favicon'
 ]
 autosummary_generate = True  # Turn on sphinx.ext.autosummary
