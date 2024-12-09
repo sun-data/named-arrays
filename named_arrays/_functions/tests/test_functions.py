@@ -389,7 +389,7 @@ class AbstractTestAbstractFunctionArray(
             ):
                 assert False
 
-        @pytest.mark.xfail
+        @pytest.mark.skip
         class TestArrayCreationLikeFunctions(
             named_arrays.tests.test_core.AbstractTestAbstractArray.TestArrayFunctions.TestArrayCreationLikeFunctions
         ):
@@ -605,15 +605,15 @@ class AbstractTestAbstractFunctionArray(
             ):
                 pass
 
-        @pytest.mark.xfail
+        @pytest.mark.skip
         def test_sort(self, array: na.AbstractFunctionArray, axis: None | str | Sequence[str]):
             pass
 
-        @pytest.mark.xfail
+        @pytest.mark.skip
         def test_argsort(self, array: na.AbstractArray, axis: None | str | Sequence[str]):
             super().test_argsort(array=array, axis=axis)
 
-        @pytest.mark.xfail
+        @pytest.mark.skip
         def test_unravel_index(self, array: na.AbstractArray):
             super().test_unravel_index(array=array)
 
@@ -684,7 +684,7 @@ class AbstractTestAbstractFunctionArray(
                     weights=weights,
                 )
 
-        @pytest.mark.xfail
+        @pytest.mark.skip
         class TestPltPlotLikeFunctions(
             named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestPltPlotLikeFunctions
         ):
@@ -733,7 +733,7 @@ class AbstractTestAbstractFunctionArray(
                 result = na.plt.pcolormesh(**kwargs)
                 assert isinstance(result, na.ScalarArray)
 
-        @pytest.mark.xfail
+        @pytest.mark.skip
         class TestJacobian(
             named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestJacobian,
         ):
@@ -818,3 +818,103 @@ class TestFunctionArrayCreation(
         named_arrays.tests.test_core.AbstractTestAbstractExplicitArrayCreation.TestFromScalarArray,
     ):
         pass
+
+
+class AbstractTestAbstractPolynomialFunctionArray(
+    AbstractTestAbstractFunctionArray,
+):
+
+    def test_coefficients(self, array: na.AbstractPolynomialFunctionArray):
+        assert isinstance(array.coefficients, na.AbstractVectorArray)
+
+    def test_degree(self, array: na.AbstractPolynomialFunctionArray):
+        assert isinstance(array.degree, int)
+        assert array.degree >= 0
+
+    def test_axis_polynomial(self, array: na.AbstractPolynomialFunctionArray):
+        result = array.axis_polynomial
+        if array.axis_polynomial is not None:
+            if isinstance(result, str):
+                result = (result, )
+            for ax in result:
+                assert isinstance(ax, str)
+
+    def test_components_polynomial(self, array: na.AbstractPolynomialFunctionArray):
+        result = array.components_polynomial
+        if array.components_polynomial is not None:
+            if isinstance(result, str):
+                result = (result, )
+            for ax in result:
+                assert isinstance(ax, str)
+
+    def test_predictions(self, array: na.AbstractPolynomialFunctionArray):
+        result = array.predictions
+        assert isinstance(result, array.outputs.type_explicit)
+        assert np.any(result != 0)
+
+
+def _polynomial_function_arrays():
+    return [
+        na.PolynomialFitFunctionArray(
+            inputs=function.inputs,
+            outputs=function.outputs,
+            degree=2,
+        )
+        for function in _function_arrays()
+    ] + [
+        na.PolynomialFitFunctionArray(
+            inputs=na.Cartesian2dVectorLinearSpace(
+                start=0,
+                stop=1,
+                axis=na.Cartesian2dVectorArray('x', 'y'),
+                num=na.Cartesian2dVectorArray(_num_x, _num_y)
+            ),
+            outputs=na.ScalarUniformRandomSample(
+                start=-5,
+                stop=5,
+                shape_random=dict(x=_num_x, y=_num_y),
+            ),
+            degree=1,
+            axis_polynomial="y",
+            components_polynomial="y",
+        )
+    ]
+
+
+@pytest.mark.parametrize("array", _polynomial_function_arrays())
+class TestPolynomialFitFunctionArray(
+    AbstractTestAbstractPolynomialFunctionArray,
+    named_arrays.tests.test_core.AbstractTestAbstractExplicitArray,
+):
+
+    @pytest.mark.parametrize(
+        argnames="item",
+        argvalues=[
+            dict(y=0),
+            dict(x=0, y=0),
+            dict(y=slice(None)),
+            dict(y=na.ScalarArrayRange(0, _num_y, axis='y')),
+            dict(x=na.ScalarArrayRange(0, _num_x, axis='x'), y=na.ScalarArrayRange(0, _num_y, axis='y')),
+            na.FunctionArray(
+                inputs=na.ScalarLinearSpace(0, 1, axis='y', num=_num_y),
+                outputs=na.ScalarArray.ones(shape=dict(y=_num_y), dtype=bool),
+            )
+        ]
+    )
+    @pytest.mark.parametrize(
+        argnames="value",
+        argvalues=[
+            0,
+            na.FunctionArray(
+                inputs=na.ScalarLinearSpace(0, 1, axis='y', num=_num_y),
+                outputs=na.ScalarUniformRandomSample(-5, 5, dict(y=_num_y)),
+            )
+        ]
+    )
+    def test__setitem__(
+            self,
+            array: na.AbstractArray,
+            item: dict[str, int | slice | na.ScalarArray] | na.AbstractFunctionArray,
+            value: float | u.Quantity | na.AbstractScalar | na.AbstractVectorArray,
+    ):
+        super().test__setitem__(array=array.explicit, item=item, value=value)
