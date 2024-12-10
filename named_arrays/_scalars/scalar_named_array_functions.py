@@ -36,7 +36,6 @@ RANDOM_FUNCTIONS = (
     na.random.uniform,
     na.random.normal,
     na.random.poisson,
-    na.random.binomial,
 )
 PLT_PLOT_LIKE_FUNCTIONS = (
     na.plt.plot,
@@ -568,6 +567,53 @@ def random(
         *args,
         size=tuple(shape.values()),
         **kwargs,
+    )
+
+    if unit is not None:
+        value = value << unit
+
+    return na.ScalarArray(
+        ndarray=value,
+        axes=tuple(shape.keys()),
+    )
+
+
+@_implements(na.random.binomial)
+def random_binomial(
+    n: int | u.Quantity | na.AbstractScalarArray,
+    p: float | na.AbstractScalarArray,
+    shape_random: None | dict[str, int] = None,
+    seed: None | int = None,
+):
+    try:
+        n = scalars._normalize(n)
+        p = scalars._normalize(p)
+    except na.ScalarTypeError:
+        return NotImplemented
+
+    if shape_random is None:
+        shape_random = dict()
+
+    shape_base = na.shape_broadcasted(n, p)
+    shape = na.broadcast_shapes(shape_base, shape_random)
+
+    n = n.ndarray_aligned(shape)
+    p = p.ndarray_aligned(shape)
+
+    unit = na.unit(n)
+
+    if unit is not None:
+        n = n.value
+
+    if seed is None:
+        func = np.random.binomial
+    else:
+        func = np.random.default_rng(seed).binomial
+
+    value = func(
+        n=n,
+        p=p,
+        size=tuple(shape.values()),
     )
 
     if unit is not None:

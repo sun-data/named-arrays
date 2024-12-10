@@ -19,7 +19,12 @@ __all__ = [
 ]
 
 ASARRAY_LIKE_FUNCTIONS = named_arrays._scalars.scalar_named_array_functions.ASARRAY_LIKE_FUNCTIONS
-RANDOM_FUNCTIONS = named_arrays._scalars.scalar_named_array_functions.RANDOM_FUNCTIONS
+RANDOM_FUNCTIONS = (
+    na.random.uniform,
+    na.random.normal,
+    na.random.poisson,
+    na.random.binomial,
+)
 PLT_PLOT_LIKE_FUNCTIONS = named_arrays._scalars.scalar_named_array_functions.PLT_PLOT_LIKE_FUNCTIONS
 NDFILTER_FUNCTIONS = named_arrays._scalars.scalar_named_array_functions.NDFILTER_FUNCTIONS
 HANDLED_FUNCTIONS = dict()
