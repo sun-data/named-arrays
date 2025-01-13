@@ -1428,6 +1428,10 @@ class AbstractTestAbstractArray(
                             func(*args, **kwargs)
                         return
 
+                for index in ax_normalized.ndindex():
+                    ax_normalized[index].ndarray.xaxis._converter = None
+                    ax_normalized[index].ndarray.yaxis._converter = None
+
                 with astropy.visualization.quantity_support():
                     result = func(*args, **kwargs)
 

@@ -943,7 +943,7 @@ def histogramdd(
     """
     return _named_array_function(
         histogramdd,
-        *sample,
+        *[na.as_named_array(s) for s in sample],
         axis=axis,
         bins=bins,
         min=min,
