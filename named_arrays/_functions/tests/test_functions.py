@@ -131,6 +131,7 @@ class AbstractTestAbstractFunctionArray(
                     outputs=na.ScalarArrayRange(0, 2, axis='y'),
                 )
             ),
+            na.ScalarLinearSpace(0, 1, axis='y', num=_num_y) > 0.5,
             na.FunctionArray(
                 inputs=na.ScalarLinearSpace(0, 1, axis='y', num=_num_y),
                 outputs=na.ScalarLinearSpace(0, 1, axis='y', num=_num_y) > 0.5,
@@ -157,13 +158,15 @@ class AbstractTestAbstractFunctionArray(
                 array[item]
             return
 
-        if isinstance(item, na.AbstractFunctionArray):
-            if np.any(item.inputs != array.inputs):
-                with pytest.raises(ValueError):
-                    array[item]
-                return
-
-            item_outputs = item_inputs = item.outputs
+        if isinstance(item, na.AbstractArray):
+            if isinstance(item, na.AbstractFunctionArray):
+                if np.any(item.inputs != array.inputs):
+                    with pytest.raises(ValueError):
+                        array[item]
+                    return
+                item_outputs = item_inputs = item.outputs
+            else:
+                item_outputs = item_inputs = item
 
         elif isinstance(item, dict):
             item_inputs = {

@@ -174,12 +174,14 @@ class AbstractFunctionArray(
         shape_inputs = inputs.shape
         shape_outputs = outputs.shape
 
-        if isinstance(item, na.AbstractFunctionArray):
-            if np.any(item.inputs != self.inputs):
-                raise ValueError("boolean advanced index does not have the same inputs as the array")
-
-            item_inputs = item.outputs
-            item_outputs = item.outputs
+        if isinstance(item, na.AbstractArray):
+            if isinstance(item, na.AbstractFunctionArray):
+                if np.any(item.inputs != self.inputs):
+                    raise ValueError("boolean advanced index does not have the same inputs as the array")
+                item_inputs = item.outputs
+                item_outputs = item.outputs
+            else:
+                item_inputs = item_outputs = item
 
             shape_item_inputs = item_inputs.shape
             shape_item_outputs = item_outputs.shape
