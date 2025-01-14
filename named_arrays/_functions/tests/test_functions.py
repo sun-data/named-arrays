@@ -137,6 +137,10 @@ class AbstractTestAbstractFunctionArray(
                 outputs=na.ScalarLinearSpace(0, 1, axis='y', num=_num_y) > 0.5,
             ),
             na.FunctionArray(
+                inputs=na.ScalarLinearSpace(0, 2, axis='y', num=_num_y),
+                outputs=na.ScalarLinearSpace(0, 1, axis='y', num=_num_y) > 0.5,
+            ),
+            na.FunctionArray(
                 inputs=na.ScalarLinearSpace(0, 1, axis='y', num=_num_y),
                 outputs=na.UniformUncertainScalarArray(
                     nominal=na.ScalarLinearSpace(0, 1, axis='y', num=_num_y),
