@@ -547,7 +547,7 @@ class AbstractTestAbstractVectorArray(
                     bins = {f"axis_{c}": 2 for c in array.cartesian_nd.components}
                 elif bins == "array":
                     bins = {
-                        c: na.linspace(0, 1, f"axis_{c}", 11)
+                        c: na.linspace(0, 1, f"axis_{c}", 2)
                         for c in array.cartesian_nd.components
                     }
                     bins = na.CartesianNdVectorArray(bins)
