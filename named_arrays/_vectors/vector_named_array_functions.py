@@ -1,8 +1,9 @@
-from typing import Callable, TypeVar
+from typing import Callable, TypeVar, Sequence, Literal
 import numpy as np
 import numpy.typing as npt
 import matplotlib.axes
 import astropy.units as u
+import regridding
 import named_arrays as na
 from named_arrays._scalars import scalars
 import named_arrays._scalars.scalar_named_array_functions
@@ -21,8 +22,14 @@ InputT = TypeVar("InputT", bound="float | u.Quantity | na.AbstractVectorArray")
 OutputT = TypeVar("OutputT", bound="float | u.Quantity | na.AbstractVectorArray")
 
 ASARRAY_LIKE_FUNCTIONS = named_arrays._scalars.scalar_named_array_functions.ASARRAY_LIKE_FUNCTIONS
-RANDOM_FUNCTIONS = named_arrays._scalars.scalar_named_array_functions.RANDOM_FUNCTIONS
+RANDOM_FUNCTIONS = (
+    na.random.uniform,
+    na.random.normal,
+    na.random.poisson,
+    na.random.binomial,
+)
 PLT_PLOT_LIKE_FUNCTIONS = named_arrays._scalars.scalar_named_array_functions.PLT_PLOT_LIKE_FUNCTIONS
+NDFILTER_FUNCTIONS = named_arrays._scalars.scalar_named_array_functions.NDFILTER_FUNCTIONS
 HANDLED_FUNCTIONS = dict()
 
 
@@ -212,6 +219,54 @@ def interp(
     return result
 
 
+@_implements(na.histogram)
+def histogram(
+    a: na.AbstractVectorArray,
+    bins: dict[str, int] | na.AbstractVectorArray,
+    axis: None | str | Sequence[str] = None,
+    min: None | float | na.AbstractScalar | na.AbstractVectorArray = None,
+    max: None | float | na.AbstractScalar | na.AbstractVectorArray = None,
+    density: bool = False,
+    weights: None | na.AbstractScalar = None,
+) -> na.FunctionArray[na.AbstractVectorArray, na.AbstractScalar]:
+
+    if not isinstance(a, na.AbstractVectorArray):  # pragma: nocover
+        return NotImplemented
+
+    sample = tuple(a.cartesian_nd.components.values())
+
+    if not isinstance(bins, dict):
+        bins = vectors._normalize(bins, prototype=a)
+        bins = tuple(bins.cartesian_nd.components.values())
+
+    if min is not None:
+        min = vectors._normalize(min, prototype=a)
+        min = tuple(min.cartesian_nd.components.values())
+
+    if max is not None:
+        max = vectors._normalize(max, prototype=a)
+        max = tuple(max.cartesian_nd.components.values())
+
+    hist, edges = na.histogramdd(
+        *sample,
+        bins=bins,
+        axis=axis,
+        min=min,
+        max=max,
+        density=density,
+        weights=weights,
+    )
+
+    edges = dict(zip(a.cartesian_nd.components, edges))
+    edges = na.CartesianNdVectorArray(edges)
+    edges = a.type_explicit.from_cartesian_nd(edges, like=a)
+
+    return na.FunctionArray(
+        inputs=edges,
+        outputs=hist,
+    )
+
+
 def random(
         func: Callable,
         *args: float | u.Quantity |na.AbstractScalar | na.AbstractVectorArray,
@@ -231,11 +286,16 @@ def random(
     components_args = {c: tuple(arg.components[c] for arg in args) for c in components_prototype}
     components_kwargs = {c: {k: kwargs[k].components[c] for k in kwargs} for c in components_prototype}
 
+    components_seed = {
+        c: seed if seed is None else seed + i
+        for i, c in enumerate(components_prototype)
+    }
+
     components = {
         c: func(
             *components_args[c],
             shape_random=shape_random,
-            seed=seed,
+            seed=components_seed[c],
             **components_kwargs[c],
         )
         for c in prototype.components
@@ -444,7 +504,7 @@ def optimize_root_newton(
         if callback is not None:
             callback(i, x, f, converged)
 
-        converged |= np.abs(f) < max_abs_error
+        converged = np.abs(f) < max_abs_error
 
         if np.all(converged):
             return x
@@ -512,6 +572,7 @@ def optimize_minimum_gradient_descent(
     function: Callable[[na.AbstractVectorArray], na.AbstractScalar],
     guess: na.AbstractVectorArray,
     step_size: float | na.AbstractScalar,
+    momentum: float | na.AbstractScalar,
     gradient: None | Callable[[na.AbstractVectorArray], na.AbstractScalar],
     min_gradient: na.ScalarLike,
     max_iterations: int,
@@ -541,6 +602,7 @@ def optimize_minimum_gradient_descent(
     converged = na.broadcast_to(0 * na.value(x), shape=shape).astype(bool)
 
     x = na.broadcast_to(x, shape).astype(float)
+    z = 0
 
     for i in range(max_iterations):
 
@@ -549,12 +611,14 @@ def optimize_minimum_gradient_descent(
 
         grad = gradient(x)
 
-        converged |= np.abs(grad) < min_gradient
+        converged = np.abs(grad) < min_gradient
 
         if np.all(converged):
             return x
 
-        correction = step_size * grad
+        z = momentum * z + grad
+
+        correction = step_size * z
 
         x = x - correction
 
@@ -563,11 +627,12 @@ def optimize_minimum_gradient_descent(
     raise ValueError("Max iterations exceeded")  # pragma: nocover
 
 
-@_implements(na.ndfilters.mean_filter)
-def mean_filter(
+def ndfilter(
+    func: Callable,
     array: na.AbstractVectorArray,
     size: dict[str, int],
     where: na.AbstractVectorArray,
+    **kwargs,
 ) -> na.AbstractExplicitVectorArray:
 
     try:
@@ -582,12 +647,111 @@ def mean_filter(
 
     result = dict()
     for c in components_array:
-        result[c] = na.ndfilters.mean_filter(
+        result[c] = func(
             array=components_array[c],
             size=size,
             where=components_where[c],
+            **kwargs,
         )
 
     result = prototype.type_explicit.from_components(result)
 
     return result
+
+
+@_implements(na.regridding.weights)
+def regridding_weights(
+    coordinates_input: na.AbstractVectorArray,
+    coordinates_output: na.AbstractVectorArray,
+    axis_input: None | str | Sequence[str] = None,
+    axis_output: None | str | Sequence[str] = None,
+    method: Literal['multilinear', 'conservative'] = 'multilinear',
+) -> tuple[na.AbstractScalar, dict[str, int], dict[str, int]]:
+
+    try:
+        prototype = vectors._prototype(coordinates_input, coordinates_output)
+        coordinates_input = vectors._normalize(coordinates_input, prototype)
+        coordinates_output = vectors._normalize(coordinates_output, prototype)
+    except vectors.VectorTypeError:  # pragma: nocover
+        return NotImplemented
+
+    try:
+        coordinates_output = coordinates_output.components
+        coordinates_output = {
+            c: scalars._normalize(coordinates_output[c])
+            for c in coordinates_output
+            if coordinates_output[c] is not None
+        }
+        coordinates_output = na.CartesianNdVectorArray(coordinates_output)
+    except scalars.ScalarTypeError:  # pragma: nocover
+        return NotImplemented
+
+    try:
+        coordinates_input = coordinates_input.components
+        coordinates_input = {
+            c: scalars._normalize(coordinates_input[c])
+            for c in coordinates_output.components
+        }
+        coordinates_input = na.CartesianNdVectorArray(coordinates_input)
+    except scalars.ScalarTypeError:  # pragma: nocover
+        return NotImplemented
+
+    coordinates_output = coordinates_output.explicit
+    coordinates_input = coordinates_input.explicit
+
+    shape_input = coordinates_input.shape
+    shape_output = coordinates_output.shape
+
+    if axis_input is None:
+        axis_input = tuple(shape_input)
+    elif isinstance(axis_input, str):
+        axis_input = (axis_input,)
+
+    if axis_output is None:
+        axis_output = tuple(shape_output)
+    elif isinstance(axis_output, str):
+        axis_output = (axis_output,)
+
+    shape_orthogonal_input = {
+        a: shape_input[a]
+        for a in shape_input if a not in axis_input
+    }
+    shape_orthogonal_output = {
+        a: shape_output[a]
+        for a in shape_output if a not in axis_output
+    }
+
+    shape_orthogonal = na.broadcast_shapes(
+        shape_orthogonal_input,
+        shape_orthogonal_output,
+    )
+
+    shape_input = na.broadcast_shapes(shape_orthogonal, shape_input)
+    shape_output = na.broadcast_shapes(shape_orthogonal, shape_output)
+
+    coordinates_input = coordinates_input.broadcast_to(shape_input)
+    coordinates_output = coordinates_output.broadcast_to(shape_output)
+
+    coordinates_input = coordinates_input.components
+    coordinates_output = coordinates_output.components
+
+    coordinates_input = tuple(coordinates_input[c].ndarray for c in coordinates_input)
+    coordinates_output = tuple(coordinates_output[c].ndarray for c in coordinates_output)
+
+    axis_input = tuple(tuple(shape_input).index(a) for a in axis_input)
+    axis_output = tuple(tuple(shape_output).index(a) for a in axis_output)
+
+    result, _shape_input, _shape_output = regridding.weights(
+        coordinates_input=coordinates_input,
+        coordinates_output=coordinates_output,
+        axis_input=axis_input,
+        axis_output=axis_output,
+        method=method,
+    )
+
+    result = na.ScalarArray(result, tuple(shape_orthogonal))
+
+    shape_input = dict(zip(shape_input, _shape_input))
+    shape_output = dict(zip(shape_output, _shape_output))
+
+    return result, shape_input, shape_output

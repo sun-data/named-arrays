@@ -262,6 +262,38 @@ class AbstractTestAbstractArray(
         argvalues=[
             None,
             "y",
+            ("y",),
+            ("x", "y"),
+        ]
+    )
+    @pytest.mark.parametrize(
+        argnames="random",
+        argvalues=[False, True],
+    )
+    def test_cell_centers(
+        self,
+        array: na.AbstractArray,
+        axis: None | str | Sequence[str],
+        random: bool,
+    ):
+        if axis is None:
+            axis_normalized = array.axes
+        elif isinstance(axis, str):
+            axis_normalized = (axis, )
+        else:
+            axis_normalized = axis
+
+        result = array.cell_centers(axis, random=random)
+
+        for a in axis_normalized:
+            if a in array.shape:
+                assert result.shape[a] == array.shape[a] - 1
+
+    @pytest.mark.parametrize(
+        argnames="axis",
+        argvalues=[
+            None,
+            "y",
             ("y", ),
             ("x", "y"),
             ("x", "y", "z"),
@@ -277,6 +309,11 @@ class AbstractTestAbstractArray(
 
     def test__repr__(self, array: na.AbstractArray):
         assert isinstance(repr(array), str)
+
+    def test_to_string_array(self, array: na.AbstractArray):
+        result = array.to_string_array()
+        assert array.type_explicit == result.type_explicit
+        assert result.shape == array.shape
 
     def test_copy_shallow(self, array: na.AbstractArray):
         array_copy = array.copy_shallow()
@@ -1062,6 +1099,16 @@ class AbstractTestAbstractArray(
 
             assert np.all(np.abs(result.astype(float)) == np.abs(result_expected))
 
+        @pytest.mark.parametrize(
+            argnames="a",
+            argvalues=[
+                "%.2f",
+            ]
+        )
+        def test_char_mod(self, array: na.AbstractArray, a: na.AbstractArray):
+            result = np.char.mod(a, array)
+            assert isinstance(result, na.AbstractArray)
+
     @pytest.mark.parametrize(
         argnames='shape',
         argvalues=[
@@ -1238,6 +1285,65 @@ class AbstractTestAbstractArray(
                 assert np.allclose(result, slope * array)
 
         @pytest.mark.parametrize(
+            argnames="min,max",
+            argvalues=[
+                (-100, 100),
+                (None, None),
+            ]
+        )
+        @pytest.mark.parametrize(
+            argnames="axis",
+            argvalues=[
+                None,
+                "y",
+            ]
+        )
+        @pytest.mark.parametrize(
+            argnames="weights",
+            argvalues=[
+                None,
+            ]
+        )
+        class TestHistogram:
+            def test_histogram(
+                self,
+                array: na.AbstractArray,
+                bins: dict[str, int] | na.AbstractArray,
+                axis: None | str | Sequence[str],
+                min: None | na.AbstractArray,
+                max: None | na.AbstractArray,
+                weights: None | na.AbstractScalarArray,
+            ):
+                if not array.shape:
+                    return
+                try:
+                    if not np.issubdtype(na.get_dtype(array), np.number):
+                        return
+                except ValueError:
+                    pass
+
+                unit_array = 1 * na.unit_normalized(array, squeeze=False)
+                if isinstance(bins, na.AbstractArray):
+                    bins = bins * unit_array
+                if min is not None:
+                    min = min * unit_array
+                if max is not None:
+                    max = max * unit_array
+
+                result = na.histogram(
+                    array,
+                    bins=bins,
+                    axis=axis,
+                    min=min,
+                    max=max,
+                    weights=weights,
+                )
+
+                unit_weights = na.unit_normalized(weights)
+                assert 1 * na.unit_normalized(result.inputs) == unit_array
+                assert result.outputs.unit_normalized.is_equivalent(unit_weights)
+
+        @pytest.mark.parametrize(
             argnames="func,axis,transformation",
             argvalues=[
                 (na.plt.plot, np._NoValue, np._NoValue),
@@ -1248,8 +1354,7 @@ class AbstractTestAbstractArray(
             argnames="ax",
             argvalues=[
                 np._NoValue,
-                plt.subplots()[1],
-                na.plt.subplots(axis_cols="x", ncols=num_x)[1],
+                na.plt.subplots(axis_rows="x", nrows=num_x)[1],
             ]
         )
         class TestPltPlotLikeFunctions(abc.ABC):
@@ -1280,21 +1385,23 @@ class AbstractTestAbstractArray(
                 if alpha is not np._NoValue:
                     kwargs["alpha"] = alpha
 
-                shape = na.shape_broadcasted(*args)
+                shape_args = na.shape_broadcasted(*args)
+
+                shape = na.broadcast_shapes(na.shape(ax), shape_args)
 
                 axis_normalized = axis
                 if axis_normalized is np._NoValue:
                     axis_normalized = None
 
                 if axis_normalized is None:
-                    if len(shape) != 1:
+                    if len(shape_args) != 1:
                         with pytest.raises(
                             expected_exception=ValueError,
                             match="if `axis` is `None`, the broadcasted shape of .* should have one element"
                         ):
                             func(*args, **kwargs)
                         return
-                    axis_normalized = next(iter(shape))
+                    axis_normalized = next(iter(shape_args))
 
                 shape_orthogonal = {a: shape[a] for a in shape if a != axis_normalized}
 
@@ -1320,6 +1427,10 @@ class AbstractTestAbstractArray(
                         ):
                             func(*args, **kwargs)
                         return
+
+                for index in ax_normalized.ndindex():
+                    ax_normalized[index].ndarray.xaxis._converter = None
+                    ax_normalized[index].ndarray.yaxis._converter = None
 
                 with astropy.visualization.quantity_support():
                     result = func(*args, **kwargs)
@@ -1469,15 +1580,28 @@ class AbstractTestAbstractArray(
                     function=function,
                     guess=array,
                     callback=callback,
+                    momentum=0.5,
                 )
 
-                assert np.allclose(na.value(result), expected)
+                assert np.allclose(result, expected * na.unit_normalized(array))
                 assert out is result
 
-        class TestMeanFilter:
-            def test_mean_filter(self, array: na.AbstractArray):
+        @pytest.mark.parametrize(
+            argnames="function",
+            argvalues=[
+                na.ndfilters.mean_filter,
+                na.ndfilters.trimmed_mean_filter,
+                na.ndfilters.variance_filter,
+            ]
+        )
+        class TestNdfilter:
+            def test_ndfilter(
+                self,
+                function: Callable,
+                array: na.AbstractArray,
+            ):
 
-                size = dict(y=1)
+                size = dict(y=3)
 
                 kwargs = dict(
                     array=array,
@@ -1486,61 +1610,87 @@ class AbstractTestAbstractArray(
 
                 if not set(size).issubset(array.shape):
                     with pytest.raises(ValueError):
-                        na.ndfilters.mean_filter(**kwargs)
+                        function(**kwargs)
                     return
 
-                result = na.ndfilters.mean_filter(**kwargs)
+                result = function(**kwargs)
 
-                assert np.all(result == array)
+                assert result.type_abstract == array.type_abstract
+                assert result.shape == array.shape
 
         @pytest.mark.parametrize("axis", [None, "y"])
+        @pytest.mark.parametrize(
+            argnames="wavelength",
+            argvalues=[
+                None,
+                na.linspace(-1, 1, axis="y", num=num_y + 1)
+            ]
+        )
         class TestColorsynth:
-            def test_rgb(self, array: na.AbstractArray, axis: None | str):
-                with warnings.catch_warnings(action="ignore", category=RuntimeWarning):
+            def test_rgb(
+                self,
+                array: na.AbstractArray,
+                wavelength: None | na.AbstractScalar,
+                axis: None | str,
+            ):
+                with warnings.catch_warnings():
+                    warnings.simplefilter(action="ignore", category=RuntimeWarning)
                     if axis is None:
-                        if array.ndim != 1:
+                        if len(set(na.shape(array)) | set(na.shape(wavelength))) != 1:
                             with pytest.raises(ValueError):
-                                na.colorsynth.rgb(array, axis=axis)
+                                na.colorsynth.rgb(array, wavelength, axis=axis)
                             return
                         else:
-                            result = na.colorsynth.rgb(array, axis=axis)
+                            result = na.colorsynth.rgb(array, wavelength, axis=axis)
                             assert result.size == 3
                     else:
                         if array.shape:
-                            result = na.colorsynth.rgb(array, axis=axis)
+                            result = na.colorsynth.rgb(array, wavelength, axis=axis)
                             assert result.shape[axis] == 3
 
-            def test_colorbar(self, array: na.AbstractArray, axis: None | str):
+            def test_colorbar(
+                self,
+                array: na.AbstractArray,
+                wavelength: None | na.AbstractScalar,
+                axis: None | str,
+            ):
                 if axis is None:
-                    if array.ndim != 1:
+                    if len(set(na.shape(array)) | set(na.shape(wavelength))) != 1:
                         with pytest.raises(ValueError):
-                            na.colorsynth.colorbar(array, axis=axis)
+                            na.colorsynth.colorbar(array, wavelength, axis=axis)
                         return
 
                 if array.shape:
-                    with warnings.catch_warnings(action="ignore", category=RuntimeWarning):
-                        result = na.colorsynth.colorbar(array, axis=axis)
+                    with warnings.catch_warnings():
+                        warnings.simplefilter(action="ignore", category=RuntimeWarning)
+                        result = na.colorsynth.colorbar(array, wavelength, axis=axis)
                     assert isinstance(result, na.FunctionArray)
                     assert isinstance(result.inputs, na.Cartesian2dVectorArray)
                     assert isinstance(result.outputs, na.AbstractArray)
 
-            def test_rgb_and_colorbar(self, array: na.AbstractArray, axis: None | str):
-                with warnings.catch_warnings(action="ignore", category=RuntimeWarning):
+            def test_rgb_and_colorbar(
+                self,
+                array: na.AbstractArray,
+                wavelength: None | na.AbstractScalar,
+                axis: None | str,
+            ):
+                with warnings.catch_warnings():
+                    warnings.simplefilter(action="ignore", category=RuntimeWarning)
 
                     if not array.shape:
                         return
 
                     if axis is None:
-                        if array.ndim != 1:
+                        if len(set(na.shape(array)) | set(na.shape(wavelength))) != 1:
                             return
 
                     try:
-                        rgb_expected = na.colorsynth.rgb(array, axis=axis)
-                        colorbar_expected = na.colorsynth.colorbar(array, axis=axis)
+                        rgb_expected = na.colorsynth.rgb(array, wavelength, axis=axis)
+                        colorbar_expected = na.colorsynth.colorbar(array, wavelength, axis=axis)
                     except TypeError:
                         return
 
-                    rgb, colorbar = na.colorsynth.rgb_and_colorbar(array, axis=axis)
+                    rgb, colorbar = na.colorsynth.rgb_and_colorbar(array, wavelength, axis=axis)
 
                     assert np.allclose(rgb, rgb_expected, equal_nan=True)
                     assert np.allclose(colorbar, colorbar_expected, equal_nan=True)

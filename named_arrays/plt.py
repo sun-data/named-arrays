@@ -1,5 +1,7 @@
 from __future__ import annotations
-from typing import Literal, Any
+from typing import Literal, Any, Callable
+import matplotlib.axes
+import matplotlib.transforms
 import matplotlib.animation
 import matplotlib.pyplot as plt
 import astropy.units as u
@@ -12,18 +14,39 @@ __all__ = [
     "plot",
     "fill",
     "scatter",
+    "stairs",
     "imshow",
     "pcolormesh",
+    "rgbmesh",
     "pcolormovie",
+    "rgbmovie",
     "text",
     "brace_vertical",
+    "set_xlabel",
+    "get_xlabel",
+    "set_ylabel",
+    "get_ylabel",
+    "set_title",
+    "get_title",
+    "set_xscale",
+    "get_xscale",
+    "set_yscale",
+    "get_yscale",
+    "set_aspect",
+    "get_aspect",
+    "transAxes",
+    "transData",
+    "twinx",
+    "twiny",
+    "invert_xaxis",
+    "invert_yaxis",
 ]
 
 
 def subplots(
         axis_rows: str = "subplots_row",
-        ncols: int = 1,
         axis_cols: str = "subplots_col",
+        ncols: int = 1,
         nrows: int = 1,
         *,
         sharex: bool | Literal["none", "all", "row", "col"] = False,
@@ -37,6 +60,10 @@ def subplots(
     """
     A thin wrapper around :func:`matplotlib.pyplot.subplots()` which allows for
     providing axis names to the rows and columns.
+
+    Unlike :func:`matplotlib.pyplot.subplots()`,
+    this function arranges the subplot grid with the origin in the lower-left
+    corner as opposed to the upper-left corner.
 
     Parameters
     ----------
@@ -78,7 +105,12 @@ def subplots(
         **kwargs,
     )
 
-    return fig, na.ScalarArray(axs, axes=tuple(shape.keys()))
+    axs = na.ScalarArray(axs, axes=tuple(shape.keys()))
+
+    if axis_rows in shape:
+        axs = axs[{axis_rows: slice(None, None, -1)}]
+
+    return fig, axs
 
 
 def plot(
@@ -247,6 +279,94 @@ def fill(
         axis=axis,
         where=where,
         components=components,
+        **kwargs,
+    )
+
+
+def stairs(
+    *args: na.AbstractArray,
+    ax: None | matplotlib.axes.Axes | na.ScalarArray[npt.NDArray[matplotlib.axes.Axes]] = None,
+    axis: None | str = None,
+    where: bool | na.AbstractScalar = True,
+    **kwargs,
+) -> na.ScalarArray[npt.NDArray[None | matplotlib.artist.Artist]]:
+    """
+    A thin wrapper around :meth:`matplotlib.axes.Axes.stairs` for named arrays.
+
+    The main difference of this function from :func:`matplotlib.pyplot.stairs`
+    is the addition of the ``axis`` parameter indicating along which axis the
+    lines should be connected.
+
+    Another difference is that this function swaps the order of `values`
+    and `edges` so that the signature matches :func:`plot`.
+
+    Parameters
+    ----------
+    args
+        Either a single instance of :class:`AbstractScalar` representing the step heights,
+        or a pair of instances of :class:`AbstractScalar` representing the edges and heights.
+    ax
+        The instances of :class:`matplotlib.axes.Axes` to use.
+        If :obj:`None`, calls :func:`matplotlib.pyplot.gca` to get the current axes.
+        If an instance of :class:`named_arrays.ScalarArray`, ``ax.shape`` should
+        be a subset of the broadcasted shape of ``*args``.
+    axis
+        The name of the axis that the plot lines should be connected along.
+        If :obj:`None`, the broadcasted shape of ``args`` should have only one element,
+        otherwise a :class:`ValueError` is raised.
+    where
+        A boolean array that selects which elements to plot
+    kwargs
+        Additional keyword arguments passed to :meth:`matplotlib.axes.Axes.stairs`.
+        These can be instances of :class:`named_arrays.AbstractArray`.
+
+    Examples
+    --------
+
+    Plot a single scalar
+
+    .. jupyter-execute::
+
+        import numpy as np
+        import matplotlib.pyplot as plt
+        import named_arrays as na
+
+        x = na.linspace(0, 2 * np.pi, axis="x",  num=101)
+
+        a = na.linspace(0, 2 * np.pi, axis="x", num=100, centers=True)
+        y = np.sin(a)
+
+        plt.figure();
+        na.plt.stairs(x, y);
+
+    Plot an array of scalars
+
+    .. jupyter-execute::
+
+        z = na.linspace(0, np.pi, axis="z", num=5)
+
+        y = np.sin(a - z)
+
+        plt.figure();
+        na.plt.stairs(x, y, axis="x");
+
+    Plot an uncertain scalar
+
+    .. jupyter-execute::
+
+        ua = na.NormalUncertainScalarArray(a, width=0.2)
+        uy = np.sin(ua)
+
+        plt.figure();
+        na.plt.stairs(x, uy);
+
+    """
+    return na._named_array_function(
+        stairs,
+        *args,
+        ax=ax,
+        axis=axis,
+        where=where,
         **kwargs,
     )
 
@@ -634,6 +754,189 @@ def pcolormesh(
     )
 
 
+def rgbmesh(
+    *WXY: na.AbstractScalar | na.AbstractCartesian2dVectorArray | na.AbstractSpectralPositionalVectorArray,
+    C: na.AbstractScalar,
+    axis_wavelength: str,
+    ax: None | matplotlib.axes.Axes | na.AbstractArray = None,
+    norm: None | Callable = None,
+    vmin: None | na.ArrayLike = None,
+    vmax: None | na.ArrayLike = None,
+    wavelength_norm: None | Callable = None,
+    wavelength_min: None | float | u.Quantity | na.AbstractScalar = None,
+    wavelength_max: None | float | u.Quantity | na.AbstractScalar = None,
+    **kwargs,
+) -> na.FunctionArray[na.Cartesian2dVectorArray, na.AbstractScalar]:
+    """
+    A convenience function that calls :func:`pcolormesh` with the outputs
+    from :func:`named_arrays.colorsynth.rgb` and returns a colorbar.
+
+    This allows us to plot 3D cubes, with the third dimension being represented
+    by color, using a :func:`pcolormesh`-like interface.
+
+    Parameters
+    ----------
+    WXY
+        The coordinates of the mesh to plot.
+        Allowed combinations are: an instance of :class:`named_arrays.AbstractSpectralPositionalVectorArray`,
+        an instance of :class:`named_arrays.AbstractScalar` and an instance of
+        :class:`named_arrays.AbstractCartesian2dVectorArray` or
+        three instances of :class:`named_arrays.AbstractScalar`.
+    C
+        The mesh data.
+    axis_wavelength
+        The logical axis representing changing wavelength coordinate.
+    ax
+        The instances of :class:`matplotlib.axes.Axes` to use.
+        If :obj:`None`, calls :func:`matplotlib.pyplot.gca` to get the current axes.
+        If an instance of :class:`named_arrays.ScalarArray`, ``ax.shape`` should be a subset of the broadcasted shape of
+        ``*args``.
+    norm
+        An optional function that transforms the spectral power distribution
+        values before mapping to RGB.
+        Equivalent to the `spd_norm` argument of :func:`named_arrays.colorsynth.rgb`.
+    vmin
+        The value of the spectral power distribution representing minimum
+        intensity.
+        Equivalent to the `spd_min` argument of :func:`named_arrays.colorsynth.rgb`.
+    vmax
+        The value of the spectral power distribution representing maximum
+        intensity.
+        Equivalent to the `spd_max` argument of :func:`named_arrays.colorsynth.rgb`.
+    wavelength_norm
+        An optional function to transform the wavelength values before they
+        are mapped into the human visible color range.
+    wavelength_min
+        The wavelength value that is mapped to the minimum wavelength of the
+        human visible color range, 380 nm.
+    wavelength_max
+        The wavelength value that is mapped to the maximum wavelength of the
+        human visible color range, 700 nm
+    kwargs
+        Additional keyword arguments passed to :func:`matplotlib.pyplot.pcolormesh`.
+
+    Examples
+    --------
+
+    Plot  a random, 3D cube.
+
+    .. jupyter-execute::
+
+        import matplotlib.pyplot as plt
+        import astropy.units as u
+        import astropy.visualization
+        import named_arrays as na
+
+        # Define a random 3d cube
+        a = na.random.uniform(
+            low=0 * u.photon,
+            high=1000 * u.photon,
+            shape_random=dict(x=16, y=16, wavelength=11),
+        )
+
+        # Define wavelength coordinates
+        wavelength = na.linspace(
+            start=100 * u.AA,
+            stop=200 * u.AA,
+            axis="wavelength",
+            num=a.shape["wavelength"],
+        )
+
+        # Define spatial coordinates
+        x = na.linspace(-1, 1, axis="x", num=a.shape["x"]) * u.mm
+        y = na.linspace(-1, 1, axis="y", num=a.shape["y"]) * u.mm
+
+        # Plot the colorbar
+        with astropy.visualization.quantity_support():
+            fig, axs = plt.subplots(
+                ncols=2,
+                gridspec_kw=dict(width_ratios=[.9,.1]),
+                constrained_layout=True,
+            )
+            colorbar = na.plt.rgbmesh(
+                wavelength, x, y,
+                C=a,
+                axis_wavelength="wavelength",
+                ax=axs[0],
+            );
+            na.plt.pcolormesh(
+                C=colorbar,
+                axis_rgb="wavelength",
+                ax=axs[1],
+            )
+            axs[1].yaxis.tick_right()
+            axs[1].yaxis.set_label_position("right")
+    """
+
+    if len(WXY) == 0:
+        if isinstance(C, na.AbstractFunctionArray):
+            WXY = (C.inputs,)
+            C = C.outputs
+        else:   # pragma: nocover
+            raise TypeError(
+                "if no positional arguments, `C` must be an instance of "
+                f"`na.AbstractFunctionArray`. got {type(C)}."
+            )
+
+    if len(WXY) == 1:
+        WXY, = WXY
+        if isinstance(WXY, na.AbstractSpectralVectorArray):
+            w = WXY.wavelength
+            if isinstance(WXY, na.AbstractPositionalVectorArray):
+                x = WXY.position.x
+                y = WXY.position.y
+            else:  # pragma: nocover
+                raise TypeError(
+                    "if one positional argument, it must be an instance of "
+                    f"`na.AbstractPositionalVectorArray`, got {type(WXY)}."
+                )
+        else:   # pragma: nocover
+            raise TypeError(
+                "if one positional argument, it must be an instance of "
+                f"`na.AbstractSpectralVectorArray`, got {type(WXY)}."
+            )
+    elif len(WXY) == 2:
+        w, XY = WXY
+        if isinstance(XY, na.AbstractCartesian2dVectorArray):
+            x = XY.x
+            y = XY.y
+        else:   # pragma: nocover
+            raise TypeError(
+                "if two positional arguments, "
+                "the second argument must be an instance of"
+                f"`na.AbstractCartesian2dVectorArray`, got {type(XY)}`."
+            )
+
+    elif len(WXY) == 3:
+        w, x, y = WXY
+    else:  # pragma: nocover
+        raise ValueError(
+            f"incorrect number of arguments, expected 0 to 3, got {len(WXY)}."
+        )
+
+    rgb, colorbar = na.colorsynth.rgb_and_colorbar(
+        spd=C,
+        wavelength=w,
+        axis=axis_wavelength,
+        spd_min=vmin,
+        spd_max=vmax,
+        spd_norm=norm,
+        wavelength_min=wavelength_min,
+        wavelength_max=wavelength_max,
+        wavelength_norm=wavelength_norm,
+    )
+
+    pcolormesh(
+        x, y,
+        C=rgb,
+        axis_rgb=axis_wavelength,
+        ax=ax,
+        **kwargs,
+    )
+
+    return colorbar
+
+
 def pcolormovie(
     *TXY: na.AbstractArray,
     C: na.AbstractArray,
@@ -787,6 +1090,219 @@ def pcolormovie(
     )
 
 
+def rgbmovie(
+    *TWXY: na.AbstractArray,
+    C: na.AbstractArray,
+    axis_time: str,
+    axis_wavelength: str,
+    ax: None | matplotlib.axes.Axes | na.AbstractArray = None,
+    norm: None | Callable= None,
+    vmin: None | na.ArrayLike = None,
+    vmax: None | na.ArrayLike = None,
+    wavelength_norm: None | Callable = None,
+    wavelength_min: None | float | u.Quantity | na.AbstractScalar = None,
+    wavelength_max: None | float | u.Quantity | na.AbstractScalar = None,
+    kwargs_pcolormesh: None | dict[str, Any] = None,
+    **kwargs_animation,
+) -> tuple[
+    matplotlib.animation.FuncAnimation,
+    na.FunctionArray[na.Cartesian2dVectorArray, na.AbstractScalar]
+]:
+    """
+    A convenience function that calls :func:`pcolormovie` with the outputs
+    from :func:`named_arrays.colorsynth.rgb` and returns an animation
+    instance and a colorbar.
+
+    This allows us to plot 4D cubes, with the third dimension being represented
+    by color, using a :func:`pcolormovie`-like interface.
+
+    Parameters
+    ----------
+    TWXY
+        The coordinates of the mesh to plot.
+        Allowed combinations are:
+        an instance of :class:`named_arrays.AbstractSpectralPositionalVectorArray`,
+        an instance of :class:`named_arrays.AbstractScalar` and an instance of
+        :class:`named_arrays.AbstractSpectralPositionalVectorArray`,
+        two instances of :class:`named_arrays.AbstractScalar` and an instance of
+        :class:`named_arrays.AbstractCartesian2dVectorArray`,
+        or four instances of :class:`named_arrays.AbstractScalar`.
+    C
+        The mesh data.
+    axis_time
+        The logical axis corresponding to the different frames in the animation.
+    axis_wavelength
+        The logical axis representing changing wavelength coordinate.
+    ax
+        The instances of :class:`matplotlib.axes.Axes` to use.
+        If :obj:`None`, calls :func:`matplotlib.pyplot.gca` to get the current axes.
+        If an instance of :class:`named_arrays.ScalarArray`, ``ax.shape`` should be a subset of the broadcasted shape of
+        ``*args``.
+    norm
+        An optional function that transforms the spectral power distribution
+        values before mapping to RGB.
+        Equivalent to the `spd_norm` argument of :func:`named_arrays.colorsynth.rgb`.
+    vmin
+        The value of the spectral power distribution representing minimum
+        intensity.
+        Equivalent to the `spd_min` argument of :func:`named_arrays.colorsynth.rgb`.
+    vmax
+        The value of the spectral power distribution representing maximum
+        intensity.
+        Equivalent to the `spd_max` argument of :func:`named_arrays.colorsynth.rgb`.
+    wavelength_norm
+        An optional function to transform the wavelength values before they
+        are mapped into the human visible color range.
+    wavelength_min
+        The wavelength value that is mapped to the minimum wavelength of the
+        human visible color range, 380 nm.
+    wavelength_max
+        The wavelength value that is mapped to the maximum wavelength of the
+        human visible color range, 700 nm
+    kwargs_pcolormesh
+        Additional keyword arguments accepted by :func:`pcolormesh`.
+    kwargs_animation
+        Additional keyword arguments accepted by
+        :class:`matplotlib.animation.FuncAnimation`.
+
+    Examples
+    --------
+
+    Plot a random, 4D cube.
+
+    .. jupyter-execute::
+
+        import matplotlib.pyplot as plt
+        import IPython.display
+        import astropy.units as u
+        import astropy.visualization
+        import named_arrays as na
+
+        # Define the size of the grid
+        shape = dict(
+            t=3,
+            w=11,
+            x=16,
+            y=16,
+        )
+
+        # Define a simple coordinate grid
+        t = na.linspace(0, 2, axis="t", num=shape["t"]) * u.s
+        w = na.linspace(-1, 1, axis="w", num=shape["w"]) * u.mm
+        x = na.linspace(-2, 2, axis="x", num=shape["x"]) * u.mm
+        y = na.linspace(-1, 1, axis="y", num=shape["y"]) * u.mm
+
+        # Define a random array of values to plot
+        a = na.random.uniform(-1, 1, shape_random=shape)
+
+        # Plot the coordinates and values using rgbmovie()
+        astropy.visualization.quantity_support()
+        fig, ax = plt.subplots(
+            ncols=2,
+            gridspec_kw=dict(width_ratios=[.9, .1]),
+            constrained_layout=True,
+        )
+        ani, colorbar = na.plt.rgbmovie(
+            t, w, x, y,
+            C=a,
+            axis_time="t",
+            axis_wavelength="w",
+            ax=ax[0],
+        );
+        na.plt.pcolormesh(
+            C=colorbar,
+            axis_rgb="w",
+            ax=ax[1],
+        )
+        ax[1].yaxis.tick_right()
+        ax[1].yaxis.set_label_position("right")
+        ani = ani.to_jshtml()
+        plt.close(fig)
+        IPython.display.HTML(ani)
+
+    """
+
+    if len(TWXY) == 0:
+        if isinstance(C, na.AbstractFunctionArray):
+            TWXY = (C.inputs,)
+            C = C.outputs
+        else:   # pragma: nocover
+            raise TypeError(
+                "if no positional arguments, `C` must be an instance of "
+                f"`na.AbstractFunctionArray`. got {type(C)}."
+            )
+
+    if len(TWXY) == 1:
+        TWXY, = TWXY
+        if isinstance(TWXY, na.AbstractTemporalSpectralPositionalVectorArray):
+            t = TWXY.time
+            w = TWXY.wavelength
+            x = TWXY.position.x
+            y = TWXY.position.y
+        else:   # pragma: nocover
+            raise TypeError(
+                "if one positional argument, it must be an instance of "
+                f"`na.AbstractTemporalSpectralPositionalVectorArray`, "
+                f"got {type(TWXY)}."
+            )
+    elif len(TWXY) == 2:
+        t, WXY = TWXY
+        if isinstance(WXY, na.AbstractSpectralPositionalVectorArray):
+            w = WXY.wavelength
+            x = WXY.position.x
+            y = WXY.position.y
+        else:  # pragma: nocover
+            raise TypeError(
+                "if two positional arguments, "
+                "the second argument must be an instance of "
+                "`na.AbstarctSpectralPositionalVectorArray`, "
+                f"got {type(WXY)}.`"
+            )
+    elif len(TWXY) == 3:
+        t, w, XY = TWXY
+        if isinstance(XY, na.AbstractCartesian2dVectorArray):
+            x = XY.x
+            y = XY.y
+        else:   # pragma: nocover
+            raise TypeError(
+                "if three positional arguments, "
+                "the third argument must be an instance of"
+                f"`na.AbstractCartesian2dVectorArray`, got {type(XY)}`."
+            )
+
+    elif len(TWXY) == 4:
+        t, w, x, y = TWXY
+    else:  # pragma: nocover
+        raise ValueError(
+            f"incorrect number of arguments, expected 0, 1, 3, or 4,"
+            f" got {len(TWXY)}."
+        )
+
+    rgb, colorbar = na.colorsynth.rgb_and_colorbar(
+        spd=C,
+        wavelength=w,
+        axis=axis_wavelength,
+        spd_min=vmin,
+        spd_max=vmax,
+        spd_norm=norm,
+        wavelength_min=wavelength_min,
+        wavelength_max=wavelength_max,
+        wavelength_norm=wavelength_norm,
+    )
+
+    animation = pcolormovie(
+        t, x, y,
+        C=rgb,
+        axis_time=axis_time,
+        axis_rgb=axis_wavelength,
+        ax=ax,
+        kwargs_pcolormesh=kwargs_pcolormesh,
+        kwargs_animation=kwargs_animation,
+    )
+
+    return animation, colorbar
+
+
 def text(
     x: float | u.Quantity | na.AbstractScalar,
     y: float | u.Quantity | na.AbstractScalar,
@@ -853,6 +1369,349 @@ def text(
         s=s,
         ax=ax,
         **kwargs,
+    )
+
+
+def set_xlabel(
+    xlabel: str | na.AbstractScalar,
+    ax: None | matplotlib.axes.Axes | na.AbstractScalar = None,
+    **kwargs,
+) -> na.AbstractScalar:
+    """
+    A thin wrapper around :meth:`matplotlib.axes.Axes.set_xlabel` for named arrays.
+
+    Parameters
+    ----------
+    xlabel
+        The horizontal axis label for each axis.
+    ax
+        The matplotlib axes instance on which to apply the label.
+    """
+    return na._named_array_function(
+        set_xlabel,
+        xlabel=na.as_named_array(xlabel),
+        ax=ax,
+        **kwargs,
+    )
+
+
+def get_xlabel(
+    ax: None | matplotlib.axes.Axes | na.AbstractScalar = None,
+) -> str | na.AbstractScalar:
+    """
+    A thin wrapper around :meth:`matplotlib.axes.Axes.get_xlabel` for named arrays.
+
+    Parameters
+    ----------
+    ax
+        The matplotlib axes instance(s) to get the horizontal axis label from.
+    """
+    return na._named_array_function(
+        get_xlabel,
+        ax=na.as_named_array(ax),
+    )
+
+
+
+def set_ylabel(
+    ylabel: str | na.AbstractScalar,
+    ax: None | matplotlib.axes.Axes | na.AbstractScalar = None,
+    **kwargs,
+) -> na.AbstractScalar:
+    """
+    A thin wrapper around :meth:`matplotlib.axes.Axes.set_ylabel` for named arrays.
+
+    Parameters
+    ----------
+    ylabel
+        The vertical axis label for each axis.
+    ax
+        The matplotlib axes instance on which to apply the label.
+    """
+    return na._named_array_function(
+        set_ylabel,
+        ylabel=na.as_named_array(ylabel),
+        ax=ax,
+        **kwargs,
+    )
+
+
+def get_ylabel(
+    ax: None | matplotlib.axes.Axes | na.AbstractScalar = None,
+) -> str | na.AbstractScalar:
+    """
+    A thin wrapper around :meth:`matplotlib.axes.Axes.get_ylabel` for named arrays.
+
+    Parameters
+    ----------
+    ax
+        The matplotlib axes instance(s) to get the vertical axis label from.
+    """
+    return na._named_array_function(
+        get_ylabel,
+        ax=na.as_named_array(ax),
+    )
+
+
+def set_title(
+    label: str | na.AbstractScalar,
+    ax: None | matplotlib.axes.Axes | na.AbstractScalar = None,
+    **kwargs,
+) -> na.AbstractScalar:
+    """
+    A thin wrapper around :meth:`matplotlib.axes.Axes.set_title` for named arrays.
+
+    Parameters
+    ----------
+    label
+        The title for each axis.
+    ax
+        The matplotlib axes instance on which to apply the label.
+    """
+    return na._named_array_function(
+        set_title,
+        label=na.as_named_array(label),
+        ax=ax,
+        **kwargs,
+    )
+
+
+def get_title(
+    ax: None | matplotlib.axes.Axes | na.AbstractScalar = None,
+) -> str | na.AbstractScalar:
+    """
+    A thin wrapper around :meth:`matplotlib.axes.Axes.get_title` for named arrays.
+
+    Parameters
+    ----------
+    ax
+        The matplotlib axes instance(s) to get the title label from.
+    """
+    return na._named_array_function(
+        get_title,
+        ax=na.as_named_array(ax),
+    )
+
+
+def set_xscale(
+    value: str | na.AbstractScalar,
+    ax: None | matplotlib.axes.Axes | na.AbstractScalar = None,
+    **kwargs,
+) -> na.AbstractScalar:
+    """
+    A thin wrapper around :meth:`matplotlib.axes.Axes.set_xscale` for named arrays.
+
+    Parameters
+    ----------
+    value
+        The scale type to apply to the horizontal scale of each axis.
+    ax
+        The matplotlib axes instance on which to apply the label.
+    """
+    return na._named_array_function(
+        set_xscale,
+        value=na.as_named_array(value),
+        ax=ax,
+        **kwargs,
+    )
+
+
+def get_xscale(
+    ax: None | matplotlib.axes.Axes | na.AbstractScalar = None,
+) -> str | na.AbstractScalar:
+    """
+    A thin wrapper around :meth:`matplotlib.axes.Axes.get_xscale` for named arrays.
+
+    Parameters
+    ----------
+    ax
+        The matplotlib axes instance(s) to get the horizontal axis scale from.
+    """
+    return na._named_array_function(
+        get_xscale,
+        ax=na.as_named_array(ax),
+    )
+
+
+def set_yscale(
+    value: str | na.AbstractScalar,
+    ax: None | matplotlib.axes.Axes | na.AbstractScalar = None,
+    **kwargs,
+) -> na.AbstractScalar:
+    """
+    A thin wrapper around :meth:`matplotlib.axes.Axes.set_yscale` for named arrays.
+
+    Parameters
+    ----------
+    value
+        The scale type to apply to the vertical scale of each axis.
+    ax
+        The matplotlib axes instance on which to apply the label.
+    """
+    return na._named_array_function(
+        set_yscale,
+        value=na.as_named_array(value),
+        ax=ax,
+        **kwargs,
+    )
+
+
+def get_yscale(
+    ax: None | matplotlib.axes.Axes | na.AbstractScalar = None,
+) -> str | na.AbstractScalar:
+    """
+    A thin wrapper around :meth:`matplotlib.axes.Axes.get_yscale` for named arrays.
+
+    Parameters
+    ----------
+    ax
+        The matplotlib axes instance(s) to get the vertical axis scale from.
+    """
+    return na._named_array_function(
+        get_yscale,
+        ax=na.as_named_array(ax),
+    )
+
+
+def set_aspect(
+    aspect: float | str | na.AbstractScalar,
+    ax: None | matplotlib.axes.Axes | na.AbstractScalar = None,
+    **kwargs,
+) -> na.AbstractScalar:
+    """
+    A thin wrapper around :meth:`matplotlib.axes.Axes.set_aspect` for named arrays.
+
+    Parameters
+    ----------
+    aspect
+        The aspect ratio to apply to each axis
+    ax
+        The matplotlib axes instance on which to apply the label.
+    """
+    return na._named_array_function(
+        set_aspect,
+        aspect=na.as_named_array(aspect),
+        ax=ax,
+        **kwargs,
+    )
+
+
+def get_aspect(
+    ax: None | matplotlib.axes.Axes | na.AbstractScalar = None,
+) -> str | na.AbstractScalar:
+    """
+    A thin wrapper around :meth:`matplotlib.axes.Axes.get_aspect` for named arrays.
+
+    Parameters
+    ----------
+    ax
+        The matplotlib axes instance(s) to get the aspect ratio from.
+    """
+    return na._named_array_function(
+        get_aspect,
+        ax=na.as_named_array(ax),
+    )
+
+
+def transAxes(
+    ax: None | matplotlib.axes.Axes | na.AbstractScalar = None,
+) -> matplotlib.transforms.Transform | na.AbstractScalar:
+    """
+    A thin wrapper around :attr:`matplotlib.axes.Axes.transAxes` for named arrays.
+
+    Parameters
+    ----------
+    ax
+        The matplotlib axes instance(s) to get the axes transformation from.
+    """
+    return na._named_array_function(
+        transAxes,
+        ax=na.as_named_array(ax),
+    )
+
+
+def transData(
+    ax: None | matplotlib.axes.Axes | na.AbstractScalar = None,
+) -> matplotlib.transforms.Transform | na.AbstractScalar:
+    """
+    A thin wrapper around :attr:`matplotlib.axes.Axes.transData` for named arrays.
+
+    Parameters
+    ----------
+    ax
+        The matplotlib axes instance(s) to get the axes transformation from.
+    """
+    return na._named_array_function(
+        transData,
+        ax=na.as_named_array(ax),
+    )
+
+
+def twinx(
+    ax: None | matplotlib.axes.Axes | na.AbstractScalar = None,
+) -> na.AbstractScalar:
+    """
+    A thin wrapper around :meth:`matplotlib.axes.Axes.twinx` for named arrays.
+
+    Parameters
+    ----------
+    ax
+        The matplotlib axes instance(s) to make the twin axes from.
+    """
+    return na._named_array_function(
+        twinx,
+        ax=na.as_named_array(ax),
+    )
+
+
+def twiny(
+    ax: None | matplotlib.axes.Axes | na.AbstractScalar = None,
+) -> na.AbstractScalar:
+    """
+    A thin wrapper around :meth:`matplotlib.axes.Axes.twiny` for named arrays.
+
+    Parameters
+    ----------
+    ax
+        The matplotlib axes instance(s) to make the twin axes from.
+    """
+    return na._named_array_function(
+        twiny,
+        ax=na.as_named_array(ax),
+    )
+
+
+def invert_xaxis(
+    ax: None | matplotlib.axes.Axes | na.AbstractScalar = None,
+) -> na.AbstractScalar:
+    """
+    A thin wrapper around :meth:`matplotlib.axes.Axes.invert_xaxis` for named arrays.
+
+    Parameters
+    ----------
+    ax
+        The matplotlib axes instance(s) to invert the horizontal axis of.
+    """
+    return na._named_array_function(
+        invert_xaxis,
+        ax=na.as_named_array(ax),
+    )
+
+
+def invert_yaxis(
+    ax: None | matplotlib.axes.Axes | na.AbstractScalar = None,
+) -> na.AbstractScalar:
+    """
+    A thin wrapper around :meth:`matplotlib.axes.Axes.invert_yaxis` for named arrays.
+
+    Parameters
+    ----------
+    ax
+        The matplotlib axes instance(s) to invert the vertical axis of.
+    """
+    return na._named_array_function(
+        invert_xaxis,
+        ax=na.as_named_array(ax),
     )
 
 

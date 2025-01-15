@@ -455,6 +455,83 @@ class AbstractArray(
         Array with the specified axes combined
         """
 
+    @classmethod
+    def _lerp(
+        cls,
+        i: float | na.AbstractScalar,
+        a0: float | na.AbstractScalar,
+        a1: float | na.AbstractScalar,
+    ) -> na.AbstractScalar:
+        return a0 * (1 - i) + a1 * i
+
+    def _nlerp(
+        self,
+        i: dict[str, na.AbstractScalar],
+    ) -> na.AbstractExplicitArray:
+
+        if not i:
+            return self.explicit
+
+        axis = next(iter(i))
+
+        i_new = {ax: i[ax] for ax in i if ax != axis}
+
+        a0 = self[{axis: slice(None, ~0)}]
+        a1 = self[{axis: slice(1, None)}]
+
+        if i_new:
+            a0 = a0._nlerp(i_new)
+            a1 = a1._nlerp(i_new)
+
+        return self._lerp(i[axis], a0, a1)
+
+    def cell_centers(
+        self,
+        axis: None | str | Sequence[str] = None,
+        random: bool = False,
+    ) -> na.AbstractExplicitArray:
+        """
+        Convert an array from cell vertices to cell centers.
+
+        Parameters
+        ----------
+        axis
+            The axes of the array to average over.
+        random
+            If true, select a random point within each cell instead of the
+            geometric center.
+        """
+
+        if axis is None:
+            axis = self.axes
+        elif isinstance(axis, str):
+            axis = (axis, )
+
+        result = self.explicit
+
+        shape = result.shape
+
+        axis = tuple(a for a in axis if a in shape)
+
+        shape_centers = {
+            ax: shape[ax] - 1 if ax in axis
+            else shape[ax]
+            for ax in shape
+        }
+
+        if not random:
+            i = {
+                a: 0.5
+                for a in axis
+            }
+        else:
+            i = {
+                a: na.random.uniform(0, 1, shape_random=shape_centers)
+                for a in axis
+            }
+
+        return self._nlerp(i)
+
     def volume_cell(self, axis: None | str | Sequence[str]) -> na.AbstractScalar:
         """
         Computes the n-dimensional volume of each cell formed by interpreting
@@ -525,6 +602,7 @@ class AbstractArray(
             elif isinstance(val, np.ndarray):
                 val_str = np.array2string(
                     a=val,
+                    max_line_width=120,
                     separator=", ",
                     prefix=field_str,
                 )
@@ -541,6 +619,27 @@ class AbstractArray(
 
     def __repr__(self):
         return self.to_string()
+
+    @abc.abstractmethod
+    def to_string_array(
+        self,
+        format_value: str = "%.2f",
+        format_unit: str = "latex_inline",
+        pad_unit: str = r"$\,$",
+    ):
+        """
+        Convert to an array of strings where each string has an
+        appropriately-formatted unit attached to the value.
+
+        Parameters
+        ----------
+        format_value
+            The string used to format the numeric value of each element.
+        format_unit
+            The string used to format the units of each element.
+        pad_unit
+            The string used to add horizontal space between the value and unit.
+        """
 
     def copy_shallow(self: Self) -> Self:
         return copy.copy(self)

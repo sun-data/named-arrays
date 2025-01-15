@@ -1,4 +1,6 @@
-from typing import Callable, Sequence, Any
+from typing import Callable, Sequence, Any, Literal
+import collections
+import dataclasses
 import numpy as np
 import numpy.typing as npt
 import matplotlib.axes
@@ -6,8 +8,10 @@ import matplotlib.artist
 import matplotlib.pyplot as plt
 import matplotlib.animation
 import astropy.units as u
+import astroscrappy
 import ndfilters
 import colorsynth
+import regridding
 import named_arrays as na
 from . import scalars
 
@@ -15,6 +19,9 @@ __all__ = [
     "ASARRAY_LIKE_FUNCTIONS",
     "RANDOM_FUNCTIONS",
     "PLT_PLOT_LIKE_FUNCTIONS",
+    "PLT_AXES_SETTERS",
+    "PLT_AXES_GETTERS",
+    "PLT_AXES_ATTRIBUTES",
     "HANDLED_FUNCTIONS",
     "random",
     "jacobian",
@@ -29,11 +36,39 @@ RANDOM_FUNCTIONS = (
     na.random.uniform,
     na.random.normal,
     na.random.poisson,
-    na.random.binomial,
 )
 PLT_PLOT_LIKE_FUNCTIONS = (
     na.plt.plot,
     na.plt.fill,
+)
+PLT_AXES_SETTERS = (
+    na.plt.set_xlabel,
+    na.plt.set_ylabel,
+    na.plt.set_title,
+    na.plt.set_xscale,
+    na.plt.set_yscale,
+    na.plt.set_aspect,
+)
+PLT_AXES_GETTERS = (
+    na.plt.get_xlabel,
+    na.plt.get_ylabel,
+    na.plt.get_title,
+    na.plt.get_xscale,
+    na.plt.get_yscale,
+    na.plt.get_aspect,
+    na.plt.twinx,
+    na.plt.twiny,
+    na.plt.invert_xaxis,
+    na.plt.invert_yaxis,
+)
+PLT_AXES_ATTRIBUTES = (
+    na.plt.transAxes,
+    na.plt.transData,
+)
+NDFILTER_FUNCTIONS = (
+    na.ndfilters.mean_filter,
+    na.ndfilters.trimmed_mean_filter,
+    na.ndfilters.variance_filter,
 )
 HANDLED_FUNCTIONS = dict()
 
@@ -208,10 +243,41 @@ def interp(
                 right=right_index,
                 period=period_index,
             ),
-            axes=x.axes,
+            axes=x_index.axes,
         )
 
     return result
+
+
+@_implements(na.histogram)
+def histogram(
+    a: na.AbstractScalarArray,
+    bins: dict[str, int] | na.AbstractScalarArray,
+    axis: None | str | Sequence[str] = None,
+    min: None | na.AbstractScalarArray = None,
+    max: None | na.AbstractScalarArray = None,
+    density: bool = False,
+    weights: None | na.AbstractScalarArray = None,
+) -> na.FunctionArray[na.AbstractScalarArray, na.ScalarArray]:
+
+    if isinstance(bins, na.AbstractArray):
+        bins = (bins, )
+
+    hist, edges = na.histogramdd(
+        a,
+        bins=bins,
+        axis=axis,
+        min=min,
+        max=max,
+        density=density,
+        weights=weights,
+    )
+    edges = edges[0]
+
+    return na.FunctionArray(
+        inputs=edges,
+        outputs=hist,
+    )
 
 
 @_implements(na.histogram2d)
@@ -246,104 +312,209 @@ def histogram2d(
     shape_orthogonal = {a: shape[a] for a in shape if a not in axis}
 
     if isinstance(bins, na.AbstractCartesian2dVectorArray):
-        shape_bins = bins.shape
-        if bins.x.ndim != 1:    # pragma: nocover
+
+        axis_x = set(bins.x.shape) - set(shape_orthogonal)
+        if len(axis_x) != 1:  # pragma: nocover
             raise ValueError(
-                f"The x component of `bins` must have only one dimension, "
-                f"got {bins.x.shape}."
+                f"if `bins` is a vector, `bins.x` must have exactly one new axis, "
+                f"got {axis_x}"
             )
-        if bins.y.ndim != 1:    # pragma: nocover
+
+        axis_y = set(bins.y.shape) - set(shape_orthogonal)
+        if len(axis_y) != 1:  # pragma: nocover
             raise ValueError(
-                f"The y component of `bins` must have only one dimension, "
-                f"got {bins.y.shape}."
+                f"if `bins` is a vector, `bins.y` must have exactly one new axis, "
+                f"got {axis_y}"
             )
-        bins = (
-            bins.x.ndarray,
-            bins.y.ndarray,
+
+        if axis_x == axis_y:  # pragma: nocover
+            raise ValueError(
+                f"if `bins` is a vector, `bins.x` and `bins.y` must be separable "
+                f"along the new axes, found non-separable axis {axis_x}."
+            )
+
+        edges = bins
+
+    elif isinstance(bins, dict):
+
+        a = na.Cartesian2dVectorArray(x, y)
+
+        if min is None:
+            min = a.min(axis)
+        elif not isinstance(min, na.AbstractCartesian2dVectorArray):
+            min = na.Cartesian2dVectorArray(min, min)
+
+        if max is None:
+            max = a.max(axis)
+        elif not isinstance(max, na.AbstractCartesian2dVectorArray):
+            max = na.Cartesian2dVectorArray(max, max)
+
+        if len(bins) != 2:  # pragma: nocover
+            raise ValueError(
+                f"if `bins` is a dictionary, it must have exactly two keys, "
+                f"got {bins=}."
+            )
+
+        axis_x, axis_y = tuple(bins)
+
+        edges = na.Cartesian2dVectorLinearSpace(
+            start=min,
+            stop=max,
+            axis=na.Cartesian2dVectorArray(
+                x=axis_x,
+                y=axis_y,
+            ),
+            num=na.Cartesian2dVectorArray(
+                x=bins[axis_x] + 1,
+                y=bins[axis_y] + 1,
+            ),
         )
-    else:
-        shape_bins = {ax: bins[ax] + 1 for ax in bins}
-        bins = tuple(bins.values())
 
-    if set(shape_bins).issubset(shape_orthogonal):  # pragma: nocover
-        raise ValueError(
-            f"The histogram axes, {shape_bins}, should not be a subset of "
-            f"the orthogonal axes, {shape_orthogonal}."
-        )
+    else:  # pragma: nocover
+        return NotImplemented
 
-    axis_x, axis_y = shape_bins
+    shape_edges_x = na.broadcast_shapes(shape_orthogonal, edges.x.shape)
+    shape_edges_y = na.broadcast_shapes(shape_orthogonal, edges.y.shape)
 
-    a = na.Cartesian2dVectorArray(x, y)
+    edges_broadcasted = dataclasses.replace(
+        edges.explicit,
+        x=edges.x.broadcast_to(shape_edges_x),
+        y=edges.y.broadcast_to(shape_edges_y),
+    )
 
-    if min is None:
-        min = a.min(axis)
-    elif not isinstance(min, na.AbstractCartesian2dVectorArray):
-        min = na.broadcast_to(min, shape_orthogonal)
-        min = na.Cartesian2dVectorArray.from_scalar(min)
-    else:
-        min = na.broadcast_to(min, shape_orthogonal)
-
-    if max is None:
-        max = a.max(axis)
-    elif not isinstance(max, na.AbstractCartesian2dVectorArray):
-        max = na.broadcast_to(max, shape_orthogonal)
-        max = na.Cartesian2dVectorArray.from_scalar(max)
-    else:
-        max = na.broadcast_to(max, shape_orthogonal)
-
-    shape_hist = {ax: shape_bins[ax] - 1 for ax in shape_bins}
+    shape_edges = edges.shape
+    shape_hist = {
+        ax: shape_edges[ax] - 1
+        for ax in shape_edges
+        if ax not in shape_orthogonal
+    }
     shape_hist = na.broadcast_shapes(shape_orthogonal, shape_hist)
 
-    shape_x = na.broadcast_shapes(shape_orthogonal, {axis_x: shape_bins[axis_x]})
-    shape_y = na.broadcast_shapes(shape_orthogonal, {axis_y: shape_bins[axis_y]})
-
     hist = na.ScalarArray.empty(shape_hist)
-    xedges = na.ScalarArray.empty(shape_x)
-    yedges = na.ScalarArray.empty(shape_y)
 
     unit_weights = na.unit(weights)
-    unit_x = na.unit(x)
-    unit_y = na.unit(y)
-
     hist = hist if unit_weights is None else hist << unit_weights
-    xedges = xedges if unit_x is None else xedges << unit_x
-    yedges = yedges if unit_y is None else yedges << unit_y
 
     for i in na.ndindex(shape_orthogonal):
-        min_i = min[i]
-        max_i = max[i]
-        hist_i, xedges_i, yedges_i = np.histogram2d(
+        edges_x_i = edges_broadcasted.x[i]
+        edges_y_i = edges_broadcasted.y[i]
+        hist_i, _, _ = np.histogram2d(
             x=x[i].ndarray_aligned(axis).reshape(-1),
             y=y[i].ndarray_aligned(axis).reshape(-1),
-            bins=bins,
-            range=[
-                [min_i.x.ndarray, max_i.x.ndarray],
-                [min_i.y.ndarray, max_i.y.ndarray],
-            ],
+            bins=(
+                edges_x_i.ndarray,
+                edges_y_i.ndarray,
+            ),
             density=density,
             weights=weights[i].ndarray_aligned(axis).reshape(-1) if weights is not None else weights,
         )
 
         hist[i] = na.ScalarArray(
             ndarray=hist_i,
-            axes=tuple(shape_bins),
-        )
-        xedges[i] = na.ScalarArray(
-            ndarray=xedges_i,
-            axes=axis_x
-        )
-        yedges[i] = na.ScalarArray(
-            ndarray=yedges_i,
-            axes=axis_y,
+            axes=edges_x_i.axes + edges_y_i.axes,
         )
 
     return na.FunctionArray(
-        inputs=na.Cartesian2dVectorArray(
-            x=xedges,
-            y=yedges,
-        ),
+        inputs=edges,
         outputs=hist,
     )
+
+
+@_implements(na.histogramdd)
+def histogramdd(
+    *sample: na.AbstractScalarArray,
+    bins: dict[str, int] | na.AbstractScalarArray | Sequence[na.AbstractScalarArray],
+    axis: None | str | Sequence[str] = None,
+    min: None | na.AbstractScalarArray | Sequence[na.AbstractScalarArray] = None,
+    max: None | na.AbstractScalarArray | Sequence[na.AbstractScalarArray] = None,
+    density: bool = False,
+    weights: None | na.AbstractScalarArray = None,
+) -> tuple[na.AbstractScalarArray, tuple[na.AbstractScalarArray, ...]]:
+
+    try:
+        sample = [scalars._normalize(s) for s in sample]
+        weights = scalars._normalize(weights) if weights is not None else weights
+    except scalars.ScalarTypeError:  # pragma: nocover
+        return NotImplemented
+
+    shape = na.shape_broadcasted(*sample, weights)
+
+    sample = [s.broadcast_to(shape) for s in sample]
+    weights = na.broadcast_to(weights, shape) if weights is not None else weights
+
+    if axis is None:
+        axis = tuple(shape)
+    elif isinstance(axis, str):
+        axis = (axis,)
+
+    if isinstance(bins, dict):
+
+        if min is None:
+            min = [s.min(axis) for s in sample]
+        elif not isinstance(min, collections.abc.Sequence):
+            min = [min] * len(sample)
+
+        if max is None:
+            max = [s.max(axis) for s in sample]
+        elif not isinstance(max, collections.abc.Sequence):
+            max = [max] * len(sample)
+
+        try:
+            max = [scalars._normalize(m) for m in max]
+            min = [scalars._normalize(m) for m in min]
+        except scalars.ScalarTypeError:  # pragma: nocover
+            return NotImplemented
+
+        if len(bins) != len(sample):  # pragma: nocover
+            raise ValueError(
+                f"if {bins=} is a dictionary, it must have the same number of"
+                f"elements as {len(sample)=}."
+            )
+
+        bins = [
+            na.linspace(start, stop, axis=ax, num=bins[ax])
+            for start, stop, ax in zip(min, max, bins)
+        ]
+
+    try:
+        bins = [scalars._normalize(b) for b in bins]
+    except scalars.ScalarTypeError:  # pragma: nocover
+        return NotImplemented
+
+    shape_orthogonal = {a: shape[a] for a in shape if a not in axis}
+
+    bins_broadcasted = [
+        b.broadcast_to(na.broadcast_shapes(shape_orthogonal, b.shape))
+        for b in bins
+    ]
+
+    shape_bins = na.shape_broadcasted(*bins)
+    shape_hist = {
+        ax: shape_bins[ax] - 1
+        for ax in shape_bins
+        if ax not in shape_orthogonal
+    }
+    shape_hist = na.broadcast_shapes(shape_orthogonal, shape_hist)
+
+    hist = na.ScalarArray.empty(shape_hist)
+
+    unit_weights = na.unit(weights)
+    hist = hist if unit_weights is None else hist << unit_weights
+
+    for i in na.ndindex(shape_orthogonal):
+        hist_i, _ = np.histogramdd(
+            sample=[s[i].ndarray_aligned(axis).reshape(-1) for s in sample],
+            bins=[b[i].ndarray for b in bins_broadcasted],
+            density=density,
+            weights=weights[i].ndarray_aligned(axis).reshape(-1) if weights is not None else weights,
+        )
+
+        hist[i] = na.ScalarArray(
+            ndarray=hist_i,
+            axes=sum((b[i].axes for b in bins_broadcasted), ()),
+        )
+
+    return hist, tuple(bins)
 
 
 def random(
@@ -377,12 +548,12 @@ def random(
 
     if unit is not None:
         args = tuple(
-            arg.value if isinstance(arg, u.Quantity)
+            arg.to_value(unit) if isinstance(arg, u.Quantity)
             else (arg << u.dimensionless_unscaled).to_value(unit)
             for arg in args
         )
         kwargs = {
-            k: kwargs[k].value if isinstance(kwargs[k], u.Quantity)
+            k: kwargs[k].to_value(unit) if isinstance(kwargs[k], u.Quantity)
             else (kwargs[k] << u.dimensionless_unscaled).to_value(unit)
             for k in kwargs
         }
@@ -396,6 +567,53 @@ def random(
         *args,
         size=tuple(shape.values()),
         **kwargs,
+    )
+
+    if unit is not None:
+        value = value << unit
+
+    return na.ScalarArray(
+        ndarray=value,
+        axes=tuple(shape.keys()),
+    )
+
+
+@_implements(na.random.binomial)
+def random_binomial(
+    n: int | u.Quantity | na.AbstractScalarArray,
+    p: float | na.AbstractScalarArray,
+    shape_random: None | dict[str, int] = None,
+    seed: None | int = None,
+):
+    try:
+        n = scalars._normalize(n)
+        p = scalars._normalize(p)
+    except na.ScalarTypeError:
+        return NotImplemented
+
+    if shape_random is None:
+        shape_random = dict()
+
+    shape_base = na.shape_broadcasted(n, p)
+    shape = na.broadcast_shapes(shape_base, shape_random)
+
+    n = n.ndarray_aligned(shape)
+    p = p.ndarray_aligned(shape)
+
+    unit = na.unit(n)
+
+    if unit is not None:
+        n = n.value
+
+    if seed is None:
+        func = np.random.binomial
+    else:
+        func = np.random.default_rng(seed).binomial
+
+    value = func(
+        n=n,
+        p=p,
+        size=tuple(shape.values()),
     )
 
     if unit is not None:
@@ -431,14 +649,17 @@ def plt_plot_like(
         ax = plt.gca()
     ax = na.as_named_array(ax)
 
-    shape = na.shape_broadcasted(*args)
+    shape_args = na.shape_broadcasted(*args)
+
+    shape = na.broadcast_shapes(ax.shape, shape_args)
 
     if axis is None:
-        if len(shape) != 1:
+        if len(shape_args) != 1:
             raise ValueError(
-                f"if `axis` is `None`, the broadcasted shape of `*args`, {shape}, should have one element"
+                f"if `axis` is `None`, the broadcasted shape of `*args`, "
+                f"{shape_args}, should have one element"
             )
-        axis = next(iter(shape))
+        axis = next(iter(shape_args))
 
     shape_orthogonal = {a: shape[a] for a in shape if a != axis}
 
@@ -574,6 +795,109 @@ def plt_scatter(
             c=c_index,
             **kwargs_index,
         )
+
+    return result
+
+
+@_implements(na.plt.stairs)
+def plt_stairs(
+        *args: na.AbstractScalarArray,
+        ax: None | matplotlib.axes.Axes | na.ScalarArray[npt.NDArray[matplotlib.axes.Axes]] = None,
+        axis: None | str = None,
+        where: bool | na.AbstractScalarArray = True,
+        **kwargs,
+) -> na.ScalarArray[npt.NDArray[None | matplotlib.artist.Artist]]:
+
+    if len(args) == 1:
+        edges = None
+        values, = args
+    elif len(args) == 2:
+        edges, values = args
+    else:   # pragma: nocover
+        raise ValueError(
+            f"incorrect number of arguments, expected 1 or 2, got {len(args)}"
+        )
+
+    try:
+        values = scalars._normalize(values)
+        edges = scalars._normalize(edges) if edges is not None else edges
+        where = scalars._normalize(where)
+        kwargs = {k: scalars._normalize(kwargs[k]) for k in kwargs}
+    except na.ScalarTypeError:  # pragma: nocover
+        return NotImplemented
+
+    if ax is None:
+        ax = plt.gca()
+    ax = na.as_named_array(ax)
+
+    if axis is None:
+        if len(values.shape) != 1:
+            raise ValueError(
+                f"if {axis=}, {values.shape=} should have only one element."
+            )
+        axis = next(iter(values.shape))
+    else:
+        if axis not in values.shape:
+            raise ValueError(
+                f"{axis=} must be an element of {values.shape}"
+            )
+
+    shape_values = na.shape(values)
+    shape_edges = na.shape(edges)
+    shape_args = na.broadcast_shapes(
+        shape_values,
+        {a: shape_edges[a] for a in shape_edges if a != axis},
+    )
+
+    shape = na.broadcast_shapes(ax.shape, shape_args)
+
+    shape_orthogonal = {a: shape[a] for a in shape if a != axis}
+
+    values = na.broadcast_to(values, shape)
+
+    if edges is not None:
+        edges = na.broadcast_to(
+            array=edges,
+            shape=shape_orthogonal | {axis: shape[axis] + 1},
+        )
+
+    if not set(ax.shape).issubset(shape_orthogonal):    # pragma: nocover
+        raise ValueError(
+            f"the shape of `ax`, {ax.shape}, "
+            f"should be a subset of the broadcasted shape of `*args` excluding `axis`, {shape_orthogonal}",
+        )
+    ax = ax.broadcast_to(shape_orthogonal)
+
+    if not set(where.shape).issubset(shape_orthogonal):     # pragma: nocover
+        raise ValueError(
+            f"the shape of `where`, {where.shape}, "
+            f"should be a subset of the broadcasted shape of `*args` excluding `axis`, {shape_orthogonal}"
+        )
+    where = where.broadcast_to(shape_orthogonal)
+
+    kwargs_broadcasted = dict()
+    for k in kwargs:
+        kwarg = kwargs[k]
+        if not set(na.shape(kwarg)).issubset(shape_orthogonal):     # pragma: nocover
+            raise ValueError(
+                f"the shape of `{k}`, {na.shape(kwarg)}, "
+                f"should be a subset of the broadcasted shape of `*args` excluding `axis`, {shape_orthogonal}"
+            )
+        kwargs_broadcasted[k] = na.broadcast_to(kwarg, shape_orthogonal)
+    kwargs = kwargs_broadcasted
+
+    result = na.ScalarArray.empty(shape=shape_orthogonal, dtype=object)
+
+    for index in na.ndindex(shape_orthogonal):
+        if where[index]:
+            values_index = values[index].ndarray
+            edges_index = edges[index].ndarray if edges is not None else edges
+            kwargs_index = {k: kwargs[k][index].ndarray for k in kwargs}
+            result[index] = ax[index].ndarray.stairs(
+                values=values_index,
+                edges=edges_index,
+                **kwargs_index,
+            )
 
     return result
 
@@ -816,6 +1140,7 @@ def plt_text(
         y = scalars._normalize(y)
         s = scalars._normalize(s)
         ax = scalars._normalize(ax)
+        kwargs = {k: scalars._normalize(kwargs[k]) for k in kwargs}
     except na.ScalarTypeError:  # pragma: nocover
         return NotImplemented
 
@@ -825,16 +1150,88 @@ def plt_text(
     y = y.broadcast_to(shape)
     s = s.broadcast_to(shape)
     ax = ax.broadcast_to(shape)
+    kwargs = {k: kwargs[k].broadcast_to(shape) for k in kwargs}
 
     result = na.ScalarArray.empty(shape, dtype=matplotlib.axes.Axes)
 
     for index in na.ndindex(shape):
+        kwargs_index = {k: kwargs[k][index].ndarray for k in kwargs}
         result[index] = ax[index].ndarray.text(
             x=x[index].ndarray,
             y=y[index].ndarray,
             s=s[index].ndarray,
-            **kwargs,
+            **kwargs_index,
         )
+
+    return result
+
+
+def plt_axes_setter(
+    method: str,
+    *args,
+    ax: None | matplotlib.axes.Axes | na.AbstractScalarArray = None,
+    **kwargs,
+) -> None:
+
+    if ax is None:
+        ax = plt.gca()
+
+    try:
+        args = [scalars._normalize(arg) for arg in args]
+        ax = scalars._normalize(ax)
+        kwargs = {k: scalars._normalize(kwargs[k]) for k in kwargs}
+    except na.ScalarTypeError:  # pragma: nocover
+        return NotImplemented
+
+    shape = ax.shape
+
+    args = [arg.broadcast_to(shape) for arg in args]
+    kwargs = {k: kwargs[k].broadcast_to(shape) for k in kwargs}
+
+    for index in na.ndindex(shape):
+        args_index = [arg[index].ndarray for arg in args]
+        kwargs_index = {k: kwargs[k][index].ndarray for k in kwargs}
+        getattr(ax[index].ndarray, method.__name__)(*args_index, **kwargs_index)
+
+
+def plt_axes_getter(
+    method: str,
+    ax: na.AbstractScalarArray,
+) -> na.ScalarArray:
+
+    try:
+        ax = scalars._normalize(ax)
+    except na.ScalarTypeError:  # pragma: nocover
+        return NotImplemented
+
+    result = na.ScalarArray.empty(shape=ax.shape, dtype=object)
+
+    for index in na.ndindex(ax.shape):
+        ax_index = ax[index].ndarray
+        if ax_index is None:
+            ax_index = plt.gca()
+        result[index] = getattr(ax_index, method.__name__)()
+
+    return result
+
+
+def plt_axes_attribute(
+    method: str,
+    ax: na.AbstractScalarArray,
+) -> na.ScalarArray:
+
+    try:
+        ax = scalars._normalize(ax)
+    except na.ScalarTypeError:  # pragma: nocover
+        return NotImplemented
+
+    result = na.ScalarArray.empty(shape=ax.shape, dtype=object)
+
+    for index in na.ndindex(ax.shape):
+        ax_index = ax[index].ndarray
+        if ax_index is None:
+            ax_index = plt.gca()
+        result[index] = getattr(ax_index, method.__name__)
 
     return result
 
@@ -913,7 +1310,7 @@ def optimize_root_newton(
         if callback is not None:
             callback(i, x, f, converged)
 
-        converged |= np.abs(f) < max_abs_error
+        converged = np.abs(f) < max_abs_error
 
         if np.all(converged):
             return x
@@ -1036,6 +1433,22 @@ def colorsynth_rgb(
     except na.ScalarTypeError:  # pragma: nocover
         return NotImplemented
 
+    if axis is None:
+        axes = tuple(set(na.shape(spd)) | set(na.shape(wavelength)))
+        if len(axes) != 1:
+            raise ValueError(
+                f"If `axis` is `None`, the other arguments must have zero"
+                f"or one axis, got {axes}."
+            )
+        axis = axes[0]
+
+    if wavelength is not None:
+        if axis in spd.shape:
+            if wavelength.shape[axis] == spd.shape[axis] + 1:
+                below = {axis: slice(None, ~0)}
+                above = {axis: slice(+1, None)}
+                wavelength = (wavelength[below] + wavelength[above]) / 2
+
     shape = na.shape_broadcasted(
         spd,
         wavelength,
@@ -1046,14 +1459,6 @@ def colorsynth_rgb(
     )
 
     axes = tuple(shape)
-    if axis is None:
-        if len(axes) != 1:
-            raise ValueError(
-                f"If `axis` is `None`, the broadcasted shape of the other"
-                f"arguments must have exactly one axis, got {shape=}"
-            )
-        else:
-            axis = axes[0]
     axis_ndarray = axes.index(axis)
 
     result_ndarray = colorsynth.rgb(
@@ -1100,6 +1505,22 @@ def colorsynth_colorbar(
     except na.ScalarTypeError:  # pragma: nocover
         return NotImplemented
 
+    if axis is None:
+        axes = tuple(set(na.shape(spd)) | set(na.shape(wavelength)))
+        if len(axes) != 1:
+            raise ValueError(
+                f"If `axis` is `None`, the other arguments must have zero "
+                f"or one axis, got {axes}."
+            )
+        axis = axes[0]
+
+    if wavelength is not None:
+        if axis in spd.shape:
+            if wavelength.shape[axis] == spd.shape[axis] + 1:
+                below = {axis: slice(None, ~0)}
+                above = {axis: slice(+1, None)}
+                wavelength = (wavelength[below] + wavelength[above]) / 2
+
     shape = na.shape_broadcasted(
         spd,
         wavelength,
@@ -1110,14 +1531,6 @@ def colorsynth_colorbar(
     )
 
     axes = tuple(shape)
-    if axis is None:
-        if len(axes) != 1:
-            raise ValueError(
-                f"If `axis` is `None`, the broadcasted shape of the other"
-                f"arguments must have exactly one axis, got {shape=}"
-            )
-        else:
-            axis = axes[0]
     axis_ndarray = axes.index(axis)
 
     intensity, wavelength, rgb = colorsynth.colorbar(
@@ -1156,12 +1569,15 @@ def colorsynth_colorbar(
     )
 
 
-@_implements(na.ndfilters.mean_filter)
-def mean_filter(
+def ndfilter(
+    func: Callable,
     array: na.AbstractScalarArray,
     size: dict[str, int],
-    where: bool | na.AbstractScalarArray
+    where: bool | na.AbstractScalarArray,
+    **kwargs,
 ) -> na.ScalarArray:
+
+    func = getattr(ndfilters, func.__name__)
 
     try:
         array = scalars._normalize(array)
@@ -1180,11 +1596,172 @@ def mean_filter(
     where = where.broadcast_to(shape)
 
     return array.type_explicit(
-        ndarray=ndfilters.mean_filter(
+        ndarray=func(
             array=array.ndarray,
             size=tuple(size.values()),
             axis=tuple(axes.index(ax) for ax in size),
             where=where.ndarray,
+            **kwargs,
         ),
         axes=axes,
     )
+
+
+@_implements(na.regridding.weights)
+def regridding_weights(
+    coordinates_input: na.AbstractScalarArray | na.AbstractVectorArray,
+    coordinates_output: na.AbstractScalarArray | na.AbstractVectorArray,
+    axis_input: None | str | Sequence[str] = None,
+    axis_output: None | str | Sequence[str] = None,
+    method: Literal['multilinear', 'conservative'] = 'multilinear',
+) -> tuple[na.AbstractScalar, dict[str, int], dict[str, int]]:
+
+    if not isinstance(coordinates_output, na.AbstractVectorArray):
+        coordinates_output = na.CartesianNdVectorArray(dict(x=coordinates_output))
+
+    if not isinstance(coordinates_input, na.AbstractVectorArray):
+        coordinates_input = na.CartesianNdVectorArray(dict(x=coordinates_input))
+
+    return na.regridding.weights(
+        coordinates_input=coordinates_input,
+        coordinates_output=coordinates_output,
+        axis_input=axis_input,
+        axis_output=axis_output,
+        method=method,
+    )
+
+
+@_implements(na.regridding.regrid_from_weights)
+def regridding_regrid_from_weights(
+    weights: na.AbstractScalarArray,
+    shape_input: dict[str, int],
+    shape_output: dict[str, int],
+    values_input: na.AbstractScalarArray,
+) -> na.ScalarArray:
+
+    try:
+        weights = scalars._normalize(weights)
+        values_input = scalars._normalize(values_input)
+    except scalars.ScalarTypeError:  # pragma: nocover
+        return NotImplemented
+
+    shape_weights = weights.shape
+
+    axis_input = tuple(a for a in shape_input if a not in shape_weights)
+    axis_output = tuple(a for a in shape_output if a not in shape_weights)
+
+    shape_values_input = values_input.shape
+    shape_orthogonal = {
+        a: shape_values_input[a]
+        for a in shape_values_input
+        if a not in axis_input
+    }
+    shape_orthogonal = na.broadcast_shapes(shape_orthogonal, shape_weights)
+
+    shape_input = na.broadcast_shapes(shape_orthogonal, shape_input)
+    shape_output = na.broadcast_shapes(shape_orthogonal, shape_output)
+
+    weights = weights.broadcast_to({
+        a: shape_input[a] if a not in axis_input else 1
+        for a in shape_input
+    })
+    values_input = values_input.broadcast_to(shape_input)
+
+    result = regridding.regrid_from_weights(
+        weights=weights.ndarray,
+        shape_input=tuple(shape_input.values()),
+        shape_output=tuple(shape_output.values()),
+        values_input=values_input.ndarray,
+        axis_input=tuple(tuple(shape_input).index(a) for a in axis_input),
+        axis_output=tuple(tuple(shape_output).index(a) for a in axis_output),
+    )
+
+    result = na.ScalarArray(
+        ndarray=result,
+        axes=tuple(shape_output),
+    )
+
+    return result
+
+
+@_implements(na.despike)
+def despike(
+    array: na.AbstractScalarArray,
+    axis: tuple[str, str],
+    where: None | bool | na.AbstractScalarArray,
+    inbkg: None | na.AbstractScalarArray,
+    invar: None | float | na.AbstractScalarArray,
+    sigclip: float,
+    sigfrac: float,
+    objlim: float,
+    gain: float,
+    readnoise: float,
+    satlevel: float,
+    niter: int,
+    sepmed: bool,
+    cleantype: Literal["median", "medmask", "meanmask", "idw"],
+    fsmode: Literal["median", "convolve"],
+    psfmodel: Literal["gauss", "gaussx", "gaussy", "moffat"],
+    psffwhm: float,
+    psfsize: int,
+    psfk: None | na.AbstractScalarArray,
+    psfbeta: float,
+    verbose: bool,
+) -> na.ScalarArray:
+
+    try:
+        array = scalars._normalize(array)
+        where = scalars._normalize(where) if where is not None else where
+        inbkg = scalars._normalize(inbkg) if inbkg is not None else inbkg
+        invar = scalars._normalize(invar) if invar is not None else invar
+        psfk = scalars._normalize(psfk) if psfk is not None else psfk
+    except scalars.ScalarTypeError:  # pragma: nocover
+        return NotImplemented
+
+    shape = na.shape_broadcasted(
+        array,
+        where,
+        inbkg,
+        invar,
+    )
+
+    array = array.broadcast_to(shape)
+    where = where.broadcast_to(shape) if where is not None else where
+    inbkg = inbkg.broadcast_to(shape) if inbkg is not None else inbkg
+    invar = invar.broadcast_to(shape) if invar is not None else invar
+
+    if psfk is not None:
+        shape_orthogonal = {ax: shape[ax] for ax in shape if ax not in axis}
+        shape_psfk = na.broadcast_shapes(shape_orthogonal, psfk.shape)
+        psfk = na.broadcast_to(psfk, shape_psfk)
+
+    result = array.copy()
+    inmask = ~where if where is not None else where
+
+    for index in na.ndindex(shape, axis_ignored=axis):
+        result_ndarray = astroscrappy.detect_cosmics(
+            indat=array[index].ndarray,
+            inmask=inmask[index].ndarray if inmask is not None else inmask,
+            inbkg=inbkg[index].ndarray if inbkg is not None else inbkg,
+            invar=invar[index].ndarray if invar is not None else invar,
+            sigclip=sigclip,
+            sigfrac=sigfrac,
+            objlim=objlim,
+            gain=gain,
+            readnoise=readnoise,
+            satlevel=satlevel,
+            niter=niter,
+            sepmed=sepmed,
+            cleantype=cleantype,
+            fsmode=fsmode,
+            psfmodel=psfmodel,
+            psffwhm=psffwhm,
+            psfsize=psfsize,
+            psfk=psfk[index].ndarray if psfk is not None else psfk,
+            psfbeta=psfbeta,
+            verbose=verbose,
+        )
+
+        result[index].value.ndarray[:] = result_ndarray[1]
+
+    return result

@@ -110,7 +110,7 @@ class AbstractVectorArray(
             if isinstance(component, na.AbstractVectorArray):
                 component2 = component.cartesian_nd.components
                 for c2 in component2:
-                    components_new[f"{c}_{c2}"] = component2[c2]
+                    components_new[f"{c}.{c2}"] = component2[c2]
             else:
                 components_new[c] = component
 
@@ -222,6 +222,26 @@ class AbstractVectorArray(
             components_result[c] = na.broadcast_to(components[c], shape=shape_c).combine_axes(
                 axes=axes,
                 axis_new=axis_new
+            )
+
+        return self.type_explicit.from_components(components_result)
+
+    def to_string_array(
+        self,
+        format_value: str = "%.2f",
+        format_unit: str = "latex_inline",
+        pad_unit: str = r"$\,$",
+    ) -> AbstractExplicitVectorArray:
+
+        components = self.components
+
+        components_result = dict()
+        for c in components:
+            component_c = na.as_named_array(components[c])
+            components_result[c] = component_c.to_string_array(
+                format_value=format_value,
+                format_unit=format_unit,
+                pad_unit=pad_unit
             )
 
         return self.type_explicit.from_components(components_result)
@@ -423,6 +443,9 @@ class AbstractVectorArray(
         if func in vector_named_array_functions.PLT_PLOT_LIKE_FUNCTIONS:
             return vector_named_array_functions.plt_plot_like(func, *args, **kwargs)
 
+        if func in vector_named_array_functions.NDFILTER_FUNCTIONS:
+            return vector_named_array_functions.ndfilter(func, *args, **kwargs)
+
         if func in vector_named_array_functions.HANDLED_FUNCTIONS:
             return vector_named_array_functions.HANDLED_FUNCTIONS[func](*args, **kwargs)
 
@@ -505,7 +528,7 @@ class AbstractExplicitVectorArray(
 
                 component = components[c]
                 if isinstance(component, na.AbstractVectorArray):
-                    nd_key_mod = f"{c}_"
+                    nd_key_mod = f"{c}."
                     sub_dict = {k[len(nd_key_mod):]: v for k, v in nd_components.items() if k.startswith(nd_key_mod)}
                     components_new[c] = component.type_explicit.from_cartesian_nd(
                         na.CartesianNdMatrixArray(sub_dict),

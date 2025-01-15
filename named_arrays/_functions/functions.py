@@ -1,4 +1,5 @@
 from __future__ import annotations
+import functools
 from typing import TypeVar, Generic, Type, ClassVar, Sequence, Callable, Collection, Any
 from typing_extensions import Self
 import abc
@@ -7,11 +8,16 @@ import numpy as np
 import astropy.units as u
 import astropy.visualization
 import named_arrays as na
+import itertools
+import collections
 
 __all__ = [
     "InputValueError",
     "AbstractFunctionArray",
     "FunctionArray",
+    "AbstractFunctionArray",
+    "AbstractPolynomialFunctionArray",
+    "PolynomialFitFunctionArray",
 ]
 
 InputsT = TypeVar("InputsT", bound=na.AbstractArray)
@@ -239,6 +245,33 @@ class AbstractFunctionArray(
             outputs=new_output
         )
 
+    def cell_centers(
+        self,
+        axis: None | str | Sequence[str] = None,
+        random: bool = False,
+    ) -> na.AbstractExplicitArray:
+        return dataclasses.replace(
+            self,
+            inputs=self.inputs.cell_centers(axis, random=random),
+            outputs=self.outputs.cell_centers(axis, random=random),
+        )
+
+    def to_string_array(
+        self,
+        format_value: str = "%.2f",
+        format_unit: str = "latex_inline",
+        pad_unit: str = r"$\,$",
+    ):
+        kwargs = dict(
+            format_value=format_value,
+            format_unit=format_unit,
+            pad_unit=pad_unit,
+        )
+        return self.type_explicit(
+            inputs=na.as_named_array(self.inputs).to_string_array(**kwargs),
+            outputs=na.as_named_array(self.outputs).to_string_array(**kwargs),
+        )
+
     def _getitem(
             self,
             item: dict[str, int | slice | na.AbstractArray] | na.AbstractFunctionArray,
@@ -252,12 +285,14 @@ class AbstractFunctionArray(
         shape_inputs = inputs.shape
         shape_outputs = outputs.shape
 
-        if isinstance(item, na.AbstractFunctionArray):
-            if np.any(item.inputs != self.inputs):
-                raise ValueError("boolean advanced index does not have the same inputs as the array")
-
-            item_inputs = item.outputs
-            item_outputs = item.outputs
+        if isinstance(item, na.AbstractArray):
+            if isinstance(item, na.AbstractFunctionArray):
+                if np.any(item.inputs != self.inputs):
+                    raise ValueError("boolean advanced index does not have the same inputs as the array")
+                item_inputs = item.outputs
+                item_outputs = item.outputs
+            else:
+                item_inputs = item_outputs = item
 
             shape_item_inputs = item_inputs.shape
             shape_item_outputs = item_outputs.shape
@@ -534,6 +569,9 @@ class AbstractFunctionArray(
 
         if func in function_named_array_functions.ASARRAY_LIKE_FUNCTIONS:
             return function_named_array_functions.asarray_like(func=func, *args, **kwargs)
+
+        if func in function_named_array_functions.NDFILTER_FUNCTIONS:
+            return function_named_array_functions.ndfilter(func, *args, **kwargs)
 
         if func in function_named_array_functions.HANDLED_FUNCTIONS:
             return function_named_array_functions.HANDLED_FUNCTIONS[func](*args, **kwargs)
@@ -826,3 +864,175 @@ class FunctionArray(
         if value_inputs is not None:
             self.inputs[item_inputs] = value_inputs
         self.outputs[item_outputs] = value_outputs
+
+
+@dataclasses.dataclass(eq=False, repr=False)
+class AbstractPolynomialFunctionArray(
+    AbstractFunctionArray,
+):
+    @property
+    @abc.abstractmethod
+    def coefficients(self) -> na.AbstractVectorArray | na.AbstractMatrixArray:
+        """
+        A vector or matrix representing the coefficients of the polynomial.
+
+        If this function is scalar-valued, :attr:`coefficients` should be a vector,
+        and if this function is vector-valued, :attr`coefficients` should be a matrix.
+        """
+
+    @property
+    @abc.abstractmethod
+    def degree(self) -> int:
+        """degree of the polynomial"""
+
+    @property
+    @abc.abstractmethod
+    def components_polynomial(self) -> None | str | Sequence[str]:
+        """The components of the input that this polynomial depends on."""
+
+    @property
+    @abc.abstractmethod
+    def axis_polynomial(self) -> None | str | Sequence[str]:
+        """the logical axes along which this polynomial is distributed"""
+
+    @abc.abstractmethod
+    def design_matrix(
+        self,
+        inputs: float | u.Quantity | na.AbstractScalar | na.AbstractVectorArray,
+    ) -> na.AbstractVectorArray:
+        """
+        The `design matrix <https://en.wikipedia.org/wiki/Design_matrix>`_
+        corresponding to the given inputs.
+
+        Note that while this is `called` a matrix, this function returns a vector
+        since the rows are independent observations, and this is concept is
+        already captured by the logical axes in the array.
+
+        Parameters
+        ----------
+        inputs
+            the set of independent variables to convert into the design matrix
+        """
+
+    def __call__(
+        self,
+        inputs: float | u.Quantity | na.ScalarArray | na.AbstractVectorArray,
+    ) -> na.AbstractFunctionArray:
+        return na.FunctionArray(
+            inputs, self.design_matrix(inputs) @ self.coefficients
+        )
+
+    @property
+    def predictions(self) -> OutputsT:
+        """
+        The outputs of the polynomial model given :attr:`inputs`.
+        Equivalent to ``self(self.inputs).outputs``.
+        """
+        return self(self.inputs).outputs
+
+
+@dataclasses.dataclass(eq=False, repr=False)
+class PolynomialFitFunctionArray(
+    FunctionArray,
+    AbstractPolynomialFunctionArray,
+):
+    """
+    A :class:`named_arrays.PolynomialFitFunctionArray` carries the independent variables, inputs, and dependent variables, outputs,
+    of a discrete function, and a linear least squares polynomial fit of specified degree to that function.
+
+    Parameters
+    ----------
+    inputs
+        the set of independent variables
+    outputs
+        the set of dependent variables
+    degree
+        the degree of the polynomial
+    components_polynomial
+        the components used in the polynomial fit
+    axis_polynomial
+        the logical axis of the polynomial fit
+
+    Examples
+    --------
+
+    .. nblinkgallery::
+        :caption: Relevant Tutorials
+        :name: rst-link-gallery
+
+        ../tutorials/PolynomialFunctionArray
+    """
+
+    degree: int = None
+    components_polynomial: None | str | Sequence[str] = None
+    axis_polynomial: None | str | Sequence[str] = None
+
+    @functools.cached_property
+    def coefficients(self) -> na.AbstractVectorArray | na.AbstractMatrixArray:
+        d = self.design_matrix(self.inputs)
+        dTd = self._outer(d, d, self.axis_polynomial)
+        dTo = self._outer(d, self.outputs, self.axis_polynomial)
+
+        return dTd.inverse @ dTo
+
+    def design_matrix(
+        self,
+        inputs: float | u.Quantity | na.AbstractScalar | na.AbstractVectorArray,
+    ) -> na.AbstractVectorArray:
+
+        design_matrix = {}
+
+        if isinstance(inputs, na.AbstractScalar):
+            inputs = na.CartesianNdVectorArray({"dummy": inputs})
+        inputs = inputs.cartesian_nd.broadcasted.components
+
+        components = self.components_polynomial
+
+        if components is None:
+            components = tuple(inputs)
+        elif isinstance(components, str):
+            components = (components,)
+
+        inputs = {c: inputs[c] for c in components}
+
+        for i in range(self.degree + 1):
+            combinations = itertools.combinations_with_replacement(
+                inputs, i
+            )
+            for combination in combinations:
+                key = "*".join(combination)
+                design_matrix[key] = 1
+                for k in combination:
+                    design_matrix[key] = design_matrix[key] * inputs[k]
+
+        design_matrix = na.CartesianNdVectorArray(design_matrix)
+
+        return design_matrix
+
+    @classmethod
+    def _outer(cls, v1, v2, axis):
+        v1_T_v2_components = {}
+
+        if isinstance(v1, na.AbstractVectorArray):
+            v1_broadcasted = v1.broadcasted.components
+            if isinstance(v2, na.AbstractVectorArray):
+                for c1 in v1_broadcasted:
+                    v2_broadcasted = v2.broadcasted.components
+                    row_components = {}
+                    for c2 in v2_broadcasted:
+                        row_components[c2] = (
+                                v1_broadcasted[c1] * v2_broadcasted[c2]
+                        ).sum(axis=axis)
+                    v1_T_v2_components[c1] = v2.type_explicit.from_components(row_components)
+                v1_T_v2 = v1.type_matrix.from_components(v1_T_v2_components)
+
+            else:
+                for c1 in v1_broadcasted:
+                        row_components = (v1_broadcasted[c1] * v2).sum(axis=axis)
+                        v1_T_v2_components[c1] = row_components
+                v1_T_v2 = v1.type_explicit.from_components(v1_T_v2_components)
+
+        return v1_T_v2
+
+
+

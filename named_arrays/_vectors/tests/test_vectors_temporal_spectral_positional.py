@@ -205,6 +205,41 @@ class TestTemporalSpectralPositionalVectorLinearSpace(
 @pytest.mark.parametrize(
     argnames="array",
     argvalues=[
+        na.ExplicitTemporalSpectralWcsPositionalVectorArray(
+            time=10 * u.s,
+            wavelength=500 * u.nm,
+            crval=na.PositionalVectorArray(
+                position=na.Cartesian2dVectorArray(1, 1) * u.deg,
+            ),
+            crpix=na.CartesianNdVectorArray(
+                dict(
+                    x=2,
+                    y=3,
+                )
+            ),
+            cdelt=na.PositionalVectorArray(
+                position=na.Cartesian2dVectorArray(1, 1) * u.arcsec,
+            ),
+            pc=na.PositionalMatrixArray(
+                position=na.Cartesian2dMatrixArray(
+                    x=na.CartesianNdVectorArray(dict(x=1, y=0)),
+                    y=na.CartesianNdVectorArray(dict(x=0, y=1)),
+                ),
+            ),
+            shape_wcs=dict(x=_num_x, y=_num_y),
+        ),
+    ],
+)
+class TestExplicitTemporalSpectralWcsPositionalVectorArray(
+    AbstractTestAbstractImplicitTemporalSpectralPositionalVectorArray,
+    test_vectors.AbstractTestAbstractWcsVector,
+):
+    pass
+
+
+@pytest.mark.parametrize(
+    argnames="array",
+    argvalues=[
         na.ExplicitTemporalWcsSpectralPositionalVectorArray(
             time=10 * u.s,
             crval=na.SpectralPositionalVectorArray(

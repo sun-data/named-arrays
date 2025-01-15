@@ -130,7 +130,7 @@ class AbstractCartesian3dVectorArray(
         d3 = (b @ c) * a_
         denomerator = d0 + d1 + d2 + d3
 
-        unit = numerator.unit
+        unit = na.unit(numerator)
 
         if unit is not None:
             numerator = numerator.to(unit).value

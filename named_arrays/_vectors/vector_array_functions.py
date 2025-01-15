@@ -537,7 +537,7 @@ def array_function_stack_like(
     components_arrays = [a.components for a in arrays]
 
     if out is None:
-        components_out = vector_prototype.type_explicit.from_scalar(out, like=vector_prototype).components
+        components_out = {c: None for c in components_arrays[0]}
     else:
         components_out = out.components
 
@@ -860,6 +860,32 @@ def diff(
             n=n,
             prepend=components_prepend[c],
             append=components_append[c],
+        )
+
+    return prototype.type_explicit.from_components(result)
+
+
+@implements(np.char.mod)
+def char_mod(
+        a: str | na.AbstractScalar,
+        values: str | na.AbstractScalar,
+) -> na.ScalarArray:
+
+    try:
+        prototype = vectors._prototype(a, values)
+        a = vectors._normalize(a, prototype)
+        values = vectors._normalize(values, prototype)
+    except vectors.VectorTypeError:  # pragma: nocover
+        return NotImplemented
+
+    components_a = a.components
+    components_values = values.components
+
+    result = dict()
+    for c in components_a:
+        result[c] = np.char.mod(
+            a=components_a[c],
+            values=components_values[c],
         )
 
     return prototype.type_explicit.from_components(result)

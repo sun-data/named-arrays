@@ -187,6 +187,22 @@ class AbstractUncertainScalarArray(
             distribution=distribution.combine_axes(axes=axes, axis_new=axis_new),
         )
 
+    def to_string_array(
+        self,
+        format_value: str = "%.2f",
+        format_unit: str = "latex_inline",
+        pad_unit: str = r"$\,$",
+    ) -> UncertainScalarArray:
+        kwargs = dict(
+            format_value=format_value,
+            format_unit=format_unit,
+            pad_unit=pad_unit,
+        )
+        return self.type_explicit(
+            nominal=na.as_named_array(self.nominal).to_string_array(**kwargs),
+            distribution=na.as_named_array(self.distribution).to_string_array(**kwargs),
+        )
+
     def _getitem(
             self,
             item: dict[str, int | slice | na.AbstractScalar] | na.AbstractScalar,
@@ -487,6 +503,9 @@ class AbstractUncertainScalarArray(
 
         if func in uncertainties_named_array_functions.PLT_PLOT_LIKE_FUNCTIONS:
             return uncertainties_named_array_functions.plt_plot_like(func, *args, **kwargs)
+
+        if func in uncertainties_named_array_functions.NDFILTER_FUNCTIONS:
+            return uncertainties_named_array_functions.ndfilter(func, *args, **kwargs)
 
         if func in uncertainties_named_array_functions.HANDLED_FUNCTIONS:
             return uncertainties_named_array_functions.HANDLED_FUNCTIONS[func](*args, **kwargs)

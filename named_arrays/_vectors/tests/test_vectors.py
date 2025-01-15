@@ -1,4 +1,4 @@
-from typing import Type, Callable, Sequence
+from typing import Type, Callable, Sequence, Literal
 import pytest
 import abc
 import numpy as np
@@ -524,6 +524,43 @@ class AbstractTestAbstractVectorArray(
         ):
             pass
 
+        @pytest.mark.parametrize(
+            argnames="bins",
+            argvalues=[
+                "dict",
+                "array",
+            ],
+        )
+        class TestHistogram(
+            named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestHistogram,
+        ):
+            def test_histogram(
+                    self,
+                    array: na.AbstractVectorArray,
+                    bins: Literal["dict", "array"],
+                    axis: None | str | Sequence[str],
+                    min: None | na.AbstractScalarArray | na.AbstractVectorArray,
+                    max: None | na.AbstractScalarArray | na.AbstractVectorArray,
+                    weights: None | na.AbstractScalarArray,
+            ):
+                if bins == "dict":
+                    bins = {f"axis_{c}": 2 for c in array.cartesian_nd.components}
+                elif bins == "array":
+                    bins = {
+                        c: na.linspace(0, 1, f"axis_{c}", 2)
+                        for c in array.cartesian_nd.components
+                    }
+                    bins = na.CartesianNdVectorArray(bins)
+                    bins = array.type_explicit.from_cartesian_nd(bins, like=array)
+                super().test_histogram(
+                    array=array,
+                    bins=bins,
+                    axis=axis,
+                    min=min,
+                    max=max,
+                    weights=weights,
+                )
+
         @pytest.mark.parametrize("array_2", [None])
         @pytest.mark.parametrize(
             argnames="where",
@@ -597,8 +634,11 @@ class AbstractTestAbstractVectorArray(
         @pytest.mark.parametrize(
             argnames="function,expected",
             argvalues=[
-                (lambda x: (np.square(na.value(x) - shift_horizontal) + shift_vertical).length, shift_horizontal)
-                for shift_horizontal in [20,]
+                (
+                    lambda x: (np.square((na.value(x) - shift_horizontal).length) + shift_vertical) * u.ph,
+                    shift_horizontal,
+                )
+                for shift_horizontal in [2,]
                 for shift_vertical in [1,]
             ]
         )
@@ -612,7 +652,12 @@ class AbstractTestAbstractVectorArray(
         ):
 
             @pytest.mark.skip
-            def test_colorbar(self, array: na.AbstractArray, axis: None | str):
+            def test_colorbar(
+                self,
+                array: na.AbstractArray,
+                wavelength: None | na.AbstractScalar,
+                axis: None | str,
+            ):
                 pass    # pragma: nocover
 
 

@@ -38,6 +38,8 @@ extensions = [
     'sphinx.ext.inheritance_diagram',
     'sphinxcontrib.bibtex',
     'jupyter_sphinx',
+    'nbsphinx',
+    'sphinx_codeautolink',
     'sphinx_favicon'
 ]
 autosummary_generate = True  # Turn on sphinx.ext.autosummary
@@ -115,9 +117,11 @@ intersphinx_mapping = {
     'scipy': ('https://docs.scipy.org/doc/scipy/', None),
     'matplotlib': ('https://matplotlib.org/stable', None),
     'astropy': ('https://docs.astropy.org/en/stable/', None),
+    'astroscrappy': ('https://astroscrappy.readthedocs.io/en/stable/', None),
     'xarray': ('https://docs.xarray.dev/en/stable/', None),
     'ndfilters': ('https://ndfilters.readthedocs.io/en/stable', None),
     'colorsynth': ('https://colorsynth.readthedocs.io/en/stable', None),
+    'regridding': ('https://regridding.readthedocs.io/en/stable', None),
 }
 
 # plt.Axes.__module__ = matplotlib.axes.__name__

@@ -23,8 +23,11 @@ __all__ = [
     'concatenate',
     'add_axes',
     "interp",
+    "histogram",
     "histogram2d",
+    "histogramdd",
     'jacobian',
+    'despike',
 ]
 
 ArrayT = TypeVar("ArrayT")
@@ -716,6 +719,80 @@ def interp(
     )
 
 
+def histogram(
+    a: na.AbstractArray,
+    bins: dict[str, int] | na.AbstractArray,
+    axis: None | str | Sequence[str] = None,
+    min: None | float | na.AbstractArray = None,
+    max: None | float | na.AbstractArray = None,
+    density: bool = False,
+    weights: None | na.AbstractArray = None,
+) -> na.FunctionArray[na.AbstractArray, na.ScalarArray]:
+    """
+    A thin wrapper around :func:`numpy.histogram` which adds an `axis` argument.
+
+    Parameters
+    ----------
+    a
+        The input data over which to compute the histogram.
+    bins
+        The bin specification of the histogram:
+         * If `bins` is a dictionary, the keys are interpreted as the axis names
+           and the values are the number of bins along each axis.
+           This dictionary must have only one key per coordinate.
+         * If `bins` is an array, it represents the bin edges.
+    axis
+        The logical axes along which to histogram the data points.
+        If :obj:`None` (the default), the histogram will be computed along
+        all the axes of `a`.
+    min
+        The lower boundary of the histogram.
+        If :obj:`None` (the default), the minimum of `a` is used.
+    max
+        The upper boundary of the histogram.
+        If :obj:`None` (the default), the maximum of `a` is used.
+    density
+        If :obj:`False` (the default), returns the number of samples in each bin.
+        If :obj:`True`, returns the probability density in each bin.
+    weights
+        An optional array weighting each sample.
+
+    Examples
+    --------
+
+    Construct a 2D histogram with constant bin width.
+
+    .. jupyter-execute::
+
+        import numpy as np
+        import matplotlib.pyplot as plt
+        import named_arrays as na
+
+        # Define the bin edges
+        bins = dict(x=6)
+
+        # Define random points to collect into a histogram
+        a = na.random.normal(0, 2, shape_random=dict(h=101))
+
+        # Compute the histogram
+        hist = na.histogram(a, bins=bins)
+
+        # Plot the resulting histogram
+        fig, ax = plt.subplots()
+        na.plt.stairs(hist.inputs, hist.outputs);
+    """
+    return _named_array_function(
+        func=histogram,
+        a=a,
+        axis=axis,
+        bins=bins,
+        min=min,
+        max=max,
+        density=density,
+        weights=weights,
+    )
+
+
 def histogram2d(
     x: na.AbstractScalarArray,
     y: na.AbstractScalarArray,
@@ -739,6 +816,7 @@ def histogram2d(
         The bin specification of the histogram:
          * If `bins` is a dictionary, the keys are interpreted as the axis names
            and the values are the number of bins along each axis.
+           This dictionary must have exactly two keys.
          * If `bins` is a 2D Cartesian vector, each component of the vector
            represents the bin edges in each dimension.
     axis
@@ -819,6 +897,61 @@ def histogram2d(
     )
 
 
+def histogramdd(
+    *sample: na.AbstractScalar,
+    bins: dict[str, int] | na.AbstractScalar| Sequence[na.AbstractScalar],
+    axis: None | str | Sequence[str] = None,
+    min: None | na.AbstractScalar | Sequence[na.AbstractScalar] = None,
+    max: None | na.AbstractScalar | Sequence[na.AbstractScalar] = None,
+    density: bool = False,
+    weights: None | na.AbstractScalar = None,
+) -> tuple[na.AbstractScalar, tuple[na.AbstractScalar, ...]]:
+    """
+    A thin wrapper around :func:`numpy.histogramdd` which adds an `axis` argument.
+
+    Parameters
+    ----------
+    sample
+        The data to be histrogrammed.
+        Note the difference in signature compared to :func:`numpy.histogramdd`,
+        each component must be a separate argument,
+        instead of a single argument containing a sequence of arrays.
+        This is done so that multiple dispatch works better for this function.
+    bins
+        The bin specification of the histogram:
+         * If `bins` is a dictionary, the keys are interpreted as the axis names
+           and the values are the number of bins along each axis.
+           This dictionary must have the same number of elements as `sample`.
+         * If `bins` is an array or a sequence of arrays, it describes the
+           monotonically-increasing bin edges along each dimension
+    axis
+        The logical axes along which to histogram the data points.
+        If :obj:`None` (the default), the histogram will be computed along
+        all the axes of `sample`.
+    min
+        The lower boundary of the histogram along each dimension.
+        If :obj:`None` (the default), the minimum of each element of `sample` is used.
+    max
+        The upper boundary of the histogram along each dimension.
+        If :obj:`None` (the default), the maximum of each elemennt of `sample` is used.
+    density
+        If :obj:`False` (the default), returns the number of samples in each bin.
+        If :obj:`True`, returns the probability density in each bin.
+    weights
+        An optional array weighting each sample.
+    """
+    return _named_array_function(
+        histogramdd,
+        *[na.as_named_array(s) for s in sample],
+        axis=axis,
+        bins=bins,
+        min=min,
+        max=max,
+        density=density,
+        weights=weights,
+    )
+
+
 def jacobian(
         function: Callable[[InputT], OutputT],
         x: InputT,
@@ -852,4 +985,152 @@ def jacobian(
         x=x,
         dx=dx,
         like=f_x,
+    )
+
+
+def despike(
+    array: ArrayT,
+    axis: tuple[str, str],
+    where: None | bool | na.AbstractArray = None,
+    inbkg: None | na.AbstractArray = None,
+    invar: None | float | ArrayT = None,
+    sigclip: float = 4.5,
+    sigfrac: float = 0.3,
+    objlim: float = 5.0,
+    gain: float = 1.0,
+    readnoise: float = 6.5,
+    satlevel: float = 65536.0,
+    niter: int = 4,
+    sepmed: bool = True,
+    cleantype: Literal["median", "medmask", "meanmask", "idw"] = "meanmask",
+    fsmode: Literal["median", "convolve"] = "median",
+    psfmodel: Literal["gauss", "gaussx", "gaussy", "moffat"] = "gauss",
+    psffwhm: float = 2.5,
+    psfsize: int = 7,
+    psfk: None | na.AbstractArray = None,
+    psfbeta: float = 4.765,
+    verbose: bool = False,
+) -> ArrayT:
+    """
+    A thin wrapper around :func:`astroscrappy.detect_cosmics`
+    :cite:t:`vanDokkum2001`, which removes cosmic ray spikes from a series of
+    images.
+
+    Parameters
+    ----------
+    array
+        Input data array that will be used for cosmic ray detection. This
+        should include the sky background (or a mean background level, added
+        back in after sky subtraction), so that noise can be estimated
+        correctly from the data values. This should be in units of "counts".
+    axis
+        The two axes defining the logical axes of each image.
+    where
+        A boolean array of which pixels to consider during the cleaning
+        process. The inverse of `inmask` used in
+        :func:`astroscrappy.detect_cosmics`.
+    inbkg
+        A pre-determined background image, to be subtracted from `array`
+        before running the main detection algorithm.
+        This is used primarily with spectroscopic data, to remove
+        sky lines and the cross-section of an object continuum during
+        iteration, "protecting" them from spurious rejection (see the above
+        paper). This background is not removed from the final, cleaned output
+        (`cleanarr`). This should be in units of "counts", the same units of `array`.
+        This inbkg should be free from cosmic rays. When estimating the cosmic-ray
+        free noise of the image, we will treat ``inbkg`` as a constant Poisson
+        contribution to the variance.
+    invar
+        A pre-determined estimate of the data variance (ie. noise squared) in
+        each pixel, generated by previous processing of `array`. If provided,
+        this is used in place of an internal noise model based on `array`,
+        ``gain`` and ``readnoise``. This still gets median filtered and cleaned
+        internally, to estimate what the noise in each pixel *would* be in the
+        absence of cosmic rays. This should be in units of "counts" squared.
+    sigclip
+        Laplacian-to-noise limit for cosmic ray detection. Lower values will
+        flag more pixels as cosmic rays. Default: 4.5.
+    sigfrac
+        Fractional detection limit for neighboring pixels. For cosmic ray
+        neighbor pixels, a lapacian-to-noise detection limit of
+        sigfrac * sigclip will be used. Default: 0.3.
+    objlim
+        Minimum contrast between Laplacian image and the fine structure image.
+        Increase this value if cores of bright stars are flagged as cosmic
+        rays. Default: 5.0.
+    gain
+        Gain of the image (electrons / ADU). We always need to work in
+        electrons for cosmic ray detection. Default: 1.0
+    readnoise
+        Read noise of the image (electrons). Used to generate the noise model
+        of the image. Default: 6.5.
+    satlevel
+        Saturation of level of the image (electrons). This value is used to
+        detect saturated stars and pixels at or above this level are added to
+        the mask. Default: 65536.0.
+    niter
+        Number of iterations of the LA Cosmic algorithm to perform. Default: 4.
+    sepmed
+        Use the separable median filter instead of the full median filter.
+        The separable median is not identical to the full median filter, but
+        they are approximately the same and the separable median filter is
+        significantly faster and still detects cosmic rays well. Default: True
+    cleantype
+        Set which clean algorithm is used:\n
+        'median': An umasked 5x5 median filter\n
+        'medmask': A masked 5x5 median filter\n
+        'meanmask': A masked 5x5 mean filter\n
+        'idw': A masked 5x5 inverse distance weighted interpolation\n
+        Default: "meanmask".
+    fsmode
+        Method to build the fine structure image:\n
+        'median': Use the median filter in the standard LA Cosmic algorithm
+        'convolve': Convolve the image with the psf kernel to calculate the
+        fine structure image using a matched filter technique.
+        Default: 'median'.
+    psfmodel
+        Model to use to generate the psf kernel if fsmode == 'convolve' and
+        psfk is None. The current choices are Gaussian and Moffat profiles.
+        'gauss' and 'moffat' produce circular PSF kernels. The 'gaussx' and
+        'gaussy' produce Gaussian kernels in the x and y directions
+        respectively. Default: "gauss".
+    psffwhm
+        Full Width Half Maximum of the PSF to use to generate the kernel.
+        Default: 2.5.
+    psfsize
+        Size of the kernel to calculate. Returned kernel will have size
+        psfsize x psfsize. psfsize should be odd. Default: 7.
+    psfk
+        PSF kernel array to use for the fine structure image if
+        fsmode == 'convolve'. If None and fsmode == 'convolve', we calculate
+        the psf kernel using 'psfmodel'. Default: None.
+    psfbeta
+        Moffat beta parameter. Only used if fsmode=='convolve' and
+        psfmodel=='moffat'. Default: 4.765.
+    verbose
+        Print to the screen or not. Default: False.
+    """
+    return na._named_array_function(
+        despike,
+        array=array,
+        axis=axis,
+        where=where,
+        inbkg=inbkg,
+        invar=invar,
+        sigclip=sigclip,
+        sigfrac=sigfrac,
+        objlim=objlim,
+        gain=gain,
+        readnoise=readnoise,
+        satlevel=satlevel,
+        niter=niter,
+        sepmed=sepmed,
+        cleantype=cleantype,
+        fsmode=fsmode,
+        psfmodel=psfmodel,
+        psffwhm=psffwhm,
+        psfsize=psfsize,
+        psfk=psfk,
+        psfbeta=psfbeta,
+        verbose=verbose,
     )

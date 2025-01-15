@@ -261,7 +261,7 @@ class AbstractMatrixArray(
             if isinstance(component, na.AbstractMatrixArray):
                 component2 = component.cartesian_nd.components
                 for c2 in component2:
-                    components_new[f"{c}_{c2}"] = component2[c2]
+                    components_new[f"{c}.{c2}"] = component2[c2]
             elif isinstance(component, na.AbstractVectorArray):
                 components_new[c] = component.cartesian_nd
             else:
@@ -316,14 +316,13 @@ class AbstractMatrixArray(
 
         else:
             if isinstance(x2, na.AbstractMatrixArray):
-
-                x2 = x2.matrix_transpose
-                components_x2 = x2.cartesian_nd.components
-
                 if isinstance(x1, na.AbstractVectorArray):
+                    x2 = x2.matrix_transpose
+                    components_x2 = x2.cartesian_nd.components
                     component_dict = {c: x1.cartesian_nd @ components_x2[c] for c in components_x2}
-                    result = x1.type_explicit.from_cartesian_nd(na.CartesianNdVectorArray(component_dict), like=x1)
+                    result = x2.type_vector.from_cartesian_nd(na.CartesianNdVectorArray(component_dict), like=x2.column_prototype)
                 else:
+                    components_x2 = x2.cartesian_nd.components
                     component_dict = {c: x1 @ components_x2[c] for c in components_x2}
                     result = x2.type_explicit.from_cartesian_nd(na.CartesianNdMatrixArray(component_dict), like=x2)
 
@@ -366,7 +365,7 @@ class AbstractExplicitMatrixArray(
                 component = components[c]
                 if isinstance(component, na.AbstractVectorArray):
                     if isinstance(component, na.AbstractMatrixArray):
-                        nd_key_mod = f"{c}_"
+                        nd_key_mod = f"{c}."
                         sub_dict = {k[len(nd_key_mod):]: v for k, v in nd_components.items() if k.startswith(nd_key_mod)}
                         components_new[c] = component.type_explicit.from_cartesian_nd(
                              na.CartesianNdMatrixArray(sub_dict),

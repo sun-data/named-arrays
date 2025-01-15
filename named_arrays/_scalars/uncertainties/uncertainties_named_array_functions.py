@@ -1,4 +1,5 @@
-from typing import Callable, Sequence
+from typing import Callable, Sequence, Literal
+import collections
 import numpy as np
 import numpy.typing as npt
 import matplotlib.axes
@@ -18,8 +19,14 @@ __all__ = [
 ]
 
 ASARRAY_LIKE_FUNCTIONS = named_arrays._scalars.scalar_named_array_functions.ASARRAY_LIKE_FUNCTIONS
-RANDOM_FUNCTIONS = named_arrays._scalars.scalar_named_array_functions.RANDOM_FUNCTIONS
+RANDOM_FUNCTIONS = (
+    na.random.uniform,
+    na.random.normal,
+    na.random.poisson,
+    na.random.binomial,
+)
 PLT_PLOT_LIKE_FUNCTIONS = named_arrays._scalars.scalar_named_array_functions.PLT_PLOT_LIKE_FUNCTIONS
+NDFILTER_FUNCTIONS = named_arrays._scalars.scalar_named_array_functions.NDFILTER_FUNCTIONS
 HANDLED_FUNCTIONS = dict()
 
 
@@ -147,6 +154,37 @@ def interp(
     return result
 
 
+@_implements(na.histogram)
+def histogram(
+    a: na.AbstractScalar,
+    bins: dict[str, int] | na.AbstractScalar,
+    axis: None | str | Sequence[str] = None,
+    min: None | na.AbstractScalar = None,
+    max: None | na.AbstractScalar = None,
+    density: bool = False,
+    weights: None | na.AbstractScalar = None,
+) -> na.FunctionArray[na.AbstractScalar, na.AbstractScalar]:
+
+    if isinstance(bins, na.AbstractArray):
+        bins = (bins, )
+
+    hist, edges = na.histogramdd(
+        a,
+        bins=bins,
+        axis=axis,
+        min=min,
+        max=max,
+        density=density,
+        weights=weights,
+    )
+    edges = edges[0]
+
+    return na.FunctionArray(
+        inputs=edges,
+        outputs=hist,
+    )
+
+
 @_implements(na.histogram2d)
 def histogram2d(
     x: na.AbstractScalar,
@@ -258,6 +296,91 @@ def histogram2d(
     )
 
 
+@_implements(na.histogramdd)
+def histogramdd(
+    *sample: na.AbstractScalar,
+    bins: dict[str, int] | na.AbstractScalar | Sequence[na.AbstractScalar],
+    axis: None | str | Sequence[str] = None,
+    min: None | na.AbstractScalar | Sequence[na.AbstractScalar] = None,
+    max: None | na.AbstractScalar | Sequence[na.AbstractScalar] = None,
+    density: bool = False,
+    weights: None | na.AbstractScalar = None,
+) -> tuple[na.AbstractScalar, tuple[na.AbstractScalar, ...]]:
+
+    try:
+        sample = [uncertainties._normalize(s) for s in sample]
+        bins = [uncertainties._normalize(b) for b in bins] if not isinstance(bins, dict) else bins
+        weights = uncertainties._normalize(weights) if weights is not None else weights
+    except uncertainties.ScalarTypeError:  # pragma: nocover
+        return NotImplemented
+
+    shape = na.shape_broadcasted(*sample, weights)
+
+    if axis is None:
+        axis = tuple(shape)
+    elif isinstance(axis, str):
+        axis = (axis,)
+
+    shape_hist = {ax: shape[ax] for ax in axis}
+
+    shape_sample = na.shape_broadcasted(*sample)
+    shape_sample = na.broadcast_shapes(shape_sample, shape_hist)
+    sample = [s.broadcast_to(shape_sample) for s in sample]
+
+    if weights is not None:
+        shape_weights = na.shape(weights)
+        shape_weights = na.broadcast_shapes(shape_weights, shape_hist)
+        weights = weights.broadcast_to(shape_weights)
+
+    if min is None:
+        min = [s.min(axis) for s in sample]
+    elif not isinstance(min, collections.abc.Sequence):
+        min = [min] * len(sample)
+
+    if max is None:
+        max = [s.max(axis) for s in sample]
+    elif not isinstance(max, collections.abc.Sequence):
+        max = [max] * len(sample)
+
+    try:
+        max = [uncertainties._normalize(m) for m in max]
+        min = [uncertainties._normalize(m) for m in min]
+    except uncertainties.ScalarTypeError:  # pragma: nocover
+        return NotImplemented
+
+    hist_nominal, edges_nominal = na.histogramdd(
+        *[na.as_named_array(s.nominal) for s in sample],
+        bins=[b.nominal for b in bins] if not isinstance(bins, dict) else bins,
+        axis=axis,
+        min=[m.nominal for m in min],
+        max=[m.nominal for m in max],
+        density=density,
+        weights=weights.nominal if weights is not None else weights,
+    )
+
+    hist_distribution, edges_distribution = na.histogramdd(
+        *[na.as_named_array(s.distribution) for s in sample],
+        bins=[b.distribution for b in bins] if not isinstance(bins, dict) else bins,
+        axis=axis,
+        min=[m.distribution for m in min],
+        max=[m.distribution for m in max],
+        density=density,
+        weights=weights.distribution if weights is not None else weights,
+    )
+
+    hist = na.UncertainScalarArray(
+        nominal=hist_nominal,
+        distribution=hist_distribution,
+    )
+
+    edges = [
+        na.UncertainScalarArray(e_n, e_d)
+        for e_n, e_d in zip(edges_nominal, edges_distribution)
+    ]
+
+    return hist, edges
+
+
 def random(
         func: Callable,
         *args: float | u.Quantity | na.AbstractScalar,
@@ -311,14 +434,17 @@ def plt_plot_like(
     except na.UncertainScalarTypeError:
         return NotImplemented
 
-    shape = na.shape_broadcasted(*args)
+    shape_args = na.shape_broadcasted(*args)
+
+    shape = na.broadcast_shapes(na.shape(ax), shape_args)
 
     if axis is None:
-        if len(shape) != 1:
+        if len(shape_args) != 1:
             raise ValueError(
-                f"if `axis` is `None`, the broadcasted shape of `*args`, {shape}, should have one element"
+                f"if `axis` is `None`, the broadcasted shape of `*args`, "
+                f"{shape_args}, should have one element"
             )
-        axis = next(iter(shape))
+        axis = next(iter(shape_args))
 
     args = tuple(arg.broadcast_to(shape) for arg in args)
 
@@ -447,6 +573,116 @@ def plt_scatter(
     result = na.UncertainScalarArray(
         nominal=result_nominal,
         distribution=result_distribution,
+    )
+
+    return result
+
+
+@_implements(na.plt.stairs)
+def plt_stairs(
+        *args: na.AbstractScalar,
+        ax: None | matplotlib.axes.Axes = None,
+        axis: None | str = None,
+        where: bool | na.AbstractScalarArray = True,
+        **kwargs,
+) -> na.UncertainScalarArray[
+    npt.NDArray[matplotlib.artist.Artist],
+    npt.NDArray[matplotlib.artist.Artist]
+]:
+
+    if len(args) == 1:
+        edges = None
+        values, = args
+    elif len(args) == 2:
+        edges, values = args
+    else:   # pragma: nocover
+        raise ValueError(
+            f"incorrect number of arguments, expected 1 or 2, got {len(args)}"
+        )
+
+    try:
+        values = uncertainties._normalize(values)
+        edges = uncertainties._normalize(edges) if edges is not None else edges
+        where = uncertainties._normalize(where)
+        kwargs = {k: uncertainties._normalize(kwargs[k]) for k in kwargs}
+    except na.UncertainScalarTypeError:     # pragma: nocover
+        return NotImplemented
+
+    if axis is None:
+        if len(values.shape) != 1:
+            raise ValueError(
+                f"if {axis=}, {values.shape=} should have only one element."
+            )
+        axis = next(iter(values.shape))
+    else:
+        if axis not in values.shape:
+            raise ValueError(
+                f"{axis=} must be an element of {values.shape}"
+            )
+
+    shape_values = na.shape(values)
+    shape_edges = na.shape(edges)
+    shape_args = na.broadcast_shapes(
+        shape_values,
+        {a: shape_edges[a] for a in shape_edges if a != axis},
+    )
+
+    shape = na.broadcast_shapes(na.shape(ax), shape_args)
+
+    values = na.broadcast_to(values, shape)
+
+    if edges is not None:
+        edges = na.broadcast_to(
+            array=edges,
+            shape={a: shape[a] + 1 if a == axis else shape[a] for a in shape},
+        )
+
+    axis_distribution = values.axis_distribution
+    dshape_edges = na.shape(edges.distribution) if edges is not None else dict()
+    shape_distribution = na.broadcast_shapes(
+        na.shape(values.distribution),
+        {a: dshape_edges[a] for a in dshape_edges if a != axis},
+    )
+
+    if axis_distribution in shape_distribution:
+        num_distribution = shape_distribution[axis_distribution]
+    else:
+        num_distribution = 1
+
+    if num_distribution == 0:
+        alpha = 1
+    else:
+        alpha = max(1 / num_distribution, 1/255)
+    if "alpha" in kwargs:
+        kwargs["alpha"] *= alpha
+    else:
+        kwargs["alpha"] = na.UncertainScalarArray(1, alpha)
+
+    if "color" not in kwargs:
+        color_cycle = plt.rcParams['axes.prop_cycle'].by_key()['color']
+        shape_orthogonal = {a: shape[a] for a in shape if a != axis}
+        color = na.ScalarArray.empty(shape=shape_orthogonal, dtype=object)
+        for i, index in enumerate(color.ndindex()):
+            color[index] = color_cycle[i % len(color_cycle)]
+        kwargs["color"] = uncertainties._normalize(color)
+
+    result = na.UncertainScalarArray(
+        nominal=na.plt.stairs(
+            edges.nominal if edges is not None else edges,
+            values.nominal,
+            ax=ax,
+            axis=axis,
+            where=where.nominal,
+            **{k: kwargs[k].nominal for k in kwargs}
+        ),
+        distribution=na.plt.stairs(
+            edges.distribution if edges is not None else edges,
+            values.distribution,
+            ax=ax,
+            axis=axis,
+            where=where.distribution,
+            **{k: kwargs[k].distribution for k in kwargs}
+        )
     )
 
     return result
@@ -611,13 +847,14 @@ def _colorsynth_normalize(
     shape = spd.shape
 
     if axis is None:
-        if len(shape) != 1:
+        axes = tuple(set(na.shape(spd)) | set(na.shape(wavelength)))
+        if len(axes) != 1:
             raise ValueError(
-                f"If `axis` is `None`, the shape of `array` should have only"
-                f"one element, got {shape=}"
+                f"If `axis` is `None`, the other arguments must have zero "
+                f"or one axis, got {axes}."
             )
         else:
-            axis = next(iter(shape))
+            axis = axes[0]
 
     if wavelength is None:
         wavelength = na.linspace(0, 1, axis=axis, num=shape[axis])
@@ -796,11 +1033,12 @@ def colorsynth_colorbar(
     )
 
 
-@_implements(na.ndfilters.mean_filter)
-def mean_filter(
+def ndfilter(
+    func: Callable,
     array: na.AbstractScalar,
     size: dict[str, int],
     where: na.AbstractScalar,
+    **kwargs,
 ) -> na.UncertainScalarArray:
 
     try:
@@ -813,14 +1051,90 @@ def mean_filter(
     where = where.broadcasted
 
     return array.type_explicit(
-        nominal=na.ndfilters.mean_filter(
+        nominal=func(
             array=array.nominal,
             size=size,
             where=where.nominal,
+            **kwargs,
         ),
-        distribution=na.ndfilters.mean_filter(
+        distribution=func(
             array=array.distribution,
             size=size,
             where=where.distribution,
+            **kwargs,
         )
     )
+
+
+@_implements(na.despike)
+def despike(
+    array: na.AbstractScalar,
+    axis: tuple[str, str],
+    where: None | bool | na.AbstractScalar,
+    inbkg: None | na.AbstractScalar,
+    invar: None | float | na.AbstractScalar,
+    sigclip: float,
+    sigfrac: float,
+    objlim: float,
+    gain: float,
+    readnoise: float,
+    satlevel: float,
+    niter: int,
+    sepmed: bool,
+    cleantype: Literal["median", "medmask", "meanmask", "idw"],
+    fsmode: Literal["median", "convolve"],
+    psfmodel: Literal["gauss", "gaussx", "gaussy", "moffat"],
+    psffwhm: float,
+    psfsize: int,
+    psfk: None | na.AbstractScalar,
+    psfbeta: float,
+    verbose: bool,
+) -> na.ScalarArray:
+
+    try:
+        array = uncertainties._normalize(array)
+        where = uncertainties._normalize(where)
+        inbkg = uncertainties._normalize(inbkg)
+        invar = uncertainties._normalize(invar)
+        psfk = uncertainties._normalize(psfk)
+    except uncertainties.UncertainScalarTypeError:  # pragma: nocover
+        return NotImplemented
+
+    kwargs = dict(
+        axis=axis,
+        sigclip=sigclip,
+        sigfrac=sigfrac,
+        objlim=objlim,
+        gain=gain,
+        readnoise=readnoise,
+        satlevel=satlevel,
+        niter=niter,
+        sepmed=sepmed,
+        cleantype=cleantype,
+        fsmode=fsmode,
+        psfmodel=psfmodel,
+        psffwhm=psffwhm,
+        psfsize=psfsize,
+        psfbeta=psfbeta,
+        verbose=verbose,
+    )
+
+    result = array.copy_shallow()
+    result.nominal = na.despike(
+        array=array.nominal,
+        where=where.nominal,
+        inbkg=inbkg.nominal,
+        invar=invar.nominal,
+        psfk=psfk.nominal,
+        **kwargs,
+    )
+    result.distribution = na.despike(
+        array=array.distribution,
+        where=where.distribution,
+        inbkg=inbkg.distribution,
+        invar=invar.distribution,
+        psfk=psfk.distribution,
+        **kwargs,
+    )
+
+    return result

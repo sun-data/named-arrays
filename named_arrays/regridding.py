@@ -1,8 +1,13 @@
+"""
+Array resampling and interpolation.
+
+A wrapper around the :mod:`regridding` module for named arrays.
+"""
+
 from __future__ import annotations
-import named_arrays as na
-import numpy as np
 from typing import Sequence, Literal
-import regridding
+import astropy.units as u
+import named_arrays as na
 
 __all__ = [
     "regrid",
@@ -12,15 +17,101 @@ __all__ = [
 
 
 def regrid(
-        coordinates_input: na.AbstractArray,
-        coordinates_output: na.AbstractArray,
-        values_input: na.AbstractScalarArray,
-        values_output: None | na.AbstractScalarArray = None,
-        axis_input: None | Sequence[str] = None,
-        axis_output: None | Sequence[str] = None,
-        method: Literal['multilinear', 'conservative'] = 'multilinear',
+    coordinates_input: na.AbstractScalar | na.AbstractVectorArray,
+    coordinates_output: float | u.Quantity,
+    values_input: na.AbstractScalarArray,
+    axis_input: None | Sequence[str] = None,
+    axis_output: None | Sequence[str] = None,
+    method: Literal['multilinear', 'conservative'] = 'multilinear',
 ) -> na.AbstractScalarArray:
-    weights, shape_input, shape_output = na.regridding.weights(
+    """
+    Regrid an array of values defined on a logically-rectangular curvilinear
+    grid onto a new logically-rectangular curvilinear grid.
+
+    Parameters
+    ----------
+    coordinates_input
+        Coordinates of the input grid.
+    coordinates_output
+        Coordinates of the output grid.
+        Should have the same number of components as the input grid.
+    values_input
+        Input array of values to be resampled.
+    axis_input
+        Logical axes of the input grid to resample.
+        If :obj:`None`, resample all the axes of the input grid.
+        The number of axes should be equal to the number of
+        coordinates in the input grid.
+    axis_output
+        Logical axes of the output grid corresponding to the resampled axes
+        of the input grid.
+        If :obj:`None`, all the axes of the output grid correspond to resampled
+        axes in the input grid.
+        The number of axes should be equal to the number of
+        coordinates in the output grid.
+    method
+        The type of regridding to use.
+
+    Examples
+    --------
+
+    Regrid a 2D array using conservative resampling.
+
+    .. jupyter-execute::
+
+        import numpy as np
+        import matplotlib.pyplot as plt
+        import named_arrays as na
+
+        # Define the number of edges in the input grid
+        num_x = 66
+        num_y = 66
+
+        # Define a dummy linear grid
+        x = na.linspace(-5, 5, axis="x", num=num_x)
+        y = na.linspace(-5, 5, axis="y", num=num_y)
+
+        # Define the curvilinear input grid using the dummy grid
+        angle = 0.4
+        coordinates_input = na.Cartesian2dVectorArray(
+            x=x * np.cos(angle) - y * np.sin(angle) + 0.05 * x * x,
+            y=x * np.sin(angle) + y * np.cos(angle) + 0.05 * y * y,
+        )
+
+        # Define the test pattern
+        a_input = np.cos(np.square(x)) * np.cos(np.square(y))
+        a_input = a_input.cell_centers()
+
+        # Define a rectilinear output grid using the limits of the input grid
+        coordinates_output = na.Cartesian2dVectorLinearSpace(
+            start=coordinates_input.min(),
+            stop=coordinates_input.max(),
+            axis=na.Cartesian2dVectorArray("x2", "y2"),
+            num=66,
+        )
+
+        # Regrid the test pattern onto the new grid
+        a_output = na.regridding.regrid(
+            coordinates_input=coordinates_input,
+            coordinates_output=coordinates_output,
+            values_input=a_input,
+            method="conservative",
+        )
+
+        fig, ax = plt.subplots(
+            ncols=2,
+            sharex=True,
+            sharey=True,
+            figsize=(8, 4),
+            constrained_layout=True,
+        );
+        na.plt.pcolormesh(coordinates_input, C=a_input, ax=ax[0])
+        na.plt.pcolormesh(coordinates_output, C=a_output, ax=ax[1])
+        ax[0].set_title("input array");
+        ax[1].set_title("regridded array");
+    """
+
+    _weights, shape_input, shape_output = weights(
         coordinates_input=coordinates_input,
         coordinates_output=coordinates_output,
         axis_input=axis_input,
@@ -29,128 +120,99 @@ def regrid(
     )
 
     result = regrid_from_weights(
-        weights=weights,
+        weights=_weights,
         shape_input=shape_input,
         shape_output=shape_output,
         values_input=values_input,
-        values_output=values_output,
-        axis_input=axis_input,
-        axis_output=axis_output,
+        # values_output=values_output,
+        # axis_input=axis_input,
+        # axis_output=axis_output,
     )
 
     return result
 
 
 def weights(
-        coordinates_input: na.AbstractArray,
-        coordinates_output: na.AbstractArray,
-        axis_input: None | Sequence[str] = None,
-        axis_output: None | Sequence[str] = None,
-        method: Literal['multilinear', 'conservative'] = 'multilinear',
-) -> na.AbstractArray:
-    if axis_output is not None:
-        return NotImplementedError
+    coordinates_input: na.AbstractScalar | na.AbstractVectorArray,
+    coordinates_output: na.AbstractScalar | na.AbstractVectorArray,
+    axis_input: None | str | Sequence[str] = None,
+    axis_output: None | str | Sequence[str] = None,
+    method: Literal['multilinear', 'conservative'] = 'multilinear',
+) -> tuple[na.AbstractScalar, dict[str, int], dict[str, int]]:
+    """
+    Save the results of a regridding operation as a sequence of weights,
+    which can be used in subsequent regridding operations on the same grid.
 
-    if np.any(coordinates_output.cartesian_nd.components.keys == coordinates_input.cartesian_nd.components.keys):
-        return ValueError
+    The results of this function are designed to be used by
+    :func:`regrid_from_weights`
 
-    input_coordinates_broadcasted = coordinates_input.cartesian_nd.broadcasted
-    output_coordinates_broadcasted = coordinates_output.cartesian_nd.broadcasted
+    This function returns a tuple containing a ragged array of weights,
+    the shape of the input coordinates, and the shape of the output coordinates.
 
-    # broadcast input(old) coordinates against output(new) coordinates along missing axes
-    broadcasted_input_shape = input_coordinates_broadcasted.shape
-    for key in output_coordinates_broadcasted.shape:
-        if key not in input_coordinates_broadcasted.shape:
-            broadcasted_input_shape[key] = output_coordinates_broadcasted.shape[key]
+    Parameters
+    ----------
+    coordinates_input
+        Coordinates of the input grid.
+    coordinates_output
+        Coordinates of the output grid.
+        Should have the same number of coordinates as the input grid.
+    axis_input
+        Logical axes of the input grid to resample.
+        If :obj:`None`, resample all the axes of the input grid.
+        The number of axes should be equal to the number of
+        coordinates in the input grid.
+    axis_output
+        Logical axes of the output grid corresponding to the resampled axes
+        of the input grid.
+        If :obj:`None`, all the axes of the output grid correspond to resampled
+        axes in the input grid.
+        The number of axes should be equal to the number of
+        coordinates in the output grid.
+    method
+        The type of regridding to use.
 
-    input_coordinates_broadcasted = input_coordinates_broadcasted.broadcast_to(broadcasted_input_shape)
+    See Also
+    --------
+    :func:`regridding.weights`: An equivalent function for instances of :class:`numpy.ndarray`.
+    :func:`regrid_from_weights`: A function designed to use the outputs of this function.
+    :func:`regrid`: Resample an array without saving the weights
 
-    # broadcast output(new) coordinates against input(old) coordinates along missing axes
-    broadcasted_output_shape = output_coordinates_broadcasted.shape
-    for key in input_coordinates_broadcasted.shape:
-        if key not in output_coordinates_broadcasted.shape:
-            broadcasted_output_shape[key] = input_coordinates_broadcasted.shape[key]
-
-    output_coordinates_broadcasted = output_coordinates_broadcasted.broadcast_to(broadcasted_output_shape)
-
-    orthogonal_axes = [key for key in input_coordinates_broadcasted.shape if key not in axis_input]
-
-    coords_input = []
-    for c in input_coordinates_broadcasted.components:
-        component = input_coordinates_broadcasted.components[c]
-        coords_input.append(
-            component.broadcast_to(dict([(c, component.shape[c]) for c in broadcasted_output_shape])).ndarray
-        )
-
-    coords_output = []
-    for c in output_coordinates_broadcasted.components:
-        component = output_coordinates_broadcasted.components[c]
-        coords_output.append(
-            component.broadcast_to(dict([(c, component.shape[c]) for c in broadcasted_output_shape])).ndarray
-        )
-
-    interp_axes = tuple(list(broadcasted_output_shape.keys()).index(key) for key in axis_input)
-
-    if len(coords_input) == 1:
-        method = 'multilinear'
-    elif len(coords_input) == 2:
-        method = 'conservative'
-
-    weights, shape_input, shape_output = regridding.weights(
-        coordinates_input=tuple(coords_input),
-        coordinates_output=tuple(coords_output),
-        axis_input=interp_axes,
-        axis_output=interp_axes,
+    """
+    return na._named_array_function(
+        func=weights,
+        coordinates_input=coordinates_input,
+        coordinates_output=coordinates_output,
+        axis_input=axis_input,
+        axis_output=axis_output,
         method=method,
     )
 
-    shape_input = dict([(key, shape) for key, shape in zip(broadcasted_output_shape.keys(), shape_input)])
-    shape_output = dict([(key, shape) for key, shape in zip(broadcasted_output_shape.keys(), shape_output)])
-    weights = na.ScalarArray(np.array(weights), axes=orthogonal_axes)
-
-    return weights, shape_input, shape_output
-
 
 def regrid_from_weights(
-        weights: np.AbstractScalarArray,
-        shape_input: na.AbstractArray,
-        shape_output: na.AbstractArray,
-        values_input: na.AbstractScalarArray,
-        values_output: None | na.AbstractScalarArray = None,
-        axis_input: None | Sequence[str] = None,
-        axis_output: None | Sequence[str] = None,
-):
-    if axis_output is None:
-        axis_output = axis_input
+    weights: na.AbstractScalar,
+    shape_input: dict[str, int],
+    shape_output: dict[str, int],
+    values_input: na.AbstractScalar,
+) -> na.AbstractScalar:
+    """
+    Regrid an array of values using weights computed by
+    :func:`weights`.
 
-    values_input_broadcasted_shape = na.broadcast_shapes(values_input.shape, shape_input)
-    values_input = values_input.broadcast_to(values_input_broadcasted_shape)
-    shape_input = values_input_broadcasted_shape
-
-    shape_orthogonal = {}
-    for key in shape_input:
-        if key not in axis_input:
-            shape_orthogonal[key] = shape_input[key]
-        else:
-            shape_orthogonal[key] = 1
-
-    weights = weights.broadcast_to(shape_orthogonal)
-
-    shape_output = shape_output | {k: shape_input[k] for k in shape_input if k not in shape_output}
-
-    values_input_ndarray = values_input.ndarray
-    interp_axes_input = tuple(list(shape_input).index(key) for key in axis_input)
-
-    values_output_ndarray = regridding.regrid_from_weights(
-        weights=weights.ndarray,
-        shape_input=tuple([shape_input[key] for key in shape_input]),
-        shape_output=tuple([shape_output[key] for key in shape_input]),
-        # every ndarray should be in the axes order of shape_input
-        values_input=values_input_ndarray,
-        # values_output=values_output,
-        axis_input=interp_axes_input,
-        axis_output=interp_axes_input,
+    Parameters
+    ----------
+    weights
+        Ragged array of weights computed by :func:`weights`.
+    shape_input
+        Broadcasted shape of the input coordinates computed by :func:`weights`.
+    shape_output
+        Broadcasted shape of the output coordinates computed by :func:`weights`.
+    values_input
+        Input array of values to be resampled.
+    """
+    return na._named_array_function(
+        func=regrid_from_weights,
+        weights=weights,
+        shape_input=shape_input,
+        shape_output=shape_output,
+        values_input=values_input,
     )
-    values_output = na.ScalarArray(values_output_ndarray, axes=values_input.shape.keys())
-
-    return values_output

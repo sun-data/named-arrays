@@ -127,6 +127,12 @@ class AbstractScalar(
         if result is not NotImplemented:
             return result
 
+        if out is None:
+            if np.all(x1 == 0) or np.all(x2 == 0):
+                unit_1 = na.unit(x1, unit_dimensionless=1)
+                unit_2 = na.unit(x2, unit_dimensionless=1)
+                return 0 * unit_1 * unit_2
+
         return np.multiply(
             x1,
             x2,
@@ -298,6 +304,23 @@ class AbstractScalarArray(
         return ScalarArray(
             ndarray=np.moveaxis(self.ndarray, source=source, destination=destination).reshape(tuple(shape_new.values())),
             axes=tuple(axes_new),
+        )
+
+    def to_string_array(
+            self,
+            format_value: str = "%.2f",
+            format_unit: str = "latex_inline",
+            pad_unit: str = r"$\,$"
+    ):
+        a = format_value
+
+        unit = self.unit
+        if unit is not None:
+            a = f"{a}{pad_unit}{unit:{format_unit}}"
+
+        return np.char.mod(
+            a=a,
+            values=self.value,
         )
 
     def _getitem(
@@ -562,6 +585,18 @@ class AbstractScalarArray(
         if func in scalar_named_array_functions.PLT_PLOT_LIKE_FUNCTIONS:
             return scalar_named_array_functions.plt_plot_like(func, *args, **kwargs)
 
+        if func in scalar_named_array_functions.PLT_AXES_SETTERS:
+            return scalar_named_array_functions.plt_axes_setter(func, *args, **kwargs)
+
+        if func in scalar_named_array_functions.PLT_AXES_GETTERS:
+            return scalar_named_array_functions.plt_axes_getter(func, *args, **kwargs)
+
+        if func in scalar_named_array_functions.PLT_AXES_ATTRIBUTES:
+            return scalar_named_array_functions.plt_axes_attribute(func, *args, **kwargs)
+
+        if func in scalar_named_array_functions.NDFILTER_FUNCTIONS:
+            return scalar_named_array_functions.ndfilter(func, *args, **kwargs)
+
         if func in scalar_named_array_functions.HANDLED_FUNCTIONS:
             return scalar_named_array_functions.HANDLED_FUNCTIONS[func](*args, **kwargs)
 
@@ -752,8 +787,11 @@ class ScalarArray(
             self.axes = tuple()
         if isinstance(self.axes, str):
             self.axes = (self.axes, )
-        if getattr(self.ndarray, 'ndim', 0) != len(self.axes):
-            raise ValueError('The number of axis names must match the number of dimensions.')
+        if getattr(self.ndarray, 'ndim', 0) != len(self.axes):  # pragma: nocover
+            raise ValueError(
+                f'The number of axis names, {self.axes}, '
+                f'must match the number of dimensions, {np.ndim(self.ndarray)}.'
+            )
         if len(self.axes) != len(set(self.axes)):
             raise ValueError(f'Each axis name must be unique, got {self.axes}.')
 
