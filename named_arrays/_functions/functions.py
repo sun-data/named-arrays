@@ -1,6 +1,6 @@
 from __future__ import annotations
 import functools
-from typing import TypeVar, Generic, Type, ClassVar, Sequence, Callable, Collection, Any
+from typing import TypeVar, Generic, Type, ClassVar, Sequence, Callable, Collection, Any, Literal
 from typing_extensions import Self
 import abc
 import dataclasses
@@ -70,8 +70,8 @@ class AbstractFunctionArray(
                             axes_center += (axis,)
                         elif input_shape[axis] != output_shape[axis] + 1:
                             raise ValueError(
-                                "Output axis dimension must either match Input axis dimension (representing"
-                                " bin centers, or exceed by one (representing bin vertices)."
+                                f"Output {axis=} dimension, {output_shape[axis]=}, must either match input axis dimension  {input_shape[axis]=}, (representing"
+                                " bin centers) or exceed by one (representing bin vertices)."
                             )
                 else:
                     axes_center += (axis,)
@@ -117,9 +117,10 @@ class AbstractFunctionArray(
             if key in self.axes_vertex:
                 broadcasted_shape_inputs[key] = self.inputs.shape[key]
 
-        return FunctionArray(self.inputs.broadcast_to(broadcasted_shape_inputs),
-                             self.outputs.broadcast_to(broadcasted_shape_outputs)
-                             )
+        return FunctionArray(
+            self.inputs.broadcast_to(broadcasted_shape_inputs),
+            self.outputs.broadcast_to(broadcasted_shape_outputs)
+       )
 
     def astype(
             self,
@@ -175,18 +176,23 @@ class AbstractFunctionArray(
             axis_new: str = None,
     ) -> FunctionArray:
 
-        axes = tuple(self.shape) if axes is None else axes
+        axes = self.axes if axes is None else axes
 
         for axis in axes:
             if axis in self.axes_vertex:
-                raise ValueError('Axis "{}" describes input vertices and cannot be used in combine_axes.'.format(axis))
+                raise ValueError(f"Axis {axis} describes input vertices and cannot be used in combine_axes.")
 
         return self.type_explicit(
             inputs=self.broadcasted.inputs.combine_axes(axes=axes, axis_new=axis_new),
             outputs=self.broadcasted.outputs.combine_axes(axes=axes, axis_new=axis_new),
         )
 
-    def __call__(self, new_inputs: na.AbstractArray, interp_axes: tuple[str] = None) -> AbstractFunctionArray:
+    def __call__(
+            self,
+            new_inputs: na.AbstractArray,
+            interp_axes: tuple[str] = None,
+            method: Literal['multilinear', 'conservative'] = 'multilinear',
+    ) -> AbstractFunctionArray:
 
         new_input_components = new_inputs.cartesian_nd.components
         old_input_components = self.inputs.cartesian_nd.components
@@ -211,8 +217,11 @@ class AbstractFunctionArray(
 
                 else:
                     # check if uninterpolated physical axes vary along interpolation axes
-                    if np.any([axis in interp_axes for axis in old_input_components[c].axes]):
-                        raise ValueError('Omitted physical axis in old input depends on logical axis in new input')
+                    if not set(interp_axes).isdisjoint(old_input_components[c].axes):
+                        raise ValueError(
+                            f"If a component is marked separable using `None`, its shape, {old_input_components[c].axes},"
+                            f"should be disjoint from the interpolated axes, {interp_axes}.",
+                        )
 
 
         else:
@@ -226,7 +235,7 @@ class AbstractFunctionArray(
             coordinates_output=coordinates_new,
             values_input=self.outputs,
             axis_input=interp_axes,
-            # method='multilinear'
+            method=method,
         )
 
         final_coordinates_dict = {}
@@ -274,7 +283,7 @@ class AbstractFunctionArray(
 
     def _getitem(
             self,
-            item: dict[str, int | slice | na.AbstractArray] | na.AbstractFunctionArray,
+            item: dict[str, int | slice | na.AbstractArray] | na.AbstractArray | na.AbstractFunctionArray,
     ) -> FunctionArray:
 
         array = self.explicit
@@ -282,13 +291,14 @@ class AbstractFunctionArray(
         outputs = array.outputs
 
         shape = array.shape
-        shape_inputs = inputs.shape
-        shape_outputs = outputs.shape
 
         if isinstance(item, na.AbstractArray):
             if isinstance(item, na.AbstractFunctionArray):
-                if np.any(item.inputs != self.inputs):
-                    raise ValueError("boolean advanced index does not have the same inputs as the array")
+                if not np.all(item.inputs == array.inputs):
+                    raise ValueError("item inputs do not match function inputs.")
+
+                axes = set(inputs.axes) - set(array.axes_center)
+                inputs = inputs.cell_centers(axis=axes)
                 item_inputs = item.outputs
                 item_outputs = item.outputs
             else:
@@ -298,6 +308,9 @@ class AbstractFunctionArray(
             shape_item_outputs = item_outputs.shape
 
         elif isinstance(item, dict):
+
+            if not set(item).issubset(array.axes):
+                raise ValueError(f"item contains axes {set(item) - set(array.axes)} that does not exsit in {set(array.axes)}")
 
             item_inputs = dict()
             item_outputs = dict()
@@ -309,9 +322,9 @@ class AbstractFunctionArray(
                 else:
                     if ax in self.axes_center:
                         #can't assume center ax is in both outputs and inputs
-                        if ax in shape_inputs:
+                        if ax in inputs.shape:
                             item_inputs[ax] = item_ax
-                        if ax in shape_outputs:
+                        if ax in outputs.shape:
                             item_outputs[ax] = item_ax
                     if ax in self.axes_vertex:
                         if isinstance(item_ax, int):
@@ -319,18 +332,21 @@ class AbstractFunctionArray(
                             item_inputs[ax] = slice(item_ax, item_ax + 2)
                         elif isinstance(item_ax, slice):
                             item_outputs[ax] = item_ax
-                            item_inputs[ax] = slice(item_ax.start, item_ax.stop + 1)
+                            if item_ax.start is None and item_ax.stop is None:
+                                item_inputs[ax] = item_ax
+                            else:
+                                item_inputs[ax] = slice(item_ax.start, item_ax.stop + 1)
                         else:
                             return NotImplemented
 
-            shape_item_inputs = {ax: shape_inputs[ax] for ax in item_inputs if ax in shape}
-            shape_item_outputs = {ax: shape_outputs[ax] for ax in item_outputs if ax in shape}
+            shape_item_inputs = {ax: inputs.shape[ax] for ax in item_inputs if ax in shape}
+            shape_item_outputs = {ax: outputs.shape[ax] for ax in item_outputs if ax in shape}
 
         else:
             return NotImplemented
 
-        inputs = na.broadcast_to(inputs, na.broadcast_shapes(shape_inputs, shape_item_inputs))
-        outputs = na.broadcast_to(outputs, na.broadcast_shapes(shape_outputs, shape_item_outputs))
+        inputs = na.broadcast_to(inputs, na.broadcast_shapes(inputs.shape, shape_item_inputs))
+        outputs = na.broadcast_to(outputs, na.broadcast_shapes(outputs.shape, shape_item_outputs))
 
         return self.type_explicit(
             inputs=inputs[item_inputs],
@@ -582,11 +598,8 @@ class AbstractFunctionArray(
             self,
             item: dict[str, na.AbstractArray],
     ) -> FunctionArray:
-        a = self.broadcasted
-        return a.type_explicit(
-            inputs=a.inputs[item],
-            outputs=a.outputs[item],
-        )
+        raise NotImplementedError
+
 
     def pcolormesh(
             self,
@@ -820,7 +833,7 @@ class FunctionArray(
     ):
 
         if isinstance(item, na.AbstractFunctionArray):
-            if np.any(item.inputs != self.inputs):
+            if not np.all(item.inputs == self.inputs):
                 raise ValueError("boolean advanced index does not have the same inputs as the array")
 
             item_inputs = item.outputs
@@ -847,6 +860,13 @@ class FunctionArray(
             if isinstance(value, na.AbstractFunctionArray):
                 value_inputs = value.inputs
                 value_outputs = value.outputs
+
+                # maybe this should only set to None vertex axes only
+                for ax in value_inputs.shape:
+                    if ax in self.axes_vertex:
+                        value_inputs = None
+
+
             else:
                 if value.shape:
                     raise ValueError(
@@ -861,8 +881,17 @@ class FunctionArray(
             value_inputs = None
             value_outputs = value
 
+
+
         if value_inputs is not None:
+            # must resolve to explicit input to support assignment
+            inputs = self.inputs.explicit
+            self.inputs = inputs
             self.inputs[item_inputs] = value_inputs
+
+        # must resolve to explicit output to support assignment
+        outputs = self.outputs.explicit
+        self.outputs = outputs
         self.outputs[item_outputs] = value_outputs
 
 
