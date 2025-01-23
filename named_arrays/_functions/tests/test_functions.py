@@ -77,6 +77,46 @@ class AbstractTestAbstractFunctionArray(
     named_arrays.tests.test_core.AbstractTestAbstractArray,
 ):
 
+    def test__call__(self, array: na.FunctionArray):
+
+        if len(array.axes_vertex) == 0:
+            #currently only testing/supporting 1-D interpolation for input centers
+            axes_interp = 'y'
+            method = 'multilinear'
+
+            if isinstance(array.outputs, na.AbstractUncertainScalarArray):
+                with pytest.raises(TypeError):
+                    assert np.allclose(array, array(array.inputs, method='multilinear', interp_axes=axes_interp))
+                return
+
+            assert np.allclose(array, array(array.inputs, method=method, interp_axes=axes_interp))
+        else:
+            interp_axes = ('x', 'y')
+            method = 'conservative'
+
+            if len(array.axes_vertex) == 1:
+                with pytest.raises(NotImplementedError, match="1D regridding not supported"):
+                    array(array.inputs, method=method)
+                return
+
+            if isinstance(array.outputs, na.AbstractUncertainScalarArray):
+                with pytest.raises(TypeError):
+                    array(array.inputs, method=method, interp_axes='y')
+                return
+
+            if len(array.axes_vertex) == 2:
+                array_1 = array(array.inputs + 1E-10, interp_axes=interp_axes, method=method)
+                assert np.allclose(array_1, array.explicit)
+
+            else:
+                with pytest.raises(NotImplementedError):
+                    array(array.inputs, method=method)
+                return
+
+
+
+
+
     def test_inputs(self, array: na.AbstractFunctionArray):
         assert isinstance(array.inputs, na.AbstractArray)
 
@@ -403,7 +443,6 @@ class AbstractTestAbstractFunctionArray(
         ):
 
             if axis in array.axes_vertex:
-                print('test')
                 with pytest.raises(ValueError, match=f"Array cannot be repeated along vertex axis {axis}."):
                     result = np.repeat(
                         a=array,
@@ -544,8 +583,6 @@ class AbstractTestAbstractFunctionArray(
                 out.inputs = 0 * out.inputs
                 result_out = func(array, axis=axis, out=out, keepdims=keepdims, **kwargs)
 
-                print(result.inputs)
-                print(inputs_expected)
                 assert np.allclose(result.inputs, inputs_expected)
                 assert np.allclose(result.outputs, outputs_expected)
                 assert np.all(result == result_out)
@@ -782,12 +819,14 @@ class AbstractTestAbstractFunctionArray(
                 axis_rgb: None | str
             ):
 
-
-
                 if not isinstance(array.inputs, na.AbstractVectorArray):
                     return
 
                 components = list(array.inputs.components.keys())[:2]
+
+                #probably a smarter way to deal with plotting broadcasting during testing
+                if len(array.axes) > 2:
+                    array = array[dict(z=0)]
 
                 kwargs = dict(
                     C=array,
@@ -921,6 +960,11 @@ class AbstractTestAbstractPolynomialFunctionArray(
     AbstractTestAbstractFunctionArray,
 ):
 
+    # inherited test isn't applicable, and PolynomialFunctionArray.__call__ is tested by test_predictions
+    @pytest.mark.skip
+    def test__call__(self, array: na.FunctionArray):
+        pass
+
     def test_coefficients(self, array: na.AbstractPolynomialFunctionArray):
         assert isinstance(array.coefficients, na.AbstractVectorArray)
 
@@ -1027,5 +1071,6 @@ class TestPolynomialFitFunctionArray(
         AbstractTestAbstractFunctionArray.TestMatmul
     ):
         pass
+
 
 
