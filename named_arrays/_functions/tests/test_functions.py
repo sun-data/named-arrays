@@ -99,23 +99,9 @@ class AbstractTestAbstractFunctionArray(
                     array(array.inputs, method=method)
                 return
 
-            if isinstance(array.outputs, na.AbstractUncertainScalarArray):
-                with pytest.raises(TypeError):
-                    array(array.inputs, method=method, interp_axes='y')
-                return
-
             if len(array.axes_vertex) == 2:
                 array_1 = array(array.inputs + 1E-10, interp_axes=interp_axes, method=method)
                 assert np.allclose(array_1, array.explicit)
-
-            else:
-                with pytest.raises(NotImplementedError):
-                    array(array.inputs, method=method)
-                return
-
-
-
-
 
     def test_inputs(self, array: na.AbstractFunctionArray):
         assert isinstance(array.inputs, na.AbstractArray)
@@ -211,7 +197,6 @@ class AbstractTestAbstractFunctionArray(
                 array[item]
             return
 
-
         if isinstance(item, na.AbstractArray):
             item = item.explicit
             if isinstance(item, na.AbstractFunctionArray):
@@ -244,13 +229,12 @@ class AbstractTestAbstractFunctionArray(
                             item_inputs[ax] = slice(item_ax, item_ax + 2)
                         elif isinstance(item_ax, slice):
                             item_outputs[ax] = item_ax
-                            item_inputs[ax] = slice(item_ax.start, item_ax.stop + 1)
-                        else:
-                            return NotImplemented
+                            if item_ax.stop is not None:
+                                item_inputs[ax] = slice(item_ax.start, item_ax.stop + 1)
+                            else:
+                                item_inputs[ax] = slice(item_ax.start, None)
 
         result = array[item]
-
-
 
         assert np.all(result.inputs == array.inputs[item_inputs])
         assert np.all(result.outputs == array.outputs[item_outputs])

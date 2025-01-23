@@ -114,7 +114,8 @@ class AbstractFunctionArray(
         broadcasted_shape_outputs = self.shape
         broadcasted_shape_inputs = self.shape
         for key in broadcasted_shape_outputs:
-            if key in self.axes_vertex:
+            axes_vertex = self.axes_vertex
+            if key in axes_vertex:
                 broadcasted_shape_inputs[key] = self.inputs.shape[key]
 
         return FunctionArray(
@@ -245,7 +246,7 @@ class AbstractFunctionArray(
 
                 else:
                     # check if uninterpolated physical axes vary along interpolation axes
-                    if not set(interp_axes).isdisjoint(old_input_components[c].axes):
+                    if not set(interp_axes).isdisjoint(old_input_components[c].axes):  # pragma: no cover
                         raise ValueError(
                             f"If a component is marked separable using `None`, its shape, {old_input_components[c].axes},"
                             f"should be disjoint from the interpolated axes, {interp_axes}.",
@@ -253,7 +254,7 @@ class AbstractFunctionArray(
 
 
         else:
-            raise ValueError('Physical axes of new and old inputs must match.')
+            raise ValueError('Physical axes of new and old inputs must match.') # pragma: no cover
 
         if isinstance(new_inputs, na.AbstractVectorArray):
             coordinates_new = na.CartesianNdVectorArray.from_components(coordinates_new)
@@ -278,7 +279,7 @@ class AbstractFunctionArray(
         if isinstance(new_inputs, na.AbstractVectorArray) and isinstance(old_input, na.AbstractVectorArray):
 
             for c in self.inputs.cartesian_nd.components:
-                if new_inputs.cartesian_nd.components[c] is None:
+                if new_inputs.cartesian_nd.components[c] is None: # pragma: no cover
                     final_coordinates_dict[c] = self.inputs.cartesian_nd.components[c]
                 else:
                     final_coordinates_dict[c] = new_inputs.cartesian_nd.components[c]
@@ -351,8 +352,8 @@ class AbstractFunctionArray(
 
         elif isinstance(item, dict):
 
-            if not set(item).issubset(array.axes):
-                raise ValueError(f"item contains axes {set(item) - set(array.axes)} that does not exsit in {set(array.axes)}")
+            if not set(item).issubset(array.axes): # pragma: no cover
+                raise ValueError(f"item contains axes {set(item) - set(array.axes)} that does not exist in {set(array.axes)}")
 
             item_inputs = dict()
             item_outputs = dict()
@@ -362,13 +363,15 @@ class AbstractFunctionArray(
                     item_inputs[ax] = item_ax.inputs
                     item_outputs[ax] = item_ax.outputs
                 else:
-                    if ax in self.axes_center:
+                    axes_center = self.axes_center
+                    if ax in axes_center:
                         #can't assume center ax is in both outputs and inputs
                         if ax in inputs.shape:
                             item_inputs[ax] = item_ax
                         if ax in outputs.shape:
                             item_outputs[ax] = item_ax
-                    if ax in self.axes_vertex:
+                    axes_vertex = self.axes_vertex
+                    if ax in axes_vertex:
                         if isinstance(item_ax, int):
                             item_outputs[ax] = slice(item_ax, item_ax + 1)
                             item_inputs[ax] = slice(item_ax, item_ax + 2)
@@ -377,7 +380,12 @@ class AbstractFunctionArray(
                             if item_ax.start is None and item_ax.stop is None:
                                 item_inputs[ax] = item_ax
                             else:
-                                item_inputs[ax] = slice(item_ax.start, item_ax.stop + 1)
+                                if item_ax.stop is not None:
+                                    item_inputs[ax] = slice(item_ax.start, item_ax.stop + 1)
+                                else:
+                                    item_inputs[ax] = slice(item_ax.start, None)
+
+
                         else:
                             return NotImplemented
 
@@ -832,24 +840,47 @@ class FunctionArray(
     def axes(self) -> tuple[str, ...]:
         return tuple(self.inputs.shape | self.outputs.shape)
 
+    # @property
+    # def shape(self) -> dict[str, int]:
+    #     outputs_shape = self.outputs.shape
+    #     inputs_shape = self.inputs.shape
+    #
+    #     axes_vertex = self.axes_vertex
+    #     axes_center = self.axes_center
+    #
+    #     shape = {}
+    #     for axis in self.axes:
+    #         if axis in axes_vertex:
+    #             shape[axis] = outputs_shape[axis]
+    #         for axis in axes_center:
+    #             if axis in inputs_shape:
+    #                 if axis in outputs_shape:
+    #                     shape[axis] = max([outputs_shape[axis], inputs_shape[axis]])
+    #                 else:
+    #                     shape[axis] = inputs_shape[axis]
+    #             elif axis in outputs_shape:
+    #                 shape[axis] = outputs_shape[axis]
+    #
+    #     return shape
+
     @property
     def shape(self) -> dict[str, int]:
+
+        axes_center = self.axes_center
+        axes_vertex = self.axes_vertex
+
         outputs_shape = self.outputs.shape
         inputs_shape = self.inputs.shape
 
-        shape = {}
-        for axis in self.axes:
-            if axis in self.axes_vertex:
-                shape[axis] = outputs_shape[axis]
+        outputs_shape_center = {ax: outputs_shape[ax] for ax in outputs_shape if ax in axes_center}
+        inputs_shape_center = {ax: inputs_shape[ax] for ax in inputs_shape if ax in axes_center}
+        outputs_shape_vertex = {ax: outputs_shape[ax] for ax in outputs_shape if ax in axes_vertex}
 
-            for axis in self.axes_center:
-                if axis in inputs_shape:
-                    if axis in outputs_shape:
-                        shape[axis] = max([outputs_shape[axis], inputs_shape[axis]])
-                    else:
-                        shape[axis] = inputs_shape[axis]
-                elif axis in outputs_shape:
-                    shape[axis] = outputs_shape[axis]
+        shape = na.broadcast_shapes(
+            outputs_shape_center,
+            outputs_shape_vertex,
+            inputs_shape_center,
+        )
 
         return shape
 
@@ -905,9 +936,9 @@ class FunctionArray(
 
                 # maybe this should only set to None vertex axes only
                 for ax in value_inputs.shape:
-                    if ax in self.axes_vertex:
+                    axes_vertex = self.axes_vertex
+                    if ax in axes_vertex:
                         value_inputs = None
-
 
             else:
                 if value.shape:
