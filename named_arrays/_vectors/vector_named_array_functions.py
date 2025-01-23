@@ -774,6 +774,9 @@ def regridding_regrid_from_weights(
             values_input=components[c],
         )
 
-    return values_input.type_explicit.from_cartesian_nd(na.CartesianNdVectorArray(new_values_inputs), like=values_input.explicit)
+    return values_input.type_explicit.from_cartesian_nd(
+        na.CartesianNdVectorArray(new_values_inputs),
+        like=values_input.explicit
+    )
 
 
