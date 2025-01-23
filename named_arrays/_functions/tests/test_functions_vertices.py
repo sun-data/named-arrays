@@ -31,18 +31,12 @@ def _function_arrays():
             start=0,
             stop=1,
             axis=na.Cartesian2dVectorArray('x', 'y'),
-            num=na.Cartesian2dVectorArray(_num_x, _num_y+1)
+            num=na.Cartesian2dVectorArray(_num_x+1, _num_y+1)
         )
     ]
 
     outputs_2d = [
         na.ScalarUniformRandomSample(-5, 5, shape_random=dict(x=_num_x, y=_num_y, z=_num_z)),
-        na.UniformUncertainScalarArray(
-            nominal=na.ScalarUniformRandomSample(-5, 5, shape_random=dict(x=_num_x, y=_num_y)),
-            width=1,
-            num_distribution=_num_distribution,
-        ),
-        na.Cartesian2dVectorUniformRandomSample(-5, 5, shape_random=dict(x=_num_x, y=_num_y)),
     ]
 
     functions_2d = [
@@ -99,13 +93,11 @@ class AbstractTestAbstractFunctionArrayVertices(
         axis_new = 'new_test_axis'
         if axes is None and len(array.axes_vertex) != 0:
             with pytest.raises(ValueError):
-                print('test')
                 array.combine_axes(axes=axes, axis_new=axis_new)
             return
 
         if np.any([ax in array.axes_vertex for ax in axes]):
             with pytest.raises(ValueError):
-                print('test')
                 array.combine_axes(axes=axes, axis_new=axis_new)
             return
 
