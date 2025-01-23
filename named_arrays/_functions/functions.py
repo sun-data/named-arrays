@@ -178,13 +178,32 @@ class AbstractFunctionArray(
 
         axes = self.axes if axes is None else axes
 
+        if not set(axes).issubset(set(self.axes)):
+            raise ValueError(f"Axes {set(axes) - set(self.axes)} not in {self.axes}")
+
         for axis in axes:
             if axis in self.axes_vertex:
                 raise ValueError(f"Axis {axis} describes input vertices and cannot be used in combine_axes.")
 
+        inputs = self.inputs
+        outputs = self.outputs
+        inputs_shape_broadcasted = inputs.shape
+        outputs_shape_broadcasted = outputs.shape
+
+        print(axes)
+        print(self.shape)
+        for axis in axes:
+            if axis not in inputs_shape_broadcasted:
+                inputs_shape_broadcasted[axis] = self.shape[axis]
+            if axis not in outputs_shape_broadcasted:
+                outputs_shape_broadcasted[axis] = self.shape[axis]
+
+        inputs = na.broadcast_to(inputs, inputs_shape_broadcasted)
+        outputs = na.broadcast_to(outputs, outputs_shape_broadcasted)
+
         return self.type_explicit(
-            inputs=self.broadcasted.inputs.combine_axes(axes=axes, axis_new=axis_new),
-            outputs=self.broadcasted.outputs.combine_axes(axes=axes, axis_new=axis_new),
+            inputs=inputs.combine_axes(axes=axes, axis_new=axis_new),
+            outputs=outputs.combine_axes(axes=axes, axis_new=axis_new),
         )
 
     def __call__(
