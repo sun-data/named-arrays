@@ -840,29 +840,6 @@ class FunctionArray(
     def axes(self) -> tuple[str, ...]:
         return tuple(self.inputs.shape | self.outputs.shape)
 
-    # @property
-    # def shape(self) -> dict[str, int]:
-    #     outputs_shape = self.outputs.shape
-    #     inputs_shape = self.inputs.shape
-    #
-    #     axes_vertex = self.axes_vertex
-    #     axes_center = self.axes_center
-    #
-    #     shape = {}
-    #     for axis in self.axes:
-    #         if axis in axes_vertex:
-    #             shape[axis] = outputs_shape[axis]
-    #         for axis in axes_center:
-    #             if axis in inputs_shape:
-    #                 if axis in outputs_shape:
-    #                     shape[axis] = max([outputs_shape[axis], inputs_shape[axis]])
-    #                 else:
-    #                     shape[axis] = inputs_shape[axis]
-    #             elif axis in outputs_shape:
-    #                 shape[axis] = outputs_shape[axis]
-    #
-    #     return shape
-
     @property
     def shape(self) -> dict[str, int]:
 
