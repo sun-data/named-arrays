@@ -112,16 +112,20 @@ class AbstractFunctionArray(
     def broadcasted(self) -> FunctionArray:
 
         broadcasted_shape_outputs = self.shape
-        broadcasted_shape_inputs = self.shape
+        broadcasted_shape_inputs = broadcasted_shape_outputs.copy()
+        
+        axes_vertex = self.axes_vertex
+        inputs = self.inputs
         for key in broadcasted_shape_outputs:
-            axes_vertex = self.axes_vertex
-            if key in axes_vertex:
-                broadcasted_shape_inputs[key] = self.inputs.shape[key]
+            axes_vertex = axes_vertex
+            if key in axes_vertex:  
+                broadcasted_shape_inputs[key] = inputs.shape[key]
 
-        return FunctionArray(
-            self.inputs.broadcast_to(broadcasted_shape_inputs),
-            self.outputs.broadcast_to(broadcasted_shape_outputs)
-       )
+        return dataclasses.replace(
+            self,
+            inputs=self.inputs.broadcast_to(broadcasted_shape_inputs),
+            outputs=self.outputs.broadcast_to(broadcasted_shape_outputs),
+        )
 
     def astype(
             self,
@@ -191,13 +195,12 @@ class AbstractFunctionArray(
         inputs_shape_broadcasted = inputs.shape
         outputs_shape_broadcasted = outputs.shape
 
-        print(axes)
-        print(self.shape)
+        shape = self.shape
         for axis in axes:
             if axis not in inputs_shape_broadcasted:
-                inputs_shape_broadcasted[axis] = self.shape[axis]
+                inputs_shape_broadcasted[axis] = shape[axis]
             if axis not in outputs_shape_broadcasted:
-                outputs_shape_broadcasted[axis] = self.shape[axis]
+                outputs_shape_broadcasted[axis] = shape[axis]
 
         inputs = na.broadcast_to(inputs, inputs_shape_broadcasted)
         outputs = na.broadcast_to(outputs, outputs_shape_broadcasted)
@@ -912,8 +915,9 @@ class FunctionArray(
                 value_outputs = value.outputs
 
                 # maybe this should only set to None vertex axes only
+                axes_vertex = self.axes_vertex
                 for ax in value_inputs.shape:
-                    axes_vertex = self.axes_vertex
+                    axes_vertex = axes_vertex
                     if ax in axes_vertex:
                         value_inputs = None
 
@@ -931,17 +935,9 @@ class FunctionArray(
             value_inputs = None
             value_outputs = value
 
-
-
         if value_inputs is not None:
-            # must resolve to explicit input to support assignment
-            inputs = self.inputs.explicit
-            self.inputs = inputs
             self.inputs[item_inputs] = value_inputs
 
-        # must resolve to explicit output to support assignment
-        outputs = self.outputs.explicit
-        self.outputs = outputs
         self.outputs[item_outputs] = value_outputs
 
 
