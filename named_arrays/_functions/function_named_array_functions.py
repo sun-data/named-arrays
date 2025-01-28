@@ -117,6 +117,14 @@ def histogram(
             "`weights` must be `None` for `AbstractFunctionArray`"
             f"inputs, got {type(weights)}."
         )
+
+    axis_normalized = tuple(a.shape) if axis is None else (axis,) if isinstance(axis, str) else axis
+    for ax in axis_normalized:
+        if ax in a.axes_vertex:
+            raise ValueError("Taking a histogram of a histogram doesn't work right now.")
+
+
+
     return na.histogram(
         a=a.inputs,
         bins=bins,
@@ -147,6 +155,9 @@ def pcolormesh(
             "if `C` is an instance of `na.AbstractFunctionArray`, "
             "`XY` must not be specified."
         )
+
+    if len(C.axes_vertex) == 1:
+        raise ValueError("Cannot plot single vertex axis with na.pcolormesh")
 
     return na.plt.pcolormesh(
         C.inputs,

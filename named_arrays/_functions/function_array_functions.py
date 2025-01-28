@@ -46,7 +46,7 @@ def array_function_default(
 
     if isinstance(where, na.AbstractArray):
         if isinstance(where, na.AbstractFunctionArray):
-            if np.any(where.inputs != inputs):
+            if not np.all(where.inputs == inputs):
                 raise na.InputValueError("`where.inputs` must match `a.inputs`")
             inputs_where = outputs_where = where.outputs
         elif isinstance(where, (na.AbstractScalar, na.AbstractVectorArray)):
@@ -62,7 +62,6 @@ def array_function_default(
         inputs_where = outputs_where = where
 
     shape = na.shape_broadcasted(a, where)
-    shape_inputs = na.shape_broadcasted(inputs, inputs_where)
     shape_outputs = na.shape_broadcasted(outputs, outputs_where)
 
     axis_normalized = tuple(shape) if axis is None else (axis,) if isinstance(axis, str) else axis
@@ -73,8 +72,6 @@ def array_function_default(
                 f"the `axis` argument must be `None` or a subset of the broadcasted shape of `a` and `where`, "
                 f"got {axis} for `axis`, but `{shape} for `shape`"
             )
-
-    shape_base = {ax: shape[ax] for ax in axis_normalized}
 
     kwargs = dict(
         keepdims=keepdims,
@@ -100,17 +97,19 @@ def array_function_default(
         else:
             inputs_result = inputs
     else:
+        inputs = inputs.cell_centers(axis=set(axis_normalized)-set(a.axes_center))
+        shape_inputs = na.shape_broadcasted(inputs, inputs_where)
         inputs_result = np.mean(
-            a=na.broadcast_to(inputs, na.broadcast_shapes(shape_inputs, shape_base)),
-            axis=axis_normalized,
+            a=na.broadcast_to(inputs, shape_inputs),
+            axis=[ax for ax in shape_inputs if ax in axis_normalized],
             out=inputs_out,
             keepdims=keepdims,
             where=inputs_where,
         )
 
     outputs_result = func(
-        a=na.broadcast_to(outputs, na.broadcast_shapes(shape_outputs, shape_base)),
-        axis=axis_normalized,
+        a=na.broadcast_to(outputs, shape_outputs),
+        axis=[ax for ax in shape_outputs if ax in axis_normalized],
         out=outputs_out,
         **kwargs,
     )
@@ -175,16 +174,16 @@ def array_function_percentile_like(
             inputs_result = inputs
     else:
         inputs_result = np.mean(
-            a=na.broadcast_to(inputs, na.broadcast_shapes(shape_inputs, shape_base)),
-            axis=axis_normalized,
+            a=na.broadcast_to(inputs, shape_inputs),
+            axis=[ax for ax in shape_inputs if ax in axis_normalized],
             out=inputs_out,
             keepdims=keepdims,
         )
 
     outputs_result = func(
-        a=na.broadcast_to(outputs, na.broadcast_shapes(shape_outputs, shape_base)),
+        a=na.broadcast_to(outputs, shape_outputs),
         q=q,
-        axis=axis_normalized,
+        axis=[ax for ax in shape_outputs if ax in axis_normalized],
         out=outputs_out,
         **kwargs,
     )
@@ -318,8 +317,12 @@ def broadcast_to(
         array: na.AbstractFunctionArray,
         shape: dict[str, int]
 ) -> na.FunctionArray:
+
+    axes_vertex = array.axes_vertex
+    shape_inputs = {ax: shape[ax]+1 if ax in axes_vertex else shape[ax] for ax in shape}
+
     return array.type_explicit(
-        inputs=na.broadcast_to(array.inputs, shape=shape),
+        inputs=na.broadcast_to(array.inputs, shape=shape_inputs),
         outputs=na.broadcast_to(array.outputs, shape=shape),
     )
 
@@ -329,17 +332,10 @@ def tranpose(
         a: na.AbstractFunctionArray,
         axes: None | Sequence[str] = None
 ) -> na.FunctionArray:
-
-    a = a.explicit
+    a = a.broadcasted
     shape = a.shape
-
     axes_normalized = tuple(reversed(shape) if axes is None else axes)
-    #
-    # if not set(axes_normalized).issubset(shape):
-    #     raise ValueError(f"`axes` {axes} not a subset of `a.axes`, {a.axes}")
 
-    shape_inputs = a.inputs.shape
-    shape_outputs = a.outputs.shape
 
     return a.type_explicit(
         inputs=np.transpose(
@@ -400,7 +396,10 @@ def reshape(
         newshape: dict[str, int],
 ) -> na.FunctionArray:
 
-    a = np.broadcast_to(a, a.shape)
+    a = a.broadcasted
+    for ax in newshape:
+        if ax in a.axes_vertex or (ax not in a.axes and len(a.axes_vertex) != 0):
+            raise ValueError(f"Cannot reshape along axes vertex {a.axes_vertex}.")
 
     return a.type_explicit(
         inputs=np.reshape(a.inputs, newshape=newshape),
@@ -481,6 +480,8 @@ def repeat(
     repeats: int | na.AbstractScalarArray,
     axis: str,
 ) -> na.FunctionArray:
+    if axis in a.axes_vertex:
+        raise ValueError(f"Array cannot be repeated along vertex axis {axis}.")
 
     a = a.broadcasted
 

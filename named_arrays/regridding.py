@@ -192,8 +192,8 @@ def regrid_from_weights(
     weights: na.AbstractScalar,
     shape_input: dict[str, int],
     shape_output: dict[str, int],
-    values_input: na.AbstractScalar,
-) -> na.AbstractScalar:
+    values_input: na.AbstractScalar | na.AbstractVectorArray,
+) -> na.AbstractArray:
     """
     Regrid an array of values using weights computed by
     :func:`weights`.

@@ -755,3 +755,28 @@ def regridding_weights(
     shape_output = dict(zip(shape_output, _shape_output))
 
     return result, shape_input, shape_output
+
+@_implements(na.regridding.regrid_from_weights)
+def regridding_regrid_from_weights(
+    weights: na.AbstractScalarArray,
+    shape_input: dict[str, int],
+    shape_output: dict[str, int],
+    values_input: na.AbstractVectorArray,
+) -> na.AbstractVectorArray:
+
+    components = values_input.cartesian_nd.components
+    new_values_inputs = {}
+    for c in components:
+        new_values_inputs[c] = na.regridding.regrid_from_weights(
+            weights=weights,
+            shape_input=shape_input,
+            shape_output=shape_output,
+            values_input=components[c],
+        )
+
+    return values_input.type_explicit.from_cartesian_nd(
+        na.CartesianNdVectorArray(new_values_inputs),
+        like=values_input.explicit
+    )
+
+

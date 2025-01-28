@@ -22,7 +22,6 @@ def _function_arrays():
             outputs=na.ScalarUniformRandomSample(-5, 5, shape_random=dict(y=_num_y))
         )
     ]
-
     inputs_2d = [
         na.ScalarLinearSpace(0, 1, axis='y', num=_num_y),
         na.Cartesian2dVectorLinearSpace(
@@ -78,6 +77,32 @@ class AbstractTestAbstractFunctionArray(
     named_arrays.tests.test_core.AbstractTestAbstractArray,
 ):
 
+    def test__call__(self, array: na.FunctionArray):
+
+        if len(array.axes_vertex) == 0:
+            #currently only testing/supporting 1-D interpolation for input centers
+            axes_interp = 'y'
+            method = 'multilinear'
+
+            if isinstance(array.outputs, na.AbstractUncertainScalarArray):
+                with pytest.raises(TypeError):
+                    assert np.allclose(array, array(array.inputs, method='multilinear', interp_axes=axes_interp))
+                return
+
+            assert np.allclose(array, array(array.inputs, method=method, interp_axes=axes_interp))
+        else:
+            interp_axes = ('x', 'y')
+            method = 'conservative'
+
+            if len(array.axes_vertex) == 1:
+                with pytest.raises(NotImplementedError, match="1D regridding not supported"):
+                    array(array.inputs, method=method)
+                return
+
+            if len(array.axes_vertex) == 2:
+                array_1 = array(array.inputs + 1E-10, interp_axes=interp_axes, method=method)
+                assert np.allclose(array_1, array.explicit)
+
     def test_inputs(self, array: na.AbstractFunctionArray):
         assert isinstance(array.inputs, na.AbstractArray)
 
@@ -119,6 +144,13 @@ class AbstractTestAbstractFunctionArray(
         assert np.all(result.outputs.length == array.outputs.length)
         assert np.all(result.inputs == array.inputs)
 
+    def test_interp_linear_identity(
+            self,
+            array: na.AbstractArray,
+    ):
+
+        with pytest.raises(NotImplementedError):
+            array.interp_linear(array.indices)
     @pytest.mark.parametrize(
         argnames='item',
         argvalues=[
@@ -150,6 +182,9 @@ class AbstractTestAbstractFunctionArray(
             )
         ],
     )
+
+
+
     def test__getitem__(
             self,
             array: na.AbstractFunctionArray,
@@ -163,8 +198,9 @@ class AbstractTestAbstractFunctionArray(
             return
 
         if isinstance(item, na.AbstractArray):
+            item = item.explicit
             if isinstance(item, na.AbstractFunctionArray):
-                if np.any(item.inputs != array.inputs):
+                if not np.all(item.inputs == array.inputs):
                     with pytest.raises(ValueError):
                         array[item]
                     return
@@ -173,14 +209,30 @@ class AbstractTestAbstractFunctionArray(
                 item_outputs = item_inputs = item
 
         elif isinstance(item, dict):
-            item_inputs = {
-                ax: item[ax].inputs if isinstance(item[ax], na.AbstractFunctionArray) else item[ax]
-                for ax in item
-            }
-            item_outputs = {
-                ax: item[ax].outputs if isinstance(item[ax], na.AbstractFunctionArray) else item[ax]
-                for ax in item
-            }
+            item_inputs = dict()
+            item_outputs = dict()
+            for ax in item:
+                item_ax = item[ax]
+                if isinstance(item_ax, na.AbstractFunctionArray):
+                    item_inputs[ax] = item_ax.inputs
+                    item_outputs[ax] = item_ax.outputs
+                else:
+                    if ax in array.axes_center:
+                        #can't assume center ax is in both outputs and inputs
+                        if ax in array.inputs.shape:
+                            item_inputs[ax] = item_ax
+                        if ax in array.outputs.shape:
+                            item_outputs[ax] = item_ax
+                    if ax in array.axes_vertex:
+                        if isinstance(item_ax, int):
+                            item_outputs[ax] = slice(item_ax, item_ax + 1)
+                            item_inputs[ax] = slice(item_ax, item_ax + 2)
+                        elif isinstance(item_ax, slice):
+                            item_outputs[ax] = item_ax
+                            if item_ax.stop is not None:
+                                item_inputs[ax] = slice(item_ax.start, item_ax.stop + 1)
+                            else:
+                                item_inputs[ax] = slice(item_ax.start, None)
 
         result = array[item]
 
@@ -259,7 +311,6 @@ class AbstractTestAbstractFunctionArray(
                 assert np.all(result[i] == result_out[i])
                 assert result_out[i] is out[i]
 
-    @pytest.mark.parametrize("array_2", _function_arrays_2())
     class TestUfuncBinary(
         named_arrays.tests.test_core.AbstractTestAbstractArray.TestUfuncBinary
     ):
@@ -315,7 +366,7 @@ class AbstractTestAbstractFunctionArray(
                 assert np.all(result[i] == result_out[i])
                 assert result_out[i] is out[i]
 
-    @pytest.mark.parametrize("array_2", _function_arrays_2())
+
     class TestMatmul(
         named_arrays.tests.test_core.AbstractTestAbstractArray.TestMatmul
     ):
@@ -354,6 +405,37 @@ class AbstractTestAbstractFunctionArray(
     class TestArrayFunctions(
         named_arrays.tests.test_core.AbstractTestAbstractArray.TestArrayFunctions
     ):
+
+        @pytest.mark.parametrize(
+            argnames="repeats",
+            argvalues=[
+                2,
+                na.random.poisson(2, shape_random=dict(y=_num_y))
+            ]
+        )
+        @pytest.mark.parametrize(
+            argnames="axis",
+            argvalues=[
+                "y",
+            ]
+        )
+        def test_repeat(
+                self,
+                array: na.AbstractFunctionArray,
+                repeats: int | na.AbstractScalarArray,
+                axis: str,
+        ):
+
+            if axis in array.axes_vertex:
+                with pytest.raises(ValueError, match=f"Array cannot be repeated along vertex axis {axis}."):
+                    result = np.repeat(
+                        a=array,
+                        repeats=repeats,
+                        axis=axis,
+                    )
+                return
+            super().test_repeat(array, repeats, axis)
+
         @pytest.mark.parametrize("array_2", _function_arrays_2())
         class TestAsArrayLikeFunctions(
             named_arrays.tests.test_core.AbstractTestAbstractArray.TestArrayFunctions.TestAsArrayLikeFunctions
@@ -402,28 +484,27 @@ class AbstractTestAbstractFunctionArray(
         ):
             pass
 
-        @pytest.mark.parametrize(
-            argnames='where',
-            argvalues=[
-                np._NoValue,
-                True,
-                na.ScalarArray(True),
-                na.FunctionArray(
-                    inputs=na.Cartesian2dVectorLinearSpace(
-                        start=0,
-                        stop=1,
-                        axis=na.Cartesian2dVectorArray('x', 'y'),
-                        num=na.Cartesian2dVectorArray(_num_x, _num_y)
-                    ),
-                    outputs=(na.ScalarLinearSpace(-1, 1, 'x', _num_x) >= 0)
-                            | (na.ScalarLinearSpace(-1, 1, 'y', _num_y) >= 0)
-                )
-            ]
-        )
         class TestReductionFunctions(
             named_arrays.tests.test_core.AbstractTestAbstractArray.TestArrayFunctions.TestReductionFunctions
         ):
-
+            @pytest.mark.parametrize(
+                argnames='where',
+                argvalues=[
+                    np._NoValue,
+                    True,
+                    na.ScalarArray(True),
+                    na.FunctionArray(
+                        inputs=na.Cartesian2dVectorLinearSpace(
+                            start=0,
+                            stop=1,
+                            axis=na.Cartesian2dVectorArray('x', 'y'),
+                            num=na.Cartesian2dVectorArray(_num_x, _num_y)
+                        ),
+                        outputs=(na.ScalarLinearSpace(-1, 1, 'x', _num_x) >= 0)
+                                | (na.ScalarLinearSpace(-1, 1, 'y', _num_y) >= 0)
+                    )
+                ]
+            )
             def test_reduction_functions(
                     self,
                     func: Callable,
@@ -434,9 +515,12 @@ class AbstractTestAbstractFunctionArray(
                     where: bool | na.AbstractFunctionArray,
             ):
 
-                array_broadcasted = na.broadcast_to(array, na.shape_broadcasted(array, where))
+                shape = na.shape_broadcasted(array, where)
+                array_broadcasted = na.broadcast_to(array, shape)
 
                 where_normalized = where.outputs if isinstance(where, na.FunctionArray) else where
+
+                axis_normalized = tuple(shape) if axis is None else (axis,) if isinstance(axis, str) else axis
 
                 kwargs = dict()
                 kwargs_output = dict()
@@ -449,21 +533,26 @@ class AbstractTestAbstractFunctionArray(
                     kwargs_output["where"] = where_normalized
 
                 try:
-                    if isinstance(where, na.FunctionArray):
-                        if np.any(where.inputs != array.inputs):
-                            raise na.InputValueError
                     outputs_expected = func(
                         a=array_broadcasted.outputs,
-                        axis=axis,
+                        axis=axis_normalized,
                         keepdims=keepdims,
                         **kwargs_output,
                     )
+                    if isinstance(where, na.FunctionArray):
+                        if not np.all(where.inputs == array.inputs):
+                            raise na.InputValueError
+
                     if keepdims:
                         inputs_expected = array_broadcasted.inputs
                     else:
+                        inputs = array_broadcasted.inputs.cell_centers(
+                            axis=set(axis_normalized)-set(array_broadcasted.axes_center)
+                        )
+
                         inputs_expected = np.mean(
-                            a=array_broadcasted.inputs,
-                            axis=axis,
+                            a=inputs,
+                            axis=axis_normalized,
                             keepdims=keepdims,
                             where=where_normalized,
                         )
@@ -478,8 +567,8 @@ class AbstractTestAbstractFunctionArray(
                 out.inputs = 0 * out.inputs
                 result_out = func(array, axis=axis, out=out, keepdims=keepdims, **kwargs)
 
-                assert np.all(result.inputs == inputs_expected)
-                assert np.all(result.outputs == outputs_expected)
+                assert np.allclose(result.inputs, inputs_expected)
+                assert np.allclose(result.outputs, outputs_expected)
                 assert np.all(result == result_out)
                 assert result_out is out
 
@@ -682,6 +771,7 @@ class AbstractTestAbstractFunctionArray(
                         bins = dict(axis_x=11)
                 if isinstance(array.outputs, na.AbstractVectorArray):
                     return
+
                 super().test_histogram(
                     array=array,
                     bins=bins,
@@ -709,19 +799,29 @@ class AbstractTestAbstractFunctionArray(
             @pytest.mark.parametrize("axis_rgb", [None, "rgb"])
             def test_pcolormesh(
                 self,
-                array: na.AbstractScalarArray,
+                array: na.AbstractFunctionArray,
                 axis_rgb: None | str
             ):
+
                 if not isinstance(array.inputs, na.AbstractVectorArray):
                     return
 
                 components = list(array.inputs.components.keys())[:2]
+
+                #probably a smarter way to deal with plotting broadcasting during testing
+                if len(array.axes) > 2:
+                    array = array[dict(z=0)]
 
                 kwargs = dict(
                     C=array,
                     axis_rgb=axis_rgb,
                     components=components,
                 )
+
+                if len(array.axes_vertex) == 1:
+                    with pytest.raises(ValueError, match="Cannot plot single vertex axis with na.pcolormesh"):
+                        na.plt.pcolormesh(**kwargs)
+                    return
 
                 if isinstance(array.outputs, na.AbstractVectorArray):
                     with pytest.raises(TypeError):
@@ -815,6 +915,19 @@ class TestFunctionArray(
     ):
         super().test__setitem__(array=array.explicit, item=item, value=value)
 
+    @pytest.mark.parametrize("array_2", _function_arrays_2())
+    class TestUfuncBinary(
+        AbstractTestAbstractFunctionArray.TestUfuncBinary
+    ):
+        pass
+
+    @pytest.mark.parametrize("array_2", _function_arrays_2())
+    class TestMatmul(
+        AbstractTestAbstractFunctionArray.TestMatmul
+    ):
+        pass
+
+
 
 @pytest.mark.parametrize("type_array", [na.FunctionArray])
 class TestFunctionArrayCreation(
@@ -830,6 +943,11 @@ class TestFunctionArrayCreation(
 class AbstractTestAbstractPolynomialFunctionArray(
     AbstractTestAbstractFunctionArray,
 ):
+
+    # inherited test isn't applicable, and PolynomialFunctionArray.__call__ is tested by test_predictions
+    @pytest.mark.skip
+    def test__call__(self, array: na.FunctionArray):
+        pass
 
     def test_coefficients(self, array: na.AbstractPolynomialFunctionArray):
         assert isinstance(array.coefficients, na.AbstractVectorArray)
@@ -925,3 +1043,18 @@ class TestPolynomialFitFunctionArray(
             value: float | u.Quantity | na.AbstractScalar | na.AbstractVectorArray,
     ):
         super().test__setitem__(array=array.explicit, item=item, value=value)
+
+    @pytest.mark.parametrize("array_2", _function_arrays_2())
+    class TestUfuncBinary(
+        AbstractTestAbstractFunctionArray.TestUfuncBinary
+    ):
+        pass
+
+    @pytest.mark.parametrize("array_2", _function_arrays_2())
+    class TestMatmul(
+        AbstractTestAbstractFunctionArray.TestMatmul
+    ):
+        pass
+
+
+

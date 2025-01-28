@@ -13,7 +13,7 @@ spikes = 1000 * na.random.poisson(0.001, shape)
         img + 100 * spikes,
         img + na.NormalUncertainScalarArray(100, 5) * spikes,
         na.FunctionArray(
-            inputs=None,
+            inputs=na.ScalarUniformRandomSample(-5, 5, shape_random=shape),
             outputs=img + 100 * spikes,
         ),
     ],
