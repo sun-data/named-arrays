@@ -625,6 +625,56 @@ def random_binomial(
     )
 
 
+@_implements(na.random.gamma)
+def random_gamma(
+    shape: float | na.AbstractScalarArray,
+    scale: float | u.Quantity | na.AbstractScalarArray = 1,
+    shape_random: None | dict[str, int] = None,
+    seed: None | int = None,
+) -> na.ScalarArray:
+    alpha = shape
+    theta = scale
+
+    try:
+        alpha = scalars._normalize(alpha)
+        theta = scalars._normalize(theta)
+    except na.ScalarTypeError:
+        return NotImplemented
+
+    if shape_random is None:
+        shape_random = dict()
+
+    shape_base = na.shape_broadcasted(alpha, theta)
+    shape = na.broadcast_shapes(shape_base, shape_random)
+
+    alpha = alpha.ndarray_aligned(shape)
+    theta = theta.ndarray_aligned(shape)
+
+    unit = na.unit(theta)
+
+    if unit is not None:
+        theta = theta.value
+
+    if seed is None:
+        func = np.random.gamma
+    else:
+        func = np.random.default_rng(seed).gamma
+
+    value = func(
+        shape=alpha,
+        scale=theta,
+        size=tuple(shape.values()),
+    )
+
+    if unit is not None:
+        value = value << unit
+
+    return na.ScalarArray(
+        ndarray=value,
+        axes=tuple(shape.keys()),
+    )
+
+
 def plt_plot_like(
         func: Callable,
         *args: na.AbstractScalarArray,

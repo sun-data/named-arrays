@@ -10,6 +10,7 @@ __all__ = [
     "normal",
     "poisson",
     "binomial",
+    "gamma",
 ]
 
 
@@ -19,6 +20,8 @@ RandomCenterT = TypeVar("RandomCenterT", bound="float | complex | u.Quantity | n
 RandomWidthT = TypeVar("RandomWidthT", bound="float | complex | u.Quantity | na.AbstractArray")
 NumTrialsT = TypeVar("NumTrialsT", bound="int | na.AbstractArray")
 ProbabilityT = TypeVar("ProbabilityT", bound="float | na.AbstractArray")
+ShapeT = TypeVar("ShapeT", bound="float | na.AbstractArray")
+ScaleT = TypeVar("ScaleT", bound="float | u.Quantity | na.AbstractArray")
 
 
 def uniform(
@@ -161,6 +164,40 @@ def binomial(
         func=binomial,
         n=n,
         p=na.as_named_array(p),
+        shape_random=shape_random,
+        seed=seed,
+    )
+
+
+def gamma(
+    shape: ShapeT,
+    scale: ScaleT = 1,
+    shape_random: None | dict[str, int] = None,
+    seed: None | int = None,
+) -> ShapeT | ScaleT:
+    """
+    Draw samples from a gamma distribution.
+
+    Parameters
+    ----------
+    shape
+        The shape parameter of the distribution.
+    scale
+        The scale parameter of the distribution.
+    shape_random
+        Additional dimensions to be broadcast against `shape` and `scale`.
+    seed
+        Optional seed for the random number generator,
+        can be provided for repeatability.
+
+    See Also
+    --------
+    :func:`numpy.random.gamma` : Equivalent numpy function
+    """
+    return na._named_array_function(
+        func=gamma,
+        shape=na.as_named_array(shape),
+        scale=scale,
         shape_random=shape_random,
         seed=seed,
     )
