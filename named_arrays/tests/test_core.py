@@ -1202,6 +1202,12 @@ class AbstractTestAbstractArray(
     ):
         assert np.array_equal(array.var(), np.var(array))
 
+    def test_median(
+            self,
+            array: na.AbstractArray,
+    ):
+        assert np.array_equal(array.median(), np.median(array))
+
     def test_percentile(
             self,
             array: na.AbstractArray,

@@ -824,6 +824,12 @@ class AbstractArray(
     ) -> Self:
         return np.var(self, axis=axis, where=where)
 
+    def median(
+            self,
+            axis: None | str | Sequence[str] = None,
+    ):
+        return np.median(self, axis=axis)
+
     def percentile(
             self: Self,
             q: int | float | u.Quantity | Self,
