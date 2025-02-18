@@ -22,6 +22,7 @@ __all__ = [
     'stack',
     'concatenate',
     'add_axes',
+    "vmr",
     "interp",
     "histogram",
     "histogram2d",
@@ -37,6 +38,7 @@ NumT = TypeVar("NumT", bound="int | na.AbstractArray")
 BaseT = TypeVar("BaseT", bound="int | na.AbstractArray")
 InputT = TypeVar("InputT", bound="float | u.Quantity | na.AbstractScalarArray")
 OutputT = TypeVar("OutputT", bound="float | u.Quantity | na.AbstractScalarArray")
+WhereT = TypeVar("WhereT", bound="bool | na.AbstractScalarArray")
 
 
 def _is_subclass(a: Any, b: Any):
@@ -668,6 +670,52 @@ def add_axes(array: na.ArrayLike, axes: str | Sequence[str]):
     if not isinstance(array, na.AbstractArray):
         array = na.ScalarArray(array)
     return array.add_axes(axes)
+
+
+def vmr(
+    a: ArrayT,
+    axis: None | str | Sequence[str] = None,
+    dtype: None | str | Type | np.dtype = None,
+    out: None | na.AbstractExplicitArray = None,
+    keepdims: bool = False,
+    *,
+    where: bool | WhereT = True,
+) -> ArrayT | WhereT:
+    """
+    Compute the
+    `variance-to-mean ratio <https://en.wikipedia.org/wiki/Index_of_dispersion>`_
+    (also known as the `Fano factor <https://en.wikipedia.org/wiki/Fano_factor>`_)
+    of the given array.
+
+    Parameters
+    ----------
+    a
+        Input array
+    axis
+        The axis or axes along which to compute the VMR.
+        If :obj:`None` (the default), the VMR is computed along all the axes
+        of the array.
+    dtype
+        The data type of the output
+    out
+        An optional output array in which to store the results.
+    keepdims
+        If :obj:`True`, the resulting array will have the same dimensionality.
+    where
+        A boolean mask indicating which elements to consider when computing the
+        VMR.
+    """
+
+    kwargs = dict(
+        a=a,
+        axis=axis,
+        dtype=dtype,
+        out=out,
+        keepdims=keepdims,
+        where=where,
+    )
+
+    return np.var(**kwargs) / np.mean(**kwargs)
 
 
 def interp(

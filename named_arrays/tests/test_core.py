@@ -621,6 +621,7 @@ class AbstractTestAbstractArray(
                 np.nanvar,
                 np.median,
                 np.nanmedian,
+                na.vmr,
             ]
         )
         @pytest.mark.parametrize('dtype', [np._NoValue, float])
@@ -1251,6 +1252,12 @@ class AbstractTestAbstractArray(
             array: na.AbstractArray,
     ):
         assert np.array_equal(array.rms(), np.sqrt(np.mean(np.square(array))))
+
+    def test_vmr(
+            self,
+            array: na.AbstractArray,
+    ):
+        assert np.array_equal(array.vmr(), na.vmr(array))
 
     def test_transpose(
             self,

@@ -870,6 +870,13 @@ class AbstractArray(
     ) -> Self:
         return np.sqrt(np.mean(np.square(self), axis=axis, where=where))
 
+    def vmr(
+            self,
+            axis: None | str | Sequence[str] = None,
+            where: Self = np._NoValue,
+    ):
+        return na.vmr(self, axis=axis, where=where)
+
     def transpose(
             self: Self,
             axes: None | Sequence[str] = None,
