@@ -817,6 +817,13 @@ class AbstractArray(
     ) -> Self:
         return np.std(self, axis=axis, where=where)
 
+    def var(
+            self: Self,
+            axis: None | str | Sequence[str] = None,
+            where: Self = np._NoValue,
+    ) -> Self:
+        return np.var(self, axis=axis, where=where)
+
     def percentile(
             self: Self,
             q: int | float | u.Quantity | Self,

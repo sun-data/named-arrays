@@ -1196,6 +1196,12 @@ class AbstractTestAbstractArray(
     ):
         assert np.array_equal(array.std(), np.std(array))
 
+    def test_var(
+            self,
+            array: na.AbstractArray,
+    ):
+        assert np.array_equal(array.var(), np.var(array))
+
     def test_percentile(
             self,
             array: na.AbstractArray,
