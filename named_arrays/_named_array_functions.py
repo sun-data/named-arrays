@@ -710,12 +710,14 @@ def vmr(
         a=a,
         axis=axis,
         dtype=dtype,
-        out=out,
         keepdims=keepdims,
         where=where,
     )
 
-    return np.var(**kwargs) / np.mean(**kwargs)
+    result = np.var(out=out, **kwargs)
+    result = np.divide(result, np.mean(**kwargs), out=out)
+
+    return result
 
 
 def interp(
