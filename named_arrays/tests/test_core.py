@@ -1256,7 +1256,7 @@ class AbstractTestAbstractArray(
             self,
             array: na.AbstractArray,
     ):
-        assert np.array_equal(array.vmr(), na.vmr(array))
+        assert np.array_equal(array.vmr(), na.vmr(array), equal_nan=True)
 
     def test_transpose(
             self,
