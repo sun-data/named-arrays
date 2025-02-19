@@ -1252,6 +1252,12 @@ class AbstractTestAbstractArray(
     ):
         assert np.array_equal(array.rms(), np.sqrt(np.mean(np.square(array))))
 
+    def test_vmr(
+            self,
+            array: na.AbstractArray,
+    ):
+        assert np.array_equal(array.vmr(), na.vmr(array), equal_nan=True)
+
     def test_transpose(
             self,
             array: na.AbstractArray,
