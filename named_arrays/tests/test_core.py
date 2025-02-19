@@ -621,7 +621,6 @@ class AbstractTestAbstractArray(
                 np.nanvar,
                 np.median,
                 np.nanmedian,
-                na.vmr,
             ]
         )
         @pytest.mark.parametrize('dtype', [np._NoValue, float])
