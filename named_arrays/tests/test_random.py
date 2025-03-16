@@ -119,7 +119,15 @@ def test_gamma(
             stop=na.linspace(10, 11, axis="y", num=5),
             axis="x",
             num=11,
-        )
+        ),
+        na.NormalUncertainScalarArray(
+            nominal=na.arange(0, 11, axis="x"),
+            width=.1,
+        ),
+        na.Cartesian2dVectorArray(
+            x=na.arange(0, 11, axis="x"),
+            y=na.arange(0, 11, axis="x") << u.electron,
+        ),
     ]
 )
 @pytest.mark.parametrize(

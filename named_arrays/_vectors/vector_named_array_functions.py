@@ -28,6 +28,7 @@ RANDOM_FUNCTIONS = (
     na.random.poisson,
     na.random.binomial,
     na.random.gamma,
+    na.random.choice,
 )
 PLT_PLOT_LIKE_FUNCTIONS = named_arrays._scalars.scalar_named_array_functions.PLT_PLOT_LIKE_FUNCTIONS
 NDFILTER_FUNCTIONS = named_arrays._scalars.scalar_named_array_functions.NDFILTER_FUNCTIONS

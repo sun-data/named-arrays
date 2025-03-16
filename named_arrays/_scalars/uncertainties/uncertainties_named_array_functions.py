@@ -396,19 +396,74 @@ def random(
     except na.UncertainScalarTypeError:
         return NotImplemented
 
+    if seed is not None:
+        seed_nominal = seed
+        seed_distribution = seed + 1
+    else:
+        seed_nominal = seed_distribution = seed
+
     return na.UncertainScalarArray(
         nominal=func(
             *tuple(arg.nominal for arg in args),
             shape_random=shape_random,
-            seed=seed,
+            seed=seed_nominal,
             **{k: kwargs[k].nominal for k in kwargs},
         ),
         distribution=func(
             *tuple(arg.distribution for arg in args),
             shape_random=shape_random,
-            seed=seed,
+            seed=seed_distribution,
             **{k: kwargs[k].distribution for k in kwargs},
         )
+    )
+
+
+@_implements(na.random.choice)
+def random_choice(
+    a: na.AbstractScalarArray | na.AbstractUncertainScalarArray,
+    p: None | na.AbstractScalarArray | na.AbstractUncertainScalarArray = None,
+    axis: None | str | Sequence[str] = None,
+    replace: bool = True,
+    shape_random: None | dict[str, int] = None,
+    seed: None | int = None,
+) -> na.UncertainScalarArray:
+
+    try:
+        a = uncertainties._normalize(a)
+        p = uncertainties._normalize(p) if p is not None else p
+    except na.UncertainScalarTypeError:  # pragma: nocover
+        return NotImplemented
+
+    shape_ap = na.shape_broadcasted(a, p)
+    a = a.broadcast_to(shape_ap)
+    p = p.broadcast_to(shape_ap) if p is not None else p
+
+    if axis is None:
+        axis = tuple(shape_ap)
+
+    if seed is not None:
+        seed_nominal = seed
+        seed_distribution = seed + 1
+    else:
+        seed_nominal = seed_distribution = seed
+
+    return na.UncertainScalarArray(
+        nominal=na.random.choice(
+            a=a.nominal,
+            p=p.nominal if p is not None else p,
+            axis=axis,
+            replace=replace,
+            shape_random=shape_random,
+            seed=seed_nominal,
+        ),
+        distribution=na.random.choice(
+            a=a.distribution,
+            p=p.distribution if p is not None else p,
+            axis=axis,
+            replace=replace,
+            shape_random=shape_random,
+            seed=seed_distribution,
+        ),
     )
 
 
