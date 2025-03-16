@@ -688,7 +688,7 @@ def random_choice(
     try:
         a = scalars._normalize(a)
         p = scalars._normalize(p) if p is not None else p
-    except na.ScalarTypeError:
+    except na.ScalarTypeError:  # pragma: nocover
         return NotImplemented
 
     unit = na.unit(a)
