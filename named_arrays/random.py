@@ -11,6 +11,7 @@ __all__ = [
     "poisson",
     "binomial",
     "gamma",
+    "choice",
 ]
 
 
@@ -218,9 +219,7 @@ def choice(
     Parameters
     ----------
     a
-        If an array, a random sample is created from its elements.
-        If an ``int``, the random sample is generated as if it were
-        ``np.arange(a)``
+        An array of choices to randomly sample.
     p
         An optional list of probabilities for each element in `a`.
     axis
