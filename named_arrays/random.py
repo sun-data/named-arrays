@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TypeVar
+from typing import TypeVar, Sequence
 import astropy.units as u
 import named_arrays as na
 
@@ -11,6 +11,7 @@ __all__ = [
     "poisson",
     "binomial",
     "gamma",
+    "choice",
 ]
 
 
@@ -22,6 +23,7 @@ NumTrialsT = TypeVar("NumTrialsT", bound="int | na.AbstractArray")
 ProbabilityT = TypeVar("ProbabilityT", bound="float | na.AbstractArray")
 ShapeT = TypeVar("ShapeT", bound="float | na.AbstractArray")
 ScaleT = TypeVar("ScaleT", bound="float | u.Quantity | na.AbstractArray")
+ChoicesT = TypeVar("ChoicesT", bound="int | na.AbstractArray")
 
 
 def uniform(
@@ -198,6 +200,52 @@ def gamma(
         func=gamma,
         shape=na.as_named_array(shape),
         scale=scale,
+        shape_random=shape_random,
+        seed=seed,
+    )
+
+
+def choice(
+    a: ChoicesT,
+    p: ProbabilityT = None,
+    axis: None | str | Sequence[str] = None,
+    replace: bool = True,
+    shape_random: None | dict[str, int] = None,
+    seed: None | int = None,
+) -> ChoicesT | ProbabilityT:
+    """
+    Draw random samples from a given array of choices.
+
+    Parameters
+    ----------
+    a
+        An array of choices to randomly sample.
+    p
+        An optional list of probabilities for each element in `a`.
+    axis
+        The axes of `a` and `p` to flatten into a sequence of choices.
+        This is useful if the axes of `a` or `p` intersect with the axes of
+        `shape_random`.
+    replace
+        Whether the sample is drawn with or without replacement.
+        Default is :obj:`True`, meaning each value in `a` can be selected
+        multiple times.
+    shape_random
+        Additional dimensions to be broadcast against `a` and `p`.
+    seed
+        Optional seed for the random number generator,
+        can be provided for repeatability.
+
+    See Also
+    --------
+    :func:`numpy.random.choice` : Equivalent numpy function
+    """
+    return na._named_array_function(
+        func=choice,
+        a=a,
+        p=p,
+        axis=axis,
+        replace=replace,
         shape_random=shape_random,
         seed=seed,
     )

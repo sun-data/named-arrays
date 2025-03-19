@@ -675,6 +675,77 @@ def random_gamma(
     )
 
 
+@_implements(na.random.choice)
+def random_choice(
+    a: na.AbstractScalarArray,
+    p: None | na.AbstractScalarArray = None,
+    axis: None | str | Sequence[str] = None,
+    replace: bool = True,
+    shape_random: None | dict[str, int] = None,
+    seed: None | int = None,
+) -> na.ScalarArray:
+
+    try:
+        a = scalars._normalize(a)
+        p = scalars._normalize(p) if p is not None else p
+    except na.ScalarTypeError:  # pragma: nocover
+        return NotImplemented
+
+    unit = na.unit(a)
+    if unit is not None:
+        a = a.value
+
+    if shape_random is None:
+        shape_random = dict()
+
+    if seed is None:
+        func = np.random.choice
+    else:
+        func = np.random.default_rng(seed).choice
+
+    shape_ap = na.shape_broadcasted(a, p)
+    a = a.broadcast_to(shape_ap)
+    p = p.broadcast_to(shape_ap) if p is not None else p
+
+    if axis is None:
+        axis = tuple(shape_ap)
+    elif isinstance(axis, str):
+        axis = (axis, )
+
+    shape_ap_orthogonal = {ax: shape_ap[ax] for ax in shape_ap if ax not in axis}
+
+    shape_result = na.broadcast_shapes(shape_random, shape_ap_orthogonal)
+
+    result = na.ScalarArray.empty(shape_result)
+
+    shape_i = {ax: shape_random[ax] for ax in shape_random if ax not in shape_ap_orthogonal}
+
+    for i in na.ndindex(shape_ap, axis_ignored=axis):
+
+        if p is not None:
+            p_i = p[i].ndarray.reshape(-1)
+            p_i = p_i / p_i.sum()
+        else:
+            p_i = None
+
+        result_i = func(
+            a=a[i].ndarray.reshape(-1),
+            size=tuple(shape_i.values()),
+            replace=replace,
+            p=p_i,
+        )
+        result_i = na.ScalarArray(
+            ndarray=result_i,
+            axes=tuple(shape_i),
+        )
+        result[i] = result_i
+
+    if unit is not None:
+        result = result << unit
+
+    return result
+
+
 def plt_plot_like(
         func: Callable,
         *args: na.AbstractScalarArray,
