@@ -16,7 +16,7 @@ classifiers = [
 ]
 dependencies = [
     "typing_extensions",
-    "numpy<2",
+    "numpy>2.3",
     "numexpr",
     "matplotlib",
     "scipy",
