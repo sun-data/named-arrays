@@ -855,7 +855,7 @@ class AbstractTestAbstractArray(
         @pytest.mark.parametrize('newshape', [dict(r=-1)])
         def test_reshape(self, array: na.AbstractArray, newshape: dict[str, int]):
 
-            result = np.reshape(a=array, newshape=newshape)
+            result = np.reshape(array, newshape=newshape)
 
             assert result.size == array.size
             assert result.axes == tuple(newshape.keys())
