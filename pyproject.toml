@@ -22,8 +22,8 @@ dependencies = [
     "scipy",
     "astropy",
     "astroscrappy",
-    "ndfilters==0.3.1",
-    "colorsynth==0.1.5",
+    "ndfilters==0.3.2",
+    "colorsynth==0.1.6",
     "regridding==0.2.0",
     "xarray",
 ]
