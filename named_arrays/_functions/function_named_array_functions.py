@@ -102,6 +102,17 @@ def unit_normalized(
     )
 
 
+@_implements(na.nominal)
+def nominal(
+    a: na.AbstractFunctionArray,
+) -> na.FunctionArray:
+
+    return a.type_explicit(
+        inputs=na.nominal(a.inputs),
+        outputs=na.nominal(a.outputs),
+    )
+
+
 @_implements(na.histogram)
 def histogram(
     a: na.AbstractFunctionArray,

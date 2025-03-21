@@ -6,10 +6,10 @@ import abc
 import dataclasses
 import numpy as np
 import astropy.units as u
-
 import named_arrays as na
 
 __all__ = [
+    "nominal",
     'UncertainScalarStartT',
     'UncertainScalarStopT',
     'UncertainScalarTypeError',
@@ -28,6 +28,7 @@ __all__ = [
     'UncertainScalarGeometricSpace',
 ]
 
+AnyT = TypeVar("AnyT")
 NominalArrayT = TypeVar(
     'NominalArrayT',
     bound=None | float | complex | np.ndarray | u.Quantity | na.AbstractScalarArray,
@@ -63,6 +64,28 @@ def _normalize(a: float | u.Quantity | na.AbstractScalar):
         result = na.UncertainScalarArray(a, a)
 
     return result
+
+
+def nominal(
+    a: AnyT | na.UncertainScalarArray[NominalArrayT, DistributionArrayT],
+) -> AnyT | NominalArrayT:
+    """
+    Isolate the `nominal` attribute of an uncertain array.
+    If `a` is a nested object, such a vector, this function is recursively
+    applied to all the attributes of the nested object.
+
+    Parameters
+    ----------
+    a
+        An array to isolate the `nominal` attribute of.
+    """
+    try:
+        return na._named_array_function(
+            func=nominal,
+            a=a,
+        )
+    except TypeError:
+        return a
 
 
 @dataclasses.dataclass(eq=False, repr=False)
