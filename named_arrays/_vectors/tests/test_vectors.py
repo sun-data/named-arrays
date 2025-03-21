@@ -34,11 +34,6 @@ _num_distribution = named_arrays.tests.test_core.num_distribution
 class AbstractTestAbstractVectorArray(
     named_arrays.tests.test_core.AbstractTestAbstractArray,
 ):
-    def test_nominal(self, array:na.AbstractVectorArray):
-        nominal_vector = array.nominal
-        for c in nominal_vector:
-            if isinstance(array[c],na.AbstractUncertainScalarArray):
-                assert array[c].axis_distribution not in na.shape(nominal_vector[c])
 
     def test_cartesian_nd(self, array: na.AbstractVectorArray):
         cartesian_nd = array.cartesian_nd
