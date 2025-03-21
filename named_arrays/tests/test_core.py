@@ -1287,6 +1287,10 @@ class AbstractTestAbstractArray(
             result = na.strata(array)
             assert result.type_abstract == array.type_abstract
 
+        @abc.abstractmethod
+        def test_nominal(self, array: na.AbstractArray):
+            pass
+
         @pytest.mark.parametrize(
             argnames="slope",
             argvalues=[
