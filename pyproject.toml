@@ -16,14 +16,14 @@ classifiers = [
 ]
 dependencies = [
     "typing_extensions",
-    "numpy<2",
+    "numpy",
     "matplotlib",
     "scipy",
     "astropy",
     "astroscrappy",
-    "ndfilters==0.3.0",
-    "colorsynth==0.1.5",
-    "regridding==0.1.1",
+    "ndfilters==0.3.2",
+    "colorsynth==0.1.6",
+    "regridding==0.1.2",
 ]
 dynamic = ["version"]
 
