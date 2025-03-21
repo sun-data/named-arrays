@@ -145,7 +145,7 @@ class AbstractVectorArray(
         return self.type_explicit.from_components(dict.fromkeys(self.components, 0))
 
     @property
-    def nominal(self):
+    def nominal(self) -> na.AbstractExplicitVectorArray:
         components = self.components
         components = {c: components[c].nominal if isinstance(components[c], na.AbstractUncertainScalarArray) else components[c] for c in components}
         return self.type_explicit.from_components(components)
