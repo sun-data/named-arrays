@@ -1289,7 +1289,7 @@ class AbstractTestAbstractArray(
 
         @abc.abstractmethod
         def test_nominal(self, array: na.AbstractArray):
-            pass
+            pass  # pragma: nocover
 
         @pytest.mark.parametrize(
             argnames="slope",
