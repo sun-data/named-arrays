@@ -1042,6 +1042,10 @@ class AbstractTestAbstractScalarArray(
     class TestNamedArrayFunctions(
         AbstractTestAbstractScalar.TestNamedArrayFunctions
     ):
+        def test_nominal(self, array: na.AbstractScalarArray):
+            result = na.nominal(array)
+            assert np.all(result == array)
+
         class TestInterp(
             AbstractTestAbstractScalar.TestNamedArrayFunctions.TestInterp,
         ):

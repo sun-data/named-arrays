@@ -179,6 +179,20 @@ def unit_normalized(
     return a.type_explicit.from_components(components)
 
 
+@_implements(na.nominal)
+def nominal(
+    a: na.AbstractVectorArray,
+) -> na.AbstractVectorArray:
+
+    components = a.components
+
+    result = dict()
+    for c in components:
+        result[c] = na.nominal(components[c])
+
+    return a.type_explicit.from_components(result)
+
+
 @_implements(na.interp)
 def interp(
         x: float | u.Quantity | na.AbstractScalar,
