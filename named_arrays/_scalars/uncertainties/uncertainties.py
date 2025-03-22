@@ -101,6 +101,7 @@ def nominal(
     .. jupyter-execute::
 
         a = na.Cartesian2dVectorArray(x, 2)
+        a
 
     then we can also isolate the `nominal` attribute of every component of `a`
 
