@@ -78,6 +78,35 @@ def nominal(
     ----------
     a
         An array to isolate the `nominal` attribute of.
+
+    Examples
+    --------
+    If we define an uncertain scalar `x`,
+
+    .. jupyter-execute::
+
+        import named_arrays as na
+
+        x = na.UniformUncertainScalarArray(5, 4, num_distribution=5).explicit
+        x
+
+    then we can isolate the `nominal` attribute of `x` using this function
+
+    .. jupyter-execute::
+
+        na.nominal(x)
+
+    If we use this scalar to define a vector `a`,
+
+    .. jupyter-execute::
+
+        a = na.Cartesian2dVectorArray(x, 2)
+
+    then we can also isolate the `nominal` attribute of every component of `a`
+
+    .. jupyter-execute::
+
+        na.nominal(a)
     """
     try:
         return na._named_array_function(
