@@ -673,6 +673,11 @@ class AbstractTestAbstractUncertainScalarArray(
     class TestNamedArrayFunctions(
         named_arrays._scalars.tests.test_scalars.AbstractTestAbstractScalar.TestNamedArrayFunctions
     ):
+
+        def test_nominal(self, array: na.AbstractUncertainScalarArray):
+            result = na.nominal(array)
+            assert np.all(result == array.nominal)
+
         @pytest.mark.parametrize(
             argnames="array_2",
             argvalues=_uncertain_scalar_arrays_2(),

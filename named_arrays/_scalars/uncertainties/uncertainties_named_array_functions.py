@@ -39,6 +39,13 @@ def _implements(function: Callable):
     return decorator
 
 
+@_implements(na.nominal)
+def nominal(
+    a: na.AbstractUncertainScalarArray,
+) -> float | u.Quantity | na.AbstractScalarArray:
+    return a.nominal
+
+
 def asarray_like(
         func: Callable,
         a: None | float | u.Quantity | na.AbstractScalarArray | na.AbstractUncertainScalarArray,

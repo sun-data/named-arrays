@@ -34,6 +34,7 @@ _num_distribution = named_arrays.tests.test_core.num_distribution
 class AbstractTestAbstractVectorArray(
     named_arrays.tests.test_core.AbstractTestAbstractArray,
 ):
+
     def test_cartesian_nd(self, array: na.AbstractVectorArray):
         cartesian_nd = array.cartesian_nd
         assert isinstance(cartesian_nd, na.AbstractCartesianNdVectorArray)
@@ -518,6 +519,15 @@ class AbstractTestAbstractVectorArray(
     class TestNamedArrayFunctions(
         named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions
     ):
+
+        def test_nominal(self, array: na.AbstractVectorArray):
+            result = na.nominal(array)
+
+            components = array.components
+
+            for c in components:
+                assert np.all(result.components[c] == na.nominal(components[c]))
+
         @pytest.mark.skip
         class TestInterp(
             named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestInterp

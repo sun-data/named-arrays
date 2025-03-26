@@ -740,6 +740,13 @@ class AbstractTestAbstractFunctionArray(
     class TestNamedArrayFunctions(
         named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions
     ):
+
+        def test_nominal(self, array: na.AbstractFunctionArray):
+            result = na.nominal(array)
+
+            assert np.all(result.outputs == na.nominal(array.outputs))
+            assert np.all(result.inputs == na.nominal(array.inputs))
+
         @pytest.mark.skip
         class TestInterp(
             named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestInterp,
