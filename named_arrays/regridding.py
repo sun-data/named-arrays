@@ -23,6 +23,7 @@ def regrid(
     axis_input: None | Sequence[str] = None,
     axis_output: None | Sequence[str] = None,
     method: Literal['multilinear', 'conservative'] = 'multilinear',
+    saved_weights = None,
 ) -> na.AbstractScalarArray:
     """
     Regrid an array of values defined on a logically-rectangular curvilinear
@@ -110,14 +111,17 @@ def regrid(
         ax[0].set_title("input array");
         ax[1].set_title("regridded array");
     """
-
-    _weights, shape_input, shape_output = weights(
-        coordinates_input=coordinates_input,
-        coordinates_output=coordinates_output,
-        axis_input=axis_input,
-        axis_output=axis_output,
-        method=method
-    )
+    if saved_weights:
+        _weights = saved_weights
+    else:
+        _weights, shape_input, shape_output = weights(
+            coordinates_input=coordinates_input,
+            coordinates_output=coordinates_output,
+            axis_input=axis_input,
+            axis_output=axis_output,
+            method=method
+        )
+        saved_weights = _weights
 
     result = regrid_from_weights(
         weights=_weights,
