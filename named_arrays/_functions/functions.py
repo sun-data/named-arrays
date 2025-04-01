@@ -215,7 +215,7 @@ class AbstractFunctionArray(
             new_inputs: na.AbstractArray,
             interp_axes: tuple[str] = None,
             method: Literal['multilinear', 'conservative'] = 'multilinear',
-            saved_weights=None,
+            weights_output= [None, None, None],
     ) -> AbstractFunctionArray:
 
         old_input = self.inputs
@@ -276,7 +276,7 @@ class AbstractFunctionArray(
             values_input=self.explicit.outputs,
             axis_input=interp_axes,
             method=method,
-            saved_weights=saved_weights
+            weights_output=weights_output,
         )
 
         final_coordinates_dict = {}
