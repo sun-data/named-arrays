@@ -86,15 +86,16 @@ class AbstractTestAbstractFunctionArray(
 
             if isinstance(array.outputs, na.AbstractUncertainScalarArray):
                 with pytest.raises(TypeError):
-                    weights_output = [None, None, None]
+
                     assert np.allclose(array,
-                                       array(array.inputs, method='multilinear', interp_axes=axes_interp,
-                                             weights_output=weights_output)
-                                       )
-                    assert weights_output[0] is not None
+                                       array(array.inputs, method='multilinear', interp_axes=axes_interp))
                 return
 
-            assert np.allclose(array, array(array.inputs, method=method, interp_axes=axes_interp))
+            weights_output = [None, None, None]
+            assert np.allclose(array, array(array.inputs, method=method, interp_axes=axes_interp, weights_output=weights_output))
+            assert weights_output[0] is not None
+            assert np.allclose(array, array(array.inputs, method=method, interp_axes=axes_interp, weights_output=weights_output))
+
         else:
             interp_axes = ('x', 'y')
             method = 'conservative'
