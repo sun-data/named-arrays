@@ -86,7 +86,12 @@ class AbstractTestAbstractFunctionArray(
 
             if isinstance(array.outputs, na.AbstractUncertainScalarArray):
                 with pytest.raises(TypeError):
-                    assert np.allclose(array, array(array.inputs, method='multilinear', interp_axes=axes_interp))
+                    weights_output = [None, None, None]
+                    assert np.allclose(array,
+                                       array(array.inputs, method='multilinear', interp_axes=axes_interp,
+                                             weights_output=weights_output)
+                                       )
+                    assert weights_output[0] is not None
                 return
 
             assert np.allclose(array, array(array.inputs, method=method, interp_axes=axes_interp))
@@ -151,6 +156,7 @@ class AbstractTestAbstractFunctionArray(
 
         with pytest.raises(NotImplementedError):
             array.interp_linear(array.indices)
+
     @pytest.mark.parametrize(
         argnames='item',
         argvalues=[
@@ -182,9 +188,6 @@ class AbstractTestAbstractFunctionArray(
             )
         ],
     )
-
-
-
     def test__getitem__(
             self,
             array: na.AbstractFunctionArray,
@@ -242,9 +245,9 @@ class AbstractTestAbstractFunctionArray(
     def test__bool__(self, array: na.AbstractFunctionArray):
         if array.shape or array.unit is not None:
             with pytest.raises(
-                expected_exception=ValueError,
-                match=r"(Quantity truthiness is ambiguous, .*)"
-                      r"|(The truth value of an array with more than one element is ambiguous. .*)"
+                    expected_exception=ValueError,
+                    match=r"(Quantity truthiness is ambiguous, .*)"
+                          r"|(The truth value of an array with more than one element is ambiguous. .*)"
             ):
                 bool(array)
             return
@@ -283,7 +286,7 @@ class AbstractTestAbstractFunctionArray(
                 outputs_expected = ufunc(array.outputs)
                 inputs_expected = array.inputs
                 if ufunc.nout != 1:
-                    inputs_expected = (inputs_expected, ) * ufunc.nout
+                    inputs_expected = (inputs_expected,) * ufunc.nout
             except Exception as e:
                 with pytest.raises(type(e)):
                     ufunc(array)
@@ -299,11 +302,11 @@ class AbstractTestAbstractFunctionArray(
             result_out = ufunc(array, out=out)
 
             if ufunc.nout == 1:
-                out = (out, )
-                outputs_expected = (outputs_expected, )
-                inputs_expected = (inputs_expected, )
-                result = (result, )
-                result_out = (result_out, )
+                out = (out,)
+                outputs_expected = (outputs_expected,)
+                inputs_expected = (inputs_expected,)
+                result = (result,)
+                result_out = (result_out,)
 
             for i in range(ufunc.nout):
                 assert np.all(result[i].outputs == outputs_expected[i])
@@ -338,7 +341,7 @@ class AbstractTestAbstractFunctionArray(
                 outputs_expected = ufunc(array_normalized.outputs, array_2_normalized.outputs)
                 inputs_expected = array_normalized.inputs
                 if ufunc.nout != 1:
-                    inputs_expected = (inputs_expected, ) * ufunc.nout
+                    inputs_expected = (inputs_expected,) * ufunc.nout
             except Exception as e:
                 with pytest.raises(type(e)):
                     ufunc(array, array_2)
@@ -354,18 +357,17 @@ class AbstractTestAbstractFunctionArray(
             result_out = ufunc(array, array_2, out=out)
 
             if ufunc.nout == 1:
-                out = (out, )
-                outputs_expected = (outputs_expected, )
-                inputs_expected = (inputs_expected, )
-                result = (result, )
-                result_out = (result_out, )
+                out = (out,)
+                outputs_expected = (outputs_expected,)
+                inputs_expected = (inputs_expected,)
+                result = (result,)
+                result_out = (result_out,)
 
             for i in range(ufunc.nout):
                 assert np.all(result[i].outputs == outputs_expected[i])
                 assert np.all(result[i].inputs == inputs_expected[i])
                 assert np.all(result[i] == result_out[i])
                 assert result_out[i] is out[i]
-
 
     class TestMatmul(
         named_arrays.tests.test_core.AbstractTestAbstractArray.TestMatmul
@@ -472,9 +474,9 @@ class AbstractTestAbstractFunctionArray(
             named_arrays.tests.test_core.AbstractTestAbstractArray.TestArrayFunctions.TestSingleArgumentFunctions,
         ):
             def test_single_argument_functions(
-                self,
-                func: Callable,
-                array: na.AbstractFunctionArray,
+                    self,
+                    func: Callable,
+                    array: na.AbstractFunctionArray,
             ):
                 assert False
 
@@ -547,7 +549,7 @@ class AbstractTestAbstractFunctionArray(
                         inputs_expected = array_broadcasted.inputs
                     else:
                         inputs = array_broadcasted.inputs.cell_centers(
-                            axis=set(axis_normalized)-set(array_broadcasted.axes_center)
+                            axis=set(axis_normalized) - set(array_broadcasted.axes_center)
                         )
 
                         inputs_expected = np.mean(
@@ -661,7 +663,6 @@ class AbstractTestAbstractFunctionArray(
 
                 assert np.all(result.outputs == outputs_expected)
 
-
         class TestFFTLikeFunctions(
             named_arrays.tests.test_core.AbstractTestAbstractArray.TestArrayFunctions.TestFFTLikeFunctions,
         ):
@@ -695,9 +696,9 @@ class AbstractTestAbstractFunctionArray(
 
             @pytest.mark.skip
             def test_emath_functions(
-                self,
-                func: Callable,
-                array: na.AbstractArray,
+                    self,
+                    func: Callable,
+                    array: na.AbstractArray,
             ):
                 pass
 
@@ -727,15 +728,15 @@ class AbstractTestAbstractFunctionArray(
 
         @pytest.mark.skip
         def test_diff_1st_order(
-            self,
-            array: na.AbstractArray,
-            axis: str,
+                self,
+                array: na.AbstractArray,
+                axis: str,
         ):
-            pass    # pragma: nocover
+            pass  # pragma: nocover
 
         @pytest.mark.skip
         def test_char_mod(self, array: na.AbstractArray, a: na.AbstractArray):
-            pass    # pragma: nocover
+            pass  # pragma: nocover
 
     class TestNamedArrayFunctions(
         named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions
@@ -763,13 +764,13 @@ class AbstractTestAbstractFunctionArray(
             named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestHistogram,
         ):
             def test_histogram(
-                self,
-                array: na.AbstractFunctionArray,
-                bins: Literal["dict"],
-                axis: None | str | Sequence[str],
-                min: None | na.AbstractScalarArray | na.AbstractVectorArray,
-                max: None | na.AbstractScalarArray | na.AbstractVectorArray,
-                weights: None | na.AbstractScalarArray,
+                    self,
+                    array: na.AbstractFunctionArray,
+                    bins: Literal["dict"],
+                    axis: None | str | Sequence[str],
+                    min: None | na.AbstractScalarArray | na.AbstractVectorArray,
+                    max: None | na.AbstractScalarArray | na.AbstractVectorArray,
+                    weights: None | na.AbstractScalarArray,
             ):
                 if bins == "dict":
                     if isinstance(array.inputs, na.AbstractVectorArray):
@@ -805,9 +806,9 @@ class AbstractTestAbstractFunctionArray(
         ):
             @pytest.mark.parametrize("axis_rgb", [None, "rgb"])
             def test_pcolormesh(
-                self,
-                array: na.AbstractFunctionArray,
-                axis_rgb: None | str
+                    self,
+                    array: na.AbstractFunctionArray,
+                    axis_rgb: None | str
             ):
 
                 if not isinstance(array.inputs, na.AbstractVectorArray):
@@ -870,10 +871,10 @@ class AbstractTestAbstractFunctionArray(
         ):
 
             def test_colorbar(
-                self,
-                array: na.AbstractFunctionArray,
-                wavelength: None | na.AbstractArray,
-                axis: None | str,
+                    self,
+                    array: na.AbstractFunctionArray,
+                    wavelength: None | na.AbstractArray,
+                    axis: None | str,
             ):
                 if isinstance(array.outputs, na.AbstractVectorArray):
                     return
@@ -935,7 +936,6 @@ class TestFunctionArray(
         pass
 
 
-
 @pytest.mark.parametrize("type_array", [na.FunctionArray])
 class TestFunctionArrayCreation(
     named_arrays.tests.test_core.AbstractTestAbstractExplicitArrayCreation,
@@ -967,7 +967,7 @@ class AbstractTestAbstractPolynomialFunctionArray(
         result = array.axis_polynomial
         if array.axis_polynomial is not None:
             if isinstance(result, str):
-                result = (result, )
+                result = (result,)
             for ax in result:
                 assert isinstance(ax, str)
 
@@ -975,7 +975,7 @@ class AbstractTestAbstractPolynomialFunctionArray(
         result = array.components_polynomial
         if array.components_polynomial is not None:
             if isinstance(result, str):
-                result = (result, )
+                result = (result,)
             for ax in result:
                 assert isinstance(ax, str)
 
@@ -1062,6 +1062,3 @@ class TestPolynomialFitFunctionArray(
         AbstractTestAbstractFunctionArray.TestMatmul
     ):
         pass
-
-
-
