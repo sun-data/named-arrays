@@ -68,7 +68,7 @@ class AbstractFunctionArray(
                     else:
                         if input_shape[axis] == 1 or output_shape[axis] == 1:
                             axes_center += (axis,)
-                        elif input_shape[axis] != output_shape[axis] + 1:  # pragma: no cover
+                        elif input_shape[axis] != output_shape[axis] + 1: # pragma: no cover
                             raise ValueError(
                                 f"Output {axis=} dimension, {output_shape[axis]=}, must either match input axis dimension  {input_shape[axis]=}, (representing"
                                 " bin centers) or exceed by one (representing bin vertices)."
@@ -113,12 +113,12 @@ class AbstractFunctionArray(
 
         broadcasted_shape_outputs = self.shape
         broadcasted_shape_inputs = broadcasted_shape_outputs.copy()
-
+        
         axes_vertex = self.axes_vertex
         inputs = self.inputs
         for key in broadcasted_shape_outputs:
             axes_vertex = axes_vertex
-            if key in axes_vertex:
+            if key in axes_vertex:  
                 broadcasted_shape_inputs[key] = inputs.shape[key]
 
         return dataclasses.replace(
@@ -148,10 +148,10 @@ class AbstractFunctionArray(
         )
 
     def to(
-            self,
-            unit: u.UnitBase,
-            equivalencies: None | list[tuple[u.Unit, u.Unit]] = [],
-            copy: bool = True,
+        self,
+        unit: u.UnitBase,
+        equivalencies: None | list[tuple[u.Unit, u.Unit]] = [],
+        copy: bool = True,
     ) -> FunctionArray:
         return self.type_explicit(
             inputs=self.inputs,
@@ -215,7 +215,7 @@ class AbstractFunctionArray(
             new_inputs: na.AbstractArray,
             interp_axes: tuple[str] = None,
             method: Literal['multilinear', 'conservative'] = 'multilinear',
-            weights_output=None,
+            weights_output= None,
     ) -> AbstractFunctionArray:
 
         old_input = self.inputs
@@ -258,7 +258,7 @@ class AbstractFunctionArray(
 
 
         else:
-            raise ValueError('Physical axes of new and old inputs must match.')  # pragma: no cover
+            raise ValueError('Physical axes of new and old inputs must match.') # pragma: no cover
 
         if isinstance(new_inputs, na.AbstractVectorArray):
             coordinates_new = na.CartesianNdVectorArray.from_components(coordinates_new)
@@ -284,7 +284,7 @@ class AbstractFunctionArray(
         if isinstance(new_inputs, na.AbstractVectorArray) and isinstance(old_input, na.AbstractVectorArray):
 
             for c in self.inputs.cartesian_nd.components:
-                if new_inputs.cartesian_nd.components[c] is None:  # pragma: no cover
+                if new_inputs.cartesian_nd.components[c] is None: # pragma: no cover
                     final_coordinates_dict[c] = self.inputs.cartesian_nd.components[c]
                 else:
                     final_coordinates_dict[c] = new_inputs.cartesian_nd.components[c]
@@ -303,9 +303,9 @@ class AbstractFunctionArray(
             )
 
     def cell_centers(
-            self,
-            axis: None | str | Sequence[str] = None,
-            random: bool = False,
+        self,
+        axis: None | str | Sequence[str] = None,
+        random: bool = False,
     ) -> na.AbstractExplicitArray:
         return dataclasses.replace(
             self,
@@ -314,10 +314,10 @@ class AbstractFunctionArray(
         )
 
     def to_string_array(
-            self,
-            format_value: str = "%.2f",
-            format_unit: str = "latex_inline",
-            pad_unit: str = r"$\,$",
+        self,
+        format_value: str = "%.2f",
+        format_unit: str = "latex_inline",
+        pad_unit: str = r"$\,$",
     ):
         kwargs = dict(
             format_value=format_value,
@@ -357,9 +357,8 @@ class AbstractFunctionArray(
 
         elif isinstance(item, dict):
 
-            if not set(item).issubset(array.axes):  # pragma: no cover
-                raise ValueError(
-                    f"item contains axes {set(item) - set(array.axes)} that does not exist in {set(array.axes)}")
+            if not set(item).issubset(array.axes): # pragma: no cover
+                raise ValueError(f"item contains axes {set(item) - set(array.axes)} that does not exist in {set(array.axes)}")
 
             item_inputs = dict()
             item_outputs = dict()
@@ -655,6 +654,7 @@ class AbstractFunctionArray(
             item: dict[str, na.AbstractArray],
     ) -> FunctionArray:
         raise NotImplementedError
+
 
     def pcolormesh(
             self,
@@ -974,8 +974,8 @@ class AbstractPolynomialFunctionArray(
 
     @abc.abstractmethod
     def design_matrix(
-            self,
-            inputs: float | u.Quantity | na.AbstractScalar | na.AbstractVectorArray,
+        self,
+        inputs: float | u.Quantity | na.AbstractScalar | na.AbstractVectorArray,
     ) -> na.AbstractVectorArray:
         """
         The `design matrix <https://en.wikipedia.org/wiki/Design_matrix>`_
@@ -992,8 +992,8 @@ class AbstractPolynomialFunctionArray(
         """
 
     def __call__(
-            self,
-            inputs: float | u.Quantity | na.ScalarArray | na.AbstractVectorArray,
+        self,
+        inputs: float | u.Quantity | na.ScalarArray | na.AbstractVectorArray,
     ) -> na.AbstractFunctionArray:
         return na.FunctionArray(
             inputs, self.design_matrix(inputs) @ self.coefficients
@@ -1053,8 +1053,8 @@ class PolynomialFitFunctionArray(
         return dTd.inverse @ dTo
 
     def design_matrix(
-            self,
-            inputs: float | u.Quantity | na.AbstractScalar | na.AbstractVectorArray,
+        self,
+        inputs: float | u.Quantity | na.AbstractScalar | na.AbstractVectorArray,
     ) -> na.AbstractVectorArray:
 
         design_matrix = {}
@@ -1105,8 +1105,11 @@ class PolynomialFitFunctionArray(
 
             else:
                 for c1 in v1_broadcasted:
-                    row_components = (v1_broadcasted[c1] * v2).sum(axis=axis)
-                    v1_T_v2_components[c1] = row_components
+                        row_components = (v1_broadcasted[c1] * v2).sum(axis=axis)
+                        v1_T_v2_components[c1] = row_components
                 v1_T_v2 = v1.type_explicit.from_components(v1_T_v2_components)
 
         return v1_T_v2
+
+
+
