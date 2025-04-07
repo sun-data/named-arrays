@@ -215,7 +215,7 @@ class AbstractFunctionArray(
             new_inputs: na.AbstractArray,
             interp_axes: tuple[str] = None,
             method: Literal['multilinear', 'conservative'] = 'multilinear',
-            weights_output= None,
+            weights_output=None,
     ) -> AbstractFunctionArray:
 
         old_input = self.inputs
