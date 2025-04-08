@@ -170,7 +170,7 @@ class AbstractScalarArray(
     @property
     def to_xarray(self: Self) -> xr.DataArray:
         """
-        Cast :class:`ScalarArray` to a :class:`xr.DataArray`.  Useful for saving to netcdf/zarr or using Dask.
+        Cast :class:`ScalarArray` to a :class:`xarray.DataArray`.  Useful for saving to netcdf/zarr or using Dask.
         """
         return xr.DataArray(self.ndarray, dims=self.axes)
 
@@ -829,7 +829,7 @@ class ScalarArray(
     @classmethod
     def from_xarray(cls, dataarray: xr.DataArray) -> Self:
         """
-        Convert :class:`xr.DataArray` into a :class:`ScalarArray`
+        Convert :class:`xarray.DataArray` into a :class:`ScalarArray`
         """
         return cls(dataarray.data, axes=dataarray.dims)
 
