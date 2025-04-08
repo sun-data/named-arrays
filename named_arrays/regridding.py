@@ -52,6 +52,9 @@ def regrid(
         coordinates in the output grid.
     method
         The type of regridding to use.
+    weights_output
+        The output tuple of a previous call to na.regridding.weights to be reused
+        and past directly to na.regrid.regrid_from_weights
 
     Examples
     --------
@@ -112,12 +115,6 @@ def regrid(
         ax[1].set_title("regridded array");
     """
     if weights_output is None:
-        weights_output = [None, None, None]
-
-    if weights_output[0] is not None:
-        _weights, shape_input, shape_output = weights_output
-
-    else:
         _weights, shape_input, shape_output = weights(
             coordinates_input=coordinates_input,
             coordinates_output=coordinates_output,
@@ -125,19 +122,15 @@ def regrid(
             axis_output=axis_output,
             method=method
         )
+    else:
+        _weights, shape_input, shape_output = weights_output
 
-        weights_output[0] = _weights
-        weights_output[1] = shape_input
-        weights_output[2] = shape_output
 
     result = regrid_from_weights(
         weights=_weights,
         shape_input=shape_input,
         shape_output=shape_output,
         values_input=values_input,
-        # values_output=values_output,
-        # axis_input=axis_input,
-        # axis_output=axis_output,
     )
 
     return result
