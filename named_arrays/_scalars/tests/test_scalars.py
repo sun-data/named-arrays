@@ -342,6 +342,17 @@ class AbstractTestAbstractScalarArray(
     def test_ndarray(self, array: na.AbstractScalarArray):
         assert isinstance(array.ndarray, (int, float, complex, str, np.ndarray))
 
+    def test_to_xarray(self, array: na.AbstractScalarArray):
+        xarray = array.to_xarray
+        assert np.all(xarray.data == array.ndarray)
+        assert set(xarray.dims) == set(array.axes)
+
+    def test_from_xarray(self, array: na.AbstractScalarArray):
+        xarray = array.to_xarray
+        scalar_array = na.ScalarArray.from_xarray(xarray)
+        assert np.all(scalar_array.ndarray == array.ndarray)
+        assert set(scalar_array.axes) == set(array.axes)
+
     def test_axes(self, array: na.AbstractScalarArray):
         super().test_axes(array)
         assert len(array.axes) == np.ndim(array.ndarray)

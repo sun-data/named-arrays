@@ -8,6 +8,7 @@ import numpy.typing as npt
 import scipy.ndimage
 import astropy.units as u
 import named_arrays as na
+import xarray as xr
 
 __all__ = [
     'ScalarStartT',
@@ -166,6 +167,12 @@ class AbstractScalarArray(
         This is usually an instance of :class:`numpy.ndarray` or :class:`astropy.units.Quantity`, but it can also be a
         built-in python type such as a :class:`int`, :class:`float`, or :class:`bool`
         """
+    @property
+    def to_xarray(self: Self) -> xr.DataArray:
+        """
+        Cast :class:`ScalarArray` to a :class:`xarray.DataArray`.  Useful for saving to netcdf/zarr or using Dask.
+        """
+        return xr.DataArray(self.ndarray, dims=self.axes)
 
     @property
     def value(self: Self) -> ScalarArray:
@@ -818,6 +825,13 @@ class ScalarArray(
             self.axes = tuple()
 
         return self
+
+    @classmethod
+    def from_xarray(cls, dataarray: xr.DataArray) -> Self:
+        """
+        Convert :class:`xarray.DataArray` into a :class:`ScalarArray`
+        """
+        return cls(dataarray.data, axes=dataarray.dims)
 
     @classmethod
     def empty(cls: Type[Self], shape: dict[str, int], dtype: Type | np.dtype = float) -> Self:
