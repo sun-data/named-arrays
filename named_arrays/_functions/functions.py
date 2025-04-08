@@ -218,23 +218,78 @@ class AbstractFunctionArray(
             weights_output=None,
     ) -> AbstractFunctionArray:
 
+        coordinates_new, coordinates_old, interp_axes = self._prepare_inputs_for_regridding(interp_axes, new_inputs)
+
+        if weights_output is not None:
+            _weights, shape_input, shape_output = weights_output
+
+        else:
+            _weights, shape_input, shape_output = self.weights(
+                new_inputs=new_inputs,
+                interp_axes=interp_axes,
+                method=method,
+            )
+
+        new_output = na.regridding.regrid_from_weights(
+            weights=_weights,
+            shape_input=shape_input,
+            shape_output=shape_output,
+            values_input=self.explicit.outputs,
+        )
+
+        final_coordinates_dict = {}
+
+        if isinstance(new_inputs, na.AbstractVectorArray) and isinstance(self.inputs, na.AbstractVectorArray):
+
+            for c in self.inputs.cartesian_nd.components:
+                if new_inputs.cartesian_nd.components[c] is None: # pragma: no cover
+                    final_coordinates_dict[c] = self.inputs.cartesian_nd.components[c]
+                else:
+                    final_coordinates_dict[c] = new_inputs.cartesian_nd.components[c]
+
+            return FunctionArray(
+                inputs=self.inputs.type_explicit.from_cartesian_nd(
+                    na.CartesianNdVectorArray(components=final_coordinates_dict),
+                    like=self.inputs
+                ),
+                outputs=new_output
+            )
+        else:
+            return FunctionArray(
+                inputs=coordinates_new,
+                outputs=new_output,
+            )
+
+    def weights(self,
+                new_inputs: na.AbstractArray,
+                interp_axes: tuple[str] = None,
+                method: Literal['multilinear', 'conservative'] = 'multilinear',
+) -> tuple[na.AbstractScalar, dict[str, int], dict[str, int]]:
+
+        coordinates_new, coordinates_old, interp_axes = self._prepare_inputs_for_regridding(interp_axes, new_inputs)
+
+        return na.regridding.weights(
+            coordinates_input=coordinates_old,
+            coordinates_output=coordinates_new,
+            axis_input=interp_axes,
+            method=method
+        )
+
+    def _prepare_inputs_for_regridding(self, interp_axes, new_inputs):
         old_input = self.inputs
         if isinstance(new_inputs, na.AbstractVectorArray):
             new_input_components = new_inputs.cartesian_nd.components
         else:
             new_input_components = dict(_dummy=new_inputs.explicit)
-
         if isinstance(old_input, na.AbstractVectorArray):
             old_input_components = old_input.cartesian_nd.components
         else:
             old_input_components = dict(_dummy=old_input.explicit)
-
         # broadcast new inputs against value to be interpolated
         if interp_axes is None:
             interp_axes = na.shape_broadcasted(
                 *[new_input_components[c] for c in new_input_components if new_input_components[c] is not None])
             interp_axes = interp_axes.keys()
-
         # check physical(vector) dimensions of each input match
         if new_input_components.keys() == old_input_components.keys():
 
@@ -258,49 +313,16 @@ class AbstractFunctionArray(
 
 
         else:
-            raise ValueError('Physical axes of new and old inputs must match.') # pragma: no cover
-
+            raise ValueError('Physical axes of new and old inputs must match.')  # pragma: no cover
         if isinstance(new_inputs, na.AbstractVectorArray):
             coordinates_new = na.CartesianNdVectorArray.from_components(coordinates_new)
         else:
             coordinates_new = coordinates_new['_dummy']
-
         if isinstance(old_input, na.AbstractVectorArray):
             coordinates_old = na.CartesianNdVectorArray.from_components(coordinates_old)
         else:
             coordinates_old = coordinates_old['_dummy']
-
-        new_output = na.regridding.regrid(
-            coordinates_input=coordinates_old,
-            coordinates_output=coordinates_new,
-            values_input=self.explicit.outputs,
-            axis_input=interp_axes,
-            method=method,
-            weights_output=weights_output,
-        )
-
-        final_coordinates_dict = {}
-
-        if isinstance(new_inputs, na.AbstractVectorArray) and isinstance(old_input, na.AbstractVectorArray):
-
-            for c in self.inputs.cartesian_nd.components:
-                if new_inputs.cartesian_nd.components[c] is None: # pragma: no cover
-                    final_coordinates_dict[c] = self.inputs.cartesian_nd.components[c]
-                else:
-                    final_coordinates_dict[c] = new_inputs.cartesian_nd.components[c]
-
-            return FunctionArray(
-                inputs=self.inputs.type_explicit.from_cartesian_nd(
-                    na.CartesianNdVectorArray(components=final_coordinates_dict),
-                    like=self.inputs
-                ),
-                outputs=new_output
-            )
-        else:
-            return FunctionArray(
-                inputs=coordinates_new,
-                outputs=new_output,
-            )
+        return coordinates_new, coordinates_old, interp_axes
 
     def cell_centers(
         self,

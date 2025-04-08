@@ -91,10 +91,9 @@ class AbstractTestAbstractFunctionArray(
                                        array(array.inputs, method='multilinear', interp_axes=axes_interp))
                 return
 
-            weights_output = [None, None, None]
+            weights_output = array.weights(array.inputs, method = method, interp_axes=axes_interp)
             assert np.allclose(array, array(array.inputs, method=method, interp_axes=axes_interp, weights_output=weights_output))
-            assert weights_output[0] is not None
-            assert np.allclose(array, array(array.inputs, method=method, interp_axes=axes_interp, weights_output=weights_output))
+
 
         else:
             interp_axes = ('x', 'y')
