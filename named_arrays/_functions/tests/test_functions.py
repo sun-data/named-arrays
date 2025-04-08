@@ -80,27 +80,52 @@ class AbstractTestAbstractFunctionArray(
     def test__call__(self, array: na.FunctionArray):
 
         if len(array.axes_vertex) == 0:
-            #currently only testing/supporting 1-D interpolation for input centers
+            # currently only testing/supporting 1-D interpolation for input centers
             axes_interp = 'y'
             method = 'multilinear'
 
             if isinstance(array.outputs, na.AbstractUncertainScalarArray):
                 with pytest.raises(TypeError):
-                    assert np.allclose(array, array(array.inputs, method='multilinear', interp_axes=axes_interp))
+                    assert np.allclose(
+                        array,
+                        array(array.inputs, method='multilinear', axis=axes_interp),
+                    )
                 return
 
-            assert np.allclose(array, array(array.inputs, method=method, interp_axes=axes_interp))
+            weights = array.weights(
+                inputs=array.inputs,
+                axis=axes_interp,
+                method=method,
+            )
+
+            assert np.allclose(
+                array,
+                array(
+                    inputs=array.inputs,
+                    axis=axes_interp,
+                    method=method,
+                    weights=weights,
+                ),
+            )
+
         else:
             interp_axes = ('x', 'y')
             method = 'conservative'
 
             if len(array.axes_vertex) == 1:
                 with pytest.raises(NotImplementedError, match="1D regridding not supported"):
-                    array(array.inputs, method=method)
+                    array(
+                        inputs=array.inputs,
+                        method=method,
+                    )
                 return
 
             if len(array.axes_vertex) == 2:
-                array_1 = array(array.inputs + 1E-10, interp_axes=interp_axes, method=method)
+                array_1 = array(
+                    inputs=array.inputs + 1e-10,
+                    axis=interp_axes,
+                    method=method,
+                )
                 assert np.allclose(array_1, array.explicit)
 
     def test_inputs(self, array: na.AbstractFunctionArray):
