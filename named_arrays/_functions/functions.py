@@ -319,10 +319,10 @@ class AbstractFunctionArray(
 
         # broadcast new inputs against value to be interpolated
         if axis is None:
-            interp_axes = na.shape_broadcasted(
+            axis = na.shape_broadcasted(
                 new_input_components[c] for c in new_input_components if new_input_components[c] is not None
             )
-            interp_axes = tuple(interp_axes)
+            axis = tuple(axis)
 
         # check physical(vector) dimensions of each input match
         if new_input_components.keys() == old_input_components.keys():
@@ -333,16 +333,16 @@ class AbstractFunctionArray(
                 component = new_input_components[c]
                 if component is not None:
                     # if input components logical axes do not include interp axes, skip
-                    if not set(interp_axes).isdisjoint(component.axes):
+                    if not set(axis).isdisjoint(component.axes):
                         coordinates_new[c] = component
                         coordinates_old[c] = old_input_components[c]
 
                 else:
                     # check if uninterpolated physical axes vary along interpolation axes
-                    if not set(interp_axes).isdisjoint(old_input_components[c].axes):  # pragma: no cover
+                    if not set(axis).isdisjoint(old_input_components[c].axes):  # pragma: no cover
                         raise ValueError(
                             f"If a component is marked separable using `None`, its shape, {old_input_components[c].axes},"
-                            f"should be disjoint from the interpolated axes, {interp_axes}.",
+                            f"should be disjoint from the interpolated axes, {axis}.",
                         )
 
         else:
@@ -358,7 +358,7 @@ class AbstractFunctionArray(
         else:
             coordinates_old = coordinates_old['_dummy']
 
-        return coordinates_new, coordinates_old, interp_axes
+        return coordinates_new, coordinates_old, axis
 
     def cell_centers(
         self,
