@@ -1002,7 +1002,7 @@ class AbstractTestAbstractPolynomialFunctionArray(
         axis: None | str | tuple[str],
         method: Literal['multilinear', 'conservative'],
     ):
-        pass
+        pass  # pragma: nocover
 
     @pytest.mark.skip
     def test__call__with_weights(
@@ -1011,7 +1011,7 @@ class AbstractTestAbstractPolynomialFunctionArray(
             axis: None | str | tuple[str],
             method: Literal['multilinear', 'conservative'],
     ):
-        pass
+        pass  # pragma: nocover
 
     def test_coefficients(self, array: na.AbstractPolynomialFunctionArray):
         assert isinstance(array.coefficients, na.AbstractVectorArray)
