@@ -299,6 +299,20 @@ class AbstractFunctionArray(
         axis: None | str | tuple[str] = None,
         method: Literal['multilinear', 'conservative'] = 'multilinear',
     ) -> tuple[na.AbstractScalar, dict[str, int], dict[str, int]]:
+        """
+        Compute the resampling weights of this array using
+        :func:`named_arrays.regridding.weights`.
+        The output of this method is designed to be used by :meth:`regrid`
+
+        Parameters
+        ----------
+        inputs
+            The new input coordinates on which to resample the outputs.
+        axis
+            The logical axes of the input over which to resample.
+        method
+            The resampling method to use.
+        """
 
         coordinates_new, coordinates_old, axis_input = self._normalize__call__args(
             inputs=inputs,
