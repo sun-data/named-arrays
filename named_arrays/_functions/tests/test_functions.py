@@ -91,7 +91,7 @@ class AbstractTestAbstractFunctionArray(
     ):
         inputs = array.inputs
         if method == "conservative":
-            inputs + 1e-10
+            inputs = inputs + 1e-10
 
         kwargs = dict(
             inputs=inputs,
@@ -122,7 +122,7 @@ class AbstractTestAbstractFunctionArray(
     ):
         inputs = array.inputs
         if method == "conservative":
-            inputs + 1e-10
+            inputs = inputs + 1e-10
 
         weights = array.weights(
             inputs=inputs,
