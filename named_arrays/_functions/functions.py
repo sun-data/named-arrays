@@ -246,6 +246,11 @@ class AbstractFunctionArray(
         weights
             Optional weights which can be computed in advance using :meth:`weights`
             to greatly speed repeated resampling of the same `inputs`.
+
+        See Also
+        --------
+        :meth:`weights`: If you need to resample the same coordinates more than
+        once, you can use this function to compute the weights.
         """
 
         inputs_new, _, _ = self._normalize__call__args(
@@ -302,7 +307,7 @@ class AbstractFunctionArray(
         """
         Compute the resampling weights of this array using
         :func:`named_arrays.regridding.weights`.
-        The output of this method is designed to be used by :meth:`regrid`
+        The output of this method is designed to be used by :meth:`regrid`.
 
         Parameters
         ----------
@@ -312,6 +317,10 @@ class AbstractFunctionArray(
             The logical axes of the input over which to resample.
         method
             The resampling method to use.
+
+        See Also
+        --------
+        :meth:`regrid`: A method designed to use these weights.
         """
 
         coordinates_new, coordinates_old, axis_input = self._normalize__call__args(
