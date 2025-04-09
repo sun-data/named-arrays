@@ -992,7 +992,21 @@ class AbstractTestAbstractPolynomialFunctionArray(
 
     # inherited test isn't applicable, and PolynomialFunctionArray.__call__ is tested by test_predictions
     @pytest.mark.skip
-    def test__call__(self, array: na.FunctionArray):
+    def test__call__(
+        self,
+        array: na.FunctionArray,
+        axis: None | str | tuple[str],
+        method: Literal['multilinear', 'conservative'],
+    ):
+        pass
+
+    @pytest.mark.skip
+    def test__call__with_weights(
+            self,
+            array: na.FunctionArray,
+            axis: None | str | tuple[str],
+            method: Literal['multilinear', 'conservative'],
+    ):
         pass
 
     def test_coefficients(self, array: na.AbstractPolynomialFunctionArray):
