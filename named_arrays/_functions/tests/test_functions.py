@@ -89,7 +89,9 @@ class AbstractTestAbstractFunctionArray(
         axis: None | str | tuple[str],
         method: Literal['multilinear', 'conservative'],
     ):
-        inputs = array.inputs + 1e-10
+        inputs = array.inputs
+        if method == "conservative":
+            inputs + 1e-10
 
         kwargs = dict(
             inputs=inputs,
@@ -118,7 +120,9 @@ class AbstractTestAbstractFunctionArray(
             axis: None | str | tuple[str],
             method: Literal['multilinear', 'conservative'],
     ):
-        inputs = array.inputs + 1e-10
+        inputs = array.inputs
+        if method == "conservative":
+            inputs + 1e-10
 
         weights = array.weights(
             inputs=inputs,
