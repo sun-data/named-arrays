@@ -111,7 +111,6 @@ class AbstractTestAbstractFunctionArrayVertices(
                 method=method,
             )
 
-
     @pytest.mark.parametrize('newshape', [dict(r=-1)])
     def test_reshape(self, array: na.AbstractArray, newshape: dict[str, int]):
 
