@@ -73,6 +73,44 @@ def _function_arrays_2():
 class AbstractTestAbstractFunctionArrayVertices(
     test_functions.AbstractTestAbstractFunctionArray,
 ):
+    @pytest.mark.parametrize(
+        argnames="axis,method",
+        argvalues=[
+            (("x", "y"), "conservative"),
+        ],
+    )
+    def test__call__(
+        self,
+        array: na.FunctionArray,
+        axis: None | str | tuple[str],
+        method: Literal['multilinear', 'conservative'],
+    ):
+        if len(array.axes_vertex) == len(axis):
+            super().test__call__(
+                array=array,
+                axis=axis,
+                method=method,
+            )
+
+    @pytest.mark.parametrize(
+        argnames="axis,method",
+        argvalues=[
+            (("x", "y"), "conservative"),
+        ],
+    )
+    def test__call__with_weights(
+        self,
+        array: na.FunctionArray,
+        axis: None | str | tuple[str],
+        method: Literal['multilinear', 'conservative'],
+    ):
+        if len(array.axes_vertex) == len(axis):
+            super().test__call__with_weights(
+                array=array,
+                axis=axis,
+                method=method,
+            )
+
 
     @pytest.mark.parametrize('newshape', [dict(r=-1)])
     def test_reshape(self, array: na.AbstractArray, newshape: dict[str, int]):

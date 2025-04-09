@@ -77,56 +77,120 @@ class AbstractTestAbstractFunctionArray(
     named_arrays.tests.test_core.AbstractTestAbstractArray,
 ):
 
-    def test__call__(self, array: na.FunctionArray):
+    @pytest.mark.parametrize(
+        argnames="axis,method",
+        argvalues=[
+            ("y", "multilinear"),
+        ],
+    )
+    def test__call__(
+        self,
+        array: na.FunctionArray,
+        axis: None | str | tuple[str],
+        method: Literal['multilinear', 'conservative'],
+    ):
+        inputs = array.inputs + 1e-10
 
-        if len(array.axes_vertex) == 0:
-            # currently only testing/supporting 1-D interpolation for input centers
-            axes_interp = 'y'
-            method = 'multilinear'
+        kwargs = dict(
+            inputs=inputs,
+            axis=axis,
+            method=method,
+        )
 
-            if isinstance(array.outputs, na.AbstractUncertainScalarArray):
-                with pytest.raises(TypeError):
-                    assert np.allclose(
-                        array,
-                        array(array.inputs, method='multilinear', axis=axes_interp),
-                    )
-                return
+        if isinstance(array.outputs, na.AbstractUncertainScalarArray):
+            with pytest.raises(TypeError):
+                array(**kwargs)
+            return
 
-            weights = array.weights(
-                inputs=array.inputs,
-                axis=axes_interp,
-                method=method,
-            )
+        result = array(**kwargs)
 
-            assert np.allclose(
-                array,
-                array(
-                    inputs=array.inputs,
-                    axis=axes_interp,
-                    method=method,
-                    weights=weights,
-                ),
-            )
+        assert np.allclose(array, result)
 
-        else:
-            interp_axes = ('x', 'y')
-            method = 'conservative'
+    @pytest.mark.parametrize(
+        argnames="axis,method",
+        argvalues=[
+            ("y", "multilinear"),
+        ],
+    )
+    def test__call__with_weights(
+            self,
+            array: na.FunctionArray,
+            axis: None | str | tuple[str],
+            method: Literal['multilinear', 'conservative'],
+    ):
+        inputs = array.inputs + 1e-10
 
-            if len(array.axes_vertex) == 1:
-                with pytest.raises(NotImplementedError, match="1D regridding not supported"):
-                    array(
-                        inputs=array.inputs,
-                        method=method,
-                    )
-                return
+        weights = array.weights(
+            inputs=inputs,
+            axis=axis,
+            method=method,
+        )
 
-            if len(array.axes_vertex) == 2:
-                array_1 = array(
-                    inputs=array.inputs + 1e-10,
-                    axis=interp_axes,
-                    method=method,
-                )
-                assert np.allclose(array_1, array.explicit)
+        kwargs = dict(
+            inputs=inputs,
+            axis=axis,
+            method=method,
+            weights=weights,
+        )
+
+        if isinstance(array.outputs, na.AbstractUncertainScalarArray):
+            with pytest.raises(TypeError):
+                array(**kwargs)
+            return
+
+        result = array(**kwargs)
+
+        assert np.allclose(array, result)
+
+        # if len(array.axes_vertex) == 0:
+        #     # currently only testing/supporting 1-D interpolation for input centers
+        #     axes_interp = 'y'
+        #     method = 'multilinear'
+        #
+        #     if isinstance(array.outputs, na.AbstractUncertainScalarArray):
+        #         with pytest.raises(TypeError):
+        #             assert np.allclose(
+        #                 array,
+        #                 array(array.inputs, method='multilinear', axis=axes_interp),
+        #             )
+        #         return
+        #
+        #     weights = array.weights(
+        #         inputs=array.inputs,
+        #         axis=axes_interp,
+        #         method=method,
+        #     )
+        #
+        #     assert np.allclose(
+        #         array,
+        #         array(
+        #             inputs=array.inputs,
+        #             axis=axes_interp,
+        #             method=method,
+        #             weights=weights,
+        #         ),
+        #     )
+        #
+        # else:
+        #     interp_axes = ('x', 'y')
+        #     method = 'conservative'
+        #
+        #     if len(array.axes_vertex) == 1:
+        #         with pytest.raises(NotImplementedError, match="1D regridding not supported"):
+        #             array(
+        #                 inputs=array.inputs,
+        #                 # axis=interp_axes,
+        #                 method=method,
+        #             )
+        #         return
+        #
+        #     if len(array.axes_vertex) == 2:
+        #         array_1 = array(
+        #             inputs=array.inputs + 1e-10,
+        #             axis=interp_axes,
+        #             method=method,
+        #         )
+        #         assert np.allclose(array_1, array.explicit)
 
     def test_inputs(self, array: na.AbstractFunctionArray):
         assert isinstance(array.inputs, na.AbstractArray)

@@ -216,7 +216,21 @@ class AbstractFunctionArray(
         axis: None | str | tuple[str] = None,
         method: Literal['multilinear', 'conservative'] = 'multilinear',
         weights: None | tuple[na.AbstractScalar, dict[str, int], dict[str, int]] = None,
-    ) -> AbstractFunctionArray:
+    ) -> Self:
+        return self.regrid(
+            inputs=inputs,
+            axis=axis,
+            method=method,
+            weights=weights,
+        )
+
+    def regrid(
+        self,
+        inputs: na.AbstractArray,
+        axis: None | str | tuple[str] = None,
+        method: Literal['multilinear', 'conservative'] = 'multilinear',
+        weights: None | tuple[na.AbstractScalar, dict[str, int], dict[str, int]] = None,
+    ) -> Self:
         """
         Resample this function array onto a new set of input coordinates
         using :func:`named_arrays.regridding.regrid`.
@@ -230,8 +244,8 @@ class AbstractFunctionArray(
         method
             The resampling method to use.
         weights
-            Optional weights which can be computed in advance to greatly speed
-            repeated resampling of the same `inputs`.
+            Optional weights which can be computed in advance using :meth:`weights`
+            to greatly speed repeated resampling of the same `inputs`.
         """
 
         inputs_new, _, _ = self._normalize__call__args(
