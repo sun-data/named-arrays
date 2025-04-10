@@ -290,7 +290,7 @@ class AbstractFunctionArray(
             return dataclasses.replace(
                 _self,
                 inputs=_self.inputs.type_explicit.from_cartesian_nd(
-                    na.CartesianNdVectorArray(components=final_coordinates_dict),
+                    array=na.CartesianNdVectorArray(final_coordinates_dict),
                     like=_self.inputs
                 ),
                 outputs=outputs_new,
