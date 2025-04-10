@@ -253,7 +253,9 @@ class AbstractFunctionArray(
         once, you can use this function to compute the weights.
         """
 
-        inputs_new, _, _ = self._normalize__call__args(
+        _self = self.explicit
+
+        inputs_new, _, _ = _self._normalize__call__args(
             inputs=inputs,
             axis=axis,
         )
@@ -262,7 +264,7 @@ class AbstractFunctionArray(
             _weights, shape_input, shape_output = weights
 
         else:
-            _weights, shape_input, shape_output = self.weights(
+            _weights, shape_input, shape_output = _self.weights(
                 inputs=inputs,
                 axis=axis,
                 method=method,
@@ -272,28 +274,30 @@ class AbstractFunctionArray(
             weights=_weights,
             shape_input=shape_input,
             shape_output=shape_output,
-            values_input=self.explicit.outputs,
+            values_input=_self.outputs,
         )
 
         final_coordinates_dict = {}
 
-        if isinstance(inputs, na.AbstractVectorArray) and isinstance(self.inputs, na.AbstractVectorArray):
+        if isinstance(inputs, na.AbstractVectorArray) and isinstance(_self.inputs, na.AbstractVectorArray):
 
-            for c in self.inputs.cartesian_nd.components:
+            for c in _self.inputs.cartesian_nd.components:
                 if inputs.cartesian_nd.components[c] is None:  # pragma: no cover
-                    final_coordinates_dict[c] = self.inputs.cartesian_nd.components[c]
+                    final_coordinates_dict[c] = _self.inputs.cartesian_nd.components[c]
                 else:
                     final_coordinates_dict[c] = inputs.cartesian_nd.components[c]
 
-            return FunctionArray(
-                inputs=self.inputs.type_explicit.from_cartesian_nd(
+            return dataclasses.replace(
+                _self,
+                inputs=_self.inputs.type_explicit.from_cartesian_nd(
                     na.CartesianNdVectorArray(components=final_coordinates_dict),
-                    like=self.inputs
+                    like=_self.inputs
                 ),
-                outputs=outputs_new
+                outputs=outputs_new,
             )
         else:
-            return FunctionArray(
+            return dataclasses.replace(
+                _self,
                 inputs=inputs_new,
                 outputs=outputs_new,
             )
