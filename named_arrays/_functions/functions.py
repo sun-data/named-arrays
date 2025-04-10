@@ -255,7 +255,7 @@ class AbstractFunctionArray(
 
         _self = self.explicit
 
-        inputs_new, _, _ = _self._normalize__call__args(
+        inputs_new, _, _ = _self._normalize__regrid__args(
             inputs=inputs,
             axis=axis,
         )
@@ -327,7 +327,7 @@ class AbstractFunctionArray(
         :meth:`regrid`: A method designed to use these weights.
         """
 
-        coordinates_new, coordinates_old, axis_input = self._normalize__call__args(
+        coordinates_new, coordinates_old, axis_input = self._normalize__regrid__args(
             inputs=inputs,
             axis=axis,
         )
@@ -339,7 +339,7 @@ class AbstractFunctionArray(
             method=method
         )
 
-    def _normalize__call__args(
+    def _normalize__regrid__args(
         self,
         inputs: na.AbstractArray,
         axis: None | str | tuple[str],
