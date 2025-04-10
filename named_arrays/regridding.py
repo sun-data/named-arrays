@@ -110,7 +110,6 @@ def regrid(
         ax[0].set_title("input array");
         ax[1].set_title("regridded array");
     """
-
     _weights, shape_input, shape_output = weights(
         coordinates_input=coordinates_input,
         coordinates_output=coordinates_output,
@@ -124,9 +123,6 @@ def regrid(
         shape_input=shape_input,
         shape_output=shape_output,
         values_input=values_input,
-        # values_output=values_output,
-        # axis_input=axis_input,
-        # axis_output=axis_output,
     )
 
     return result

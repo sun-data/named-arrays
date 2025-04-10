@@ -77,31 +77,74 @@ class AbstractTestAbstractFunctionArray(
     named_arrays.tests.test_core.AbstractTestAbstractArray,
 ):
 
-    def test__call__(self, array: na.FunctionArray):
+    @pytest.mark.parametrize(
+        argnames="axis,method",
+        argvalues=[
+            ("y", "multilinear"),
+        ],
+    )
+    def test__call__(
+        self,
+        array: na.FunctionArray,
+        axis: None | str | tuple[str],
+        method: Literal['multilinear', 'conservative'],
+    ):
+        inputs = array.inputs
+        if method == "conservative":
+            inputs = inputs + 1e-10
 
-        if len(array.axes_vertex) == 0:
-            #currently only testing/supporting 1-D interpolation for input centers
-            axes_interp = 'y'
-            method = 'multilinear'
+        kwargs = dict(
+            inputs=inputs,
+            axis=axis,
+            method=method,
+        )
 
-            if isinstance(array.outputs, na.AbstractUncertainScalarArray):
-                with pytest.raises(TypeError):
-                    assert np.allclose(array, array(array.inputs, method='multilinear', interp_axes=axes_interp))
-                return
+        if isinstance(array.outputs, na.AbstractUncertainScalarArray):
+            with pytest.raises(TypeError):
+                array(**kwargs)
+            return
 
-            assert np.allclose(array, array(array.inputs, method=method, interp_axes=axes_interp))
-        else:
-            interp_axes = ('x', 'y')
-            method = 'conservative'
+        result = array(**kwargs)
 
-            if len(array.axes_vertex) == 1:
-                with pytest.raises(NotImplementedError, match="1D regridding not supported"):
-                    array(array.inputs, method=method)
-                return
+        assert np.allclose(array, result)
 
-            if len(array.axes_vertex) == 2:
-                array_1 = array(array.inputs + 1E-10, interp_axes=interp_axes, method=method)
-                assert np.allclose(array_1, array.explicit)
+    @pytest.mark.parametrize(
+        argnames="axis,method",
+        argvalues=[
+            ("y", "multilinear"),
+        ],
+    )
+    def test__call__with_weights(
+            self,
+            array: na.FunctionArray,
+            axis: None | str | tuple[str],
+            method: Literal['multilinear', 'conservative'],
+    ):
+        inputs = array.inputs
+        if method == "conservative":
+            inputs = inputs + 1e-10
+
+        weights = array.weights(
+            inputs=inputs,
+            axis=axis,
+            method=method,
+        )
+
+        kwargs = dict(
+            inputs=inputs,
+            axis=axis,
+            method=method,
+            weights=weights,
+        )
+
+        if isinstance(array.outputs, na.AbstractUncertainScalarArray):
+            with pytest.raises(TypeError):
+                array(**kwargs)
+            return
+
+        result = array(**kwargs)
+
+        assert np.allclose(array, result)
 
     def test_inputs(self, array: na.AbstractFunctionArray):
         assert isinstance(array.inputs, na.AbstractArray)
@@ -953,8 +996,22 @@ class AbstractTestAbstractPolynomialFunctionArray(
 
     # inherited test isn't applicable, and PolynomialFunctionArray.__call__ is tested by test_predictions
     @pytest.mark.skip
-    def test__call__(self, array: na.FunctionArray):
-        pass
+    def test__call__(
+        self,
+        array: na.FunctionArray,
+        axis: None | str | tuple[str],
+        method: Literal['multilinear', 'conservative'],
+    ):
+        pass  # pragma: nocover
+
+    @pytest.mark.skip
+    def test__call__with_weights(
+            self,
+            array: na.FunctionArray,
+            axis: None | str | tuple[str],
+            method: Literal['multilinear', 'conservative'],
+    ):
+        pass  # pragma: nocover
 
     def test_coefficients(self, array: na.AbstractPolynomialFunctionArray):
         assert isinstance(array.coefficients, na.AbstractVectorArray)
