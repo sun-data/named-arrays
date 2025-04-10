@@ -249,8 +249,7 @@ class AbstractFunctionArray(
 
         See Also
         --------
-        :meth:`weights`: If you need to resample the same coordinates more than
-        once, you can use this function to compute the weights.
+        :meth:`weights`: If you need to resample the same coordinates more than once.
         """
 
         _self = self.explicit
