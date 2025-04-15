@@ -975,7 +975,7 @@ class ScalarArray(
             axes_self = tuple(shape_advanced) + tuple(ax for ax in shape_self if ax not in shape_advanced)
             axes_value = list(axes_self)
 
-            index = [slice(None)] * self.ndim   # type: list[Union[int, slice, AbstractScalar]]
+            index = [slice(None)] * len(axes_self)   # type: list[Union[int, slice, AbstractScalar]]
             for axis in item:
                 item_axis = item[axis]
                 if isinstance(item_axis, na.AbstractScalarArray):
