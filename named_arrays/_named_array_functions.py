@@ -31,6 +31,7 @@ __all__ = [
     'despike',
 ]
 
+NDArrayT = TypeVar("NDArrayT", bound=np.ndarray)
 ArrayT = TypeVar("ArrayT")
 LikeT = TypeVar("LikeT", bound="None | na.AbstractArray")
 AxisT = TypeVar("AxisT", bound="str | na.AbstractArray")
@@ -611,18 +612,61 @@ def unit_normalized(
 
 
 @overload
-def broadcast_to(array: float | complex | np.ndarray | u.Quantity, shape: dict[str, int]) -> na.ScalarArray:
+def broadcast_to(
+    array: float | complex,
+    shape: dict[str, int],
+    strict: bool = False,
+) -> na.ScalarArray[np.ndarray]:
     ...
-
 
 @overload
-def broadcast_to(array: na.AbstractScalarArray, shape: dict[str, int]) -> na.ScalarArray:
+def broadcast_to(
+    array: NDArrayT,
+    shape: dict[str, int],
+    strict: bool = False,
+) -> na.ScalarArray[NDArrayT]:
+    ...
+
+@overload
+def broadcast_to(
+    array: ArrayT,
+    shape: dict[str, int],
+    strict: bool = False,
+) -> ArrayT:
     ...
 
 
-def broadcast_to(array, shape):
+def broadcast_to(
+    array,
+    shape,
+    strict=False,
+):
+    """
+    Broadcast the given array to a given shape.
+
+    Parameters
+    ----------
+    array
+        The array to broadcast.
+    shape
+        The desired shape of the output array.
+        If `strict` is :obj:`True`, the shape of the output array will have elements.
+    strict
+        A boolean flag indicating whether to throw an error if there are
+        axes in `array` that aren't in `shape`.
+        If `strict` is :obj:`False`, the axes of `array` must be a subset of `shape`,
+        otherwise a :obj:`ValueError` is raised.
+        If `strict` is :obj:`True`, the array will be broadcasted to the shape:
+        ``na.broadcast_shapes(shape, array.shape)``.
+
+    See Also
+    --------
+    :func:`numpy.broadcast_to` : Equivalent Numpy function.
+    """
     if not isinstance(array, na.AbstractArray):
         array = na.ScalarArray(array)
+    if strict:
+        shape = na.broadcast_shapes(shape, array.shape)
     return np.broadcast_to(array=array, shape=shape)
 
 
