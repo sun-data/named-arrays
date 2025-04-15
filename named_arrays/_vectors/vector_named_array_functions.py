@@ -300,6 +300,9 @@ def convolve(
     except vectors.VectorTypeError:  # pragma: nocover
         return NotImplemented
 
+    if axis is None:
+        axis = tuple(kernel.shape)
+
     components_array = array.components
     components_kernel = kernel.components
     components_where = where.components

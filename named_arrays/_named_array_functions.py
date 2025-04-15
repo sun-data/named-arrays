@@ -1096,6 +1096,7 @@ def convolve(
     ----------
     array
         The input array to be convolved.
+        The shape of this array must contain all the axes in `axis`.
     kernel
         The convolution kernel.
     axis

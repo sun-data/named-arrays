@@ -832,6 +832,12 @@ class AbstractTestAbstractFunctionArray(
                 )
 
         @pytest.mark.skip
+        class TestConvolve(
+            named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestConvolve,
+        ):
+            pass
+
+        @pytest.mark.skip
         class TestPltPlotLikeFunctions(
             named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestPltPlotLikeFunctions
         ):

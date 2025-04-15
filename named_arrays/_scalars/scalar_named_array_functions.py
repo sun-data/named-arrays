@@ -542,6 +542,16 @@ def convolve(
     elif isinstance(axis, str):
         axis = (axis,)
 
+    if not set(axis).issubset(shape_array):  # pragma: nocover
+        raise ValueError(
+            f"{axis=} must be a subset of {array.axes=}"
+        )
+
+    if not set(axis).issubset(shape_kernel):  # pragma: nocover
+        raise ValueError(
+            f"{axis=} must be a subset of {kernel.axes=}"
+        )
+
     shape_kernel_ortho = {
         ax: shape_kernel[ax]
         for ax in shape_kernel if ax not in axis

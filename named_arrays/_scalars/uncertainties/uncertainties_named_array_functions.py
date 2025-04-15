@@ -406,6 +406,20 @@ def convolve(
     except uncertainties.ScalarTypeError:  # pragma: nocover
         return NotImplemented
 
+    if axis is None:
+        axis = tuple(kernel.shape)
+
+    shape_array = array.shape
+    shape_array_parallel = {
+        ax: shape_array[ax]
+        for ax in shape_array if ax in axis
+    }
+
+    array_nominal = array.nominal
+    array_distribution = array.distribution
+
+    
+
     result_nominal = na.convolve(
         array=array.nominal,
         kernel=kernel.nominal,
