@@ -283,6 +283,41 @@ def histogram(
     )
 
 
+@_implements(na.convolve)
+def convolve(
+    array: na.AbstractScalar | na.AbstractVectorArray,
+    kernel: na.AbstractScalar | na.AbstractVectorArray,
+    axis: None | str | Sequence[str] = None,
+    where: bool | na.AbstractScalar | na.AbstractVectorArray = True,
+    mode: str = "truncate",
+) -> na.UncertainScalarArray:
+
+    try:
+        prototype = vectors._prototype(array, kernel, where)
+        array = vectors._normalize(array, prototype=prototype).explicit
+        kernel = vectors._normalize(kernel, prototype=prototype).explicit
+        where = vectors._normalize(where, prototype=prototype).explicit
+    except vectors.VectorTypeError:  # pragma: nocover
+        return NotImplemented
+
+    components_array = array.components
+    components_kernel = kernel.components
+    components_where = where.components
+
+    components_result = dict()
+
+    for c in components_array:
+        components_result[c] = na.convolve(
+            array=components_array[c],
+            kernel=components_kernel[c],
+            axis=axis,
+            where=components_where[c],
+            mode=mode,
+        )
+
+    return prototype.type_explicit.from_components(components_result)
+
+
 def random(
         func: Callable,
         *args: float | u.Quantity |na.AbstractScalar | na.AbstractVectorArray,

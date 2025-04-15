@@ -27,6 +27,7 @@ __all__ = [
     "histogram",
     "histogram2d",
     "histogramdd",
+    "convolve",
     'jacobian',
     'despike',
 ]
@@ -39,6 +40,7 @@ NumT = TypeVar("NumT", bound="int | na.AbstractArray")
 BaseT = TypeVar("BaseT", bound="int | na.AbstractArray")
 InputT = TypeVar("InputT", bound="float | u.Quantity | na.AbstractScalarArray")
 OutputT = TypeVar("OutputT", bound="float | u.Quantity | na.AbstractScalarArray")
+KernelT = TypeVar("KernelT", bound="na.AbstractArray")
 WhereT = TypeVar("WhereT", bound="bool | na.AbstractScalarArray")
 
 
@@ -1077,6 +1079,47 @@ def histogramdd(
         max=max,
         density=density,
         weights=weights,
+    )
+
+
+def convolve(
+    array: ArrayT,
+    kernel: KernelT,
+    axis: None | str | Sequence[str] = None,
+    where: bool | na.AbstractArray = True,
+    mode: str = "truncate",
+) -> ArrayT | KernelT | WhereT:
+    """
+    Convolve an array with a given :math:`n`-dimensional kernel.
+
+    Parameters
+    ----------
+    array
+        The input array to be convolved.
+    kernel
+        The convolution kernel.
+    axis
+        The logical axes along which to perform the convolution.
+        If :obj:`None` (the default),
+        the convolution will be computed along all the axes of `kernel`.
+    where
+        An optional mask that can be used to exclude elements of `array`
+        during the convolution operation.
+    mode
+        The method used to extend the array beyond its boundaries.
+        Same options as :func:`ndfilters.convolve`.
+
+    Examples
+    --------
+
+    """
+    return _named_array_function(
+        convolve,
+        array=array,
+        kernel=kernel,
+        axis=axis,
+        where=where,
+        mode=mode,
     )
 
 

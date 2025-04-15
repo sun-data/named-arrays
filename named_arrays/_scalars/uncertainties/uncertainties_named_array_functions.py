@@ -1,3 +1,4 @@
+import dataclasses
 from typing import Callable, Sequence, Literal
 import collections
 import numpy as np
@@ -387,6 +388,45 @@ def histogramdd(
     ]
 
     return hist, edges
+
+
+@_implements(na.convolve)
+def convolve(
+    array: na.AbstractScalar,
+    kernel: na.AbstractScalar,
+    axis: None | str | Sequence[str] = None,
+    where: bool | na.AbstractScalar = True,
+    mode: str = "truncate",
+) -> na.UncertainScalarArray:
+
+    try:
+        array = uncertainties._normalize(array).explicit
+        kernel = uncertainties._normalize(kernel).explicit
+        where = uncertainties._normalize(where).explicit
+    except uncertainties.ScalarTypeError:  # pragma: nocover
+        return NotImplemented
+
+    result_nominal = na.convolve(
+        array=array.nominal,
+        kernel=kernel.nominal,
+        axis=axis,
+        where=where.nominal,
+        mode=mode,
+    )
+
+    result_distribution = na.convolve(
+        array=array.distribution,
+        kernel=kernel.distribution,
+        axis=axis,
+        where=where.distribution,
+        mode=mode,
+    )
+
+    return dataclasses.replace(
+        array,
+        nominal=result_nominal,
+        distribution=result_distribution,
+    )
 
 
 def random(

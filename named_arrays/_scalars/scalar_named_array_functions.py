@@ -517,6 +517,70 @@ def histogramdd(
     return hist, tuple(bins)
 
 
+@_implements(na.convolve)
+def convolve(
+    array: na.AbstractScalarArray,
+    kernel: na.AbstractScalarArray,
+    axis: None | str | Sequence[str] = None,
+    where: bool | na.AbstractScalarArray = True,
+    mode: str = "truncate",
+) -> na.ScalarArray:
+
+    try:
+        array = scalars._normalize(array).explicit
+        kernel = scalars._normalize(kernel).explicit
+        where = scalars._normalize(where).explicit
+    except scalars.ScalarTypeError:  # pragma: nocover
+        return NotImplemented
+
+    shape_array = array.shape
+    shape_kernel = kernel.shape
+    shape_where = na.shape(where)
+
+    if axis is None:
+        axis = tuple(shape_kernel)
+    elif isinstance(axis, str):
+        axis = (axis,)
+
+    shape_kernel_ortho = {
+        ax: shape_kernel[ax]
+        for ax in shape_kernel if ax not in axis
+    }
+
+    shape = na.broadcast_shapes(
+        shape_array,
+        shape_kernel_ortho,
+        shape_where,
+    )
+
+    shape_ortho = {
+        ax: shape[ax]
+        for ax in shape if ax not in axis
+    }
+
+    shape_kernel = na.broadcast_shapes(shape_ortho, shape_kernel)
+
+    array = na.broadcast_to(array, shape)
+    kernel = na.broadcast_to(kernel, shape_kernel)
+    where = na.broadcast_to(where, shape)
+
+    result = ndfilters.convolve(
+        array=array.ndarray,
+        kernel=kernel.ndarray,
+        axis=[array.axes.index(ax) for ax in axis],
+        where=where.ndarray,
+        mode=mode,
+    )
+
+    result = dataclasses.replace(
+        array,
+        ndarray=result,
+        axes=tuple(shape),
+    )
+
+    return result
+
+
 def random(
         func: Callable,
         *args: float | u.Quantity | na.AbstractScalarArray,
