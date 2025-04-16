@@ -426,18 +426,18 @@ def convolve(
         array=na.broadcast_to(
             array=array.nominal,
             shape=shape_parallel,
-            strict=False,
+            append=True,
         ),
         kernel=na.broadcast_to(
             array=kernel.nominal,
             shape=shape_kernel_parallel,
-            strict=False,
+            append=True,
         ),
         axis=axis,
         where=na.broadcast_to(
             array=where.nominal,
             shape=shape_parallel,
-            strict=False,
+            append=True,
         ),
         mode=mode,
     )
@@ -446,18 +446,18 @@ def convolve(
         array=na.broadcast_to(
             array=array.nominal,
             shape=shape_parallel,
-            strict=False,
+            append=True,
         ),
         kernel=na.broadcast_to(
             array=kernel.nominal,
             shape=shape_kernel_parallel,
-            strict=False,
+            append=True,
         ),
         axis=axis,
         where=na.broadcast_to(
             array=where.nominal,
             shape=shape_parallel,
-            strict=False,
+            append=True,
         ),
         mode=mode,
     )

@@ -300,8 +300,21 @@ def convolve(
     except vectors.VectorTypeError:  # pragma: nocover
         return NotImplemented
 
+    shape_kernel = kernel.shape
+
     if axis is None:
-        axis = tuple(kernel.shape)
+        axis = tuple(shape_kernel)
+
+    shape_kernel_parallel = {
+        ax: shape_kernel[ax]
+        for ax in axis
+    }
+
+    shape = na.shape_broadcasted(array, where)
+    shape_parallel = {
+        ax: shape[ax]
+        for ax in axis
+    }
 
     components_array = array.components
     components_kernel = kernel.components
@@ -311,10 +324,22 @@ def convolve(
 
     for c in components_array:
         components_result[c] = na.convolve(
-            array=components_array[c],
-            kernel=components_kernel[c],
+            array=na.broadcast_to(
+                array=components_array[c],
+                shape=shape_parallel,
+                append=True,
+            ),
+            kernel=na.broadcast_to(
+                array=components_kernel[c],
+                shape=shape_kernel_parallel,
+                append=True,
+            ),
             axis=axis,
-            where=components_where[c],
+            where=na.broadcast_to(
+                array=components_where[c],
+                shape=shape_parallel,
+                append=True,
+            ),
             mode=mode,
         )
 
