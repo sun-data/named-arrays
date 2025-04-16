@@ -765,7 +765,7 @@ class AbstractArray(
     def broadcast_to(
             self: Self,
             shape: dict[str, int],
-            strict: bool = False
+            strict: bool = True
     ) -> Self:
         return na.broadcast_to(
             array=self,

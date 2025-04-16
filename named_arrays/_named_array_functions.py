@@ -615,7 +615,7 @@ def unit_normalized(
 def broadcast_to(
     array: float | complex,
     shape: dict[str, int],
-    strict: bool = False,
+    strict: bool = True,
 ) -> na.ScalarArray[np.ndarray]:
     ...
 
@@ -624,7 +624,7 @@ def broadcast_to(
 def broadcast_to(
     array: NDArrayT,
     shape: dict[str, int],
-    strict: bool = False,
+    strict: bool = True,
 ) -> na.ScalarArray[NDArrayT]:
     ...
 
@@ -633,7 +633,7 @@ def broadcast_to(
 def broadcast_to(
     array: ArrayT,
     shape: dict[str, int],
-    strict: bool = False,
+    strict: bool = True,
 ) -> ArrayT:
     ...
 
@@ -641,7 +641,7 @@ def broadcast_to(
 def broadcast_to(
     array,
     shape,
-    strict=False,
+    strict=True,
 ):
     """
     Broadcast the given array to a given shape.
@@ -698,7 +698,7 @@ def broadcast_to(
     """
     if not isinstance(array, na.AbstractArray):
         array = na.ScalarArray(array)
-    if strict:
+    if not strict:
         shape = na.broadcast_shapes(shape, array.shape)
     return np.broadcast_to(array=array, shape=shape)
 
