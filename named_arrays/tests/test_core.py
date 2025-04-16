@@ -797,7 +797,7 @@ class AbstractTestAbstractArray(
             self,
             array: na.AbstractArray,
             shape: dict[str, int],
-            strict: bool = True
+            strict: bool,
         ):
             kwargs = dict(
                 array=array,
