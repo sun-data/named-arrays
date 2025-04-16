@@ -782,7 +782,6 @@ class AbstractTestAbstractArray(
             np.copyto(dst=dst, src=array)
             assert np.all(array == dst)
 
-
         @pytest.mark.parametrize(
             argnames='shape',
             argvalues=[
@@ -790,12 +789,27 @@ class AbstractTestAbstractArray(
                 dict(x=num_x, y=num_y, z=num_z),
             ]
         )
-        def test_broadcast_to(self, array: na.AbstractArray, shape: dict[str, int]):
-            if not set(array.shape).issubset(shape):
-                with pytest.raises(ValueError):
-                    np.broadcast_to(array, shape=shape)
-                return
-            result = np.broadcast_to(array, shape=shape)
+        @pytest.mark.parametrize(
+            argnames="strict",
+            argvalues=[True, False],
+        )
+        def test_broadcast_to(
+            self,
+            array: na.AbstractArray,
+            shape: dict[str, int],
+            strict: bool = True
+        ):
+            kwargs = dict(
+                array=array,
+                shape=shape,
+                strict=strict,
+            )
+            if strict:
+                if not set(array.shape).issubset(shape):
+                    with pytest.raises(ValueError):
+                        np.broadcast_to(**kwargs)
+                    return
+            result = np.broadcast_to(**kwargs)
             assert result.shape == shape
 
         def test_shape(self, array: na.AbstractArray):
