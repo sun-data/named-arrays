@@ -1440,7 +1440,7 @@ class AbstractTestAbstractArray(
                 )
 
                 assert array.shape == result.shape
-                assert array.unit == result.unit
+                assert na.unit(array) == na.unit(result)
 
         @pytest.mark.parametrize(
             argnames="func,axis,transformation",

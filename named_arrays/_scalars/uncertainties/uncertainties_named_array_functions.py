@@ -444,18 +444,18 @@ def convolve(
 
     result_distribution = na.convolve(
         array=na.broadcast_to(
-            array=array.nominal,
+            array=array.distribution,
             shape=shape_parallel,
             append=True,
         ),
         kernel=na.broadcast_to(
-            array=kernel.nominal,
+            array=kernel.distribution,
             shape=shape_kernel_parallel,
             append=True,
         ),
         axis=axis,
         where=na.broadcast_to(
-            array=where.nominal,
+            array=where.distribution,
             shape=shape_parallel,
             append=True,
         ),

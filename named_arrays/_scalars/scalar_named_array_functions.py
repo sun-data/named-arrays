@@ -563,29 +563,20 @@ def convolve(
         shape_where,
     )
 
-    shape_ortho = {
-        ax: shape[ax]
-        for ax in shape if ax not in axis
-    }
-
-    shape_kernel = na.broadcast_shapes(shape_ortho, shape_kernel)
-
-    array = na.broadcast_to(array, shape)
-    kernel = na.broadcast_to(kernel, shape_kernel)
-    where = na.broadcast_to(where, shape)
+    axes = tuple(shape)
 
     result = ndfilters.convolve(
-        array=array.ndarray,
-        kernel=kernel.ndarray,
-        axis=[array.axes.index(ax) for ax in axis],
-        where=where.ndarray,
+        array=array.ndarray_aligned(axes),
+        kernel=kernel.ndarray_aligned(axes),
+        axis=[axes.index(ax) for ax in axis],
+        where=where.ndarray_aligned(axes),
         mode=mode,
     )
 
     result = dataclasses.replace(
         array,
         ndarray=result,
-        axes=tuple(shape),
+        axes=axes,
     )
 
     return result
