@@ -406,33 +406,59 @@ def convolve(
     except uncertainties.ScalarTypeError:  # pragma: nocover
         return NotImplemented
 
-    if axis is None:
-        axis = tuple(kernel.shape)
+    shape_kernel = kernel.shape
 
-    shape_array = array.shape
-    shape_array_parallel = {
-        ax: shape_array[ax]
-        for ax in shape_array if ax in axis
+    if axis is None:
+        axis = tuple(shape_kernel)
+
+    shape_kernel_parallel = {
+        ax: shape_kernel[ax]
+        for ax in axis
     }
 
-    array_nominal = array.nominal
-    array_distribution = array.distribution
-
-    
+    shape = na.shape_broadcasted(array, where)
+    shape_parallel = {
+        ax: shape[ax]
+        for ax in axis
+    }
 
     result_nominal = na.convolve(
-        array=array.nominal,
-        kernel=kernel.nominal,
+        array=na.broadcast_to(
+            array=array.nominal,
+            shape=shape_parallel,
+            strict=False,
+        ),
+        kernel=na.broadcast_to(
+            array=kernel.nominal,
+            shape=shape_kernel_parallel,
+            strict=False,
+        ),
         axis=axis,
-        where=where.nominal,
+        where=na.broadcast_to(
+            array=where.nominal,
+            shape=shape_parallel,
+            strict=False,
+        ),
         mode=mode,
     )
 
     result_distribution = na.convolve(
-        array=array.distribution,
-        kernel=kernel.distribution,
+        array=na.broadcast_to(
+            array=array.nominal,
+            shape=shape_parallel,
+            strict=False,
+        ),
+        kernel=na.broadcast_to(
+            array=kernel.nominal,
+            shape=shape_kernel_parallel,
+            strict=False,
+        ),
         axis=axis,
-        where=where.distribution,
+        where=na.broadcast_to(
+            array=where.nominal,
+            shape=shape_parallel,
+            strict=False,
+        ),
         mode=mode,
     )
 
