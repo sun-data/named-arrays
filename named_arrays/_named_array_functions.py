@@ -1113,6 +1113,52 @@ def convolve(
     Examples
     --------
 
+    Create a test image and convolve it with an example kernel.
+
+    .. jupyter-execute::
+
+        import matplotlib.pyplot as plt
+        import named_arrays as na
+
+        # Define a test image of randomly-positioned
+        # delta functions
+        shape_stars = dict(star=101)
+        index = dict(
+            x=na.random.uniform(0, 201, shape_stars).astype(int),
+            y=na.random.uniform(0, 201, shape_stars).astype(int),
+        )
+        img = na.ScalarArray.zeros(dict(x=201, y=201))
+        img[index] = 1
+
+        # Define an example kernel consisting of a diagonal matrix
+        kernel = na.arange(0, 10, axis="x") == na.arange(0, 10, axis="y")
+
+        # Convolve the test image with the kernel
+        img_conv = na.convolve(img, kernel)
+
+        # Plot the result
+        fig, axs = plt.subplots(
+            ncols=2,
+            sharex=True,
+            sharey=True,
+            constrained_layout=True,
+        )
+        axs[0].set_title("original image");
+        na.plt.imshow(
+            X=img,
+            axis_x="x",
+            axis_y="y",
+            ax=axs[0],
+            cmap="gray",
+        );
+        axs[1].set_title("convolved image");
+        na.plt.imshow(
+            X=img_conv,
+            axis_x="x",
+            axis_y="y",
+            ax=axs[1],
+            cmap="gray",
+        );
     """
     return _named_array_function(
         convolve,
