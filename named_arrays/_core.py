@@ -765,8 +765,13 @@ class AbstractArray(
     def broadcast_to(
             self: Self,
             shape: dict[str, int],
+            strict: bool = False
     ) -> Self:
-        return np.broadcast_to(self, shape=shape)
+        return na.broadcast_to(
+            array=self,
+            shape=shape,
+            strict=strict,
+        )
 
     def reshape(
             self: Self,

@@ -789,26 +789,19 @@ class AbstractTestAbstractArray(
                 dict(x=num_x, y=num_y, z=num_z),
             ]
         )
-        @pytest.mark.parametrize(
-            argnames="strict",
-            argvalues=[True, False],
-        )
         def test_broadcast_to(
             self,
             array: na.AbstractArray,
             shape: dict[str, int],
-            strict: bool,
         ):
             kwargs = dict(
                 array=array,
                 shape=shape,
-                strict=strict,
             )
-            if strict:
-                if not set(array.shape).issubset(shape):
-                    with pytest.raises(ValueError):
-                        np.broadcast_to(**kwargs)
-                    return
+            if not set(array.shape).issubset(shape):
+                with pytest.raises(ValueError):
+                    np.broadcast_to(**kwargs)
+                return
             result = np.broadcast_to(**kwargs)
             assert result.shape == shape
 
@@ -1146,16 +1139,27 @@ class AbstractTestAbstractArray(
             dict(x=num_x, y=num_y, z=num_z),
         ]
     )
+    @pytest.mark.parametrize(
+        argnames="strict",
+        argvalues=[False, True]
+    )
     def test_broadcast_to(
             self,
             array: na.AbstractArray,
             shape: dict[str, int],
+            strict: bool,
     ):
+        kwargs = dict(
+            shape=shape,
+            strict=strict,
+        )
         if not set(array.shape).issubset(shape):
             with pytest.raises(ValueError):
-                array.broadcast_to(shape)
+                array.broadcast_to(**kwargs)
             return
-        assert np.array_equal(array.broadcast_to(shape), np.broadcast_to(array, shape))
+        result = array.broadcast_to(**kwargs)
+        result_expected = na.broadcast_to(array, **kwargs)
+        assert np.array_equal(result, result_expected)
 
     @pytest.mark.parametrize('shape', [dict(r=-1)])
     def test_reshape(
