@@ -283,6 +283,69 @@ def histogram(
     )
 
 
+@_implements(na.convolve)
+def convolve(
+    array: na.AbstractScalar | na.AbstractVectorArray,
+    kernel: na.AbstractScalar | na.AbstractVectorArray,
+    axis: None | str | Sequence[str] = None,
+    where: bool | na.AbstractScalar | na.AbstractVectorArray = True,
+    mode: str = "truncate",
+) -> na.UncertainScalarArray:
+
+    try:
+        prototype = vectors._prototype(array, kernel, where)
+        array = vectors._normalize(array, prototype=prototype).explicit
+        kernel = vectors._normalize(kernel, prototype=prototype).explicit
+        where = vectors._normalize(where, prototype=prototype).explicit
+    except vectors.VectorTypeError:  # pragma: nocover
+        return NotImplemented
+
+    shape_kernel = kernel.shape
+
+    if axis is None:
+        axis = tuple(shape_kernel)
+
+    shape_kernel_parallel = {
+        ax: shape_kernel[ax]
+        for ax in axis
+    }
+
+    shape = na.shape_broadcasted(array, where)
+    shape_parallel = {
+        ax: shape[ax]
+        for ax in axis
+    }
+
+    components_array = array.components
+    components_kernel = kernel.components
+    components_where = where.components
+
+    components_result = dict()
+
+    for c in components_array:
+        components_result[c] = na.convolve(
+            array=na.broadcast_to(
+                array=components_array[c],
+                shape=shape_parallel,
+                append=True,
+            ),
+            kernel=na.broadcast_to(
+                array=components_kernel[c],
+                shape=shape_kernel_parallel,
+                append=True,
+            ),
+            axis=axis,
+            where=na.broadcast_to(
+                array=components_where[c],
+                shape=shape_parallel,
+                append=True,
+            ),
+            mode=mode,
+        )
+
+    return prototype.type_explicit.from_components(components_result)
+
+
 def random(
         func: Callable,
         *args: float | u.Quantity |na.AbstractScalar | na.AbstractVectorArray,

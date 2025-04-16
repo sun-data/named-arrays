@@ -517,6 +517,71 @@ def histogramdd(
     return hist, tuple(bins)
 
 
+@_implements(na.convolve)
+def convolve(
+    array: na.AbstractScalarArray,
+    kernel: na.AbstractScalarArray,
+    axis: None | str | Sequence[str] = None,
+    where: bool | na.AbstractScalarArray = True,
+    mode: str = "truncate",
+) -> na.ScalarArray:
+
+    try:
+        array = scalars._normalize(array).explicit
+        kernel = scalars._normalize(kernel).explicit
+        where = scalars._normalize(where).explicit
+    except scalars.ScalarTypeError:  # pragma: nocover
+        return NotImplemented
+
+    shape_array = array.shape
+    shape_kernel = kernel.shape
+    shape_where = na.shape(where)
+
+    if axis is None:
+        axis = tuple(shape_kernel)
+    elif isinstance(axis, str):
+        axis = (axis,)
+
+    if not set(axis).issubset(shape_array):  # pragma: nocover
+        raise ValueError(
+            f"{axis=} must be a subset of {array.axes=}"
+        )
+
+    if not set(axis).issubset(shape_kernel):  # pragma: nocover
+        raise ValueError(
+            f"{axis=} must be a subset of {kernel.axes=}"
+        )
+
+    shape_kernel_ortho = {
+        ax: shape_kernel[ax]
+        for ax in shape_kernel if ax not in axis
+    }
+
+    shape = na.broadcast_shapes(
+        shape_array,
+        shape_kernel_ortho,
+        shape_where,
+    )
+
+    axes = tuple(shape)
+
+    result = ndfilters.convolve(
+        array=array.ndarray_aligned(axes),
+        kernel=kernel.ndarray_aligned(axes),
+        axis=[axes.index(ax) for ax in axis],
+        where=where.ndarray_aligned(axes),
+        mode=mode,
+    )
+
+    result = dataclasses.replace(
+        array,
+        ndarray=result,
+        axes=axes,
+    )
+
+    return result
+
+
 def random(
         func: Callable,
         *args: float | u.Quantity | na.AbstractScalarArray,

@@ -1401,6 +1401,48 @@ class AbstractTestAbstractArray(
                 assert result.outputs.unit_normalized.is_equivalent(unit_weights)
 
         @pytest.mark.parametrize(
+            argnames="kernel",
+            argvalues=[
+                na.ScalarArray.ones(dict(y=3)),
+                na.UniformUncertainScalarArray(
+                    nominal=na.ScalarArray.ones(dict(y=3)),
+                    width=0.1,
+                    num_distribution=num_distribution,
+                ),
+            ],
+        )
+        @pytest.mark.parametrize(
+            argnames="axis",
+            argvalues=[
+                None,
+                "y",
+            ]
+        )
+        class TestConvolve:
+            def test_convolve(
+                self,
+                array: na.AbstractArray,
+                kernel: na.AbstractArray,
+                axis: None | str | Sequence[str],
+            ):
+                if not array.shape:
+                    return
+                try:
+                    if not np.issubdtype(na.get_dtype(array), np.number):
+                        return
+                except ValueError:
+                    pass
+
+                result = na.convolve(
+                    array=array,
+                    kernel=kernel,
+                    axis=axis,
+                )
+
+                assert array.shape == result.shape
+                assert na.unit(array) == na.unit(result)
+
+        @pytest.mark.parametrize(
             argnames="func,axis,transformation",
             argvalues=[
                 (na.plt.plot, np._NoValue, np._NoValue),

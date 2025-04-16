@@ -27,6 +27,7 @@ __all__ = [
     "histogram",
     "histogram2d",
     "histogramdd",
+    "convolve",
     'jacobian',
     'despike',
 ]
@@ -39,6 +40,7 @@ NumT = TypeVar("NumT", bound="int | na.AbstractArray")
 BaseT = TypeVar("BaseT", bound="int | na.AbstractArray")
 InputT = TypeVar("InputT", bound="float | u.Quantity | na.AbstractScalarArray")
 OutputT = TypeVar("OutputT", bound="float | u.Quantity | na.AbstractScalarArray")
+KernelT = TypeVar("KernelT", bound="na.AbstractArray")
 WhereT = TypeVar("WhereT", bound="bool | na.AbstractScalarArray")
 
 
@@ -1077,6 +1079,94 @@ def histogramdd(
         max=max,
         density=density,
         weights=weights,
+    )
+
+
+def convolve(
+    array: ArrayT,
+    kernel: KernelT,
+    axis: None | str | Sequence[str] = None,
+    where: bool | na.AbstractArray = True,
+    mode: str = "truncate",
+) -> ArrayT | KernelT | WhereT:
+    """
+    Convolve an array with a given :math:`n`-dimensional kernel.
+
+    Parameters
+    ----------
+    array
+        The input array to be convolved.
+        The shape of this array must contain all the axes in `axis`.
+    kernel
+        The convolution kernel.
+    axis
+        The logical axes along which to perform the convolution.
+        If :obj:`None` (the default),
+        the convolution will be computed along all the axes of `kernel`.
+    where
+        An optional mask that can be used to exclude elements of `array`
+        during the convolution operation.
+    mode
+        The method used to extend the array beyond its boundaries.
+        Same options as :func:`ndfilters.convolve`.
+
+    Examples
+    --------
+
+    Create a test image and convolve it with an example kernel.
+
+    .. jupyter-execute::
+
+        import matplotlib.pyplot as plt
+        import named_arrays as na
+
+        # Define a test image of randomly-positioned
+        # delta functions
+        shape_stars = dict(star=101)
+        index = dict(
+            x=na.random.uniform(0, 201, shape_stars).astype(int),
+            y=na.random.uniform(0, 201, shape_stars).astype(int),
+        )
+        img = na.ScalarArray.zeros(dict(x=201, y=201))
+        img[index] = 1
+
+        # Define an example kernel consisting of a diagonal matrix
+        kernel = na.arange(0, 10, axis="x") == na.arange(0, 10, axis="y")
+
+        # Convolve the test image with the kernel
+        img_conv = na.convolve(img, kernel)
+
+        # Plot the result
+        fig, axs = plt.subplots(
+            ncols=2,
+            sharex=True,
+            sharey=True,
+            constrained_layout=True,
+        )
+        axs[0].set_title("original image");
+        na.plt.imshow(
+            X=img,
+            axis_x="x",
+            axis_y="y",
+            ax=axs[0],
+            cmap="gray",
+        );
+        axs[1].set_title("convolved image");
+        na.plt.imshow(
+            X=img_conv,
+            axis_x="x",
+            axis_y="y",
+            ax=axs[1],
+            cmap="gray",
+        );
+    """
+    return _named_array_function(
+        convolve,
+        array=array,
+        kernel=kernel,
+        axis=axis,
+        where=where,
+        mode=mode,
     )
 
 

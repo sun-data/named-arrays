@@ -1,3 +1,4 @@
+import dataclasses
 from typing import Callable, Sequence, Literal
 import collections
 import numpy as np
@@ -387,6 +388,85 @@ def histogramdd(
     ]
 
     return hist, edges
+
+
+@_implements(na.convolve)
+def convolve(
+    array: na.AbstractScalar,
+    kernel: na.AbstractScalar,
+    axis: None | str | Sequence[str] = None,
+    where: bool | na.AbstractScalar = True,
+    mode: str = "truncate",
+) -> na.UncertainScalarArray:
+
+    try:
+        array = uncertainties._normalize(array).explicit
+        kernel = uncertainties._normalize(kernel).explicit
+        where = uncertainties._normalize(where).explicit
+    except uncertainties.ScalarTypeError:  # pragma: nocover
+        return NotImplemented
+
+    shape_kernel = kernel.shape
+
+    if axis is None:
+        axis = tuple(shape_kernel)
+
+    shape_kernel_parallel = {
+        ax: shape_kernel[ax]
+        for ax in axis
+    }
+
+    shape = na.shape_broadcasted(array, where)
+    shape_parallel = {
+        ax: shape[ax]
+        for ax in axis
+    }
+
+    result_nominal = na.convolve(
+        array=na.broadcast_to(
+            array=array.nominal,
+            shape=shape_parallel,
+            append=True,
+        ),
+        kernel=na.broadcast_to(
+            array=kernel.nominal,
+            shape=shape_kernel_parallel,
+            append=True,
+        ),
+        axis=axis,
+        where=na.broadcast_to(
+            array=where.nominal,
+            shape=shape_parallel,
+            append=True,
+        ),
+        mode=mode,
+    )
+
+    result_distribution = na.convolve(
+        array=na.broadcast_to(
+            array=array.distribution,
+            shape=shape_parallel,
+            append=True,
+        ),
+        kernel=na.broadcast_to(
+            array=kernel.distribution,
+            shape=shape_kernel_parallel,
+            append=True,
+        ),
+        axis=axis,
+        where=na.broadcast_to(
+            array=where.distribution,
+            shape=shape_parallel,
+            append=True,
+        ),
+        mode=mode,
+    )
+
+    return dataclasses.replace(
+        array,
+        nominal=result_nominal,
+        distribution=result_distribution,
+    )
 
 
 def random(
