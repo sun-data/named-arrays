@@ -664,6 +664,35 @@ def broadcast_to(
     See Also
     --------
     :func:`numpy.broadcast_to` : Equivalent Numpy function.
+
+    Examples
+    --------
+
+    If we define some array shapes as
+
+    .. jupyter-execute::
+
+        shape_x = dict(x=3)
+        shape_y = dict(y=4)
+
+    and a random 1D array as an example
+
+    .. jupyter-execute::
+
+        a = na.random.uniform(0, 1, shape_x)
+
+    Then we can broadcast it to 2 dimensions using the union of `shape_x` and `shape_y`
+
+    .. jupyter-execute::
+
+        na.broadcast_to(a, shape_x | shape_y)
+
+    Alternatively, we can set the `strict` keyword to :obj:`False` so that
+    we only need to provide `shape_y`.
+
+    .. jupyter-execute::
+
+        na.broadcast_to(a, shape_y, strict=False)
     """
     if not isinstance(array, na.AbstractArray):
         array = na.ScalarArray(array)
