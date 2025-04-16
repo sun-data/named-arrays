@@ -619,6 +619,7 @@ def broadcast_to(
 ) -> na.ScalarArray[np.ndarray]:
     ...
 
+
 @overload
 def broadcast_to(
     array: NDArrayT,
@@ -626,6 +627,7 @@ def broadcast_to(
     strict: bool = False,
 ) -> na.ScalarArray[NDArrayT]:
     ...
+
 
 @overload
 def broadcast_to(
