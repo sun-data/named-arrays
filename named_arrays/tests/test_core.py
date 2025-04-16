@@ -782,7 +782,6 @@ class AbstractTestAbstractArray(
             np.copyto(dst=dst, src=array)
             assert np.all(array == dst)
 
-
         @pytest.mark.parametrize(
             argnames='shape',
             argvalues=[
@@ -790,12 +789,20 @@ class AbstractTestAbstractArray(
                 dict(x=num_x, y=num_y, z=num_z),
             ]
         )
-        def test_broadcast_to(self, array: na.AbstractArray, shape: dict[str, int]):
+        def test_broadcast_to(
+            self,
+            array: na.AbstractArray,
+            shape: dict[str, int],
+        ):
+            kwargs = dict(
+                array=array,
+                shape=shape,
+            )
             if not set(array.shape).issubset(shape):
                 with pytest.raises(ValueError):
-                    np.broadcast_to(array, shape=shape)
+                    np.broadcast_to(**kwargs)
                 return
-            result = np.broadcast_to(array, shape=shape)
+            result = np.broadcast_to(**kwargs)
             assert result.shape == shape
 
         def test_shape(self, array: na.AbstractArray):
@@ -1132,16 +1139,28 @@ class AbstractTestAbstractArray(
             dict(x=num_x, y=num_y, z=num_z),
         ]
     )
+    @pytest.mark.parametrize(
+        argnames="append",
+        argvalues=[False, True]
+    )
     def test_broadcast_to(
             self,
             array: na.AbstractArray,
             shape: dict[str, int],
+            append: bool,
     ):
-        if not set(array.shape).issubset(shape):
-            with pytest.raises(ValueError):
-                array.broadcast_to(shape)
-            return
-        assert np.array_equal(array.broadcast_to(shape), np.broadcast_to(array, shape))
+        kwargs = dict(
+            shape=shape,
+            append=append,
+        )
+        if not append:
+            if not set(array.shape).issubset(shape):
+                with pytest.raises(ValueError):
+                    array.broadcast_to(**kwargs)
+                return
+        result = array.broadcast_to(**kwargs)
+        result_expected = na.broadcast_to(array, **kwargs)
+        assert np.array_equal(result, result_expected)
 
     @pytest.mark.parametrize('shape', [dict(r=-1)])
     def test_reshape(

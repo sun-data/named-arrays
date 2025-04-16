@@ -31,6 +31,7 @@ __all__ = [
     'despike',
 ]
 
+NDArrayT = TypeVar("NDArrayT", bound=np.ndarray)
 ArrayT = TypeVar("ArrayT")
 LikeT = TypeVar("LikeT", bound="None | na.AbstractArray")
 AxisT = TypeVar("AxisT", bound="str | na.AbstractArray")
@@ -611,18 +612,95 @@ def unit_normalized(
 
 
 @overload
-def broadcast_to(array: float | complex | np.ndarray | u.Quantity, shape: dict[str, int]) -> na.ScalarArray:
+def broadcast_to(
+    array: float | complex,
+    shape: dict[str, int],
+    append: bool = False,
+) -> na.ScalarArray[np.ndarray]:
     ...
 
 
 @overload
-def broadcast_to(array: na.AbstractScalarArray, shape: dict[str, int]) -> na.ScalarArray:
+def broadcast_to(
+    array: NDArrayT,
+    shape: dict[str, int],
+    append: bool = False,
+) -> na.ScalarArray[NDArrayT]:
     ...
 
 
-def broadcast_to(array, shape):
+@overload
+def broadcast_to(
+    array: ArrayT,
+    shape: dict[str, int],
+    append: bool = False,
+) -> ArrayT:
+    ...
+
+
+def broadcast_to(
+    array,
+    shape,
+    append=False,
+):
+    """
+    Broadcast the given array to a given shape.
+
+    Parameters
+    ----------
+    array
+        The array to broadcast.
+    shape
+        The desired shape of the output array.
+        If `strict` is :obj:`True`, the shape of the output array will have elements.
+    append
+        A boolean flag indicating whether to throw an error if there are
+        axes in `array` that aren't in `shape`.
+        If `append` is :obj:`False`, the axes of `array` must be a subset of `shape`,
+        otherwise a :obj:`ValueError` is raised.
+        If `append` is :obj:`True`, the array will be broadcasted to the shape:
+        ``na.broadcast_shapes(array.shape, shape)``.
+
+    See Also
+    --------
+    :func:`numpy.broadcast_to` : Equivalent Numpy function.
+
+    Examples
+    --------
+
+    If we define some array shapes as
+
+    .. jupyter-execute::
+
+        import named_arrays as na
+
+        shape_x = dict(x=3)
+        shape_y = dict(y=4)
+
+    and a random 1D array as an example
+
+    .. jupyter-execute::
+
+        a = na.random.uniform(0, 1, shape_x)
+
+    Then we can broadcast it to 2 dimensions using the union of `shape_x` and `shape_y`
+
+    .. jupyter-execute::
+
+        na.broadcast_to(a, shape_x | shape_y)
+
+    Alternatively, we can set the `append` keyword to :obj:`True` so that
+    we only need to provide `shape_y` since the shape of the array is already
+    `shape_x`.
+
+    .. jupyter-execute::
+
+        na.broadcast_to(a, shape_y, append=True)
+    """
     if not isinstance(array, na.AbstractArray):
         array = na.ScalarArray(array)
+    if append:
+        shape = na.broadcast_shapes(array.shape, shape)
     return np.broadcast_to(array=array, shape=shape)
 
 
