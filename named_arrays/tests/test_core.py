@@ -1128,8 +1128,8 @@ class AbstractTestAbstractArray(
                 "%.2f",
             ]
         )
-        def test_char_mod(self, array: na.AbstractArray, a: na.AbstractArray):
-            result = np.char.mod(a, array)
+        def test_strings_mod(self, array: na.AbstractArray, a: na.AbstractArray):
+            result = np.strings.mod(a, array)
             assert isinstance(result, na.AbstractArray)
 
     @pytest.mark.parametrize(
