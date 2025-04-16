@@ -672,6 +672,8 @@ def broadcast_to(
 
     .. jupyter-execute::
 
+        import named_arrays as na
+
         shape_x = dict(x=3)
         shape_y = dict(y=4)
 
