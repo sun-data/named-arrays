@@ -615,7 +615,7 @@ def unit_normalized(
 def broadcast_to(
     array: float | complex,
     shape: dict[str, int],
-    strict: bool = True,
+    append: bool = False,
 ) -> na.ScalarArray[np.ndarray]:
     ...
 
@@ -624,7 +624,7 @@ def broadcast_to(
 def broadcast_to(
     array: NDArrayT,
     shape: dict[str, int],
-    strict: bool = True,
+    append: bool = False,
 ) -> na.ScalarArray[NDArrayT]:
     ...
 
@@ -633,7 +633,7 @@ def broadcast_to(
 def broadcast_to(
     array: ArrayT,
     shape: dict[str, int],
-    strict: bool = True,
+    append: bool = False,
 ) -> ArrayT:
     ...
 
@@ -641,7 +641,7 @@ def broadcast_to(
 def broadcast_to(
     array,
     shape,
-    strict=True,
+    append=False,
 ):
     """
     Broadcast the given array to a given shape.
@@ -653,13 +653,13 @@ def broadcast_to(
     shape
         The desired shape of the output array.
         If `strict` is :obj:`True`, the shape of the output array will have elements.
-    strict
+    append
         A boolean flag indicating whether to throw an error if there are
         axes in `array` that aren't in `shape`.
-        If `strict` is :obj:`False`, the axes of `array` must be a subset of `shape`,
+        If `append` is :obj:`False`, the axes of `array` must be a subset of `shape`,
         otherwise a :obj:`ValueError` is raised.
-        If `strict` is :obj:`True`, the array will be broadcasted to the shape:
-        ``na.broadcast_shapes(shape, array.shape)``.
+        If `append` is :obj:`True`, the array will be broadcasted to the shape:
+        ``na.broadcast_shapes(array.shape, shape)``.
 
     See Also
     --------
@@ -689,17 +689,18 @@ def broadcast_to(
 
         na.broadcast_to(a, shape_x | shape_y)
 
-    Alternatively, we can set the `strict` keyword to :obj:`False` so that
-    we only need to provide `shape_y`.
+    Alternatively, we can set the `append` keyword to :obj:`True` so that
+    we only need to provide `shape_y` since the shape of the array is already
+    `shape_x`.
 
     .. jupyter-execute::
 
-        na.broadcast_to(a, shape_y, strict=False)
+        na.broadcast_to(a, shape_y, append=True)
     """
     if not isinstance(array, na.AbstractArray):
         array = na.ScalarArray(array)
-    if not strict:
-        shape = na.broadcast_shapes(shape, array.shape)
+    if append:
+        shape = na.broadcast_shapes(array.shape, shape)
     return np.broadcast_to(array=array, shape=shape)
 
 

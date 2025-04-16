@@ -1140,23 +1140,24 @@ class AbstractTestAbstractArray(
         ]
     )
     @pytest.mark.parametrize(
-        argnames="strict",
+        argnames="append",
         argvalues=[False, True]
     )
     def test_broadcast_to(
             self,
             array: na.AbstractArray,
             shape: dict[str, int],
-            strict: bool,
+            append: bool,
     ):
         kwargs = dict(
             shape=shape,
-            strict=strict,
+            append=append,
         )
-        if not set(array.shape).issubset(shape):
-            with pytest.raises(ValueError):
-                array.broadcast_to(**kwargs)
-            return
+        if not append:
+            if not set(array.shape).issubset(shape):
+                with pytest.raises(ValueError):
+                    array.broadcast_to(**kwargs)
+                return
         result = array.broadcast_to(**kwargs)
         result_expected = na.broadcast_to(array, **kwargs)
         assert np.array_equal(result, result_expected)
