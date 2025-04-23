@@ -18,7 +18,7 @@ __all__ = [
 
 def regrid(
     coordinates_input: na.AbstractScalar | na.AbstractVectorArray,
-    coordinates_output: float | u.Quantity,
+    coordinates_output: na.AbstractScalar | na.AbstractVectorArray,
     values_input: na.AbstractScalarArray,
     axis_input: None | Sequence[str] = None,
     axis_output: None | Sequence[str] = None,
