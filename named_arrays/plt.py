@@ -21,6 +21,7 @@ __all__ = [
     "pcolormovie",
     "rgbmovie",
     "text",
+    "annotate",
     "brace_vertical",
     "set_xlabel",
     "get_xlabel",
@@ -1368,6 +1369,84 @@ def text(
         y=y,
         s=s,
         ax=ax,
+        **kwargs,
+    )
+
+
+def annotate(
+    text: str | na.AbstractScalarArray,
+    xy: na.AbstractVectorArray,
+    xytext: None | na.AbstractVectorArray = None,
+    components: None | tuple[str, str] = None,
+    ax: None | matplotlib.axes.Axes | na.AbstractArray = None,
+    xycoords: str | matplotlib.transforms.Transform | na.AbstractScalarArray | na.AbstractVectorArray = "data",
+    textcoords: None | str | matplotlib.transforms.Transform | na.AbstractScalarArray | na.AbstractVectorArray = None,
+    arrowprops: None | dict = None,
+    annotation_clip: None | bool | na.AbstractScalarArray = None,
+    **kwargs,
+):
+    """
+    A thin wrapper around :func:`matplotlib.axes.Axes.annotate` for named arrays.
+
+    Parameters
+    ----------
+    text
+        The text of the annotation
+    xy
+        The point to annotate in the coordinate system of `xycoords`.
+    xytext
+    components
+    ax
+    xycoords
+    textcoords
+    arrowprops
+    annotation_clip
+    kwargs
+
+    Examples
+    --------
+
+    Plot a single annotation
+
+    .. jupyter-execute::
+
+        import matplotlib.pyplot as plt
+        import named_arrays as na
+
+        fig, ax = plt.subplots()
+        ann = na.plt.annotate(
+            text="text",
+            xy=na.Cartesian2dVectorArray(x=.5, y=.5),
+            xytext=na.Cartesian2dVectorArray(x=.75, y=.75),
+        )
+
+    |
+
+    Plot annotations in a vectorized fashion
+
+    .. jupyter-execute::
+
+        fig, ax = plt.subplots()
+        ann = na.plt.annotate(
+            text="text",
+            xy=na.Cartesian2dVectorArray(
+                x=na.linspace(.25, .75, axis="x", num=3),
+                y=.5,
+            ),
+            xytext=na.Cartesian2dVectorArray(x=.75, y=.75),
+        )
+    """
+    return na._named_array_function(
+        annotate,
+        text=text,
+        xy=xy,
+        xytext=xytext,
+        components=components,
+        ax=ax,
+        xycoords=xycoords,
+        textcoords=textcoords,
+        arrowprops=arrowprops,
+        annotation_clip=annotation_clip,
         **kwargs,
     )
 

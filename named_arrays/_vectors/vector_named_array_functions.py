@@ -1,7 +1,10 @@
 from typing import Callable, TypeVar, Sequence, Literal
 import numpy as np
 import numpy.typing as npt
+import matplotlib.pyplot as plt
 import matplotlib.axes
+import matplotlib.transforms
+import matplotlib.text
 import astropy.units as u
 import regridding
 import named_arrays as na
@@ -417,6 +420,101 @@ def plt_plot_like(
         where=where,
         **kwargs,
     )
+
+
+@_implements(na.plt.annotate)
+def annotate(
+    text: str | na.AbstractScalarArray,
+    xy: na.AbstractVectorArray,
+    xytext: None | na.AbstractVectorArray = None,
+    components: None | tuple[str, str] = None,
+    ax: None | matplotlib.axes.Axes | na.AbstractArray = None,
+    xycoords: str | matplotlib.transforms.Transform | na.AbstractScalarArray | na.AbstractVectorArray = "data",
+    textcoords: None | str | matplotlib.transforms.Transform | na.AbstractScalarArray | na.AbstractVectorArray = None,
+    arrowprops: None | dict = None,
+    annotation_clip: None | bool | na.AbstractScalarArray = None,
+    **kwargs,
+):
+    if ax is None:
+        ax = plt.gca()
+
+    if textcoords is None:
+        textcoords = xycoords
+
+    if arrowprops is None:
+        arrowprops = dict()
+
+    try:
+        text = scalars._normalize(text)
+        ax = scalars._normalize(ax)
+        arrowprops = {k: scalars._normalize(arrowprops[k]) for k in arrowprops}
+        annotation_clip = scalars._normalize(annotation_clip)
+        kwargs = {k: scalars._normalize(kwargs[k]) for k in kwargs}
+    except na.ScalarTypeError:
+        return NotImplemented
+
+    try:
+        prototype = vectors._prototype(xy, xytext, xycoords, textcoords)
+        xy = vectors._normalize(xy, prototype)
+        xytext = vectors._normalize(xytext, prototype)
+        xycoords = vectors._normalize(xycoords, prototype)
+        textcoords = vectors._normalize(textcoords, prototype)
+    except na.VectorTypeError:
+        return NotImplemented
+
+    shape = na.shape_broadcasted(
+        text,
+        xy,
+        xytext,
+        ax,
+        xycoords,
+        textcoords,
+    )
+
+    text = text.broadcast_to(shape)
+    xy = xy.broadcast_to(shape)
+    xytext = xytext.broadcast_to(shape)
+    ax = ax.broadcast_to(shape)
+    xycoords = xycoords.broadcast_to(shape).astype(object)
+    textcoords = textcoords.broadcast_to(shape).astype(object)
+    arrowprops = {k: arrowprops[k].broadcast_to(shape) for k in arrowprops}
+    annotation_clip = annotation_clip.broadcast_to(shape)
+    kwargs = {k: kwargs[k].broadcast_to(shape) for k in kwargs}
+
+    components_prototype = prototype.components
+
+    if components is None:
+        if len(components_prototype) == 2:
+            components = tuple(components_prototype)
+        else:  # pragma: nocover
+            raise ValueError(
+                f"if `components` is `None`, the vector arguments must have"
+                f"exactly two components, got {tuple(components_prototype)}."
+            )
+    elif len(components) != 2:  # pragma: nocover
+        raise ValueError(f"{len(components)=} must be equal to 2.")
+
+    xy = xy.components
+    xytext = xytext.components
+    xycoords = xycoords.components
+    textcoords = textcoords.components
+
+    result = na.ScalarArray.empty(shape, dtype=matplotlib.text.Annotation)
+
+    for index in na.ndindex(shape):
+
+        result[index] = ax[index].ndarray.annotate(
+            text=text[index].ndarray,
+            xy=tuple(xy[c][index].ndarray for c in components),
+            xytext=tuple(xytext[c][index].ndarray for c in components),
+            xycoords=tuple(xycoords[c][index].ndarray for c in components),
+            textcoords=tuple(textcoords[c][index].ndarray for c in components),
+            arrowprops={k: arrowprops[k][index].ndarray for k in arrowprops},
+            annotation_clip=annotation_clip[index].ndarray,
+            **{k: kwargs[k][index].ndarray for k in kwargs},
+        )
+
+    return result
 
 
 @_implements(na.plt.pcolormesh)
