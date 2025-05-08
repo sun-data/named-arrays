@@ -1,8 +1,9 @@
 from __future__ import annotations
-from typing import Literal, Any, Callable
+from typing import Literal, Any, Callable, TypeVar
 import matplotlib.axes
 import matplotlib.transforms
 import matplotlib.animation
+import matplotlib.text
 import matplotlib.pyplot as plt
 import astropy.units as u
 import numpy as np
@@ -1373,20 +1374,23 @@ def text(
     )
 
 
+VectorT = TypeVar("VectorT", bound="na.AbstractVectorArray")
+
+
 def annotate(
     text: str | na.AbstractScalarArray,
-    xy: na.AbstractVectorArray,
-    xytext: None | na.AbstractVectorArray = None,
+    xy: VectorT,
+    xytext: None | VectorT = None,
     components: None | tuple[str, str] = None,
     ax: None | matplotlib.axes.Axes | na.AbstractArray = None,
-    xycoords: str | matplotlib.transforms.Transform | na.AbstractScalarArray | na.AbstractVectorArray = "data",
-    textcoords: None | str | matplotlib.transforms.Transform | na.AbstractScalarArray | na.AbstractVectorArray = None,
+    xycoords: str | matplotlib.transforms.Transform | na.AbstractScalarArray | VectorT = "data",
+    textcoords: None | str | matplotlib.transforms.Transform | na.AbstractScalarArray | VectorT = None,
     arrowprops: None | dict = None,
     annotation_clip: None | bool | na.AbstractScalarArray = None,
     **kwargs,
-):
+) -> na.ScalarArray[npt.NDArray[matplotlib.text.Annotation]]:
     """
-    A thin wrapper around :func:`matplotlib.axes.Axes.annotate` for named arrays.
+    A thin wrapper around :meth:`matplotlib.axes.Axes.annotate` for named arrays.
 
     Parameters
     ----------
@@ -1395,13 +1399,24 @@ def annotate(
     xy
         The point to annotate in the coordinate system of `xycoords`.
     xytext
+        The point to place the text in the coordinate system of `textcoords`.
     components
+        If `xy` has more than two components,
+        use this argument to specify which components correspond to
+        horizontal and vertical positions.
     ax
+        The matplotlib axes instance on which to plot the annotation.
     xycoords
+        The coordinate system that `xy` is given in.
     textcoords
+        The coordinate system that `xytext` is given in.
     arrowprops
+        The properties used to draw the arrow.
     annotation_clip
+        Whether to draw the annotation when the point is outside
+        the axes limits.
     kwargs
+        Additional arguments passed to :class:`matplotlib.text.Text`
 
     Examples
     --------

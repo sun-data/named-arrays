@@ -422,15 +422,18 @@ def plt_plot_like(
     )
 
 
+VectorT = TypeVar("VectorT", bound=na.AbstractVectorArray)
+
+
 @_implements(na.plt.annotate)
 def annotate(
     text: str | na.AbstractScalarArray,
-    xy: na.AbstractVectorArray,
-    xytext: None | na.AbstractVectorArray = None,
+    xy: VectorT,
+    xytext: None | VectorT = None,
     components: None | tuple[str, str] = None,
     ax: None | matplotlib.axes.Axes | na.AbstractArray = None,
-    xycoords: str | matplotlib.transforms.Transform | na.AbstractScalarArray | na.AbstractVectorArray = "data",
-    textcoords: None | str | matplotlib.transforms.Transform | na.AbstractScalarArray | na.AbstractVectorArray = None,
+    xycoords: str | matplotlib.transforms.Transform | na.AbstractScalarArray | VectorT = "data",
+    textcoords: None | str | matplotlib.transforms.Transform | na.AbstractScalarArray | VectorT = None,
     arrowprops: None | dict = None,
     annotation_clip: None | bool | na.AbstractScalarArray = None,
     **kwargs,
@@ -450,7 +453,7 @@ def annotate(
         arrowprops = {k: scalars._normalize(arrowprops[k]) for k in arrowprops}
         annotation_clip = scalars._normalize(annotation_clip)
         kwargs = {k: scalars._normalize(kwargs[k]) for k in kwargs}
-    except na.ScalarTypeError:
+    except na.ScalarTypeError:  # pragma: nocover
         return NotImplemented
 
     try:
@@ -459,7 +462,7 @@ def annotate(
         xytext = vectors._normalize(xytext, prototype)
         xycoords = vectors._normalize(xycoords, prototype)
         textcoords = vectors._normalize(textcoords, prototype)
-    except na.VectorTypeError:
+    except na.VectorTypeError:  # pragma: nocover
         return NotImplemented
 
     shape = na.shape_broadcasted(
@@ -481,7 +484,7 @@ def annotate(
     annotation_clip = annotation_clip.broadcast_to(shape)
     kwargs = {k: kwargs[k].broadcast_to(shape) for k in kwargs}
 
-    components_prototype = prototype.components
+    components_prototype = prototype.cartesian_nd.components
 
     if components is None:
         if len(components_prototype) == 2:
@@ -494,10 +497,10 @@ def annotate(
     elif len(components) != 2:  # pragma: nocover
         raise ValueError(f"{len(components)=} must be equal to 2.")
 
-    xy = xy.components
-    xytext = xytext.components
-    xycoords = xycoords.components
-    textcoords = textcoords.components
+    xy = xy.cartesian_nd.components
+    xytext = xytext.cartesian_nd.components
+    xycoords = xycoords.cartesian_nd.components
+    textcoords = textcoords.cartesian_nd.components
 
     result = na.ScalarArray.empty(shape, dtype=matplotlib.text.Annotation)
 
