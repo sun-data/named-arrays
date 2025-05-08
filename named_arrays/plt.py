@@ -1,8 +1,9 @@
 from __future__ import annotations
-from typing import Literal, Any, Callable
+from typing import Literal, Any, Callable, TypeVar
 import matplotlib.axes
 import matplotlib.transforms
 import matplotlib.animation
+import matplotlib.text
 import matplotlib.pyplot as plt
 import astropy.units as u
 import numpy as np
@@ -21,6 +22,7 @@ __all__ = [
     "pcolormovie",
     "rgbmovie",
     "text",
+    "annotate",
     "brace_vertical",
     "set_xlabel",
     "get_xlabel",
@@ -1368,6 +1370,98 @@ def text(
         y=y,
         s=s,
         ax=ax,
+        **kwargs,
+    )
+
+
+VectorT = TypeVar("VectorT", bound="na.AbstractVectorArray")
+
+
+def annotate(
+    text: str | na.AbstractScalarArray,
+    xy: VectorT,
+    xytext: None | VectorT = None,
+    components: None | tuple[str, str] = None,
+    ax: None | matplotlib.axes.Axes | na.AbstractArray = None,
+    xycoords: str | matplotlib.transforms.Transform | na.AbstractScalarArray | VectorT = "data",
+    textcoords: None | str | matplotlib.transforms.Transform | na.AbstractScalarArray | VectorT = None,
+    arrowprops: None | dict = None,
+    annotation_clip: None | bool | na.AbstractScalarArray = None,
+    **kwargs,
+) -> na.ScalarArray[npt.NDArray[matplotlib.text.Annotation]]:
+    """
+    A thin wrapper around :meth:`matplotlib.axes.Axes.annotate` for named arrays.
+
+    Parameters
+    ----------
+    text
+        The text of the annotation
+    xy
+        The point to annotate in the coordinate system of `xycoords`.
+    xytext
+        The point to place the text in the coordinate system of `textcoords`.
+    components
+        If `xy` has more than two components,
+        use this argument to specify which components correspond to
+        horizontal and vertical positions.
+    ax
+        The matplotlib axes instance on which to plot the annotation.
+    xycoords
+        The coordinate system that `xy` is given in.
+    textcoords
+        The coordinate system that `xytext` is given in.
+    arrowprops
+        The properties used to draw the arrow.
+    annotation_clip
+        Whether to draw the annotation when the point is outside
+        the axes limits.
+    kwargs
+        Additional arguments passed to :class:`matplotlib.text.Text`
+
+    Examples
+    --------
+
+    Plot a single annotation
+
+    .. jupyter-execute::
+
+        import matplotlib.pyplot as plt
+        import named_arrays as na
+
+        fig, ax = plt.subplots()
+        ann = na.plt.annotate(
+            text="text",
+            xy=na.Cartesian2dVectorArray(x=.5, y=.5),
+            xytext=na.Cartesian2dVectorArray(x=.75, y=.75),
+        )
+
+    |
+
+    Plot annotations in a vectorized fashion
+
+    .. jupyter-execute::
+
+        fig, ax = plt.subplots()
+        ann = na.plt.annotate(
+            text="text",
+            xy=na.Cartesian2dVectorArray(
+                x=na.linspace(.25, .75, axis="x", num=3),
+                y=.5,
+            ),
+            xytext=na.Cartesian2dVectorArray(x=.75, y=.75),
+        )
+    """
+    return na._named_array_function(
+        annotate,
+        text=text,
+        xy=xy,
+        xytext=xytext,
+        components=components,
+        ax=ax,
+        xycoords=xycoords,
+        textcoords=textcoords,
+        arrowprops=arrowprops,
+        annotation_clip=annotation_clip,
         **kwargs,
     )
 

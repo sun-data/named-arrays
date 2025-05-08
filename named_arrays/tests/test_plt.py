@@ -2,6 +2,8 @@ import pytest
 import numpy as np
 import matplotlib.axes
 import matplotlib.animation
+import matplotlib.text
+import matplotlib.pyplot as plt
 import astropy.units as u
 import named_arrays as na
 
@@ -9,6 +11,54 @@ _num_t = 11
 _num_w = 12
 _num_x = 13
 _num_y = 14
+
+
+@pytest.mark.parametrize(
+    argnames="text",
+    argvalues=[
+        "foo",
+    ],
+)
+@pytest.mark.parametrize(
+    argnames="xy,xytext,components",
+    argvalues=[
+        (
+            na.Cartesian2dVectorArray(1, 1),
+            None,
+            None,
+        ),
+        (
+            na.Cartesian2dVectorArray(1, 1),
+            na.Cartesian2dVectorArray(2, 1),
+            None,
+        ),
+        (
+            na.Cartesian2dVectorArray(na.Cartesian2dVectorArray(1, 2), 1),
+            None,
+            ("x.y", "y"),
+        ),
+    ],
+)
+def test_annotate(
+    text: str | na.AbstractScalarArray,
+    xy: na.AbstractVectorArray,
+    xytext: None | na.AbstractVectorArray,
+    components: None | tuple[str, str],
+):
+
+    fig, ax = plt.subplots()
+
+    result = na.plt.annotate(
+        text=text,
+        xy=xy,
+        xytext=xytext,
+        components=components,
+    )
+
+    for element in result.ndarray.flat:
+        assert isinstance(element, matplotlib.text.Annotation)
+
+    plt.close(fig)
 
 
 @pytest.mark.parametrize(
