@@ -641,10 +641,6 @@ class AbstractTestAbstractScalarArray(
                 a = array
                 like = array_2
 
-                if a is None:
-                    assert func(a, like=like) is None
-                    return
-
                 result = func(a, like=like)
 
                 assert isinstance(result, na.ScalarArray)

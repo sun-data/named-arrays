@@ -81,8 +81,6 @@ def _asarray_like(
         *,
         like: None | LikeT = None,
 ) -> ArrayT | LikeT:
-    if a is None:
-        return None
 
     if like is None:
         like = na.ScalarArray(None)
