@@ -212,10 +212,6 @@ class AbstractTestAbstractVectorArray(
                 a = array
                 like = array_2
 
-                if a is None:
-                    assert func(a, like=like) is None
-                    return
-
                 if isinstance(a, na.AbstractVectorArray):
                     if isinstance(like, na.AbstractVectorArray):
                         if a.type_explicit != like.type_explicit:

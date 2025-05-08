@@ -641,16 +641,13 @@ class AbstractTestAbstractScalarArray(
                 a = array
                 like = array_2
 
-                if a is None:
-                    assert func(a, like=like) is None
-                    return
-
                 result = func(a, like=like)
 
                 assert isinstance(result, na.ScalarArray)
                 assert isinstance(result.ndarray, np.ndarray)
 
-                assert np.all(result.value == na.value(a))
+                if a is not None:
+                    assert np.all(result.value == na.value(a))
 
                 super().test_asarray_like_functions(
                     func=func,
