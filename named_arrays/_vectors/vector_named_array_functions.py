@@ -458,10 +458,10 @@ def annotate(
 
     try:
         prototype = vectors._prototype(xy, xytext, xycoords, textcoords)
-        xy = vectors._normalize(xy, prototype)
-        xytext = vectors._normalize(xytext, prototype)
-        xycoords = vectors._normalize(xycoords, prototype)
-        textcoords = vectors._normalize(textcoords, prototype)
+        xy = na.asanyarray(xy, like=prototype)
+        xytext = na.asanyarray(xytext, like=prototype)
+        xycoords = na.asanyarray(xycoords, like=prototype)
+        textcoords = na.asanyarray(textcoords, like=prototype)
     except na.VectorTypeError:  # pragma: nocover
         return NotImplemented
 
