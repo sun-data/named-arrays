@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.axes
 import matplotlib.animation
 import matplotlib.text
+import matplotlib.pyplot as plt
 import astropy.units as u
 import named_arrays as na
 
@@ -44,6 +45,9 @@ def test_annotate(
     xytext: None | na.AbstractVectorArray,
     components: None | tuple[str, str],
 ):
+
+    fig, ax = plt.subplots()
+
     result = na.plt.annotate(
         text=text,
         xy=xy,
@@ -53,6 +57,8 @@ def test_annotate(
 
     for element in result.ndarray.flat:
         assert isinstance(element, matplotlib.text.Annotation)
+
+    plt.close(fig)
 
 
 @pytest.mark.parametrize(
