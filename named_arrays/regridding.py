@@ -252,7 +252,6 @@ def transpose_weights(
         rot_matrix = na.Cartesian2dRotationMatrixArray(20*u.deg)
         coordinates_output = rot_matrix @ coordinates_input
 
-
         # Calculate transformation between input and output coordinates:
         weights = na.regridding.weights(
             coordinates_input=coordinates_input,
@@ -293,9 +292,9 @@ def transpose_weights(
 
     weights, shape_input, shape_output = weights
 
-    transposed_weights = na._named_array_function(
+    return na._named_array_function(
         func=transpose_weights,
         weights=weights,
+        shape_input=shape_input,
+        shape_output=shape_output,
     )
-
-    return (transposed_weights, shape_output, shape_input)
