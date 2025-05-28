@@ -958,5 +958,3 @@ def regridding_regrid_from_weights(
         na.CartesianNdVectorArray(new_values_inputs),
         like=values_input.explicit
     )
-
-
