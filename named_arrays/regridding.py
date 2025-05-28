@@ -217,7 +217,8 @@ def transpose_weights(
     weights: tuple[na.AbstractScalar, dict[str, int], dict[str, int]],
 ) -> tuple[na.AbstractScalar, dict[str, int], dict[str, int]]:
     """
-    Transpose indices of weights for use backward transformation.
+    Transpose indices of weights for use backward transformation.  This is a thin wrapper around
+    :func:`regridding.transpose_weights`.
 
     Parameters
     ----------
@@ -245,7 +246,7 @@ def transpose_weights(
         )
 
         # Define array of values that on grid cell centers
-        values_input =   na.ScalarArray.zeros(shape = dict(x=num_x-1, y=num_y-1))
+        values_input = na.ScalarArray.zeros(shape = dict(x=num_x-1, y=num_y-1))
         values_input[dict(x=4,y=4)] = 1
 
         # Rotate grid
