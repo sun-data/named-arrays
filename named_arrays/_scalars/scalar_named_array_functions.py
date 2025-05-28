@@ -1869,6 +1869,12 @@ def regridding_regrid_from_weights(
 
     return result
 
+@_implements(na.regridding.transpose_weights)
+def regridding_transpose_weights(
+        weights: na.AbstractScalar) -> na.AbstractScalar:
+    new_weights, _, _, = regridding.transpose_weights((weights.ndarray, tuple(), tuple()))
+    return na.ScalarArray(new_weights, axes=weights.axes)
+
 
 @_implements(na.despike)
 def despike(

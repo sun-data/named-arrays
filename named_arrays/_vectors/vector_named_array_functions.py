@@ -959,4 +959,21 @@ def regridding_regrid_from_weights(
         like=values_input.explicit
     )
 
+@_implements(na.regridding.transpose_weights)
+def regridding_transpose_weights(
+        weights: na.AbstractVectorArray
+) -> na.AbstractVectorArray:
+
+    components = weights.cartesian_nd.components
+    new_weights = {}
+    for c in components:
+        new_weights[c] = na.regridding.transpose_weights(
+            weights=weights,
+        )
+
+    return weights.type_explicit.from_cartesian_nd(
+        na.CartesianNdVectorArray(new_weights),
+        like=weights.explicit
+    )
+
 

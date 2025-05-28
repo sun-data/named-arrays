@@ -6,13 +6,13 @@ A wrapper around the :mod:`regridding` module for named arrays.
 
 from __future__ import annotations
 from typing import Sequence, Literal
-import astropy.units as u
 import named_arrays as na
 
 __all__ = [
     "regrid",
     "weights",
     "regrid_from_weights",
+    "transpose_weights",
 ]
 
 
@@ -212,3 +212,90 @@ def regrid_from_weights(
         shape_output=shape_output,
         values_input=values_input,
     )
+
+def transpose_weights(
+    weights: tuple[na.AbstractScalar, dict[str, int], dict[str, int]],
+) -> tuple[na.AbstractScalar, dict[str, int], dict[str, int]]:
+    """
+    Transpose indices of weights for use backward transformation.
+
+    Parameters
+    ----------
+    weights
+        Ragged array of weights computed by :func:`weights`.
+
+    Examples
+    --------
+    Regrid a 2D array using conservative resampling, and then transform back with transposed_weights.
+
+    .. jupyter-execute::
+
+        import matplotlib.pyplot as plt
+        import named_arrays as na
+        import astropy.units as u
+
+        # Define the number of edges in the input grid
+        num_x = 11
+        num_y = 11
+
+        # Define a linear grid
+        coordinates_input = na.Cartesian2dVectorArray(
+            x=na.linspace(-5, 5, axis="x", num=num_x),
+            y=na.linspace(-5, 5, axis="y", num=num_y),
+        )
+
+        # Define array of values that on grid cell centers
+        values_input =   na.ScalarArray.zeros(shape = dict(x=num_x-1, y=num_y-1))
+        values_input[dict(x=4,y=4)] = 1
+
+        # Rotate grid
+        rot_matrix = na.Cartesian2dRotationMatrixArray(20*u.deg)
+        coordinates_output = rot_matrix @ coordinates_input
+
+
+        # Calculate transformation between input and output coordinates:
+        weights = na.regridding.weights(
+            coordinates_input=coordinates_input,
+            coordinates_output=coordinates_output,
+            method="conservative",
+        )
+
+        # Regrid values onto output coordinates
+        values_output = na.regridding.regrid_from_weights(
+            *weights,
+            values_input=values_input
+        )
+
+        # Transpose weights
+        weights_transposed = na.regridding.transpose_weights(weights)
+
+        # Regrid the regridded values back onto original grid using transposed weights.
+        values_transposed = na.regridding.regrid_from_weights(
+            *weights_transposed,
+            values_input=values_output
+        )
+
+        # Plot the original and regridded arrays of values
+        fig, ax = plt.subplots(
+            ncols=3,
+            sharex=True,
+            sharey=True,
+            figsize=(8, 4),
+            constrained_layout=True,
+        );
+        na.plt.pcolormesh(coordinates_input, C=values_input, ax=ax[0])
+        na.plt.pcolormesh(coordinates_output, C=values_output, ax=ax[1])
+        na.plt.pcolormesh(coordinates_input, C=values_transposed, ax=ax[2])
+        ax[0].set_title("original");
+        ax[1].set_title("rotated");
+        ax[2].set_title("rotated and transposed");
+    """
+
+    weights, shape_input, shape_output = weights
+
+    transposed_weights = na._named_array_function(
+        func=transpose_weights,
+        weights=weights,
+    )
+
+    return (transposed_weights, shape_output, shape_input)
