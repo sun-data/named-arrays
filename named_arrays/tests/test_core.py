@@ -862,7 +862,7 @@ class AbstractTestAbstractArray(
         @pytest.mark.parametrize('newshape', [dict(r=-1)])
         def test_reshape(self, array: na.AbstractArray, newshape: dict[str, int]):
 
-            result = np.reshape(a=array, newshape=newshape)
+            result = np.reshape(array, newshape=newshape)
 
             assert result.size == array.size
             assert result.axes == tuple(newshape.keys())
@@ -1128,8 +1128,8 @@ class AbstractTestAbstractArray(
                 "%.2f",
             ]
         )
-        def test_char_mod(self, array: na.AbstractArray, a: na.AbstractArray):
-            result = np.char.mod(a, array)
+        def test_strings_mod(self, array: na.AbstractArray, a: na.AbstractArray):
+            result = np.strings.mod(a, array)
             assert isinstance(result, na.AbstractArray)
 
     @pytest.mark.parametrize(
