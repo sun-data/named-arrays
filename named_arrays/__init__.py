@@ -22,6 +22,7 @@ from ._vectors.vectors_directional import *
 from ._vectors.vectors_spectral_positional import *
 from ._vectors.vectors_spectral_directional import *
 from ._vectors.vectors_temporal_spectral import *
+from ._vectors.vectors_temporal_positional import *
 from ._vectors.vectors_temporal_spectral_positional import *
 from ._vectors.vectors_temporal_spectral_directional import *
 from ._vectors.vectors_input_output import *
@@ -37,6 +38,7 @@ from ._matrices.matrices_directional import *
 from ._matrices.matrices_spectral_positional import *
 from ._matrices.matrices_spectral_directional import *
 from ._matrices.matrices_temporal_spectral import *
+from ._matrices.matrices_temporal_positional import *
 from ._matrices.matrices_temporal_spectral_positional import *
 from ._matrices.matrices_temporal_spectral_directional import *
 from ._matrices.matrices_input_output import *
