@@ -54,8 +54,6 @@ PLT_AXES_SETTERS = (
 PLT_AXES_GETTERS = (
     na.plt.get_xlabel,
     na.plt.get_ylabel,
-    na.plt.get_xlim,
-    na.plt.get_ylim,
     na.plt.get_title,
     na.plt.get_xscale,
     na.plt.get_yscale,
@@ -64,6 +62,10 @@ PLT_AXES_GETTERS = (
     na.plt.twiny,
     na.plt.invert_xaxis,
     na.plt.invert_yaxis,
+)
+PLT_GET_LIM = (
+    na.plt.get_xlim,
+    na.plt.get_ylim,
 )
 PLT_AXES_ATTRIBUTES = (
     na.plt.transAxes,

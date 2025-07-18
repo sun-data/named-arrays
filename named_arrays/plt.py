@@ -1573,7 +1573,7 @@ def set_xlim(
     """
     return na._named_array_function(
         set_xlim,
-        left=left,
+        left=na.as_named_array(left),
         right=right,
         ax=ax,
         **kwargs,
