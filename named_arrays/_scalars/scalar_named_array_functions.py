@@ -44,6 +44,8 @@ PLT_PLOT_LIKE_FUNCTIONS = (
 PLT_AXES_SETTERS = (
     na.plt.set_xlabel,
     na.plt.set_ylabel,
+    na.plt.set_xlim,
+    na.plt.set_ylim,
     na.plt.set_title,
     na.plt.set_xscale,
     na.plt.set_yscale,
@@ -52,6 +54,8 @@ PLT_AXES_SETTERS = (
 PLT_AXES_GETTERS = (
     na.plt.get_xlabel,
     na.plt.get_ylabel,
+    na.plt.get_xlim,
+    na.plt.get_ylim,
     na.plt.get_title,
     na.plt.get_xscale,
     na.plt.get_yscale,
