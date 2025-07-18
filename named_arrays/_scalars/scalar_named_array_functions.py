@@ -1407,6 +1407,28 @@ def plt_axes_getter(
     return result
 
 
+def plt_get_lim(
+    method: str,
+    ax: na.AbstractScalarArray,
+) -> tuple[na.ScalarArray, na.ScalarArray]:
+
+    try:
+        ax = scalars._normalize(ax)
+    except na.ScalarTypeError:  # pragma: nocover
+        return NotImplemented
+
+    result_lower = na.ScalarArray.empty(shape=ax.shape, dtype=object)
+    result_upper = na.ScalarArray.empty(shape=ax.shape, dtype=object)
+
+    for index in na.ndindex(ax.shape):
+        ax_index = ax[index].ndarray
+        if ax_index is None:
+            ax_index = plt.gca()
+        result_lower[index], result_upper[index] = getattr(ax_index, method.__name__)()
+
+    return result_lower, result_upper
+
+
 def plt_axes_attribute(
     method: str,
     ax: na.AbstractScalarArray,
