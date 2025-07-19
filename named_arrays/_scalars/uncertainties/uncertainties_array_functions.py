@@ -659,6 +659,54 @@ def argsort(
     )
 
 
+@implements(np.partition)
+def partition(
+    a: na.AbstractUncertainScalarArray,
+    kth: int | Sequence[int],
+    axis: str,
+    kind: str = "introselect",
+    order: None | str | list[str] = None,
+) -> na.UncertainScalarArray:
+
+    a_nominal = a.nominal
+    a_distribution = a.distribution
+
+    shape_nominal = na.shape(a_nominal)
+    shape_distribution = na.shape(a_distribution)
+
+    shape = na.broadcast_shapes(shape_nominal, shape_distribution)
+
+    if axis not in a.axes:
+        raise ValueError(f"{axis=} is not in {a.shape=}")
+
+    shape_nominal[axis] = shape[axis]
+    shape_distribution[axis] = shape[axis]
+
+    a_nominal = na.broadcast_to(a_nominal, shape=shape_nominal)
+    a_distribution = na.broadcast_to(a_distribution, shape=shape_distribution)
+
+    result_nominal = np.partition(
+        a=a_nominal,
+        kth=kth,
+        axis=axis,
+        kind=kind,
+        order=order,
+    )
+
+    result_distribution = np.partition(
+        a=a_distribution,
+        kth=kth,
+        axis=axis,
+        kind=kind,
+        order=order,
+    )
+
+    return na.UncertainScalarArray(
+        nominal=result_nominal,
+        distribution=result_distribution,
+    )
+
+
 @implements(np.unravel_index)
 def unravel_index(
         indices: na.AbstractUncertainScalarArray,

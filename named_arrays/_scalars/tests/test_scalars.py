@@ -187,6 +187,50 @@ class AbstractTestAbstractScalar(
             assert np.all(result == result_out)
             assert result_out is out
 
+    class TestArrayFunctions(
+        tests.test_core.AbstractTestAbstractArray.TestArrayFunctions,
+    ):
+
+        @pytest.mark.parametrize(
+            argnames="kth",
+            argvalues=[
+                2,
+            ]
+        )
+        @pytest.mark.parametrize(
+            argnames="axis",
+            argvalues=["y",],
+        )
+        def test_partition(
+            self,
+            array: na.AbstractScalar,
+            kth: int | Sequence[int],
+            axis: str,
+        ):
+            if axis not in array.shape:
+                with pytest.raises(ValueError):
+                    np.partition(
+                        a=array,
+                        kth=kth,
+                        axis=axis,
+                    )
+                return
+
+            result = np.partition(
+                a=array,
+                kth=kth,
+                axis=axis,
+            )
+
+            if isinstance(kth, int):
+                kth = [kth]
+
+            for k in kth:
+                result_lower = result[{axis: slice(None, k)}].mean(axis)
+                result_upper = result[{axis: slice(k, None)}].mean(axis)
+                assert np.all(result_lower <= result_upper)
+
+
     class TestNamedArrayFunctions(
         tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions,
     ):

@@ -725,6 +725,31 @@ def argsort(
     return result
 
 
+@implements(np.partition)
+def partition(
+    a: na.AbstractScalarArray,
+    kth: int | Sequence[int],
+    axis: str,
+    kind: str = "introselect",
+    order: None | str | list[str] = None,
+):
+    a = a.explicit
+
+    if axis not in a.axes:
+        raise ValueError(f"{axis=} is not in {a.shape=}")
+
+    return na.ScalarArray(
+        ndarray=np.partition(
+            a=a.ndarray,
+            kth=kth,
+            axis=a.axes.index(axis),
+            kind=kind,
+            order=order
+        ),
+        axes=a.axes,
+    )
+
+
 @implements(np.unravel_index)
 def unravel_index(indices: na.AbstractScalarArray, shape: dict[str, int]) -> dict[str, na.ScalarArray]:
 
