@@ -28,6 +28,10 @@ __all__ = [
     "get_xlabel",
     "set_ylabel",
     "get_ylabel",
+    "set_xlim",
+    "get_xlim",
+    "set_ylim",
+    "get_ylim",
     "set_title",
     "get_title",
     "set_xscale",
@@ -1543,6 +1547,98 @@ def get_ylabel(
     """
     return na._named_array_function(
         get_ylabel,
+        ax=na.as_named_array(ax),
+    )
+
+
+def set_xlim(
+    left: None | float | na.AbstractScalar = None,
+    right: None | float | na.AbstractScalar = None,
+    ax: None | matplotlib.axes.Axes | na.AbstractScalar = None,
+    **kwargs,
+) -> tuple[na.AbstractScalar, na.AbstractScalar]:
+    """
+    A thin wrapper around :meth:`matplotlib.axes.Axes.set_xlim` for named arrays.
+
+    Parameters
+    ----------
+    left
+        The left limit of the plot in data coordinates.
+        If :obj:`None`, this limit is unchanged.
+    right
+        The right limit of the plot in data coordinates.
+        If :obj:`None`, this limit is unchanged.
+    ax
+        The matplotlib axes instance on which to apply the label.
+    """
+    return na._named_array_function(
+        set_xlim,
+        left=na.as_named_array(left),
+        right=right,
+        ax=ax,
+        **kwargs,
+    )
+
+
+def get_xlim(
+    ax: None | matplotlib.axes.Axes | na.AbstractScalar = None,
+) -> tuple[na.AbstractScalar, na.AbstractScalar]:
+    """
+    A thin wrapper around :meth:`matplotlib.axes.Axes.get_xlim` for named arrays.
+
+    Parameters
+    ----------
+    ax
+        The matplotlib axes instance(s) to get the horizontal axis label from.
+    """
+    return na._named_array_function(
+        get_xlim,
+        ax=na.as_named_array(ax),
+    )
+
+
+def set_ylim(
+    bottom: None | float | na.AbstractScalar = None,
+    top: None | float | na.AbstractScalar = None,
+    ax: None | matplotlib.axes.Axes | na.AbstractScalar = None,
+    **kwargs,
+) -> tuple[na.AbstractScalar, na.AbstractScalar]:
+    """
+    A thin wrapper around :meth:`matplotlib.axes.Axes.set_ylim` for named arrays.
+
+    Parameters
+    ----------
+    bottom
+        The bottom of the plot in data coordinates.
+        If :obj:`None`, this limit is unchanged.
+    top
+        The top of the plot in data coordinates.
+        If :obj:`None`, this limit is unchanged.
+    ax
+        The matplotlib axes instance on which to apply the label.
+    """
+    return na._named_array_function(
+        set_ylim,
+        bottom=na.as_named_array(bottom),
+        top=top,
+        ax=ax,
+        **kwargs,
+    )
+
+
+def get_ylim(
+    ax: None | matplotlib.axes.Axes | na.AbstractScalar = None,
+) -> tuple[na.AbstractScalar, na.AbstractScalar]:
+    """
+    A thin wrapper around :meth:`matplotlib.axes.Axes.get_ylim` for named arrays.
+
+    Parameters
+    ----------
+    ax
+        The matplotlib axes instance(s) to get the vertical axis label from.
+    """
+    return na._named_array_function(
+        get_ylim,
         ax=na.as_named_array(ax),
     )
 

@@ -308,6 +308,44 @@ def test_set_ylabel(
 
 
 @pytest.mark.parametrize(
+    argnames="left,right,ax",
+    argvalues=[
+        (4, 5, na.plt.subplots(ncols=3)[1]),
+    ]
+)
+def test_set_xlim(
+    left: float | na.AbstractScalar,
+    right: float | na.AbstractScalar,
+    ax: None | matplotlib.axes.Axes | na.AbstractScalar,
+):
+    na.plt.set_xlim(left, right, ax=ax, emit=False)
+    l, r = na.plt.get_xlim(ax)
+    if left is not None:
+        assert np.all(l == left)
+    if right is not None:
+        assert np.all(r == right)
+
+
+@pytest.mark.parametrize(
+    argnames="bottom,top,ax",
+    argvalues=[
+        (1, 2, na.plt.subplots(ncols=3)[1]),
+    ]
+)
+def test_set_ylim(
+    bottom: float | na.AbstractScalar,
+    top: float | na.AbstractScalar,
+    ax: None | matplotlib.axes.Axes | na.AbstractScalar,
+):
+    na.plt.set_ylim(bottom, top, ax=ax)
+    b, t = na.plt.get_ylim(ax)
+    if bottom is not None:
+        assert np.all(b == bottom)
+    if top is not None:
+        assert np.all(t == top)
+
+
+@pytest.mark.parametrize(
     argnames="label,ax",
     argvalues=[
         ("foo", None),

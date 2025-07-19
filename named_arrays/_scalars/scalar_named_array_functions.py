@@ -44,6 +44,8 @@ PLT_PLOT_LIKE_FUNCTIONS = (
 PLT_AXES_SETTERS = (
     na.plt.set_xlabel,
     na.plt.set_ylabel,
+    na.plt.set_xlim,
+    na.plt.set_ylim,
     na.plt.set_title,
     na.plt.set_xscale,
     na.plt.set_yscale,
@@ -60,6 +62,10 @@ PLT_AXES_GETTERS = (
     na.plt.twiny,
     na.plt.invert_xaxis,
     na.plt.invert_yaxis,
+)
+PLT_GET_LIM = (
+    na.plt.get_xlim,
+    na.plt.get_ylim,
 )
 PLT_AXES_ATTRIBUTES = (
     na.plt.transAxes,
@@ -1399,6 +1405,28 @@ def plt_axes_getter(
         result[index] = getattr(ax_index, method.__name__)()
 
     return result
+
+
+def plt_get_lim(
+    method: str,
+    ax: na.AbstractScalarArray,
+) -> tuple[na.ScalarArray, na.ScalarArray]:
+
+    try:
+        ax = scalars._normalize(ax)
+    except na.ScalarTypeError:  # pragma: nocover
+        return NotImplemented
+
+    result_lower = na.ScalarArray.empty(shape=ax.shape, dtype=object)
+    result_upper = na.ScalarArray.empty(shape=ax.shape, dtype=object)
+
+    for index in na.ndindex(ax.shape):
+        ax_index = ax[index].ndarray
+        if ax_index is None:
+            ax_index = plt.gca()
+        result_lower[index], result_upper[index] = getattr(ax_index, method.__name__)()
+
+    return result_lower, result_upper
 
 
 def plt_axes_attribute(
