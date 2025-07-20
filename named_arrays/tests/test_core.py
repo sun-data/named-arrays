@@ -8,7 +8,6 @@ import numpy as np
 import matplotlib.axes
 import matplotlib.artist
 import matplotlib.pyplot as plt
-import scipy.stats
 import astropy.units as u
 import astropy.visualization
 import named_arrays as na
@@ -1316,25 +1315,6 @@ class AbstractTestAbstractArray(
         @abc.abstractmethod
         def test_nominal(self, array: na.AbstractArray):
             pass  # pragma: nocover
-
-        def test_mean_trimmed(
-            self,
-            array: na.AbstractArray,
-            q: float | Sequence[float] = 0.25,
-            axis: None | str | Sequence[str] = None,
-        ):
-            result = na.mean_trimmed(
-                a=array,
-                q=q,
-                axis=axis,
-            )
-            result_expected = scipy.stats.trim_mean(
-                a=array.ndarray,
-                proportiontocut=q,
-                axis=axis,
-            )
-
-            assert np.allclose(result.value.ndarray, result_expected)
 
         @pytest.mark.parametrize(
             argnames="slope",

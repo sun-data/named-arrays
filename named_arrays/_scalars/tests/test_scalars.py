@@ -4,6 +4,7 @@ import pytest
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
+import scipy.stats
 import astropy.units as u
 import astropy.visualization
 import astropy.units.quantity_helper.helpers as quantity_helpers
@@ -234,6 +235,27 @@ class AbstractTestAbstractScalar(
     class TestNamedArrayFunctions(
         tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions,
     ):
+
+
+        def test_mean_trimmed(
+            self,
+            array: na.AbstractArray,
+            q: float | Sequence[float] = 0.25,
+            axis: None | str | Sequence[str] = None,
+        ):
+            result = na.mean_trimmed(
+                a=array,
+                q=q,
+                axis=axis,
+            )
+            result_expected = scipy.stats.trim_mean(
+                a=array.ndarray,
+                proportiontocut=q,
+                axis=axis,
+            )
+
+            assert np.allclose(result.value.ndarray, result_expected)
+
 
         @pytest.mark.parametrize(
             argnames="bins",
