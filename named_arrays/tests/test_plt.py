@@ -14,6 +14,74 @@ _num_y = 14
 
 
 @pytest.mark.parametrize(
+    argnames="ymin",
+    argvalues=[
+        2,
+    ],
+)
+@pytest.mark.parametrize(
+    argnames="ymax",
+    argvalues=[
+        3,
+    ],
+)
+@pytest.mark.parametrize(
+    argnames="ax",
+    argvalues=[
+        None,
+        na.plt.subplots(ncols=3)[1]
+    ]
+)
+def test_axhspan(
+    ymin: float | na.AbstractScalar,
+    ymax: float | na.AbstractScalar,
+    ax: None | matplotlib.axes.Axes | na.AbstractScalar,
+):
+    result = na.plt.axhspan(
+        ymin=ymin,
+        ymax=ymax,
+        ax=ax,
+    )
+
+    for r in result.ndarray.flat:
+        assert isinstance(r, plt.Rectangle)
+
+
+@pytest.mark.parametrize(
+    argnames="xmin",
+    argvalues=[
+        2,
+    ],
+)
+@pytest.mark.parametrize(
+    argnames="xmax",
+    argvalues=[
+        3,
+    ],
+)
+@pytest.mark.parametrize(
+    argnames="ax",
+    argvalues=[
+        None,
+        na.plt.subplots(ncols=3)[1]
+    ]
+)
+def test_axvspan(
+    xmin: float | na.AbstractScalar,
+    xmax: float | na.AbstractScalar,
+    ax: None | matplotlib.axes.Axes | na.AbstractScalar,
+):
+    result = na.plt.axvspan(
+        xmin=xmin,
+        xmax=xmax,
+        ax=ax,
+    )
+
+    for r in result.ndarray.flat:
+        assert isinstance(r, plt.Rectangle)
+
+
+@pytest.mark.parametrize(
     argnames="text",
     argvalues=[
         "foo",

@@ -16,6 +16,8 @@ __all__ = [
     "fill",
     "scatter",
     "stairs",
+    "axhspan",
+    "axvspan",
     "imshow",
     "pcolormesh",
     "rgbmesh",
@@ -472,6 +474,76 @@ def scatter(
         ax=ax,
         where=where,
         components=components,
+        **kwargs,
+    )
+
+
+def axhspan(
+    ymin: float | na.AbstractScalar,
+    ymax: float | na.AbstractScalar,
+    xmin: float | na.AbstractScalar = 0,
+    xmax: float | na.AbstractScalar = 1,
+    ax: None | matplotlib.axes.Axes | na.AbstractScalar = None,
+    **kwargs,
+) -> na.ScalarArray:
+    """
+    A wrapper around :meth:`matplotlib.axes.Axes.axhspan`.
+
+    Parameters
+    ----------
+    ymin
+        Lower `y`-coordinate of the span in data units.
+    ymax
+        Upper `y`-coordinate of the span in data units.
+    xmin
+        Lower  `x`-coordinate of the span in `x` axis units (0-1).
+    xmax
+        Upper `x`-coordinate of the span in `x` axis units (0-1).
+    ax
+        The matplotlib axes instance(s) to use.
+    """
+    return na._named_array_function(
+        axhspan,
+        ymin=na.as_named_array(ymin),
+        ymax=ymax,
+        xmin=xmin,
+        xmax=xmax,
+        ax=ax,
+        **kwargs,
+    )
+
+
+def axvspan(
+    xmin: float | na.AbstractScalar,
+    xmax: float | na.AbstractScalar,
+    ymin: float | na.AbstractScalar = 0,
+    ymax: float | na.AbstractScalar = 1,
+    ax: None | matplotlib.axes.Axes | na.AbstractScalar = None,
+    **kwargs,
+) -> na.ScalarArray:
+    """
+    A wrapper around :meth:`matplotlib.axes.Axes.axvspan`.
+
+    Parameters
+    ----------
+    xmin
+        Lower `x`-coordinate of the span in data units.
+    xmax
+        Upper `x`-coordinate of the span in data units.
+    ymin
+        Lower  `y`-coordinate of the span in `y` axis units (0-1).
+    ymax
+        Upper `y`-coordinate of the span in `y` axis units (0-1).
+    ax
+        The matplotlib axes instance(s) to use.
+    """
+    return na._named_array_function(
+        axvspan,
+        xmin=na.as_named_array(xmin),
+        xmax=xmax,
+        ymin=ymin,
+        ymax=ymax,
+        ax=ax,
         **kwargs,
     )
 

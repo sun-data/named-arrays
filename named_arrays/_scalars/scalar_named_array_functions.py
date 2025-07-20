@@ -50,6 +50,8 @@ PLT_AXES_SETTERS = (
     na.plt.set_xscale,
     na.plt.set_yscale,
     na.plt.set_aspect,
+    na.plt.axvspan,
+    na.plt.axhspan,
 )
 PLT_AXES_GETTERS = (
     na.plt.get_xlabel,
@@ -1363,7 +1365,7 @@ def plt_axes_setter(
     *args,
     ax: None | matplotlib.axes.Axes | na.AbstractScalarArray = None,
     **kwargs,
-) -> None:
+) -> na.ScalarArray:
 
     if ax is None:
         ax = plt.gca()
@@ -1380,10 +1382,15 @@ def plt_axes_setter(
     args = [arg.broadcast_to(shape) for arg in args]
     kwargs = {k: kwargs[k].broadcast_to(shape) for k in kwargs}
 
+    result = ax.type_explicit.empty(shape=ax.shape, dtype=object)
+
     for index in na.ndindex(shape):
         args_index = [arg[index].ndarray for arg in args]
         kwargs_index = {k: kwargs[k][index].ndarray for k in kwargs}
-        getattr(ax[index].ndarray, method.__name__)(*args_index, **kwargs_index)
+        r = getattr(ax[index].ndarray, method.__name__)(*args_index, **kwargs_index)
+        result[index] = r
+
+    return result
 
 
 def plt_axes_getter(
