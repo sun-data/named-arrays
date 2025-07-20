@@ -16,6 +16,8 @@ __all__ = [
     "fill",
     "scatter",
     "stairs",
+    "axhspan",
+    "axvspan",
     "imshow",
     "pcolormesh",
     "rgbmesh",
