@@ -487,7 +487,7 @@ def axhspan(
     **kwargs,
 ) -> na.ScalarArray:
     """
-    A wrapper around :meth:`matplotlib.axes.Axes.axvspan`.
+    A wrapper around :meth:`matplotlib.axes.Axes.axhspan`.
 
     Parameters
     ----------
