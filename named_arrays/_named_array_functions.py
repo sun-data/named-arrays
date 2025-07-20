@@ -23,6 +23,7 @@ __all__ = [
     'concatenate',
     'add_axes',
     "vmr",
+    "mean_trimmed",
     "interp",
     "histogram",
     "histogram2d",
@@ -34,6 +35,7 @@ __all__ = [
 
 NDArrayT = TypeVar("NDArrayT", bound=np.ndarray)
 ArrayT = TypeVar("ArrayT")
+QuantileT = TypeVar("QuantileT", bound="float | na.AbstractArray")
 LikeT = TypeVar("LikeT", bound="None | na.AbstractArray")
 AxisT = TypeVar("AxisT", bound="str | na.AbstractArray")
 NumT = TypeVar("NumT", bound="int | na.AbstractArray")
@@ -796,6 +798,78 @@ def vmr(
     result = np.divide(result, np.mean(**kwargs), out=out)
 
     return result
+
+
+def mean_trimmed(
+    a: ArrayT,
+    q: QuantileT = 0.25,
+    axis: None | str | Sequence[str] = None,
+    dtype: None | str | Type | np.dtype = None,
+    out: None | na.AbstractExplicitArray = None,
+    keepdims: bool = False,
+    # *,
+    # where: bool | WhereT = True,
+) -> ArrayT | QuantileT | WhereT:
+    """
+    Compute the trimmed mean of the given array along the specified axes.
+
+    Parameters
+    ----------
+    a
+        The input array to compute the trimmed mean of.
+    q
+        The fraction of the largest and smallest elements to remove.
+        Must be between 0 and 1/2.
+        If the specified fraction does not result in an integer number of elements,
+        the number of elements to trim is rounded down.
+    axis
+        The axis or axes along which to compute the trimmed mean.
+    dtype
+        The data type of the output
+    out
+        An optional output array in which to store the results.
+    keepdims
+        If :obj:`True`, the resulting array will have the same dimensionality.
+
+    See Also
+    -----
+    :func:`scipy.stats.trim_mean`: equivalent Numpy function
+    :meth:`AbstractArray.mean_trimmed`: A method version of this function.
+    """
+
+    a = a.explicit
+
+    if not a.shape:
+        return a
+
+    axis = na.axis_normalized(a, axis)
+
+    axis_flat = na.flatten_axes(axis)
+
+    a = a.combine_axes(axis, axis_new=axis_flat)
+
+    nobs = a.shape[axis_flat]
+
+    lowercut = int(q * nobs)
+    uppercut = nobs - lowercut
+    if lowercut > uppercut:  # pragma: nocover
+        raise ValueError("Proportion too big.")
+
+    a = np.partition(
+        a=a,
+        kth=(lowercut, uppercut - 1),
+        axis=axis_flat,
+    )
+
+    sl = {axis_flat: slice(lowercut, uppercut)}
+
+    return np.mean(
+        a=a[sl],
+        axis=axis_flat,
+        dtype=dtype,
+        out=out,
+        keepdims=keepdims,
+    )
 
 
 def interp(
