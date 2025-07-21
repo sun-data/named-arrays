@@ -358,7 +358,13 @@ class AbstractScalarArray(
             )
 
         elif isinstance(item, dict):
+
             axes = self.axes
+
+            if not set(item).issubset(axes):
+                raise ValueError(
+                    f"{item.keys()=} must be a subset of {self.axes=}"
+                )
 
             item_advanced = dict()      # type: typ.Dict[str, AbstractScalarArray]
             for axis in item:
@@ -368,6 +374,8 @@ class AbstractScalarArray(
                         item_advanced[axis] = item_axis
                     else:
                         return NotImplemented
+                elif isinstance(item_axis, int):
+                    item_advanced[axis] = item_axis
 
             if not set(ax for ax in item if item[ax] is not None).issubset(axes):
                 raise ValueError(f"the axes in item, {tuple(item)}, must be a subset of the axes in the array, {axes}")
@@ -380,29 +388,20 @@ class AbstractScalarArray(
                 destination=tuple(range(len(item_advanced))),
             )
 
-            axes_organized = list(item_advanced.keys()) + list(ax for ax in axes if ax not in item_advanced)
+            axes_basic = tuple(ax for ax in axes if ax not in item_advanced)
+            axes_self = tuple(item_advanced) + axes_basic
+            axes_value = tuple(shape_advanced) + axes_basic
 
-            axes_new = axes_organized.copy()
             index = [slice(None)] * self.ndim   # type: list[int | slice | AbstractScalar]
             for ax in item:
                 item_axis = item[ax]
-                if item_axis is None:
-                    continue
-                if ax in item_advanced:
+                if isinstance(item_axis, na.AbstractScalarArray):
                     item_axis = item_axis.ndarray_aligned(shape_advanced)
-                index[axes_organized.index(ax)] = item_axis
-                if not isinstance(item_axis, slice):
-                    axes_new.remove(ax)
-
-            if any(ax in shape_advanced for ax in axes_new):
-                raise ValueError(
-                    f"axis in advanced axes, {tuple(shape_advanced)}, "
-                    f"is already in basic axes, {tuple(axes_new)}"
-                )
+                index[axes_self.index(ax)] = item_axis
 
             return ScalarArray(
                 ndarray=ndarray_organized[tuple(index)],
-                axes=tuple(shape_advanced.keys()) + tuple(axes_new),
+                axes=axes_value,
             )
 
         else:
@@ -967,33 +966,35 @@ class ScalarArray(
 
             if not set(item).issubset(shape_self):
                 raise ValueError(
-                    f"if `item` is a `{dict.__name__}`, the keys in `item`, {tuple(item)}, "
-                    f"must be a subset of `self.axes`, {self.axes}"
+                    f"{item.keys()=} must be a subset of {self.axes=}"
                 )
 
-            item_advanced = {ax: item[ax] for ax in item if na.shape(item[ax])}
+            item_advanced = dict()  # type: typ.Dict[str, AbstractScalarArray]
+            for axis in item:
+                item_axis = item[axis]
+                if isinstance(item_axis, na.AbstractArray):
+                    if isinstance(item_axis, AbstractScalarArray):
+                        item_advanced[axis] = item_axis
+                    else:
+                        raise TypeError(
+                            "if `item[axis]` is an instance of `AbstractArray`, "
+                            "it must be an instance of `AbstractScalarArray`, "
+                            f"got {type(item[axis])=}."
+                        )
+                elif isinstance(item_axis, int):
+                    item_advanced[axis] = item_axis
 
             shape_advanced = na.shape_broadcasted(*item_advanced.values())
 
-            axes_self = tuple(shape_advanced) + tuple(ax for ax in shape_self if ax not in shape_advanced)
-            axes_value = list(axes_self)
+            axes_basic = tuple(ax for ax in shape_self if ax not in item_advanced)
+            axes_self = tuple(item_advanced) + axes_basic
+            axes_value = tuple(shape_advanced) + axes_basic
 
             index = [slice(None)] * len(axes_self)   # type: list[Union[int, slice, AbstractScalar]]
             for axis in item:
                 item_axis = item[axis]
                 if isinstance(item_axis, na.AbstractScalarArray):
                     item_axis = item_axis.ndarray_aligned(shape_advanced)
-                elif isinstance(item_axis, slice):
-                    pass
-                elif isinstance(item_axis, int):
-                    if axis in value.shape:
-                        raise ValueError(f"`value` has an axis, '{axis}', that is set to an `int` in `item`")
-                    axes_value.remove(axis)
-                else:
-                    raise TypeError(
-                        f"if `item` is a `{dict}`, all its values must be an instance of an `{int}`, a `{slice}`,"
-                        f"or an {na.AbstractScalarArray.__name__}, got {type(item_axis).__name__} for key '{axis}'"
-                    )
                 index[axes_self.index(axis)] = item_axis
 
             if value.shape:
