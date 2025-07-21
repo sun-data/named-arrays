@@ -361,11 +361,6 @@ class AbstractScalarArray(
 
             axes = self.axes
 
-            if not set(item).issubset(axes):
-                raise ValueError(
-                    f"{item.keys()=} must be a subset of {self.axes=}"
-                )
-
             item_advanced = dict()      # type: typ.Dict[str, AbstractScalarArray]
             for axis in item:
                 item_axis = item[axis]
@@ -378,7 +373,9 @@ class AbstractScalarArray(
                     item_advanced[axis] = item_axis
 
             if not set(ax for ax in item if item[ax] is not None).issubset(axes):
-                raise ValueError(f"the axes in item, {tuple(item)}, must be a subset of the axes in the array, {axes}")
+                raise ValueError(
+                    f"{item.keys()=} must be a subset of {self.axes=}"
+                )
 
             shape_advanced = na.shape_broadcasted(*item_advanced.values())
 
@@ -395,6 +392,8 @@ class AbstractScalarArray(
             index = [slice(None)] * self.ndim   # type: list[int | slice | AbstractScalar]
             for ax in item:
                 item_axis = item[ax]
+                if item_axis is None:
+                    continue
                 if isinstance(item_axis, na.AbstractScalarArray):
                     item_axis = item_axis.ndarray_aligned(shape_advanced)
                 index[axes_self.index(ax)] = item_axis
@@ -993,6 +992,8 @@ class ScalarArray(
             index = [slice(None)] * len(axes_self)   # type: list[Union[int, slice, AbstractScalar]]
             for axis in item:
                 item_axis = item[axis]
+                if item_axis is None:
+                    continue
                 if isinstance(item_axis, na.AbstractScalarArray):
                     item_axis = item_axis.ndarray_aligned(shape_advanced)
                 index[axes_self.index(axis)] = item_axis
