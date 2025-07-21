@@ -151,6 +151,12 @@ class AbstractTestAbstractScalar(
 
         assert isinstance(na.as_named_array(result), na.AbstractScalar)
 
+    def test_mean_trimmed(
+            self,
+            array: na.AbstractArray,
+    ):
+        assert np.array_equal(array.mean_trimmed(), na.mean_trimmed(array))
+
     def test__bool__(self, array: na.AbstractScalarArray):
         if array.shape or array.unit is not None:
             with pytest.raises(
@@ -235,7 +241,6 @@ class AbstractTestAbstractScalar(
     class TestNamedArrayFunctions(
         tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions,
     ):
-
 
         def test_mean_trimmed(
             self,

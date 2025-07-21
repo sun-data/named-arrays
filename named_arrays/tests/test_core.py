@@ -1209,12 +1209,6 @@ class AbstractTestAbstractArray(
     ):
         assert np.array_equal(array.mean(), np.mean(array))
 
-    def test_mean_trimmed(
-            self,
-            array: na.AbstractArray,
-    ):
-        assert np.array_equal(array.mean_trimmed(), na.mean_trimmed(array))
-
     def test_std(
             self,
             array: na.AbstractArray,
