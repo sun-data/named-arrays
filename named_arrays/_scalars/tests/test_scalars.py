@@ -237,31 +237,6 @@ class AbstractTestAbstractScalar(
                 result_upper = result[{axis: slice(k, None)}].mean(axis)
                 assert np.all(result_lower <= result_upper)
 
-
-    class TestNamedArrayFunctions(
-        tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions,
-    ):
-
-        def test_mean_trimmed(
-            self,
-            array: na.AbstractArray,
-            q: float | Sequence[float] = 0.25,
-            axis: None | str | Sequence[str] = None,
-        ):
-            result = na.mean_trimmed(
-                a=array,
-                q=q,
-                axis=axis,
-            )
-            result_expected = scipy.stats.trim_mean(
-                a=array.ndarray,
-                proportiontocut=q,
-                axis=axis,
-            )
-
-            assert np.allclose(result.value.ndarray, result_expected)
-
-
         @pytest.mark.parametrize(
             argnames="bins",
             argvalues=[
@@ -1124,6 +1099,25 @@ class AbstractTestAbstractScalarArray(
         def test_nominal(self, array: na.AbstractScalarArray):
             result = na.nominal(array)
             assert np.all(result == array)
+
+        def test_mean_trimmed(
+                self,
+                array: na.AbstractArray,
+                q: float | Sequence[float] = 0.25,
+                axis: None | str | Sequence[str] = None,
+        ):
+            result = na.mean_trimmed(
+                a=array,
+                q=q,
+                axis=axis,
+            )
+            result_expected = scipy.stats.trim_mean(
+                a=array.ndarray,
+                proportiontocut=q,
+                axis=axis,
+            )
+
+            assert np.allclose(result.value.ndarray, result_expected)
 
         class TestInterp(
             AbstractTestAbstractScalar.TestNamedArrayFunctions.TestInterp,
