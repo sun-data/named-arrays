@@ -974,7 +974,7 @@ class ScalarArray(
                 if isinstance(item_axis, na.AbstractArray):
                     if isinstance(item_axis, AbstractScalarArray):
                         item_advanced[axis] = item_axis
-                    else:
+                    else:  #pragma: nocover
                         raise TypeError(
                             "if `item[axis]` is an instance of `AbstractArray`, "
                             "it must be an instance of `AbstractScalarArray`, "
