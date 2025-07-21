@@ -1286,6 +1286,7 @@ class TestScalarArray(
         argvalues=[
             dict(y=0),
             dict(x=0, y=0),
+            dict(foo=None),
             dict(y=slice(None)),
             dict(y=na.ScalarArrayRange(0, _num_y, axis='y')),
             dict(x=na.ScalarArrayRange(0, _num_x, axis='x'), y=na.ScalarArrayRange(0, _num_y, axis='y')),
