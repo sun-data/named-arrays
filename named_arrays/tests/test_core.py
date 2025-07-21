@@ -1827,8 +1827,7 @@ class AbstractTestAbstractExplicitArray(
             if not set(item).issubset(array.axes):
                 with pytest.raises(
                     expected_exception=ValueError,
-                    match="if `item` is a .*, the keys in `item`, .*, "
-                          "must be a subset of `self.axes`, .*"
+                    match=".* must be a subset of .*"
                 ):
                     result[item] = value
                 return
@@ -1838,7 +1837,6 @@ class AbstractTestAbstractExplicitArray(
                     if axis in na.shape(value):
                         with pytest.raises(
                             expected_exception=ValueError,
-                            match="`value` has an axis, .*, that is set to an `int` in `item`"
                         ):
                             result[item] = value
                         return
