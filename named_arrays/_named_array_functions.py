@@ -807,9 +807,7 @@ def mean_trimmed(
     dtype: None | str | Type | np.dtype = None,
     out: None | na.AbstractExplicitArray = None,
     keepdims: bool = False,
-    # *,
-    # where: bool | WhereT = True,
-) -> ArrayT | QuantileT | WhereT:
+) -> ArrayT | QuantileT:
     """
     Compute the trimmed mean of the given array along the specified axes.
 
@@ -834,7 +832,7 @@ def mean_trimmed(
     See Also
     -----
     :func:`scipy.stats.trim_mean`: equivalent Numpy function
-    :meth:`AbstractArray.mean_trimmed`: A method version of this function.
+    :meth:`ScalarArray.mean_trimmed`: A method version of this function.
     """
 
     a = a.explicit
