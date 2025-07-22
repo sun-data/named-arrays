@@ -832,7 +832,7 @@ def mean_trimmed(
     See Also
     -----
     :func:`scipy.stats.trim_mean`: equivalent Numpy function
-    :meth:`ScalarArray.mean_trimmed`: A method version of this function.
+    :meth:`AbstractScalar.mean_trimmed`: A method version of this function.
     """
 
     a = a.explicit
