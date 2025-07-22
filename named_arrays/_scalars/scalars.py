@@ -141,6 +141,34 @@ class AbstractScalar(
             **kwargs,
         )
 
+    def mean_trimmed(
+        self,
+        q: float = .25,
+        axis: None | str | Sequence[str] = None,
+    ) -> Self:
+        """
+        Compute the trimmed mean along the specified axes.
+
+        Parameters
+        ----------
+        q
+            The fraction of the largest and smallest elements to remove.
+            Must be between 0 and 1/2.
+            If the specified fraction does not result in an integer number of elements,
+            the number of elements to trim is rounded down.
+        axis
+            The axis or axes along which to compute the trimmed mean.
+
+        See Also
+        --------
+        :func:`mean_trimmed` functional version of this method.
+        """
+        return na.mean_trimmed(
+            a=self,
+            q=q,
+            axis=axis,
+        )
+
 
 @dataclasses.dataclass(eq=False, repr=False)
 class AbstractScalarArray(
