@@ -1,3 +1,4 @@
+import dataclasses
 from typing import Callable, Literal, Sequence
 import numpy as np
 import matplotlib
@@ -106,8 +107,9 @@ def unit_normalized(
 def nominal(
     a: na.AbstractFunctionArray,
 ) -> na.FunctionArray:
-
-    return a.type_explicit(
+    a = a.explicit
+    return dataclasses.replace(
+        a,
         inputs=na.nominal(a.inputs),
         outputs=na.nominal(a.outputs),
     )
@@ -133,8 +135,6 @@ def histogram(
     for ax in axis_normalized:
         if ax in a.axes_vertex:
             raise ValueError("Taking a histogram of a histogram doesn't work right now.")
-
-
 
     return na.histogram(
         a=a.inputs,
@@ -197,9 +197,12 @@ def ndfilter(
     else:
         return NotImplemented   # pragma: nocover
 
+    array = array.explicit
+
     if isinstance(where, bool):
         where = na.FunctionArray(None, where)
     elif isinstance(where, na.AbstractFunctionArray):
+        where = where.explicit
         if np.all(where.inputs != array.inputs):    # pragma: nocover
             raise ValueError(
                 f"if `where` is an instance of `na.AbstractFunctionArray`, "
@@ -208,7 +211,8 @@ def ndfilter(
     else:
         return NotImplemented   # pragma: nocover
 
-    return array.type_explicit(
+    return dataclasses.replace(
+        array,
         inputs=array.inputs.copy(),
         outputs=func(
             array=array.outputs,
