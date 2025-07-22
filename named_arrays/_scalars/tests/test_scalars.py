@@ -237,6 +237,10 @@ class AbstractTestAbstractScalar(
                 result_upper = result[{axis: slice(k, None)}].mean(axis)
                 assert np.all(result_lower <= result_upper)
 
+    class TestNamedArrayFunctions(
+        tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions,
+    ):
+
         @pytest.mark.parametrize(
             argnames="bins",
             argvalues=[
