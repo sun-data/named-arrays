@@ -492,7 +492,7 @@ class AbstractTestAbstractScalarArray(
             if not (set(item) - set((na.UncertainScalarArray.axis_distribution, ))).issubset(array.shape):
                 with pytest.raises(
                     expected_exception=ValueError,
-                    match="the axes in item, .*, must be a subset of the axes in the array, .*"
+                    match=".* must be a subset of .*"
                 ):
                     array[item]
                 return
@@ -1286,6 +1286,7 @@ class TestScalarArray(
         argvalues=[
             dict(y=0),
             dict(x=0, y=0),
+            dict(foo=None),
             dict(y=slice(None)),
             dict(y=na.ScalarArrayRange(0, _num_y, axis='y')),
             dict(x=na.ScalarArrayRange(0, _num_x, axis='x'), y=na.ScalarArrayRange(0, _num_y, axis='y')),
