@@ -14,6 +14,58 @@ _num_y = 14
 
 
 @pytest.mark.parametrize(
+    argnames="y",
+    argvalues=[
+        2,
+    ],
+)
+@pytest.mark.parametrize(
+    argnames="ax",
+    argvalues=[
+        None,
+        na.plt.subplots(ncols=3)[1]
+    ]
+)
+def test_axhline(
+    y: float | na.AbstractScalar,
+    ax: None | matplotlib.axes.Axes | na.AbstractScalar,
+):
+    result = na.plt.axhline(
+        y=y,
+        ax=ax,
+    )
+
+    for r in result.ndarray.flat:
+        assert isinstance(r, plt.Line2D)
+
+
+@pytest.mark.parametrize(
+    argnames="x",
+    argvalues=[
+        2,
+    ],
+)
+@pytest.mark.parametrize(
+    argnames="ax",
+    argvalues=[
+        None,
+        na.plt.subplots(ncols=3)[1]
+    ]
+)
+def test_axvline(
+    x: float | na.AbstractScalar,
+    ax: None | matplotlib.axes.Axes | na.AbstractScalar,
+):
+    result = na.plt.axvline(
+        x=x,
+        ax=ax,
+    )
+
+    for r in result.ndarray.flat:
+        assert isinstance(r, plt.Line2D)
+
+
+@pytest.mark.parametrize(
     argnames="ymin",
     argvalues=[
         2,

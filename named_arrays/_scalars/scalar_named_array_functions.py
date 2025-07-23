@@ -50,6 +50,8 @@ PLT_AXES_SETTERS = (
     na.plt.set_xscale,
     na.plt.set_yscale,
     na.plt.set_aspect,
+    na.plt.axhline,
+    na.plt.axvline,
     na.plt.axvspan,
     na.plt.axhspan,
 )

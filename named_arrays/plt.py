@@ -16,6 +16,8 @@ __all__ = [
     "fill",
     "scatter",
     "stairs",
+    "axhline",
+    "axvline",
     "axhspan",
     "axvspan",
     "imshow",
@@ -474,6 +476,68 @@ def scatter(
         ax=ax,
         where=where,
         components=components,
+        **kwargs,
+    )
+
+
+def axhline(
+    y: float | na.AbstractScalar = 0,
+    xmin: float | na.AbstractScalar = 0,
+    xmax: float | na.AbstractScalar = 1,
+    ax: None | matplotlib.axes.Axes | na.AbstractScalar = None,
+    **kwargs,
+) -> na.ScalarArray:
+    """
+    A wrapper around :meth:`matplotlib.axes.Axes.axhline`.
+
+    Parameters
+    ----------
+    y
+        `y`-coordinate of the line in data units.
+    xmin
+        Lower  `x`-coordinate of the span in `x` axis units (0-1).
+    xmax
+        Upper `x`-coordinate of the span in `x` axis units (0-1).
+    ax
+        The matplotlib axes instance(s) to use.
+    """
+    return na._named_array_function(
+        axhline,
+        y=na.as_named_array(y),
+        xmin=xmin,
+        xmax=xmax,
+        ax=ax,
+        **kwargs,
+    )
+
+
+def axvline(
+    x: float | na.AbstractScalar = 0,
+    ymin: float | na.AbstractScalar = 0,
+    ymax: float | na.AbstractScalar = 1,
+    ax: None | matplotlib.axes.Axes | na.AbstractScalar = None,
+    **kwargs,
+) -> na.ScalarArray:
+    """
+    A wrapper around :meth:`matplotlib.axes.Axes.axvline`.
+
+    Parameters
+    ----------
+    x
+        `x`-coordinate of the line in data units.
+    ymin
+        Lower  `y`-coordinate of the span in `y` axis units (0-1).
+    ymax
+        Upper `y`-coordinate of the span in `y` axis units (0-1).
+    ax
+        The matplotlib axes instance(s) to use.
+    """
+    return na._named_array_function(
+        axvline,
+        x=na.as_named_array(x),
+        ymin=ymin,
+        ymax=ymax,
+        ax=ax,
         **kwargs,
     )
 
