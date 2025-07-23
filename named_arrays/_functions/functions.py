@@ -99,32 +99,35 @@ class AbstractFunctionArray(
 
     @property
     def type_explicit(self) -> Type[FunctionArray]:
-        return FunctionArray
+        return type(self)
 
     @property
     def value(self) -> FunctionArray:
-        return self.type_explicit(
-            inputs=self.inputs,
+        exp = self.explicit
+        return dataclasses.replace(
+            exp,
             outputs=self.outputs.value,
         )
 
     @property
     def broadcasted(self) -> FunctionArray:
 
-        broadcasted_shape_outputs = self.shape
+        exp = self.explicit
+
+        broadcasted_shape_outputs = exp.shape
         broadcasted_shape_inputs = broadcasted_shape_outputs.copy()
         
-        axes_vertex = self.axes_vertex
-        inputs = self.inputs
+        axes_vertex = exp.axes_vertex
+        inputs = exp.inputs
         for key in broadcasted_shape_outputs:
             axes_vertex = axes_vertex
             if key in axes_vertex:  
                 broadcasted_shape_inputs[key] = inputs.shape[key]
 
         return dataclasses.replace(
-            self,
-            inputs=self.inputs.broadcast_to(broadcasted_shape_inputs),
-            outputs=self.outputs.broadcast_to(broadcasted_shape_outputs),
+            exp,
+            inputs=exp.inputs.broadcast_to(broadcasted_shape_inputs),
+            outputs=exp.outputs.broadcast_to(broadcasted_shape_outputs),
         )
 
     def astype(
@@ -136,9 +139,12 @@ class AbstractFunctionArray(
             copy: bool = True,
     ) -> FunctionArray:
 
-        return self.type_explicit(
-            inputs=self.inputs,
-            outputs=self.outputs.astype(
+        exp = self.explicit
+
+        return dataclasses.replace(
+            exp,
+            inputs=exp.inputs,
+            outputs=exp.outputs.astype(
                 dtype=dtype,
                 order=order,
                 casting=casting,
@@ -153,9 +159,10 @@ class AbstractFunctionArray(
         equivalencies: None | list[tuple[u.Unit, u.Unit]] = [],
         copy: bool = True,
     ) -> FunctionArray:
-        return self.type_explicit(
-            inputs=self.inputs,
-            outputs=self.outputs.to(
+        exp = self.explicit
+        return dataclasses.replace(
+            exp,
+            outputs=exp.outputs.to(
                 unit=unit,
                 equivalencies=equivalencies,
                 copy=copy,
@@ -164,15 +171,17 @@ class AbstractFunctionArray(
 
     @property
     def length(self) -> FunctionArray:
-        return self.type_explicit(
-            inputs=self.inputs,
-            outputs=self.outputs.length,
+        exp = self.explicit
+        return dataclasses.replace(
+            exp,
+            outputs=exp.outputs.length,
         )
 
     def add_axes(self, axes: str | Sequence[str]) -> FunctionArray:
-        return self.type_explicit(
-            inputs=self.inputs,
-            outputs=self.outputs.add_axes(axes),
+        exp = self.explicit
+        return dataclasses.replace(
+            exp,
+            outputs=exp.outputs.add_axes(axes),
         )
 
     def combine_axes(
@@ -180,6 +189,8 @@ class AbstractFunctionArray(
             axes: Sequence[str] = None,
             axis_new: str = None,
     ) -> FunctionArray:
+
+        self = self.explicit
 
         axes = self.axes if axes is None else axes
 
@@ -205,7 +216,8 @@ class AbstractFunctionArray(
         inputs = na.broadcast_to(inputs, inputs_shape_broadcasted)
         outputs = na.broadcast_to(outputs, outputs_shape_broadcasted)
 
-        return self.type_explicit(
+        return dataclasses.replace(
+            self,
             inputs=inputs.combine_axes(axes=axes, axis_new=axis_new),
             outputs=outputs.combine_axes(axes=axes, axis_new=axis_new),
         )
@@ -405,10 +417,11 @@ class AbstractFunctionArray(
         axis: None | str | Sequence[str] = None,
         random: bool = False,
     ) -> na.AbstractExplicitArray:
+        exp = self.explicit
         return dataclasses.replace(
-            self,
-            inputs=self.inputs.cell_centers(axis, random=random),
-            outputs=self.outputs.cell_centers(axis, random=random),
+            exp,
+            inputs=exp.inputs.cell_centers(axis, random=random),
+            outputs=exp.outputs.cell_centers(axis, random=random),
         )
 
     def to_string_array(
@@ -417,14 +430,16 @@ class AbstractFunctionArray(
         format_unit: str = "latex_inline",
         pad_unit: str = r"$\,$",
     ):
+        exp = self.explicit
         kwargs = dict(
             format_value=format_value,
             format_unit=format_unit,
             pad_unit=pad_unit,
         )
-        return self.type_explicit(
-            inputs=na.as_named_array(self.inputs).to_string_array(**kwargs),
-            outputs=na.as_named_array(self.outputs).to_string_array(**kwargs),
+        return dataclasses.replace(
+            exp,
+            inputs=na.as_named_array(exp.inputs).to_string_array(**kwargs),
+            outputs=na.as_named_array(exp.outputs).to_string_array(**kwargs),
         )
 
     def _getitem(
@@ -466,14 +481,14 @@ class AbstractFunctionArray(
                     item_inputs[ax] = item_ax.inputs
                     item_outputs[ax] = item_ax.outputs
                 else:
-                    axes_center = self.axes_center
+                    axes_center = array.axes_center
                     if ax in axes_center:
                         #can't assume center ax is in both outputs and inputs
                         if ax in inputs.shape:
                             item_inputs[ax] = item_ax
                         if ax in outputs.shape:
                             item_outputs[ax] = item_ax
-                    axes_vertex = self.axes_vertex
+                    axes_vertex = array.axes_vertex
                     if ax in axes_vertex:
                         if isinstance(item_ax, int):
                             item_outputs[ax] = slice(item_ax, item_ax + 1)
@@ -501,7 +516,8 @@ class AbstractFunctionArray(
         inputs = na.broadcast_to(inputs, na.broadcast_shapes(inputs.shape, shape_item_inputs))
         outputs = na.broadcast_to(outputs, na.broadcast_shapes(outputs.shape, shape_item_outputs))
 
-        return self.type_explicit(
+        return dataclasses.replace(
+            array,
             inputs=inputs[item_inputs],
             outputs=outputs[item_outputs],
         )
@@ -523,17 +539,19 @@ class AbstractFunctionArray(
 
     def __mul__(self, other: na.ArrayLike | u.UnitBase) -> FunctionArray:
         if isinstance(other, u.UnitBase):
-            return self.type_explicit(
-                inputs=self.inputs,
-                outputs=self.outputs * other,
+            exp = self.explicit
+            return dataclasses.replace(
+                exp,
+                outputs=exp.outputs * other,
             )
         else:
             return super().__mul__(other)
 
     def __lshift__(self, other: na.ArrayLike | u.UnitBase) -> FunctionArray:
         if isinstance(other, u.UnitBase):
-            return self.type_explicit(
-                inputs=self.inputs,
+            exp = self.explicit
+            return dataclasses.replace(
+                exp,
                 outputs=self.outputs << other,
             )
         else:
@@ -541,8 +559,9 @@ class AbstractFunctionArray(
 
     def __truediv__(self, other: na.ArrayLike | u.UnitBase) -> FunctionArray:
         if isinstance(other, u.UnitBase):
-            return self.type_explicit(
-                inputs=self.inputs,
+            exp = self.explicit
+            return dataclasses.replace(
+                exp,
                 outputs=self.outputs / other,
             )
         else:
@@ -592,14 +611,15 @@ class AbstractFunctionArray(
         if out is not None:
             if not np.all(inputs == out.inputs):
                 raise InputValueError("`out.inputs` must be equal to `x1.inputs` and `x2.inputs`")
-        result = self.type_explicit(
+        result = dataclasses.replace(
+            self.explicit,
             inputs=inputs,
             outputs=np.matmul(
                 outputs_1,
                 outputs_2,
                 out=out.outputs if out is not None else out,
                 **kwargs,
-            )
+            ),
         )
 
         if out is not None:
@@ -682,7 +702,11 @@ class AbstractFunctionArray(
             outputs_result = (outputs_result,)
 
         result = list(
-            self.type_explicit(inputs=inputs_result, outputs=outputs_result[i])
+            dataclasses.replace(
+                self.explicit,
+                inputs=inputs_result,
+                outputs=outputs_result[i],
+            )
             for i in range(nout)
         )
 
@@ -974,7 +998,8 @@ class FunctionArray(
 
     @property
     def explicit(self) -> FunctionArray:
-        return self.type_explicit(
+        return dataclasses.replace(
+            self,
             inputs=na.explicit(self.inputs),
             outputs=na.explicit(self.outputs),
         )

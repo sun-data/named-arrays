@@ -1,4 +1,5 @@
 from typing import Callable, Sequence
+import dataclasses
 import numpy as np
 import astropy.units as u
 import named_arrays as na
@@ -115,7 +116,8 @@ def array_function_default(
     )
 
     if out is None:
-        result = a.type_explicit(
+        result = dataclasses.replace(
+            a,
             inputs=inputs_result,
             outputs=outputs_result,
         )
@@ -189,7 +191,8 @@ def array_function_percentile_like(
     )
 
     if out is None:
-        result = a.type_explicit(
+        result = dataclasses.replace(
+            a,
             inputs=inputs_result,
             outputs=outputs_result,
         )
@@ -228,9 +231,11 @@ def array_function_stack_like(
 
         arrays_broadcasted = list()
         for array in arrays:
+            array = array.explicit
             shape = array.shape
             shape_base = {axis: shape[axis]}
-            array = na.FunctionArray(
+            array = dataclasses.replace(
+                array,
                 inputs=na.broadcast_to(array.inputs, na.broadcast_shapes(array.inputs.shape, shape_base)),
                 outputs=na.broadcast_to(array.outputs, na.broadcast_shapes(array.outputs.shape, shape_base)),
             )
@@ -261,7 +266,11 @@ def array_function_stack_like(
     )
 
     if out is None:
-        result = na.FunctionArray(inputs=inputs_result, outputs=outputs_result)
+        result = dataclasses.replace(
+            arrays[0],
+            inputs=inputs_result,
+            outputs=outputs_result,
+        )
     else:
         out.inputs = inputs_result
         out.outputs = outputs_result
@@ -318,10 +327,13 @@ def broadcast_to(
         shape: dict[str, int]
 ) -> na.FunctionArray:
 
+    array = array.explicit
+
     axes_vertex = array.axes_vertex
     shape_inputs = {ax: shape[ax]+1 if ax in axes_vertex else shape[ax] for ax in shape}
 
-    return array.type_explicit(
+    return dataclasses.replace(
+        array,
         inputs=na.broadcast_to(array.inputs, shape=shape_inputs),
         outputs=na.broadcast_to(array.outputs, shape=shape),
     )
@@ -336,8 +348,8 @@ def tranpose(
     shape = a.shape
     axes_normalized = tuple(reversed(shape) if axes is None else axes)
 
-
-    return a.type_explicit(
+    return dataclasses.replace(
+        a,
         inputs=np.transpose(
             a=a.inputs,
             axes=axes_normalized,
@@ -376,7 +388,8 @@ def moveaxis(
     source_inputs, destination_inputs = tuple(tuple(i) for i in zip(*source_destination_inputs))
     source_outputs, destination_outputs = tuple(tuple(i) for i in zip(*source_destination_outputs))
 
-    return a.type_explicit(
+    return dataclasses.replace(
+        a,
         inputs=np.moveaxis(
             a=a.inputs,
             source=source_inputs,
@@ -485,7 +498,8 @@ def repeat(
 
     a = a.broadcasted
 
-    return a.type_explicit(
+    return dataclasses.replace(
+        a,
         inputs=np.repeat(
             a=a.inputs,
             repeats=repeats,
