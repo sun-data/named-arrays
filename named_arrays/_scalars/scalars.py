@@ -262,7 +262,9 @@ class AbstractScalarArray(
         axes = tuple(axes)
         axes_self = self.axes
 
-        ndarray = np.asanyarray(self.ndarray)
+        ndarray = self.ndarray
+        if not hasattr(ndarray, "__array_function__"):
+            ndarray = np.asanyarray(ndarray)
 
         if axes == axes_self:
             return ndarray
