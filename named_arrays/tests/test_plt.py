@@ -249,38 +249,39 @@ def test_rgbmesh(
 
 
 @pytest.mark.parametrize(
-    argnames="TXY",
+    argnames="t,x,y,C,axis_time,ax",
     argvalues=[
         (
-            na.linspace(-1, 1, axis="t", num=_num_t),
+            na.random.uniform(-1, 1, shape_random=dict(t=_num_t)),
             na.linspace(-2, 2, axis="x", num=_num_x),
             na.linspace(-1, 1, axis="y", num=_num_y),
+            na.random.uniform(-1, 1, shape_random=dict(t=_num_t, x=_num_x, y=_num_y)),
+            "t",
+            None,
+        ),
+        (
+            na.random.uniform(-1, 1, shape_random=dict(t=_num_t, c=2)),
+            na.linspace(-2, 2, axis="x", num=_num_x),
+            na.linspace(-1, 1, axis="y", num=_num_y),
+            na.random.uniform(-1, 1, shape_random=dict(t=_num_t, x=_num_x, y=_num_y)),
+            "t",
+            na.plt.subplots(axis_rows="c", nrows=2)[1],
         ),
     ],
 )
-@pytest.mark.parametrize(
-    argnames="C",
-    argvalues=[
-        na.random.uniform(-1, 1, shape_random=dict(t=_num_t, x=_num_x, y=_num_y)),
-    ],
-)
-@pytest.mark.parametrize(
-    argnames="axis_time",
-    argvalues=["t"],
-)
 def test_pcolormovie(
-    TXY: tuple[
-        na.AbstractScalarArray,
-        na.AbstractScalarArray,
-        na.AbstractScalarArray,
-    ],
+    t: na.AbstractArray,
+    x: na.AbstractArray,
+    y: na.AbstractArray,
     C: na.AbstractScalarArray,
     axis_time: str,
+    ax: None | matplotlib.axes.Axes | na.AbstractArray,
 ):
     result = na.plt.pcolormovie(
-        *TXY,
+        t, x, y,
         C=C,
         axis_time=axis_time,
+        ax=ax,
     )
     assert isinstance(result, matplotlib.animation.FuncAnimation)
     assert isinstance(result.to_jshtml(), str)
