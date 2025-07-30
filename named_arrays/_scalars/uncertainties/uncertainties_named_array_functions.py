@@ -462,8 +462,7 @@ def convolve(
         mode=mode,
     )
 
-    return dataclasses.replace(
-        array,
+    return array.replace(
         nominal=result_nominal,
         distribution=result_distribution,
     )

@@ -386,8 +386,7 @@ def histogram2d(
     shape_edges_x = na.broadcast_shapes(shape_orthogonal, edges.x.shape)
     shape_edges_y = na.broadcast_shapes(shape_orthogonal, edges.y.shape)
 
-    edges_broadcasted = dataclasses.replace(
-        edges.explicit,
+    edges_broadcasted = edges.explicit.replace(
         x=edges.x.broadcast_to(shape_edges_x),
         y=edges.y.broadcast_to(shape_edges_y),
     )
@@ -583,8 +582,7 @@ def convolve(
         mode=mode,
     )
 
-    result = dataclasses.replace(
-        array,
+    result = array.replace(
         ndarray=result,
         axes=axes,
     )

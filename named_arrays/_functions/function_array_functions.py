@@ -116,8 +116,7 @@ def array_function_default(
     )
 
     if out is None:
-        result = dataclasses.replace(
-            a,
+        result = a.replace(
             inputs=inputs_result,
             outputs=outputs_result,
         )
@@ -191,8 +190,7 @@ def array_function_percentile_like(
     )
 
     if out is None:
-        result = dataclasses.replace(
-            a,
+        result = a.replace(
             inputs=inputs_result,
             outputs=outputs_result,
         )
@@ -234,8 +232,7 @@ def array_function_stack_like(
             array = array.explicit
             shape = array.shape
             shape_base = {axis: shape[axis]}
-            array = dataclasses.replace(
-                array,
+            array = array.replace(
                 inputs=na.broadcast_to(array.inputs, na.broadcast_shapes(array.inputs.shape, shape_base)),
                 outputs=na.broadcast_to(array.outputs, na.broadcast_shapes(array.outputs.shape, shape_base)),
             )
@@ -266,8 +263,7 @@ def array_function_stack_like(
     )
 
     if out is None:
-        result = dataclasses.replace(
-            arrays[0],
+        result = arrays[0].replace(
             inputs=inputs_result,
             outputs=outputs_result,
         )
@@ -332,8 +328,7 @@ def broadcast_to(
     axes_vertex = array.axes_vertex
     shape_inputs = {ax: shape[ax]+1 if ax in axes_vertex else shape[ax] for ax in shape}
 
-    return dataclasses.replace(
-        array,
+    return array.replace(
         inputs=na.broadcast_to(array.inputs, shape=shape_inputs),
         outputs=na.broadcast_to(array.outputs, shape=shape),
     )
@@ -348,8 +343,7 @@ def tranpose(
     shape = a.shape
     axes_normalized = tuple(reversed(shape) if axes is None else axes)
 
-    return dataclasses.replace(
-        a,
+    return a.replace(
         inputs=np.transpose(
             a=a.inputs,
             axes=axes_normalized,
@@ -388,8 +382,7 @@ def moveaxis(
     source_inputs, destination_inputs = tuple(tuple(i) for i in zip(*source_destination_inputs))
     source_outputs, destination_outputs = tuple(tuple(i) for i in zip(*source_destination_outputs))
 
-    return dataclasses.replace(
-        a,
+    return a.replace(
         inputs=np.moveaxis(
             a=a.inputs,
             source=source_inputs,
@@ -498,8 +491,7 @@ def repeat(
 
     a = a.broadcasted
 
-    return dataclasses.replace(
-        a,
+    return a.replace(
         inputs=np.repeat(
             a=a.inputs,
             repeats=repeats,

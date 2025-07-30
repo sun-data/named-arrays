@@ -104,8 +104,7 @@ class AbstractFunctionArray(
     @property
     def value(self) -> FunctionArray:
         exp = self.explicit
-        return dataclasses.replace(
-            exp,
+        return exp.replace(
             outputs=self.outputs.value,
         )
 
@@ -124,8 +123,7 @@ class AbstractFunctionArray(
             if key in axes_vertex:  
                 broadcasted_shape_inputs[key] = inputs.shape[key]
 
-        return dataclasses.replace(
-            exp,
+        return exp.replace(
             inputs=exp.inputs.broadcast_to(broadcasted_shape_inputs),
             outputs=exp.outputs.broadcast_to(broadcasted_shape_outputs),
         )
@@ -141,8 +139,7 @@ class AbstractFunctionArray(
 
         exp = self.explicit
 
-        return dataclasses.replace(
-            exp,
+        return exp.replace(
             inputs=exp.inputs,
             outputs=exp.outputs.astype(
                 dtype=dtype,
@@ -160,8 +157,7 @@ class AbstractFunctionArray(
         copy: bool = True,
     ) -> FunctionArray:
         exp = self.explicit
-        return dataclasses.replace(
-            exp,
+        return exp.replace(
             outputs=exp.outputs.to(
                 unit=unit,
                 equivalencies=equivalencies,
@@ -172,15 +168,13 @@ class AbstractFunctionArray(
     @property
     def length(self) -> FunctionArray:
         exp = self.explicit
-        return dataclasses.replace(
-            exp,
+        return exp.replace(
             outputs=exp.outputs.length,
         )
 
     def add_axes(self, axes: str | Sequence[str]) -> FunctionArray:
         exp = self.explicit
-        return dataclasses.replace(
-            exp,
+        return exp.replace(
             outputs=exp.outputs.add_axes(axes),
         )
 
@@ -216,8 +210,7 @@ class AbstractFunctionArray(
         inputs = na.broadcast_to(inputs, inputs_shape_broadcasted)
         outputs = na.broadcast_to(outputs, outputs_shape_broadcasted)
 
-        return dataclasses.replace(
-            self,
+        return self.replace(
             inputs=inputs.combine_axes(axes=axes, axis_new=axis_new),
             outputs=outputs.combine_axes(axes=axes, axis_new=axis_new),
         )
@@ -298,8 +291,7 @@ class AbstractFunctionArray(
                 else:
                     final_coordinates_dict[c] = inputs.cartesian_nd.components[c]
 
-            return dataclasses.replace(
-                _self,
+            return _self.replace(
                 inputs=_self.inputs.type_explicit.from_cartesian_nd(
                     array=na.CartesianNdVectorArray(final_coordinates_dict),
                     like=_self.inputs
@@ -307,8 +299,7 @@ class AbstractFunctionArray(
                 outputs=outputs_new,
             )
         else:
-            return dataclasses.replace(
-                _self,
+            return _self.replace(
                 inputs=inputs_new,
                 outputs=outputs_new,
             )
@@ -418,8 +409,7 @@ class AbstractFunctionArray(
         random: bool = False,
     ) -> na.AbstractExplicitArray:
         exp = self.explicit
-        return dataclasses.replace(
-            exp,
+        return exp.replace(
             inputs=exp.inputs.cell_centers(axis, random=random),
             outputs=exp.outputs.cell_centers(axis, random=random),
         )
@@ -436,8 +426,7 @@ class AbstractFunctionArray(
             format_unit=format_unit,
             pad_unit=pad_unit,
         )
-        return dataclasses.replace(
-            exp,
+        return exp.replace(
             inputs=na.as_named_array(exp.inputs).to_string_array(**kwargs),
             outputs=na.as_named_array(exp.outputs).to_string_array(**kwargs),
         )
@@ -516,8 +505,7 @@ class AbstractFunctionArray(
         inputs = na.broadcast_to(inputs, na.broadcast_shapes(inputs.shape, shape_item_inputs))
         outputs = na.broadcast_to(outputs, na.broadcast_shapes(outputs.shape, shape_item_outputs))
 
-        return dataclasses.replace(
-            array,
+        return array.replace(
             inputs=inputs[item_inputs],
             outputs=outputs[item_outputs],
         )
@@ -540,8 +528,7 @@ class AbstractFunctionArray(
     def __mul__(self, other: na.ArrayLike | u.UnitBase) -> FunctionArray:
         if isinstance(other, u.UnitBase):
             exp = self.explicit
-            return dataclasses.replace(
-                exp,
+            return exp.replace(
                 outputs=exp.outputs * other,
             )
         else:
@@ -550,8 +537,7 @@ class AbstractFunctionArray(
     def __lshift__(self, other: na.ArrayLike | u.UnitBase) -> FunctionArray:
         if isinstance(other, u.UnitBase):
             exp = self.explicit
-            return dataclasses.replace(
-                exp,
+            return exp.replace(
                 outputs=self.outputs << other,
             )
         else:
@@ -560,8 +546,7 @@ class AbstractFunctionArray(
     def __truediv__(self, other: na.ArrayLike | u.UnitBase) -> FunctionArray:
         if isinstance(other, u.UnitBase):
             exp = self.explicit
-            return dataclasses.replace(
-                exp,
+            return exp.replace(
                 outputs=self.outputs / other,
             )
         else:
@@ -611,8 +596,7 @@ class AbstractFunctionArray(
         if out is not None:
             if not np.all(inputs == out.inputs):
                 raise InputValueError("`out.inputs` must be equal to `x1.inputs` and `x2.inputs`")
-        result = dataclasses.replace(
-            self.explicit,
+        result = self.explicit.replace(
             inputs=inputs,
             outputs=np.matmul(
                 outputs_1,
@@ -702,8 +686,7 @@ class AbstractFunctionArray(
             outputs_result = (outputs_result,)
 
         result = list(
-            dataclasses.replace(
-                self.explicit,
+            self.explicit.replace(
                 inputs=inputs_result,
                 outputs=outputs_result[i],
             )
@@ -998,8 +981,7 @@ class FunctionArray(
 
     @property
     def explicit(self) -> FunctionArray:
-        return dataclasses.replace(
-            self,
+        return self.replace(
             inputs=na.explicit(self.inputs),
             outputs=na.explicit(self.outputs),
         )
