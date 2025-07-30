@@ -108,8 +108,7 @@ def nominal(
     a: na.AbstractFunctionArray,
 ) -> na.FunctionArray:
     a = a.explicit
-    return dataclasses.replace(
-        a,
+    return a.replace(
         inputs=na.nominal(a.inputs),
         outputs=na.nominal(a.outputs),
     )
@@ -211,8 +210,7 @@ def ndfilter(
     else:
         return NotImplemented   # pragma: nocover
 
-    return dataclasses.replace(
-        array,
+    return array.replace(
         inputs=array.inputs.copy(),
         outputs=func(
             array=array.outputs,

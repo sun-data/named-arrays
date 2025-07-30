@@ -655,6 +655,20 @@ class AbstractArray(
         fields = {field.name: copy.deepcopy(getattr(self, field.name)) for field in dataclasses.fields(self)}
         return type(self)(**fields)
 
+    def replace(self, /, **changes) -> Self:
+        """
+        A method version of :func:`dataclasses.replace` for named arrays.
+
+        Parameters
+        ----------
+        changes
+            The fields of the dataclass to be overwritten
+        """
+        return dataclasses.replace(
+            self,
+            **changes,
+        )
+
     @abc.abstractmethod
     def _getitem(
             self: Self,
