@@ -1272,8 +1272,11 @@ def pcolormovie(
     except na.ScalarTypeError:  # pragma: nocover
         return NotImplemented
 
+    time_is_not_1d = t.ndim != 1
+
     shape = na.shape_broadcasted(t, x, y)
-    t = t.broadcast_to(na.shape_broadcasted(t, ax))
+    if time_is_not_1d:
+        t = t.broadcast_to(na.shape_broadcasted(t, ax))
     x = x.broadcast_to(shape)
     y = y.broadcast_to(shape)
 
@@ -1289,7 +1292,17 @@ def pcolormovie(
             for artist in ax_i.collections:
                 artist.remove()
             ax_i.relim()
-            ax_i.set_title(t[index_frame | i].ndarray)
+            if time_is_not_1d:
+                ax_i.set_title(t[index_frame | i].ndarray)
+            else:
+                fig.suptitle(
+                    t=t[index_frame].ndarray,
+                    x=.99,
+                    y=.01,
+                    ha="right",
+                    va="bottom",
+                    fontsize="medium",
+                )
 
         na.plt.pcolormesh(
             x[index_frame],
@@ -1304,8 +1317,6 @@ def pcolormovie(
             vmax=vmax,
             **kwargs_pcolormesh,
         )
-
-    func(0)
 
     result = matplotlib.animation.FuncAnimation(
         fig=fig,
