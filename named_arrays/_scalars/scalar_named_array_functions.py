@@ -1272,11 +1272,17 @@ def pcolormovie(
     except na.ScalarTypeError:  # pragma: nocover
         return NotImplemented
 
-    time_is_not_1d = t.ndim != 1
+    time_is_atleast_2d = (t.ndim > 1)
 
     shape = na.shape_broadcasted(t, x, y)
-    if time_is_not_1d:
+
+    if time_is_atleast_2d:
+        shape_time = na.shape_broadcasted(t, ax)
         t = t.broadcast_to(na.shape_broadcasted(t, ax))
+    else:
+        shape_time = {axis_time: shape[axis_time]}
+
+    t = t.broadcast_to(shape_time)
     x = x.broadcast_to(shape)
     y = y.broadcast_to(shape)
 
@@ -1292,7 +1298,7 @@ def pcolormovie(
             for artist in ax_i.collections:
                 artist.remove()
             ax_i.relim()
-            if time_is_not_1d:
+            if time_is_atleast_2d:
                 ax_i.set_title(t[index_frame | i].ndarray)
             else:
                 fig.suptitle(
