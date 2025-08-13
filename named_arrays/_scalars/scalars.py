@@ -355,7 +355,7 @@ class AbstractScalarArray(
         if unit is not None:
             a = f"{a}{pad_unit}{unit:{format_unit}}"
 
-        return np.char.mod(
+        return np.strings.mod(
             a=a,
             values=self.value,
         )
