@@ -147,11 +147,6 @@ class AbstractTestAbstractUncertainScalarArray(
 
         elif isinstance(item, dict):
 
-            if not set(item).issubset(array.shape_distribution):
-                with pytest.raises(ValueError):
-                    array[item]
-                return
-
             item_nominal = dict()
             item_distribution = dict()
 

@@ -276,10 +276,6 @@ class AbstractVectorArray(
                 return NotImplemented
 
         elif isinstance(item, dict):
-            shape_base = {ax: shape_array[ax] for ax in item if ax in shape_array}
-            for c in components:
-                component = na.as_named_array(components[c])
-                components[c] = component.broadcast_to(na.broadcast_shapes(component.shape, shape_base))
 
             item = item.copy()
             for ax in item:
