@@ -394,7 +394,10 @@ class AbstractScalarArray(
             item = {ax: item[ax] for ax in item if ax in axes}
 
             if not item:
-                return self
+                if not axes:
+                    return self.replace(ndarray=self.ndarray.item())
+                else:
+                    return self
 
             item_advanced = dict()      # type: typ.Dict[str, AbstractScalarArray]
             for axis in item:
