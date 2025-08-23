@@ -110,11 +110,6 @@ class AbstractTestAbstractVectorArray(
     ):
         super().test__getitem__(array=array, item=item)
 
-        if not array.shape:
-            with pytest.raises(ValueError):
-                array[item]
-            return
-
         components = array.broadcasted.components
         components_expected = dict()
 
@@ -129,6 +124,11 @@ class AbstractTestAbstractVectorArray(
                     components_item[c][ax] = components_item_ax[c]
 
         else:
+            if not array.shape:
+                with pytest.raises(ValueError):
+                    array[item]
+                return
+
             if not item.type_abstract == array.type_abstract:
                 components_item = array.type_explicit.from_scalar(item, like=array).components
             else:
