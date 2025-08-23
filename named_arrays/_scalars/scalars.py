@@ -397,7 +397,7 @@ class AbstractScalarArray(
                 if not axes:
                     ndarray = self.ndarray
                     if isinstance(ndarray, np.ndarray):
-                        return self.replace(ndarray=self.ndarray.item())
+                        return self.replace(ndarray=self.ndarray[()])
                     else:
                         return self
                 else:
