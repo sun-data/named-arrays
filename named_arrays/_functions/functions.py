@@ -440,8 +440,6 @@ class AbstractFunctionArray(
         inputs = array.inputs
         outputs = array.outputs
 
-        shape = array.shape
-
         if isinstance(item, na.AbstractArray):
             if isinstance(item, na.AbstractFunctionArray):
                 if not np.all(item.inputs == array.inputs):
@@ -456,6 +454,9 @@ class AbstractFunctionArray(
 
             shape_item_inputs = item_inputs.shape
             shape_item_outputs = item_outputs.shape
+
+            inputs = na.broadcast_to(inputs, na.broadcast_shapes(inputs.shape, shape_item_inputs))
+            outputs = na.broadcast_to(outputs, na.broadcast_shapes(outputs.shape, shape_item_outputs))
 
         elif isinstance(item, dict):
 
@@ -491,19 +492,11 @@ class AbstractFunctionArray(
                                     item_inputs[ax] = slice(item_ax.start, item_ax.stop + 1)
                                 else:
                                     item_inputs[ax] = slice(item_ax.start, None)
-
-
                         else:
                             return NotImplemented
 
-            shape_item_inputs = {ax: inputs.shape[ax] for ax in item_inputs if ax in shape}
-            shape_item_outputs = {ax: outputs.shape[ax] for ax in item_outputs if ax in shape}
-
         else:
             return NotImplemented
-
-        inputs = na.broadcast_to(inputs, na.broadcast_shapes(inputs.shape, shape_item_inputs))
-        outputs = na.broadcast_to(outputs, na.broadcast_shapes(outputs.shape, shape_item_outputs))
 
         return array.replace(
             inputs=inputs[item_inputs],

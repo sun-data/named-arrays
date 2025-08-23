@@ -437,29 +437,35 @@ class AbstractTestAbstractScalarArray(
     ):
         super().test__getitem__(array=array, item=item)
 
-        if array.shape:
+        if isinstance(item, dict):
             result = array[item]
-            assert isinstance(result, na.AbstractArray)
-
-            if isinstance(item, dict):
-                item_expected = [Ellipsis]
-                for axis in item:
+            item_expected = [Ellipsis]
+            for axis in item:
+                if axis in array.axes:
                     if isinstance(item[axis], na.AbstractArray):
                         item_expected.append(item[axis].ndarray)
                     else:
                         item_expected.append(item[axis])
-                item_expected = tuple(item_expected)
-            else:
-                item_expected = (Ellipsis, item.ndarray)
-
-            result_expected = array.ndarray[item_expected]
-            if 'y' in result.axes:
-                result = result.change_axis_index('y', ~0)
-            assert np.all(result.ndarray == result_expected)
-
+            item_expected = tuple(item_expected)
         else:
-            with pytest.raises(ValueError):
-                array[item]
+            if array.shape:
+                result = array[item]
+                item_expected = (Ellipsis, item.ndarray)
+            else:
+                with pytest.raises(ValueError):
+                    array[item]
+                return
+
+        assert isinstance(result, na.AbstractArray)
+
+        if len(item_expected) > 1:
+            result_expected = array.ndarray[item_expected]
+        else:
+            result_expected = array
+
+        if 'y' in result.axes:
+            result = result.change_axis_index('y', ~0)
+        assert np.all(result.ndarray == result_expected)
 
     @pytest.mark.parametrize(
         argnames='item',
@@ -494,14 +500,6 @@ class AbstractTestAbstractScalarArray(
     ):
 
         if isinstance(item, dict):
-
-            if not (set(item) - set((na.UncertainScalarArray.axis_distribution, ))).issubset(array.shape):
-                with pytest.raises(
-                    expected_exception=ValueError,
-                    match=".* must be a subset of .*"
-                ):
-                    array[item]
-                return
 
             num_distribution = item[na.UncertainScalarArray.axis_distribution].distribution.max().ndarray + 1
             shape_distribution = na.broadcast_shapes(

@@ -391,6 +391,18 @@ class AbstractScalarArray(
 
             axes = self.axes
 
+            item = {ax: item[ax] for ax in item if ax in axes}
+
+            if not item:
+                if not axes:
+                    ndarray = self.ndarray
+                    if isinstance(ndarray, np.ndarray):
+                        return self.replace(ndarray=self.ndarray[()])
+                    else:
+                        return self
+                else:
+                    return self
+
             item_advanced = dict()      # type: typ.Dict[str, AbstractScalarArray]
             for axis in item:
                 item_axis = item[axis]
@@ -401,11 +413,6 @@ class AbstractScalarArray(
                         return NotImplemented
                 elif isinstance(item_axis, int):
                     item_advanced[axis] = item_axis
-
-            if not set(ax for ax in item if item[ax] is not None).issubset(axes):
-                raise ValueError(
-                    f"{item.keys()=} must be a subset of {self.axes=}"
-                )
 
             shape_advanced = na.shape_broadcasted(*item_advanced.values())
 
