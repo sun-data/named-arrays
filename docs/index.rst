@@ -27,6 +27,7 @@ Jupyter notebook examples on how to use :mod:`named_arrays`.
 .. toctree::
     :maxdepth: 1
 
+    tutorials/indexing
     tutorials/PolynomialFunctionArray
 
 
