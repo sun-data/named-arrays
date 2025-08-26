@@ -23,3 +23,14 @@ def shape(
         a: na.AbstractScalarArray,
 ) -> dict[str, int]:
     return a.shape
+
+
+@implements(np.broadcast_to)
+def broadcast_to(
+    array: na.AbstractArray,
+    shape: dict[str, int],
+) -> na.AbstractExplicitArray:
+    return na.broadcast_to(
+        array=array,
+        shape=shape,
+    )

@@ -467,17 +467,6 @@ def copyto(
         dst.ndarray = src.ndarray
 
 
-@implements(np.broadcast_to)
-def broadcast_to(
-        array: na.AbstractScalarArray,
-        shape: dict[str, int],
-):
-    return na.ScalarArray(
-        ndarray=np.broadcast_to(array.ndarray_aligned(shape), tuple(shape.values()), subok=True),
-        axes=tuple(shape.keys()),
-    )
-
-
 @implements(np.transpose)
 def transpose(
         a: na.AbstractScalarArray,

@@ -459,21 +459,6 @@ def copyto(
         dst.distribution = src_distribution
 
 
-@implements(np.broadcast_to)
-def broadcast_to(
-        array: na.AbstractUncertainScalarArray,
-        shape: dict[str, int]
-) -> na.UncertainScalarArray:
-
-    array = array.explicit
-    shape_distribution = na.broadcast_shapes(shape, array.shape_distribution)
-
-    return na.UncertainScalarArray(
-        nominal=na.broadcast_to(array.nominal, shape=shape),
-        distribution=na.broadcast_to(array.distribution, shape=shape_distribution)
-    )
-
-
 @implements(np.transpose)
 def transpose(
         a: na.AbstractUncertainScalarArray,

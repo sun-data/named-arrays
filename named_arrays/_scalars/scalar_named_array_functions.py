@@ -189,6 +189,24 @@ def unit_normalized(
     return result
 
 
+@_implements(na.broadcast_to)
+def broadcast_to(
+    array: na.AbstractScalarArray,
+    shape: dict[str, int],
+    append: bool = False,
+) -> na.AbstractExplicitArray:
+    if append:
+        shape = na.broadcast_shapes(array.shape, shape)
+    return na.ScalarArray(
+        ndarray=np.broadcast_to(
+            array=array.ndarray_aligned(shape),
+            shape=tuple(shape.values()),
+            subok=True,
+        ),
+        axes=tuple(shape.keys()),
+    )
+
+
 @_implements(na.interp)
 def interp(
         x: float | u.Quantity | na.AbstractScalarArray,

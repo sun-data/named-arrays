@@ -317,23 +317,6 @@ def copyto(
         dst.outputs = src.outputs
 
 
-@_implements(np.broadcast_to)
-def broadcast_to(
-        array: na.AbstractFunctionArray,
-        shape: dict[str, int]
-) -> na.FunctionArray:
-
-    array = array.explicit
-
-    axes_vertex = array.axes_vertex
-    shape_inputs = {ax: shape[ax]+1 if ax in axes_vertex else shape[ax] for ax in shape}
-
-    return array.replace(
-        inputs=na.broadcast_to(array.inputs, shape=shape_inputs),
-        outputs=na.broadcast_to(array.outputs, shape=shape),
-    )
-
-
 @_implements(np.transpose)
 def tranpose(
         a: na.AbstractFunctionArray,
