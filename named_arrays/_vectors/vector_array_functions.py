@@ -452,18 +452,6 @@ def copyto(
         except TypeError:
             components_dst[c] = components_src[c]
 
-
-@implements(np.broadcast_to)
-def broadcast_to(
-        array: na.AbstractVectorArray,
-        shape: dict[str, int],
-) -> na.AbstractExplicitVectorArray:
-    return na.broadcast_to(
-        array=array,
-        shape=shape,
-    )
-
-
 @implements(np.transpose)
 def transpose(
         a: na.AbstractVectorArray,

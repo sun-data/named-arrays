@@ -317,17 +317,6 @@ def copyto(
         dst.outputs = src.outputs
 
 
-@_implements(np.broadcast_to)
-def broadcast_to(
-        array: na.AbstractFunctionArray,
-        shape: dict[str, int]
-) -> na.FunctionArray:
-    return na.broadcast_to(
-        array=array,
-        shape=shape,
-    )
-
-
 @_implements(np.transpose)
 def tranpose(
         a: na.AbstractFunctionArray,

@@ -113,7 +113,10 @@ def broadcast_to(
     array = array.explicit
 
     axes_vertex = array.axes_vertex
-    shape_inputs = {ax: shape[ax]+1 if ax in axes_vertex else shape[ax] for ax in shape}
+    shape_inputs = {
+        ax: shape[ax] + 1 if ax in axes_vertex else shape[ax]
+        for ax in shape
+    }
 
     return array.replace(
         inputs=na.broadcast_to(

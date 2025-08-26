@@ -197,7 +197,14 @@ def broadcast_to(
 ) -> na.AbstractExplicitArray:
     if append:
         shape = na.broadcast_shapes(array.shape, shape)
-    return np.broadcast_to(array=array, shape=shape)
+    return na.ScalarArray(
+        ndarray=np.broadcast_to(
+            array=array.ndarray_aligned(shape),
+            shape=tuple(shape.values()),
+            subok=True,
+        ),
+        axes=tuple(shape.keys()),
+    )
 
 
 @_implements(na.interp)
