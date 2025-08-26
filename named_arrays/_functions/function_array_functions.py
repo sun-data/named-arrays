@@ -222,24 +222,24 @@ def array_function_stack_like(
     if any(not isinstance(array, na.AbstractFunctionArray) for array in arrays):
         return NotImplemented
 
-    if any(axis in a.axes_vertex for a in arrays):
-        raise ValueError(
-            f"concatenating along vertex a vertex axis '{axis}' is not supported."
-        )
-
     if func is np.concatenate:
+
+        if any(axis not in array.shape for array in arrays):
+            raise ValueError(
+                f"axis '{axis}' must be present in all the input arrays, "
+                f"got {[a.axes for a in arrays]}"
+            )
+
+        if any(axis in a.axes_vertex for a in arrays):
+            raise ValueError(
+                f"concatenating along vertex a vertex axis '{axis}' is not supported."
+            )
 
         arrays_broadcasted = list()
         for array in arrays:
 
             array = array.explicit
             shape = array.shape
-
-            if axis not in shape:
-                raise ValueError(
-                    f"axis '{axis}' must be present in all the input arrays, "
-                    f"got {[a.axes for a in arrays]}"
-                )
 
             array = array.broadcast_to({axis: shape[axis]}, append=True)
             arrays_broadcasted.append(array)
