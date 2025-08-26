@@ -199,7 +199,7 @@ def broadcast_to(
         shape = na.broadcast_shapes(array.shape, shape)
     return na.ScalarArray(
         ndarray=np.broadcast_to(
-            array=array.ndarray_aligned(shape),
+            array.ndarray_aligned(shape),
             shape=tuple(shape.values()),
             subok=True,
         ),

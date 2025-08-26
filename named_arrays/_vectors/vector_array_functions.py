@@ -521,7 +521,19 @@ def array_function_stack_like(
         ) if not isinstance(a, na.AbstractVectorArray) else a
         for a in arrays
     ]
-    arrays = [a.broadcasted for a in arrays]
+
+    arrays = [a.explicit for a in arrays]
+
+    if func is np.concatenate:
+        if any(axis not in array.shape for array in arrays):
+            raise ValueError(
+                f"axis '{axis}' must be present in all the input arrays, "
+                f"got {[a.axes for a in arrays]}"
+            )
+        arrays = [
+            a.broadcast_to({axis: a.shape[axis]}, append=True)
+            for a in arrays
+        ]
 
     components_arrays = [a.components for a in arrays]
 
@@ -533,7 +545,10 @@ def array_function_stack_like(
     components_result = dict()
     for c in components_arrays[0]:
         components_result[c] = func(
-            [components[c] for components in components_arrays],
+            [
+                na.as_named_array(components[c])
+                for components in components_arrays
+            ],
             axis=axis,
             out=components_out[c],
             dtype=dtype,
