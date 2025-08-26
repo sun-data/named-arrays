@@ -222,6 +222,11 @@ def array_function_stack_like(
     if any(not isinstance(array, na.AbstractFunctionArray) for array in arrays):
         return NotImplemented
 
+    if any(axis in a.axes_vertex for a in arrays):
+        raise ValueError(
+            f"concatenating along vertex a vertex axis '{axis}' is not supported."
+        )
+
     if func is np.concatenate:
 
         arrays_broadcasted = list()
