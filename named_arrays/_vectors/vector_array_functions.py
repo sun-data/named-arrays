@@ -521,7 +521,6 @@ def array_function_stack_like(
         ) if not isinstance(a, na.AbstractVectorArray) else a
         for a in arrays
     ]
-    arrays = [a.broadcasted for a in arrays]
 
     components_arrays = [a.components for a in arrays]
 
@@ -533,7 +532,13 @@ def array_function_stack_like(
     components_result = dict()
     for c in components_arrays[0]:
         components_result[c] = func(
-            [components[c] for components in components_arrays],
+            [
+                components[c].broadcast_to(
+                    {axis: components[c].shape[axis]},
+                    append=True,
+                )
+                for components in components_arrays
+            ],
             axis=axis,
             out=components_out[c],
             dtype=dtype,
