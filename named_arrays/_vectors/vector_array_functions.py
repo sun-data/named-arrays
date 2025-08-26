@@ -522,10 +522,18 @@ def array_function_stack_like(
         for a in arrays
     ]
 
+    arrays = [a.explicit for a in arrays]
+
     if func is np.concatenate:
-        shape = na.shape_broadcasted(*arrays)
-        shape_base = {axis: shape[axis]}
-        arrays = [a.broadcast_to(shape_base, append=True) for a in arrays]
+        if any(axis not in array.shape for array in arrays):
+            raise ValueError(
+                f"axis '{axis}' must be present in all the input arrays, "
+                f"got {[a.axes for a in arrays]}"
+            )
+        arrays = [
+            a.broadcast_to({axis: a.shape[axis]}, append=True)
+            for a in arrays
+        ]
 
     components_arrays = [a.components for a in arrays]
 
