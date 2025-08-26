@@ -464,13 +464,9 @@ def broadcast_to(
         array: na.AbstractUncertainScalarArray,
         shape: dict[str, int]
 ) -> na.UncertainScalarArray:
-
-    array = array.explicit
-    shape_distribution = na.broadcast_shapes(shape, array.shape_distribution)
-
-    return na.UncertainScalarArray(
-        nominal=na.broadcast_to(array.nominal, shape=shape),
-        distribution=na.broadcast_to(array.distribution, shape=shape_distribution)
+    return na.broadcast_to(
+        array=array,
+        shape=shape,
     )
 
 

@@ -458,9 +458,10 @@ def broadcast_to(
         array: na.AbstractVectorArray,
         shape: dict[str, int],
 ) -> na.AbstractExplicitVectorArray:
-    components = array.components
-    components_result = {c: na.broadcast_to(array=components[c], shape=shape) for c in components}
-    return array.type_explicit.from_components(components_result)
+    return na.broadcast_to(
+        array=array,
+        shape=shape,
+    )
 
 
 @implements(np.transpose)

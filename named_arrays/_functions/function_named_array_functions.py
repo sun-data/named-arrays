@@ -103,6 +103,32 @@ def unit_normalized(
     )
 
 
+@_implements(na.broadcast_to)
+def broadcast_to(
+    array: na.AbstractFunctionArray,
+    shape: dict[str, int],
+    append: bool = False,
+) -> na.FunctionArray:
+
+    array = array.explicit
+
+    axes_vertex = array.axes_vertex
+    shape_inputs = {ax: shape[ax]+1 if ax in axes_vertex else shape[ax] for ax in shape}
+
+    return array.replace(
+        inputs=na.broadcast_to(
+            array=array.inputs,
+            shape=shape_inputs,
+            append=append,
+        ),
+        outputs=na.broadcast_to(
+            array=array.outputs,
+            shape=shape,
+            append=append,
+        ),
+    )
+
+
 @_implements(na.nominal)
 def nominal(
     a: na.AbstractFunctionArray,

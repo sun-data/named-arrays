@@ -121,6 +121,30 @@ def unit_normalized(
     )
 
 
+@_implements(na.broadcast_to)
+def broadcast_to(
+    array: na.AbstractUncertainScalarArray,
+    shape: dict[str, int],
+    append: bool = False,
+) -> na.AbstractExplicitArray:
+
+    array = array.explicit
+    shape_distribution = na.broadcast_shapes(shape, array.shape_distribution)
+
+    return na.UncertainScalarArray(
+        nominal=na.broadcast_to(
+            array=array.nominal,
+            shape=shape,
+            append=append,
+        ),
+        distribution=na.broadcast_to(
+            array=array.distribution,
+            shape=shape_distribution,
+            append=append,
+        )
+    )
+
+
 @_implements(na.interp)
 def interp(
         x: float | u.Quantity | na.AbstractScalar,

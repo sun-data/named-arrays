@@ -182,6 +182,26 @@ def unit_normalized(
     return a.type_explicit.from_components(components)
 
 
+@_implements(na.broadcast_to)
+def broadcast_to(
+    array: na.AbstractVectorArray,
+    shape: dict[str, int],
+    append: bool = False,
+) -> na.AbstractExplicitVectorArray:
+    components = array.components
+
+    components = {
+        c: na.broadcast_to(
+            array=components[c],
+            shape=shape,
+            append=append,
+        )
+        for c in components
+    }
+
+    return array.type_explicit.from_components(components)
+
+
 @_implements(na.nominal)
 def nominal(
     a: na.AbstractVectorArray,

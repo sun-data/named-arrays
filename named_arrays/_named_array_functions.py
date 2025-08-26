@@ -654,7 +654,6 @@ def broadcast_to(
         The array to broadcast.
     shape
         The desired shape of the output array.
-        If `strict` is :obj:`True`, the shape of the output array will have elements.
     append
         A boolean flag indicating whether to throw an error if there are
         axes in `array` that aren't in `shape`.
@@ -699,11 +698,12 @@ def broadcast_to(
 
         na.broadcast_to(a, shape_y, append=True)
     """
-    if not isinstance(array, na.AbstractArray):
-        array = na.ScalarArray(array)
-    if append:
-        shape = na.broadcast_shapes(array.shape, shape)
-    return np.broadcast_to(array=array, shape=shape)
+    return na._named_array_function(
+        func=broadcast_to,
+        array=na.as_named_array(array),
+        shape=shape,
+        append=append,
+    )
 
 
 def stack(
