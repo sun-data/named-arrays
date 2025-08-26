@@ -522,6 +522,11 @@ def array_function_stack_like(
         for a in arrays
     ]
 
+    if func is np.concatenate:
+        shape = na.shape_broadcasted(*arrays)
+        shape_base = {axis: shape[axis]}
+        arrays = [a.broadcast_to(shape_base, append=True) for a in arrays]
+
     components_arrays = [a.components for a in arrays]
 
     if out is None:
@@ -533,10 +538,7 @@ def array_function_stack_like(
     for c in components_arrays[0]:
         components_result[c] = func(
             [
-                components[c].broadcast_to(
-                    {axis: components[c].shape[axis]},
-                    append=True,
-                )
+                na.as_named_array(components[c])
                 for components in components_arrays
             ],
             axis=axis,
