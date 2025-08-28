@@ -626,10 +626,7 @@ class AbstractFunctionArray(
                     inputs_inputs.append(inp.inputs)
                     inputs_outputs.append(inp.outputs)
                 else:
-                    if not inp.shape:
-                        inputs_outputs.append(inp)
-                    else:
-                        return NotImplemented
+                    inputs_outputs.append(inp)
             else:
                 inputs_outputs.append(inp)
 
