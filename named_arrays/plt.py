@@ -125,10 +125,6 @@ def subplots(
     if origin == "lower":
         if axis_rows in shape:
             axs = axs[{axis_rows: slice(None, None, -1)}]
-    elif origin == "upper":
-        pass
-    else:
-        raise ValueError(f"{origin=} is not a valid origin")
 
     return fig, axs
 
