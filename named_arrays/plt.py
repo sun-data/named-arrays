@@ -62,6 +62,7 @@ def subplots(
         sharex: bool | Literal["none", "all", "row", "col"] = False,
         sharey: bool | Literal["none", "all", "row", "col"] = False,
         squeeze: bool = True,
+        origin: Literal["lower", "upper"] = "lower",
         **kwargs,
 ) -> tuple[
     matplotlib.figure.Figure,
@@ -97,6 +98,10 @@ def subplots(
         If :obj:`True`, :func:`numpy.squeeze` is called on the result, which removes singleton dimensions from the
         array.
         See the documentation of :func:`matplotlib.pyplot.subplots` for more information.
+    origin
+        Place the (0, 0) axis in the upper-left or lower-left corner.
+        Defaults to lower-left since this mirrors the mathematical convention,
+        but this is the opposite convention adopted by :func:`matplotlib.pyplot.subplots`.
     kwargs
         Additional keyword arguments passed to :func:`matplotlib.pyplot.subplots`
     """
@@ -117,8 +122,13 @@ def subplots(
 
     axs = na.ScalarArray(axs, axes=tuple(shape.keys()))
 
-    if axis_rows in shape:
-        axs = axs[{axis_rows: slice(None, None, -1)}]
+    if origin == "lower":
+        if axis_rows in shape:
+            axs = axs[{axis_rows: slice(None, None, -1)}]
+    elif origin == "upper":
+        pass
+    else:
+        raise ValueError(f"{origin=} is not a valid origin")
 
     return fig, axs
 
