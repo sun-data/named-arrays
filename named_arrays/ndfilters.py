@@ -20,6 +20,7 @@ def mean_filter(
     array: ArrayT,
     size: dict[str, int],
     where: WhereT = True,
+    mode: Literal["mirror", "nearest", "wrap", "truncate"] = "mirror",
 ) -> ArrayT | WhereT:
     """
     A thin wrapper around :func:`ndfilters.mean_filter` for named arrays.
@@ -33,6 +34,11 @@ def mean_filter(
     where
         A boolean mask used to select which elements of the input array are to
         be filtered.
+    mode
+        The method used to extend the input array beyond its boundaries.
+        See :func:`scipy.ndimage.generic_filter` for the definitions.
+        Currently, only "mirror", "nearest", "wrap", and "truncate" modes are
+        supported.
 
     Examples
     --------
@@ -80,6 +86,7 @@ def mean_filter(
         array=array,
         size=size,
         where=where,
+        mode=mode,
     )
 
 
@@ -168,6 +175,7 @@ def variance_filter(
     array: ArrayT,
     size: dict[str, int],
     where: WhereT = True,
+    mode: Literal["mirror", "nearest", "wrap", "truncate"] = "mirror",
 ) -> ArrayT | WhereT:
     """
     A thin wrapper around :func:`ndfilters.variance_filter` for named arrays.
@@ -181,6 +189,11 @@ def variance_filter(
     where
         A boolean mask used to select which elements of the input array are to
         be filtered.
+    mode
+        The method used to extend the input array beyond its boundaries.
+        See :func:`scipy.ndimage.generic_filter` for the definitions.
+        Currently, only "mirror", "nearest", "wrap", and "truncate" modes are
+        supported.
 
     Examples
     --------
@@ -228,4 +241,5 @@ def variance_filter(
         array=array,
         size=size,
         where=where,
+        mode=mode,
     )
