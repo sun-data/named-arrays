@@ -164,7 +164,7 @@ def type_array(
 
 
 def broadcast_shapes(*shapes: dict[str, int]) -> dict[str, int]:
-    """
+    r"""
     An analogue of :func:`numpy.broadcast_shapes` for named axes.
 
     Whereas the :mod:`numpy` version of this function accepts a sequence
