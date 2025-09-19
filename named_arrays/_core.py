@@ -164,6 +164,18 @@ def type_array(
 
 
 def broadcast_shapes(*shapes: dict[str, int]) -> dict[str, int]:
+    """
+    An analogue of :func:`numpy.broadcast_shapes` for named axes.
+
+    Whereas the :mod:`numpy` version of this function accepts a sequence
+    of :class:`tuple`\ s, this function accepts a sequence of :class:`dict`\ s
+    since each axis now has an associated name.
+
+    Parameters
+    ----------
+    shapes
+        A sequence of shapes to broadcast against one another.
+    """
     if not shapes:
         return dict()
     result = shapes[0].copy()
@@ -188,6 +200,14 @@ def broadcast_shapes(*shapes: dict[str, int]) -> dict[str, int]:
 
 
 def shape_broadcasted(*arrays: Any) -> dict[str, int]:
+    """
+    Find the broadcasted shape of a sequence of arrays.
+
+    Parameters
+    ----------
+    arrays
+        A sequence of arrays to broadcast against one another.
+    """
     shapes = [a.shape for a in arrays if hasattr(a, "__named_array_function__")]
     return broadcast_shapes(*shapes)
 
@@ -196,6 +216,19 @@ def ndindex(
         shape: dict[str, int],
         axis_ignored: None | str | Sequence[str] = None,
 ) -> Iterator[dict[str, int]]:
+    """
+    An analogue of :func:`numpy.ndindex` for named axes.
+
+    This version adds a new argument, `axis_ignored`,
+    to allow some of the axes to be excluded from the returned iterator.
+
+    Parameters
+    ----------
+    shape
+        The size of each dimension of the array to index over.
+    axis_ignored
+        The axes to ignore when iterating.
+    """
 
     shape = shape.copy()
 
@@ -213,10 +246,30 @@ def ndindex(
 
 
 def indices(shape: dict[str, int]) -> dict[str, na.ScalarArrayRange]:
+    """
+    An analogue of :func:`numpy.indices` for named axes.
+
+    Parameters
+    ----------
+    shape
+
+    """
     return {axis: na.ScalarArrayRange(0, shape[axis], axis=axis) for axis in shape}
 
 
 def flatten_axes(axes: Sequence[str]):
+    """
+    Given a sequence of axes names,
+    combine them into a single :class:`str` using ``*`` as a delimiter.
+
+    This is intended to be used during boolean advanced indexing to
+    represent the axes selected by the mask.
+
+    Parameters
+    ----------
+    axes
+        A sequence of axes names.
+    """
     if not axes:
         raise ValueError(f"`axes` must be a non-empty sequence, got {axes}")
     return '*'.join(axes)
@@ -287,21 +340,21 @@ class AbstractArray(
     @abc.abstractmethod
     def type_abstract(self: Self) -> Type[AbstractArray]:
         """
-        The :class:`AbstractArray` type corresponding to this array
+        The :class:`named_arrays.AbstractArray` type corresponding to this array.
         """
 
     @property
     @abc.abstractmethod
     def type_explicit(self: Self) -> Type[AbstractExplicitArray]:
         """
-        The :class:`AbstractExplicitArray` type corresponding to this array
+        The :class:`named_arrays.AbstractExplicitArray` type corresponding to this array.
         """
 
     @property
     @abc.abstractmethod
     def axes(self: Self) -> tuple[str, ...]:
         """
-        A :class:`tuple` of :class:`str` representing the names of each dimension of :attr:`ndarray`.
+        A :class:`tuple` of :class:`str` representing the names of each dimension of this array.
 
         Must have the same length as the number of dimensions of :attr:`ndarray`.
         """
@@ -319,7 +372,8 @@ class AbstractArray(
     @abc.abstractmethod
     def shape(self: Self) -> dict[str, int]:
         """
-        Shape of the array. Analogous to :attr:`numpy.ndarray.shape` but represented as a :class:`dict` where the keys
+        The number of elements along each axis of the array.
+        Analogous to :attr:`numpy.ndarray.shape` but represented as a :class:`dict` where the keys
         are the axis names and the values are the axis sizes.
         """
 
@@ -341,14 +395,14 @@ class AbstractArray(
     @abc.abstractmethod
     def value(self: Self) -> Self:
         """
-        Returns a new array with its units removed, if they exist
+        Returns a new array with its units removed, if they exist.
         """
 
     @property
     @abc.abstractmethod
     def explicit(self: Self) -> AbstractExplicitArray:
         """
-        Converts this array to an instance of :class:`named_arrays.AbstractExplicitArray`
+        Converts this array to an instance of :class:`named_arrays.AbstractExplicitArray`.
         """
 
     @property
@@ -356,7 +410,7 @@ class AbstractArray(
         """
         if this array has multiple components, broadcast them against each other.
 
-        Equivalent to ``a.broadcast_to(a.shape)``
+        Equivalent to :code:`a.broadcast_to(a.shape)`.
         """
         a = self.explicit
         return a.broadcast_to(a.shape)
@@ -408,12 +462,31 @@ class AbstractArray(
 
     @property
     def indices(self: Self) -> dict[str, na.ScalarArrayRange]:
+        """
+        Compute the index of each element of this array.
+
+        See Also
+        --------
+        :func:`named_arrays.indices`: A functional version of this method.
+        """
         return indices(self.shape)
 
     def ndindex(
             self: Self,
             axis_ignored: None | str | Sequence[str] = None,
     ) -> Iterator[dict[str, int]]:
+        """
+        An iterator that yields the index of each element of this array.
+
+        Parameters
+        ----------
+        axis_ignored
+            The of the array to ignore when generating the iterator.
+
+        See Also
+        --------
+        :func:`named_arrays.ndindex`: A functional version of this method.
+        """
         return ndindex(
             shape=self.shape,
             axis_ignored=axis_ignored,
@@ -422,16 +495,12 @@ class AbstractArray(
     @abc.abstractmethod
     def add_axes(self: Self, axes: str | Sequence[str]) -> AbstractExplicitArray:
         """
-        Add new singleton axes to this array
+        Add new singleton axes to this array.
 
         Parameters
         ----------
         axes
-            New axes to add to the array
-
-        Returns
-        -------
-        Array with new axes added
+            Either a single axis name or a sequence of axis names add to this array.
         """
 
     @abc.abstractmethod
@@ -642,9 +711,11 @@ class AbstractArray(
         """
 
     def copy_shallow(self: Self) -> Self:
+        """Create a shallow copy of this array."""
         return copy.copy(self)
 
     def copy(self: Self) -> Self:
+        """Create a deep copy of this array."""
         return copy.deepcopy(self)
 
     def __copy__(self: Self) -> Self:
@@ -781,6 +852,21 @@ class AbstractArray(
             shape: dict[str, int],
             append: bool = False,
     ) -> Self:
+        """
+        A new view of this array with the specified shape.
+
+        Parameters
+        ----------
+        shape
+            The shape of the new array.
+        append
+            If :obj:`True`, `shape` will be appended to the current shape
+            of this array before broadcasting.
+
+        See Also
+        --------
+        :func:`named_arrays.broadcast_to`: A functional version of this method.
+        """
         return na.broadcast_to(
             array=self,
             shape=shape,
@@ -791,6 +877,14 @@ class AbstractArray(
             self: Self,
             shape: dict[str, int],
     ) -> Self:
+        """
+        Reorganize this array into a new shape.
+
+        Parameters
+        ----------
+        shape
+            The new shape of the array, must be compatible with this array.
+        """
         return np.reshape(self, newshape=shape)
 
     def min(
@@ -799,6 +893,22 @@ class AbstractArray(
             initial: npt.ArrayLike = np._NoValue,
             where: Self = np._NoValue,
     ) -> Self:
+        """
+        The minimum value of this array along the given axes.
+
+        Parameters
+        ----------
+        axis
+            The logical axis or axes along which the operation is computed.
+        initial
+            The initial value of the minimum, required if `where` provided.
+        where
+            An optional mask which selects which elements to be considered.
+
+        See Also
+        --------
+        :func:`numpy.min`: A functional version of this method.
+        """
         return np.min(self, axis=axis, initial=initial, where=where)
 
     def max(
@@ -807,6 +917,22 @@ class AbstractArray(
             initial: npt.ArrayLike = np._NoValue,
             where: Self = np._NoValue,
     ) -> Self:
+        """
+        The maximum value of this array along the given axes.
+
+        Parameters
+        ----------
+        axis
+            The logical axis or axes along which the operation is computed.
+        initial
+            The initial value of the minimum, required if `where` provided.
+        where
+            An optional mask which selects which elements to be considered.
+
+        See Also
+        --------
+        :func:`numpy.max`: A functional version of this method.
+        """
         return np.max(self, axis=axis, initial=initial, where=where)
 
     def sum(
@@ -814,12 +940,38 @@ class AbstractArray(
             axis: None | str | Sequence[str] = None,
             where: Self = np._NoValue,
     ) -> Self:
+        """
+        The sum of each element of this array along the given axes.
+
+        Parameters
+        ----------
+        axis
+            The logical axis or axes along which the operation is computed.
+        where
+            An optional mask which selects which elements to be considered.
+
+        See Also
+        --------
+        :func:`numpy.sum`: A functional version of this method.
+        """
         return np.sum(self, axis=axis, where=where)
 
     def ptp(
             self: Self,
             axis: None | str | Sequence[str] = None,
     ) -> Self:
+        """
+        The peak-to-peak value of this array along the given axes.
+
+        Parameters
+        ----------
+        axis
+            The logical axis or axes along which the operation is computed.
+
+        See Also
+        --------
+        :func:`numpy.ptp`: A functional version of this method.
+        """
         return np.ptp(self, axis=axis)
 
     def mean(
@@ -827,6 +979,20 @@ class AbstractArray(
             axis: None | str | Sequence[str] = None,
             where: Self = np._NoValue,
     ) -> Self:
+        """
+        The mean value of this array along the given axes.
+
+        Parameters
+        ----------
+        axis
+            The logical axis or axes along which the operation is computed.
+        where
+            An optional mask which selects which elements to be considered.
+
+        See Also
+        --------
+        :func:`numpy.mean`: A functional version of this method.
+        """
         return np.mean(self, axis=axis, where=where)
 
     def std(
@@ -834,6 +1000,20 @@ class AbstractArray(
             axis: None | str | Sequence[str] = None,
             where: Self = np._NoValue,
     ) -> Self:
+        """
+        The standard deviation of this array along the given axes.
+
+        Parameters
+        ----------
+        axis
+            The logical axis or axes along which the operation is computed.
+        where
+            An optional mask which selects which elements to be considered.
+
+        See Also
+        --------
+        :func:`numpy.std`: A functional version of this method.
+        """
         return np.std(self, axis=axis, where=where)
 
     def var(
@@ -841,12 +1021,38 @@ class AbstractArray(
             axis: None | str | Sequence[str] = None,
             where: Self = np._NoValue,
     ) -> Self:
+        """
+        The variance of this array along the given axes.
+
+        Parameters
+        ----------
+        axis
+            The logical axis or axes along which the operation is computed.
+        where
+            An optional mask which selects which elements to be considered.
+
+        See Also
+        --------
+        :func:`numpy.var`: A functional version of this method.
+        """
         return np.var(self, axis=axis, where=where)
 
     def median(
             self,
             axis: None | str | Sequence[str] = None,
     ):
+        """
+        The median of this array along the given axes.
+
+        Parameters
+        ----------
+        axis
+            The logical axis or axes along which the operation is computed.
+
+        See Also
+        --------
+        :func:`numpy.median`: A functional version of this method.
+        """
         return np.median(self, axis=axis)
 
     def percentile(
@@ -858,6 +1064,28 @@ class AbstractArray(
             method: str = 'linear',
             keepdims: bool = False,
     ):
+        """
+        The requested percentile of this array along the given axes.
+
+        Parameters
+        ----------
+        q
+            The percentile to compute.
+        axis
+            The logical axis or axes along which the operation is computed.
+        out
+            An optional output array in which to place the result.
+        overwrite_input
+            Whether to overwrite the input array.
+        method
+            How to interpolate the result.
+        keepdims
+            A boolean flag indicating whether to keep the reduced dimensions.
+
+        See Also
+        --------
+        :func:`numpy.percentile`: A functional version of this method.
+        """
         return np.percentile(
             a=self,
             q=q,
@@ -873,6 +1101,20 @@ class AbstractArray(
             axis: None | str | Sequence[str] = None,
             where: Self = np._NoValue,
     ) -> Self:
+        """
+        Return :obj:`True` if `all` the elements along the given axes are :obj:`True`.
+
+        Parameters
+        ----------
+        axis
+            The logical axis or axes along which the operation is computed.
+        where
+            An optional mask which selects which elements to be considered.
+
+        See Also
+        --------
+        :func:`numpy.all`: A functional version of this method.
+        """
         return np.all(self, axis=axis, where=where)
 
     def any(
@@ -880,6 +1122,20 @@ class AbstractArray(
             axis: None | str | Sequence[str] = None,
             where: Self = np._NoValue,
     ) -> Self:
+        """
+        Return :obj:`True` if `any` the elements along the given axes are :obj:`True`.
+
+        Parameters
+        ----------
+        axis
+            The logical axis or axes along which the operation is computed.
+        where
+            An optional mask which selects which elements to be considered.
+
+        See Also
+        --------
+        :func:`numpy.any`: A functional version of this method.
+        """
         return np.any(self, axis=axis, where=where)
 
     def rms(
@@ -887,6 +1143,16 @@ class AbstractArray(
             axis: None | str | Sequence[str] = None,
             where: Self = np._NoValue,
     ) -> Self:
+        """
+        The root-mean-square of this array along the given axes.
+
+        Parameters
+        ----------
+        axis
+            The logical axis or axes along which the operation is computed.
+        where
+            An optional mask which selects which elements to be considered.
+        """
         return np.sqrt(np.mean(np.square(self), axis=axis, where=where))
 
     def vmr(
@@ -894,12 +1160,34 @@ class AbstractArray(
             axis: None | str | Sequence[str] = None,
             where: Self = np._NoValue,
     ):
+        """
+        The variance-to-mean ratio of this array along the given axes.
+
+        Parameters
+        ----------
+        axis
+            The logical axis or axes along which the operation is computed.
+        where
+            An optional mask which selects which elements to be considered.
+        """
         return na.vmr(self, axis=axis, where=where)
 
     def transpose(
             self: Self,
             axes: None | Sequence[str] = None,
     ) -> Self:
+        """
+        Reorder the axes of this array to the given sequence.
+
+        Parameters
+        ----------
+        axes
+            The new axis ordering of this array.
+
+        See Also
+        --------
+        :func:`numpy.transpose`: The :mod:`numpy` version of this method.
+        """
         return np.transpose(self, axes=axes)
 
     def _interp_linear_recursive(
@@ -950,6 +1238,15 @@ class AbstractArray(
             self: Self,
             item: dict[str, Self],
     ) -> Self:
+        """
+        Linearly-interpolate this array to find its value at the given
+        fractional index.
+
+        Parameters
+        ----------
+        item
+            A fractional index at which to evaluate the array.
+        """
         if item:
             return self._interp_linear_recursive(
                 item=item,
