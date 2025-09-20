@@ -32,6 +32,7 @@ ZT = TypeVar('ZT', bound=na.ArrayLike)
 class AbstractCartesian3dVectorArray(
     na.AbstractCartesian2dVectorArray,
 ):
+    """An interface describing an array of 3D Cartesian vectors."""
 
     @property
     @abc.abstractmethod
@@ -236,6 +237,10 @@ class Cartesian3dVectorArray(
     na.Cartesian2dVectorArray,
     Generic[XT, YT, ZT],
 ):
+    """
+    An array of 3D Cartesian vectors.
+    """
+
     x: XT = 0
     """The :math:`x` component of this vector."""
 

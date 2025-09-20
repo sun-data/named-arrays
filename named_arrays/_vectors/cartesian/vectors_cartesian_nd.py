@@ -13,6 +13,9 @@ __all__ = [
 class AbstractCartesianNdVectorArray(
     na.AbstractCartesianVectorArray,
 ):
+    """
+    An interface describing an :math:`n`-dimensional Cartesian vector array.
+    """
 
     @property
     def type_abstract(self) -> Type[AbstractCartesianNdVectorArray]:
@@ -32,6 +35,10 @@ class CartesianNdVectorArray(
     AbstractCartesianNdVectorArray,
     na.AbstractExplicitCartesianVectorArray,
 ):
+    """
+    An :math:`n`-dimensional Cartesian vector array.
+    """
+
     components: dict[str, na.ArrayLike] = None
     """
     The vector components of this array.

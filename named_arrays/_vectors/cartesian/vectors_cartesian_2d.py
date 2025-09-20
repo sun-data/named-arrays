@@ -32,6 +32,9 @@ YT = TypeVar('YT', bound=na.ArrayLike)
 class AbstractCartesian2dVectorArray(
     na.AbstractCartesianVectorArray,
 ):
+    """
+    An interface describing an array of 2D Cartesian vectors.
+    """
 
     @property
     @abc.abstractmethod
@@ -109,6 +112,8 @@ class Cartesian2dVectorArray(
     na.AbstractExplicitCartesianVectorArray,
     Generic[XT, YT],
 ):
+    """An array of 2D Cartesian vectors."""
+
     x: XT = 0
     """The :math:`x` component of this vector."""
 
