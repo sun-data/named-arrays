@@ -84,6 +84,7 @@ class AbstractVectorArray(
 
     @property
     def matrix(self) -> na.AbstractMatrixArray:
+        """Cast this vector into its matrix representation."""
         new_dict = {}
         for c in self.components:
             component = self.components[c]

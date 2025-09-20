@@ -33,6 +33,13 @@ class CartesianNdVectorArray(
     na.AbstractExplicitCartesianVectorArray,
 ):
     components: dict[str, na.ArrayLike] = None
+    """
+    The vector components of this array.
+    
+    Expressed as a :class:`dict`,
+    where the keys are the component names 
+    and the values are the component values.
+    """
 
     def __post_init__(self):
         if self.components is None:
