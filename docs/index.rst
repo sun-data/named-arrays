@@ -16,6 +16,14 @@ are the number of elements along that axis.
 This forces consumers of this library to stick to the named axes,
 and to not "cheat" by using positional indexing.
 
+Installation
+============
+:mod:`named_arrays` is published on PyPI and can be installed using::
+
+    pip install named-arrays
+
+
+
 API Reference
 =============
 
