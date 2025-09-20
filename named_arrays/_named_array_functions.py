@@ -551,6 +551,7 @@ def shape(a: na.ArrayLike) -> dict[str, int]:
         a = na.ScalarArray(a)
     return np.shape(a)
 
+
 def unit(
         a: Any,
         unit_dimensionless: None | float | u.UnitBase = None,
