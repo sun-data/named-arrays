@@ -547,7 +547,9 @@ def shape(a: na.ArrayLike) -> dict[str, int]:
     a
         The array to compute the shape of.
     """
-
+    if not isinstance(a, na.AbstractArray):
+        a = na.ScalarArray(a)
+    return np.shape(a)
 
 def unit(
         a: Any,
