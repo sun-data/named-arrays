@@ -16,8 +16,9 @@ are the number of elements along that axis.
 This forces consumers of this library to stick to the named axes,
 and to not "cheat" by using positional indexing.
 
-Most functions of the :mod:`numpy` API have been overloaded if possible.
-Other functions which require
+Many functions in the :mod:`numpy` API have been overridden if possible.
+Other functions which are not expressible using the :mod:`numpy` API have
+been redifined in the :mod:`named_arrays` namespace.
 
 Installation
 ============

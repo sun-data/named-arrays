@@ -202,14 +202,14 @@ class Translation(
         import astropy.visualization
         import named_arrays as na
 
-        vector = na.Cartesian3dVectorArray(
+        vector = na.Cartesian2dVectorArray(
             x=12 * u.mm,
             y=12 * u.mm,
         )
 
         transformation = na.transformations.Translation(vector)
 
-        square = na.Cartesian3dVectorArray(
+        square = na.Cartesian2dVectorArray(
             x=na.ScalarArray([-10, 10, 10, -10, -10] * u.mm, axes="vertex"),
             y=na.ScalarArray([-10, -10, 10, 10, -10] * u.mm, axes="vertex"),
         )
@@ -229,7 +229,7 @@ class Translation(
 
     .. jupyter-execute::
 
-        vector_2 = na.Cartesian3dVectorArray(
+        vector_2 = na.Cartesian2dVectorArray(
             x=na.ScalarArray([12, -12] * u.mm, axes="transform"),
             y=9 * u.mm,
         )
@@ -258,13 +258,13 @@ class Cartesian3dTranslation(
     """
 
     x: na.ScalarLike = 0 * u.mm
-    """The $x$ component of this translation."""
+    """The :math:`x` component of this translation."""
 
     y: na.ScalarLike = 0 * u.mm
-    """The $y$ component of this translation."""
+    """The :math:`y` component of this translation."""
 
     z: na.ScalarLike = 0 * u.mm
-    """The $z$ component of this translation."""
+    """The :math:`z` component of this translation."""
 
     @property
     def vector(self) -> na.Cartesian3dVectorArray:
