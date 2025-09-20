@@ -280,7 +280,7 @@ def arange(
         step: int | na.AbstractArray = 1,
 ) -> na.AbstractExplicitArray:
     """
-    Redefined version of :func:`numpy.arange` with an ``axis`` parameter.
+    Redefined version of :func:`numpy.arange` with an `axis` parameter.
 
     Parameters
     ----------
@@ -350,7 +350,7 @@ def linspace(
         centers: bool = False,
 ) -> na.StartT | na.StopT | AxisT | NumT:
     """
-    Create an array of evenly-spaced numbers between :attr:`start` and :attr:`stop`
+    Create an array of evenly-spaced numbers between `start` and `stop`.
 
     Parameters
     ----------
@@ -435,7 +435,7 @@ def logspace(
         dtype: None | type | np.dtype = None,
 ) -> na.StartT | na.StopT | AxisT | NumT:
     """
-    Create an array of evenly-spaced numbers on a log scale between :attr:`start` and :attr:`stop`
+    Create an array of evenly-spaced numbers on a log scale between `start` and `stop`.
 
     Parameters
     ----------
@@ -482,7 +482,7 @@ def geomspace(
         dtype: None | type | np.dtype = None,
 ) -> na.StartT | na.StopT | AxisT | NumT:
     """
-    Create an array of a geometric progression of numbers between :attr:`start` and :attr:`stop`
+    Create an array of a geometric progression of numbers between `start` and `stop`.
 
     Parameters
     ----------
@@ -518,10 +518,35 @@ def geomspace(
 
 
 def ndim(a: na.AbstractArray) -> int:
+    """
+    Compute the number of dimensions of the argument.
+
+    Parameters
+    ----------
+    a
+        An array-like object
+
+    See Also
+    --------
+    :func:`numpy.ndim` :  Corresponding :mod:`numpy` function.
+    """
     return np.ndim(a)
 
 
 def shape(a: na.ArrayLike) -> dict[str, int]:
+    """
+    Compute the shape of the given array.
+
+    In :mod:`numpy`, the shape of an array is a :class:`tuple` of integers.
+    For this package, each axis is characterized by a name instead of
+    its position, so the shape is a :class:`dict` where the keys are
+    the axis names and the values are number of elements along each axis.
+
+    Parameters
+    ----------
+    a
+        The array to compute the shape of.
+    """
     if not isinstance(a, na.AbstractArray):
         a = na.ScalarArray(a)
     return np.shape(a)
@@ -575,10 +600,9 @@ def unit_normalized(
         squeeze: bool = True,
 ) -> u.UnitBase | na.AbstractArray:
     """
-    Isolate the physical units associated with a given object,`
+    Isolate the physical units associated with a given object,
     normalizing to the given dimensionless units if the object does not have
     associated units.
-
 
     Parameters
     ----------
@@ -714,6 +738,26 @@ def stack(
         dtype: str | np.dtype | Type = None,
         casting: None | str = "same_kind",
 ) -> na.AbstractArray:
+    """
+    Stack the given arrays along a new axis.
+
+    Parameters
+    ----------
+    arrays
+        A sequence of arrays to combine into a new array.
+    axis
+        The name of the new axis along which to stack.
+    out
+        An optional array in which to place the output.
+    dtype
+        The data type of the new array.
+    casting
+        The casting rule to follow when combining arrays of different dtypes.
+
+    See Also
+    --------
+    :func:`numpy.stack`: Corresponding :mod:`numpy` function.
+    """
     if not any(isinstance(a, na.AbstractArray) for a in arrays):
         arrays = list(arrays)
         arrays[0] = na.ScalarArray(arrays[0])
@@ -734,6 +778,26 @@ def concatenate(
         dtype: str | np.dtype | Type = None,
         casting: None | str = "same_kind",
 ) -> na.AbstractArray:
+    """
+    Concatenate the given arrays along an existing axis.
+
+    Parameters
+    ----------
+    arrays
+        A sequence of arrays to combine into a new array.
+    axis
+        The name of the new axis along which to concatenate.
+    out
+        An optional array in which to place the output.
+    dtype
+        The data type of the new array.
+    casting
+        The casting rule to follow when combining arrays of different dtypes.
+
+    See Also
+    --------
+    :func:`numpy.concatenate`: Corresponding :mod:`numpy` function.
+    """
     if not any(isinstance(a, na.AbstractArray) for a in arrays):
         arrays = list(arrays)
         arrays[0] = na.ScalarArray(arrays[0])
@@ -747,6 +811,16 @@ def concatenate(
 
 
 def add_axes(array: na.ArrayLike, axes: str | Sequence[str]):
+    """
+    Add singleton axes to an existing array.
+
+    Parameters
+    ----------
+    array
+        The array to add the axes to.
+    axes
+        The axes names to add.
+    """
     if not isinstance(array, na.AbstractArray):
         array = na.ScalarArray(array)
     return array.add_axes(axes)
@@ -1301,7 +1375,7 @@ def despike(
 ) -> ArrayT:
     """
     A thin wrapper around :func:`astroscrappy.detect_cosmics`
-    :cite:t:`vanDokkum2001`, which removes cosmic ray spikes from a series of
+    :cite:p:`vanDokkum2001`, which removes cosmic ray spikes from a series of
     images.
 
     Parameters

@@ -1,3 +1,9 @@
+"""
+Create arrays by drawing random samples.
+
+This module is a wrapper around :mod:`numpy.random`.
+"""
+
 from __future__ import annotations
 from typing import TypeVar, Sequence
 import astropy.units as u

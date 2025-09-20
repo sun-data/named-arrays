@@ -68,6 +68,12 @@ def _normalize(
 class AbstractVectorArray(
     na.AbstractArray
 ):
+    """
+    An interface describing an arbitrary physical vector.
+
+    Contains one or more components that can be scalars or vectors.
+    """
+
     __named_array_priority__: ClassVar[float] = 100 * na.AbstractScalarArray.__named_array_priority__
 
     @property
@@ -84,6 +90,7 @@ class AbstractVectorArray(
 
     @property
     def matrix(self) -> na.AbstractMatrixArray:
+        """Cast this vector into its matrix representation."""
         new_dict = {}
         for c in self.components:
             component = self.components[c]
@@ -454,6 +461,8 @@ class AbstractExplicitVectorArray(
     AbstractVectorArray,
     na.AbstractExplicitArray,
 ):
+    """An interface describing an explicit physical vector."""
+
     @classmethod
     def from_scalar_array(
             cls: Type[Self],
@@ -486,6 +495,15 @@ class AbstractExplicitVectorArray(
             cls: Type[Self],
             components: dict[str, na.AbstractArray],
     ) -> AbstractExplicitVectorArray:
+        """
+        Construct a new instance of this class using a :class:`dict` of components.
+
+        Parameters
+        ----------
+        components
+            A :class:`dict` of component names and values.
+            The keys of the dict must match the names of the components in this class.
+        """
         return cls(**components)
 
     @classmethod
@@ -510,6 +528,19 @@ class AbstractExplicitVectorArray(
             array: na.CartesianNdVectorArray,
             like: None | AbstractExplicitVectorArray = None,
     ) -> AbstractExplicitVectorArray:
+        """
+        Construct a new instance of this class using an instance of
+        :class:`named_arrays.CartesianNdVectorArray`.
+
+        Parameters
+        ----------
+        array
+            The :math:`n`-dimensional cartesian vector to convert.
+        like
+            A reference instance of the result.
+            This is needed if the resulting class has components that are
+            themselves vectors.
+        """
 
         if like is None:
             components_new = array.components

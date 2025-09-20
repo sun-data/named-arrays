@@ -1,3 +1,5 @@
+"""A named tensor implementation with :mod:`astropy.units` support."""
+
 from ._named_array_functions import *
 from . import random
 from . import plt

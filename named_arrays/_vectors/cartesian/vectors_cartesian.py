@@ -28,6 +28,10 @@ __all__ = [
 class AbstractCartesianVectorArray(
     na.AbstractVectorArray
 ):
+    """
+    An interface describing a vector whose components are all orthogonal.
+    """
+
     @property
     @abc.abstractmethod
     def type_explicit(self: Self) -> Type[AbstractExplicitCartesianVectorArray]:
