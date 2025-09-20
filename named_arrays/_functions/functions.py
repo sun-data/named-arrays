@@ -908,8 +908,19 @@ class FunctionArray(
     na.AbstractExplicitArray,
     Generic[InputsT, OutputsT],
 ):
+    """
+    A representation of a discrete function.
+
+    A composition of two arrays: :attr:`inputs` and :attr:`outputs`.
+    :attr:`inputs` represents the inputs (or independent variables) of the
+    function, and :attr:`outputs` represents the outputs (or dependent variables) of
+    the function.
+    """
     inputs: InputsT = 0
+    """The inputs of the function."""
+
     outputs: OutputsT = 0
+    """The outputs of the function."""
 
     @classmethod
     def from_scalar_array(

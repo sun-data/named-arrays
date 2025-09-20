@@ -1,3 +1,9 @@
+"""
+Minimization and root finding of arbitrary functions.
+
+Analogous to :mod:`scipy.optimize`.
+"""
+
 from __future__ import annotations
 from typing import TypeVar, Callable
 import functools

@@ -36,16 +36,12 @@ class AbstractCartesian2dVectorArray(
     @property
     @abc.abstractmethod
     def x(self: Self) -> na.ArrayLike:
-        """
-        The `x` component of the vector.
-        """
+        """The :math:`x` component of this vector."""
 
     @property
     @abc.abstractmethod
     def y(self: Self) -> na.ArrayLike:
-        """
-        The `y` component of the vector.
-        """
+        """The :math:`y` component of this vector."""
 
     @property
     def type_abstract(self: Self) -> Type[AbstractCartesian2dVectorArray]:
@@ -114,7 +110,10 @@ class Cartesian2dVectorArray(
     Generic[XT, YT],
 ):
     x: XT = 0
+    """The :math:`x` component of this vector."""
+
     y: YT = 0
+    """The :math:`y` component of this vector."""
 
     @classmethod
     def from_scalar(

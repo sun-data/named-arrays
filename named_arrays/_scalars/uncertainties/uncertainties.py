@@ -570,7 +570,10 @@ class UncertainScalarArray(
     Generic[NominalArrayT, DistributionArrayT],
 ):
     nominal: NominalArrayT = 0
+    """The nominal value of the array."""
+
     distribution: DistributionArrayT = 0
+    """Distribution of possible values of the array."""
 
     def __post_init__(self):
         if self.axis_distribution in na.shape(self.nominal):

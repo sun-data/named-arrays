@@ -1,11 +1,32 @@
 Introduction
 ============
-
-`named-arrays` is an implementation of a
+:mod:`named_arrays` is an implementation of a
 `named tensor <https://nlp.seas.harvard.edu/NamedTensor>`_
-that includes first-class support for :class:`astropy.units.Quantity` along
-with many other useful features such as representations of
-scalars, vectors, and matrices.
+that includes first-class support for :mod:`astropy.units`.
+Named tensors allow the axes of an array to be referenced by name
+instead of by position, which allows for more readable code and better
+modularity.
+
+:mod:`named_arrays` does `not` extend the :mod:`numpy` API like :mod:`xarray`.
+Instead, it generalizes the :mod:`numpy` API to `only` use axis names instead of position.
+This means that terms such as `shape`,
+which referred to a :class:`tuple` of integers in the :mod:`numpy` API,
+is now a :class:`dict`, where the keys are the axis names and the values
+are the number of elements along that axis.
+This forces consumers of this library to stick to the named axes,
+and to not "cheat" by using positional indexing.
+
+Many functions in the :mod:`numpy` API have been overridden if possible.
+Other functions which are not expressible using the :mod:`numpy` API have
+been redifined in the :mod:`named_arrays` namespace.
+
+Installation
+============
+:mod:`named_arrays` is published on PyPI and can be installed using::
+
+    pip install named-arrays
+
+
 
 API Reference
 =============

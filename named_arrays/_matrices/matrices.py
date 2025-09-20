@@ -131,6 +131,12 @@ class AbstractMatrixArray(
 
     @property
     def matrix_transpose(self):
+        """
+        Swap the rows and columns of this matrix.
+
+        This is distinct from :func:`numpy.transpose` since this operates
+        on the physical components instead of the logical ones.
+        """
         rows = self.rows
 
         if not self.is_consistent:

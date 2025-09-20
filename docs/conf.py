@@ -20,7 +20,7 @@ os.environ['PYTHONPATH'] = ';'.join((package_path, os.environ.get('PYTHONPATH', 
 # -- Project information -----------------------------------------------------
 
 project = 'named_arrays'
-copyright = '2022, Roy T. Smart'
+copyright = '2025, Roy T. Smart and Jacob D. Parker'
 author = 'Roy T. Smart'
 
 # -- General configuration ---------------------------------------------------
@@ -118,7 +118,6 @@ intersphinx_mapping = {
     'matplotlib': ('https://matplotlib.org/stable', None),
     'astropy': ('https://docs.astropy.org/en/stable/', None),
     'astroscrappy': ('https://astroscrappy.readthedocs.io/en/stable/', None),
-    'xarray': ('https://docs.xarray.dev/en/stable/', None),
     'ndfilters': ('https://ndfilters.readthedocs.io/en/stable', None),
     'colorsynth': ('https://colorsynth.readthedocs.io/en/stable', None),
     'regridding': ('https://regridding.readthedocs.io/en/stable', None),

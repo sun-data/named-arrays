@@ -1,3 +1,9 @@
+"""
+Vector transformation primitives.
+
+Designed to be composed together into arbitrary transformations.
+"""
+
 from __future__ import annotations
 from typing import TypeVar, Generic, Iterator
 from typing_extensions import Self
@@ -36,7 +42,7 @@ class AbstractTransformation(
     abc.ABC
 ):
     """
-    An interface for an arbitrary vector transform
+    An interface for an arbitrary vector transformations.
     """
 
     @property
@@ -50,7 +56,7 @@ class AbstractTransformation(
             a: na.AbstractVectorArray,
     ) -> na.AbstractVectorArray:
         """
-        apply the transformation to the given vector
+        Apply this transformation to the given vector.
 
         Parameters
         ----------
@@ -62,7 +68,7 @@ class AbstractTransformation(
     @abc.abstractmethod
     def inverse(self: Self) -> Self:
         """
-        a new transformation that reverses the effect of this transformation
+        A new transformation that reverses the effect of this transformation.
         """
 
     @abc.abstractmethod
@@ -147,12 +153,14 @@ class IdentityTransformation(
 class AbstractTranslation(
     AbstractTransformation,
 ):
+    """
+    An interface describing an arbitrary translation of a vector.
+    """
+
     @property
     @abc.abstractmethod
     def vector(self) -> na.AbstractVectorArray:
-        """
-        the vector representing the translation
-        """
+        """A vector representing this translation."""
 
     @property
     def shape(self) -> dict[str, int]:
@@ -194,14 +202,14 @@ class Translation(
         import astropy.visualization
         import named_arrays as na
 
-        vector = na.Cartesian3dVectorArray(
+        vector = na.Cartesian2dVectorArray(
             x=12 * u.mm,
             y=12 * u.mm,
         )
 
         transformation = na.transformations.Translation(vector)
 
-        square = na.Cartesian3dVectorArray(
+        square = na.Cartesian2dVectorArray(
             x=na.ScalarArray([-10, 10, 10, -10, -10] * u.mm, axes="vertex"),
             y=na.ScalarArray([-10, -10, 10, 10, -10] * u.mm, axes="vertex"),
         )
@@ -221,7 +229,7 @@ class Translation(
 
     .. jupyter-execute::
 
-        vector_2 = na.Cartesian3dVectorArray(
+        vector_2 = na.Cartesian2dVectorArray(
             x=na.ScalarArray([12, -12] * u.mm, axes="transform"),
             y=9 * u.mm,
         )
@@ -237,16 +245,26 @@ class Translation(
             na.plt.plot(square_transformed_2, axis="vertex", label="translated");
             plt.legend();
     """
-    vector: VectorT = dataclasses.MISSING
 
+    vector: VectorT = dataclasses.MISSING
+    """A vector representing the translation."""
 
 @dataclasses.dataclass(eq=False)
 class Cartesian3dTranslation(
     AbstractTranslation
 ):
+    """
+    A translation in a 3D Cartesian space.
+    """
+
     x: na.ScalarLike = 0 * u.mm
+    """The :math:`x` component of this translation."""
+
     y: na.ScalarLike = 0 * u.mm
+    """The :math:`y` component of this translation."""
+
     z: na.ScalarLike = 0 * u.mm
+    """The :math:`z` component of this translation."""
 
     @property
     def vector(self) -> na.Cartesian3dVectorArray:
@@ -257,11 +275,15 @@ class Cartesian3dTranslation(
 class AbstractLinearTransformation(
     AbstractTransformation,
 ):
+    """
+    An interface describing an arbitrary linear transformation.
+    """
+
     @property
     @abc.abstractmethod
     def matrix(self) -> na.AbstractMatrixArray:
         """
-        the matrix representing the linear transformation
+        The matrix representation of this linear transformation.
         """
 
     @property
@@ -308,7 +330,7 @@ class LinearTransformation(
     Generic[MatrixT],
 ):
     """
-    A vector transformation represented by a matrix multiplication
+    A vector transformation represented by a matrix multiplication.
 
     Examples
     --------
@@ -368,7 +390,12 @@ class LinearTransformation(
 class AbstractCartesian3dRotation(
     AbstractLinearTransformation
 ):
+    """
+    An interface describing an arbitrary rotation in a 3D Cartesian space.
+    """
+
     angle: na.ScalarLike = 0 * u.deg
+    """The angle of rotation."""
 
     @classmethod
     @abc.abstractmethod
@@ -384,6 +411,7 @@ class AbstractCartesian3dRotation(
 class Cartesian3dRotationX(
     AbstractCartesian3dRotation
 ):
+    """A rotation about the $x$ axis."""
     def _matrix_type(cls):
         return na.Cartesian3dXRotationMatrixArray
 
@@ -392,6 +420,7 @@ class Cartesian3dRotationX(
 class Cartesian3dRotationY(
     AbstractCartesian3dRotation
 ):
+    """A rotation about the $y$ axis."""
     def _matrix_type(cls):
         return na.Cartesian3dYRotationMatrixArray
 
@@ -400,6 +429,7 @@ class Cartesian3dRotationY(
 class Cartesian3dRotationZ(
     AbstractCartesian3dRotation
 ):
+    """A rotation about the $z$ axis."""
     def _matrix_type(cls):
         return na.Cartesian3dZRotationMatrixArray
 
@@ -408,19 +438,20 @@ class Cartesian3dRotationZ(
 class AbstractAffineTransformation(
     AbstractTransformation,
 ):
+    """An interface describing an arbitrary affine transformation."""
 
     @property
     @abc.abstractmethod
     def transformation_linear(self) -> AbstractLinearTransformation:
         """
-        The linear transformation component of this affine transformation
+        The linear transformation component of this affine transformation.
         """
 
     @property
     @abc.abstractmethod
     def translation(self) -> AbstractTranslation:
         """
-        the translation component of this affine transformation
+        The translation component of this affine transformation.
         """
 
     @property
@@ -489,27 +520,38 @@ class AffineTransformation(
     AbstractAffineTransformation,
     Generic[LinearTransformationT, TranslationT],
 ):
+    """
+    A general affine transformation.
+
+    This is a composition of a linear transformation and a translation.
+    """
+
     transformation_linear: LinearTransformationT = dataclasses.MISSING
+    """The linear component of this affine transformation."""
+
     translation: TranslationT = dataclasses.MISSING
+    """The translation component of this affine transformation."""
 
 
 @dataclasses.dataclass
 class AbstractTransformationList(
     AbstractTransformation,
 ):
+    """An interface describing a sequence of transformations."""
+
     @property
     @abc.abstractmethod
     def transformations(self) -> list[AbstractTransformation]:
         """
-        the underlying list of transformations to compose together
+        The underlying list of transformations to compose together.
         """
 
     @property
     @abc.abstractmethod
     def intrinsic(self) -> bool:
         """
-        flag controlling whether the transformation should be applied to the
-        coordinates or the coordinate system
+        A flag controlling whether the transformation should be applied to the
+        coordinates or the coordinate system.
         """
 
     @property
@@ -524,6 +566,12 @@ class AbstractTransformationList(
 
     @property
     def composed(self) -> AbstractTransformation:
+        """
+        The composed version of the transformation.
+
+        This is a single transformation representing the entire sequence of
+        transformations.
+        """
         transformations = list(self)
         result = IdentityTransformation()
         for t in transformations:
@@ -548,5 +596,13 @@ class AbstractTransformationList(
 class TransformationList(
     AbstractTransformationList
 ):
+    """An arbitrary sequence of transformations."""
+
     transformations: list[AbstractTransformation] = dataclasses.MISSING
+    """The underlying list of transformations to compose together."""
+
     intrinsic: bool = True
+    """
+    If :obj:`True`, the transformation will be applied to the coordinates.
+    If :obj:`False`, the transformation will be applied to the coordinate system.
+    """
