@@ -1,3 +1,5 @@
+"""Wrappers around :mod:`matplotlib.pyplot` functions."""
+
 from __future__ import annotations
 from typing import Literal, Any, Callable, TypeVar
 import matplotlib.axes

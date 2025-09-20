@@ -501,6 +501,10 @@ class AbstractArray(
         ----------
         axes
             Either a single axis name or a sequence of axis names add to this array.
+
+        See Also
+        --------
+        :func:`named_arrays.add_axes`: A functional version of this method.
         """
 
     @abc.abstractmethod
@@ -1042,7 +1046,7 @@ class AbstractArray(
             axis: None | str | Sequence[str] = None,
     ):
         """
-        The median of this array along the given axes.
+        The median value of this array along the given axes.
 
         Parameters
         ----------
@@ -1102,7 +1106,7 @@ class AbstractArray(
             where: Self = np._NoValue,
     ) -> Self:
         """
-        Return :obj:`True` if `all` the elements along the given axes are :obj:`True`.
+        Return :obj:`True` if `all` of the elements along the given axes are :obj:`True`.
 
         Parameters
         ----------
@@ -1123,7 +1127,7 @@ class AbstractArray(
             where: Self = np._NoValue,
     ) -> Self:
         """
-        Return :obj:`True` if `any` the elements along the given axes are :obj:`True`.
+        Return :obj:`True` if `any` of the elements along the given axes are :obj:`True`.
 
         Parameters
         ----------
@@ -1239,7 +1243,7 @@ class AbstractArray(
             item: dict[str, Self],
     ) -> Self:
         """
-        Linearly-interpolate this array to find its value at the given
+        Linearly interpolate this array to find its value at the given
         fractional index.
 
         Parameters
@@ -1318,6 +1322,12 @@ ArrayLike = Union[QuantityLike, AbstractArray]
 class AbstractExplicitArray(
     AbstractArray,
 ):
+    """
+    An interface describing an explicit array or an actual array of numbers.
+
+    This is in contrast to a :class:`named_arrays.AbstractImplicitArray`.
+    """
+
     @classmethod
     @abc.abstractmethod
     def from_scalar_array(
@@ -1360,6 +1370,10 @@ class AbstractExplicitArray(
 class AbstractImplicitArray(
     AbstractArray,
 ):
+    """
+    An interface describing an implicit array or a lazily-evaluated array.
+    """
+
     @property
     def axes(self: Self) -> tuple[str, ...]:
         return self.explicit.axes
@@ -1391,6 +1405,7 @@ class AbstractImplicitArray(
 class AbstractRandomMixin(
     abc.ABC,
 ):
+    """A mixin class used for random implicit arrays."""
 
     def __post_init__(self):
         if self.seed is None:
@@ -1417,6 +1432,7 @@ class AbstractRandomMixin(
 class AbstractRangeMixin(
     abc.ABC,
 ):
+    """A mixin class for implicit arrays which describe a range of values."""
 
     @property
     @abc.abstractmethod

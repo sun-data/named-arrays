@@ -1,3 +1,5 @@
+"""A named tensor implementation with :class;`astropy.units.Quantity` support."""
+
 from ._named_array_functions import *
 from . import random
 from . import plt
