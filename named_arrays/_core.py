@@ -217,7 +217,7 @@ def ndindex(
         axis_ignored: None | str | Sequence[str] = None,
 ) -> Iterator[dict[str, int]]:
     """
-    An analogue of :func:`numpy.ndindex` for named axes.
+    An analogue of :class:`numpy.ndindex` for named axes.
 
     This version adds a new argument, `axis_ignored`,
     to allow some of the axes to be excluded from the returned iterator.
@@ -280,11 +280,14 @@ def axis_normalized(
         axis: None | str | Sequence[str],
 ) -> tuple[str]:
     """
-    Convert all the possible values of the ``axis`` argument to a :class:`tuple` of :class:`str`.
+    Convert all the possible values of the `axis` argument to a :class:`tuple` of :class:`str`.
 
-    :param a: If ``axis`` is :class:`None` the result is ``a.axes``.
-    :param axis: The ``axis`` value to normalize.
-    :return: Normalized ``axis`` parameter.
+    Parameters
+    ----------
+    a
+        If `axis` is :obj:`None`, the result is :code:`a.axes`.
+    axis
+        The axis to normalize.
     """
 
     if axis is None:
@@ -1674,8 +1677,8 @@ class AbstractLinearSpace(
 
 def strata(a: AbstractArray) -> AbstractArray:
     """
-    If ``a`` is an instance of :class:`AbstractStratifiedRandomSpace`,
-    return ``a.strata``, otherwise return ``a``
+    If `a` is an instance of :class:`AbstractStratifiedRandomSpace`,
+    return :code:`a.strata`, otherwise return `a`.
 
     Parameters
     ----------

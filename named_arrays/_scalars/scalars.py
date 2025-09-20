@@ -62,6 +62,18 @@ def _normalize(a: float | u.Quantity | na.AbstractScalarArray) -> na.AbstractSca
 
 
 def as_named_array(value: bool | int | float | complex | str | u.Quantity | na.AbstractArray):
+    """
+    Cast the argument to an instance of :class:`named_arrays.AbstractArray`.
+
+    If the argument is not an instance of :class:`named_arrays.AbstractArray`,
+    wrap it in an instance of :class:`named_arrays.ScalarArray`,
+    otherwise do nothing.
+
+    Parameters
+    ----------
+    value
+        The array-like value to cast.
+    """
     if not hasattr(value, "__named_array_function__"):
         return ScalarArray(value)
     else:

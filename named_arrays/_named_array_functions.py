@@ -280,7 +280,7 @@ def arange(
         step: int | na.AbstractArray = 1,
 ) -> na.AbstractExplicitArray:
     """
-    Redefined version of :func:`numpy.arange` with an ``axis`` parameter.
+    Redefined version of :func:`numpy.arange` with an `axis` parameter.
 
     Parameters
     ----------
@@ -350,7 +350,7 @@ def linspace(
         centers: bool = False,
 ) -> na.StartT | na.StopT | AxisT | NumT:
     """
-    Create an array of evenly-spaced numbers between :attr:`start` and :attr:`stop`
+    Create an array of evenly-spaced numbers between `start` and `stop`.
 
     Parameters
     ----------
@@ -435,7 +435,7 @@ def logspace(
         dtype: None | type | np.dtype = None,
 ) -> na.StartT | na.StopT | AxisT | NumT:
     """
-    Create an array of evenly-spaced numbers on a log scale between :attr:`start` and :attr:`stop`
+    Create an array of evenly-spaced numbers on a log scale between `start` and `stop`.
 
     Parameters
     ----------
@@ -482,7 +482,7 @@ def geomspace(
         dtype: None | type | np.dtype = None,
 ) -> na.StartT | na.StopT | AxisT | NumT:
     """
-    Create an array of a geometric progression of numbers between :attr:`start` and :attr:`stop`
+    Create an array of a geometric progression of numbers between `start` and `stop`.
 
     Parameters
     ----------
@@ -600,10 +600,9 @@ def unit_normalized(
         squeeze: bool = True,
 ) -> u.UnitBase | na.AbstractArray:
     """
-    Isolate the physical units associated with a given object,`
+    Isolate the physical units associated with a given object,
     normalizing to the given dimensionless units if the object does not have
     associated units.
-
 
     Parameters
     ----------
@@ -1376,7 +1375,7 @@ def despike(
 ) -> ArrayT:
     """
     A thin wrapper around :func:`astroscrappy.detect_cosmics`
-    :cite:t:`vanDokkum2001`, which removes cosmic ray spikes from a series of
+    :cite:p:`vanDokkum2001`, which removes cosmic ray spikes from a series of
     images.
 
     Parameters
