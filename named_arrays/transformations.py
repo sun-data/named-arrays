@@ -42,7 +42,7 @@ class AbstractTransformation(
     abc.ABC
 ):
     """
-    An interface for an arbitrary vector transform
+    An interface for an arbitrary vector transformations.
     """
 
     @property
@@ -56,7 +56,7 @@ class AbstractTransformation(
             a: na.AbstractVectorArray,
     ) -> na.AbstractVectorArray:
         """
-        apply the transformation to the given vector
+        Apply this transformation to the given vector.
 
         Parameters
         ----------
@@ -68,7 +68,7 @@ class AbstractTransformation(
     @abc.abstractmethod
     def inverse(self: Self) -> Self:
         """
-        a new transformation that reverses the effect of this transformation
+        A new transformation that reverses the effect of this transformation.
         """
 
     @abc.abstractmethod
@@ -160,7 +160,7 @@ class AbstractTranslation(
     @property
     @abc.abstractmethod
     def vector(self) -> na.AbstractVectorArray:
-        """A vector representing the translation."""
+        """A vector representing this translation."""
 
     @property
     def shape(self) -> dict[str, int]:
@@ -283,7 +283,7 @@ class AbstractLinearTransformation(
     @abc.abstractmethod
     def matrix(self) -> na.AbstractMatrixArray:
         """
-        the matrix representing the linear transformation
+        The matrix representation of this linear transformation.
         """
 
     @property
@@ -444,14 +444,14 @@ class AbstractAffineTransformation(
     @abc.abstractmethod
     def transformation_linear(self) -> AbstractLinearTransformation:
         """
-        The linear transformation component of this affine transformation
+        The linear transformation component of this affine transformation.
         """
 
     @property
     @abc.abstractmethod
     def translation(self) -> AbstractTranslation:
         """
-        the translation component of this affine transformation
+        The translation component of this affine transformation.
         """
 
     @property
@@ -543,15 +543,15 @@ class AbstractTransformationList(
     @abc.abstractmethod
     def transformations(self) -> list[AbstractTransformation]:
         """
-        the underlying list of transformations to compose together
+        The underlying list of transformations to compose together.
         """
 
     @property
     @abc.abstractmethod
     def intrinsic(self) -> bool:
         """
-        flag controlling whether the transformation should be applied to the
-        coordinates or the coordinate system
+        A flag controlling whether the transformation should be applied to the
+        coordinates or the coordinate system.
         """
 
     @property
@@ -566,6 +566,12 @@ class AbstractTransformationList(
 
     @property
     def composed(self) -> AbstractTransformation:
+        """
+        The composed version of the transformation.
+
+        This is a single transformation representing the entire sequence of
+        transformations.
+        """
         transformations = list(self)
         result = IdentityTransformation()
         for t in transformations:
