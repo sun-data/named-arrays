@@ -1,4 +1,4 @@
-"""A named tensor implementation with :class:`astropy.units.Quantity` support."""
+"""A named tensor implementation with :mod:`astropy.units` support."""
 
 from ._named_array_functions import *
 from . import random

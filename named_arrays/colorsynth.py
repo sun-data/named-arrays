@@ -267,7 +267,7 @@ def rgb_and_colorbar(
     Examples
     --------
 
-    Plot the colorbar of a random, 3D cube.
+    Plot a colorized 3D cube along with its colorbar.
 
     .. jupyter-execute::
 
@@ -291,14 +291,14 @@ def rgb_and_colorbar(
             num=a.shape["wavelength"],
         )
 
-        # Compute the colorbar corresponding to the random 3d cube.
+        # Compute the RGB colors of the 3D cube along with its colorbar.
         rgb, colorbar = na.colorsynth.rgb_and_colorbar(
             spd=a,
             wavelength=wavelength,
             axis="wavelength",
         )
 
-        # Plot the colorbar
+        # Plot the colorized cube along with its colorbar.
         with astropy.visualization.quantity_support():
             fig, axs = plt.subplots(
                 ncols=2,

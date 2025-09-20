@@ -153,12 +153,14 @@ class IdentityTransformation(
 class AbstractTranslation(
     AbstractTransformation,
 ):
+    """
+    An interface describing an arbitrary translation of a vector.
+    """
+
     @property
     @abc.abstractmethod
     def vector(self) -> na.AbstractVectorArray:
-        """
-        the vector representing the translation
-        """
+        """A vector representing the translation."""
 
     @property
     def shape(self) -> dict[str, int]:
@@ -243,16 +245,26 @@ class Translation(
             na.plt.plot(square_transformed_2, axis="vertex", label="translated");
             plt.legend();
     """
-    vector: VectorT = dataclasses.MISSING
 
+    vector: VectorT = dataclasses.MISSING
+    """A vector representing the translation."""
 
 @dataclasses.dataclass(eq=False)
 class Cartesian3dTranslation(
     AbstractTranslation
 ):
+    """
+    A translation in a 3D Cartesian space.
+    """
+
     x: na.ScalarLike = 0 * u.mm
+    """The $x$ component of this translation."""
+
     y: na.ScalarLike = 0 * u.mm
+    """The $y$ component of this translation."""
+
     z: na.ScalarLike = 0 * u.mm
+    """The $z$ component of this translation."""
 
     @property
     def vector(self) -> na.Cartesian3dVectorArray:
@@ -263,6 +275,10 @@ class Cartesian3dTranslation(
 class AbstractLinearTransformation(
     AbstractTransformation,
 ):
+    """
+    An interface describing an arbitrary linear transformation.
+    """
+
     @property
     @abc.abstractmethod
     def matrix(self) -> na.AbstractMatrixArray:
@@ -314,7 +330,7 @@ class LinearTransformation(
     Generic[MatrixT],
 ):
     """
-    A vector transformation represented by a matrix multiplication
+    A vector transformation represented by a matrix multiplication.
 
     Examples
     --------
@@ -374,7 +390,12 @@ class LinearTransformation(
 class AbstractCartesian3dRotation(
     AbstractLinearTransformation
 ):
+    """
+    An interface describing an arbitrary rotation in a 3D Cartesian space.
+    """
+
     angle: na.ScalarLike = 0 * u.deg
+    """The angle of rotation."""
 
     @classmethod
     @abc.abstractmethod
@@ -390,6 +411,7 @@ class AbstractCartesian3dRotation(
 class Cartesian3dRotationX(
     AbstractCartesian3dRotation
 ):
+    """A rotation about the $x$ axis."""
     def _matrix_type(cls):
         return na.Cartesian3dXRotationMatrixArray
 
@@ -398,6 +420,7 @@ class Cartesian3dRotationX(
 class Cartesian3dRotationY(
     AbstractCartesian3dRotation
 ):
+    """A rotation about the $y$ axis."""
     def _matrix_type(cls):
         return na.Cartesian3dYRotationMatrixArray
 
@@ -406,6 +429,7 @@ class Cartesian3dRotationY(
 class Cartesian3dRotationZ(
     AbstractCartesian3dRotation
 ):
+    """A rotation about the $z$ axis."""
     def _matrix_type(cls):
         return na.Cartesian3dZRotationMatrixArray
 
@@ -414,6 +438,7 @@ class Cartesian3dRotationZ(
 class AbstractAffineTransformation(
     AbstractTransformation,
 ):
+    """An interface describing an arbitrary affine transformation."""
 
     @property
     @abc.abstractmethod
@@ -495,14 +520,25 @@ class AffineTransformation(
     AbstractAffineTransformation,
     Generic[LinearTransformationT, TranslationT],
 ):
+    """
+    A general affine transformation.
+
+    This is a composition of a linear transformation and a translation.
+    """
+
     transformation_linear: LinearTransformationT = dataclasses.MISSING
+    """The linear component of this affine transformation."""
+
     translation: TranslationT = dataclasses.MISSING
+    """The translation component of this affine transformation."""
 
 
 @dataclasses.dataclass
 class AbstractTransformationList(
     AbstractTransformation,
 ):
+    """An interface describing a sequence of transformations."""
+
     @property
     @abc.abstractmethod
     def transformations(self) -> list[AbstractTransformation]:
@@ -554,5 +590,13 @@ class AbstractTransformationList(
 class TransformationList(
     AbstractTransformationList
 ):
+    """An arbitrary sequence of transformations."""
+
     transformations: list[AbstractTransformation] = dataclasses.MISSING
+    """The underlying list of transformations to compose together."""
+
     intrinsic: bool = True
+    """
+    If :obj:`True`, the transformation will be applied to the coordinates.
+    If :obj:`False`, the transformation will be applied to the coordinate system.
+    """

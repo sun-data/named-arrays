@@ -2,7 +2,7 @@ Introduction
 ============
 :mod:`named_arrays` is an implementation of a
 `named tensor <https://nlp.seas.harvard.edu/NamedTensor>`_
-that includes first-class support for :class:`astropy.units.Quantity`.
+that includes first-class support for :mod:`astropy.units`.
 Named tensors allow the axes of an array to be referenced by name
 instead of by position, which allows for more readable code and better
 modularity.
@@ -15,6 +15,9 @@ is now a :class:`dict`, where the keys are the axis names and the values
 are the number of elements along that axis.
 This forces consumers of this library to stick to the named axes,
 and to not "cheat" by using positional indexing.
+
+Most functions of the :mod:`numpy` API have been overloaded if possible.
+Other functions which require
 
 Installation
 ============
