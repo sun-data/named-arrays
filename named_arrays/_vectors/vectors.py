@@ -501,7 +501,7 @@ class AbstractExplicitVectorArray(
         Parameters
         ----------
         components
-            A :class:`dict of component names and values.
+            A :class:`dict` of component names and values.
             The keys of the dict must match the names of the components in this class.
         """
         return cls(**components)
