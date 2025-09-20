@@ -84,6 +84,7 @@ def as_named_array(value: bool | int | float | complex | str | u.Quantity | na.A
 class AbstractScalar(
     na.AbstractArray,
 ):
+    """An interface representing a physical scalar."""
 
     @property
     @abc.abstractmethod
@@ -187,6 +188,9 @@ class AbstractScalarArray(
     AbstractScalar,
     Generic[NDArrayT],
 ):
+    """
+    An interface representing a physical scalar array.
+    """
 
     __named_array_priority__: ClassVar[int] = 1
 
@@ -207,6 +211,7 @@ class AbstractScalarArray(
         This is usually an instance of :class:`numpy.ndarray` or :class:`astropy.units.Quantity`, but it can also be a
         built-in python type such as a :class:`int`, :class:`float`, or :class:`bool`
         """
+
     @property
     def to_xarray(self: Self) -> xr.DataArray:
         """
@@ -307,6 +312,16 @@ class AbstractScalarArray(
         )
 
     def change_axis_index(self: Self, axis: str, index: int) -> ScalarArray:
+        """
+        Change the position of an axis in this array.
+
+        Parameters
+        ----------
+        axis
+            The name of the logical axis to modify.
+        index
+            The new index of the logical axis.
+        """
         shape = self.shape
         size_axis = shape.pop(axis)
         keys = list(shape.keys())
@@ -837,7 +852,19 @@ class ScalarArray(
     """
 
     ndarray: None | NDArrayT = 0
+    """
+    Underlying data that is wrapped by this class.
+
+    This is usually an instance of :class:`numpy.ndarray` or :class:`astropy.units.Quantity`, but it can also be a
+    built-in python type such as a :class:`int`, :class:`float`, or :class:`bool`
+    """
+
     axes: None | str | tuple[str, ...] = None
+    """
+    A :class:`tuple` of :class:`str` representing the names of each dimension of this array.
+
+    Must have the same length as the number of dimensions of this array.
+    """
 
     def __post_init__(self: Self):
         if self.axes is None:

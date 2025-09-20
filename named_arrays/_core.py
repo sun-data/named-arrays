@@ -359,7 +359,7 @@ class AbstractArray(
         """
         A :class:`tuple` of :class:`str` representing the names of each dimension of this array.
 
-        Must have the same length as the number of dimensions of :attr:`ndarray`.
+        Must have the same length as the number of dimensions of this array.
         """
 
     @property
