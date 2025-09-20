@@ -779,7 +779,7 @@ def concatenate(
         casting: None | str = "same_kind",
 ) -> na.AbstractArray:
     """
-    Concatenate the given arrays along an existing.
+    Concatenate the given arrays along an existing axis.
 
     Parameters
     ----------
