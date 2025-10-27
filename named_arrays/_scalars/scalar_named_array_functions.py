@@ -1211,6 +1211,7 @@ def pcolormesh(
     try:
         XY = tuple(scalars._normalize(arg) for arg in XY)
         C = scalars._normalize(C)
+        cmap = scalars._normalize(cmap) if cmap is not None else cmap
         vmin = scalars._normalize(vmin) if vmin is not None else vmin
         vmax = scalars._normalize(vmax) if vmax is not None else vmax
     except na.ScalarTypeError:  # pragma: nocover
@@ -1238,6 +1239,7 @@ def pcolormesh(
 
     XY = tuple(arg.broadcast_to(shape_XY) for arg in XY)
     C = C.broadcast_to(shape_C)
+    cmap = cmap.broadcast_to(shape_orthogonal) if cmap is not None else cmap
     vmin = vmin.broadcast_to(shape_orthogonal) if vmin is not None else vmin
     vmax = vmax.broadcast_to(shape_orthogonal) if vmax is not None else vmax
 
@@ -1247,7 +1249,7 @@ def pcolormesh(
         result[index] = ax[index].ndarray.pcolormesh(
             *[arg[index].ndarray_aligned(axes_XY) for arg in XY],
             C[index].ndarray_aligned(axes_C),
-            cmap=cmap,
+            cmap=cmap[index].ndarray if cmap is not None else cmap,
             norm=norm,
             vmin=vmin[index].ndarray if vmin is not None else vmin,
             vmax=vmax[index].ndarray if vmax is not None else vmax,
