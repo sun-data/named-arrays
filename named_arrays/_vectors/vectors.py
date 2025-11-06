@@ -353,7 +353,11 @@ class AbstractVectorArray(
         out = out[0]
 
         if isinstance(x1, AbstractVectorArray):
+            if isinstance(x1, na.AbstractMatrixArray):
+                return NotImplemented
             if isinstance(x2, na.AbstractVectorArray):
+                if isinstance(x2, na.AbstractMatrixArray):
+                    return NotImplemented
                 components_x2 = x2.cartesian_nd.components
                 components_x1 = x1.cartesian_nd.components
                 if components_x1.keys() == components_x2.keys():
