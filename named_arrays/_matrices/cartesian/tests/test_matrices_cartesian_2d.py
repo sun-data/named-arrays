@@ -210,7 +210,10 @@ class AbstractTestAbstractCartesian2dMatrixArray(
     ):
         pass
 
-    @pytest.mark.parametrize('array_2', _cartesian_2d_matrices_2())
+    @pytest.mark.parametrize(
+        argnames='array_2',
+        argvalues=_cartesian_2d_matrices_2() + [na.Cartesian2dVectorArray(1, 2)]
+    )
     class TestMatmul(
         test_matrices_cartesian.AbstractTestAbstractCartesianMatrixArray.TestMatmul
     ):
