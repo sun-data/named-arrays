@@ -1309,9 +1309,6 @@ def despike(
 @_implements(na.numexpr.evaluate)
 def evaluate(
     ex: str,
-    # local_dict: None | dict = None,
-    # global_dict: None | dict = None,
-    # out: numpy.ndarray = None,
     order: str = 'K',
     casting: str = 'same_kind',
     sanitize: None | bool = None,
@@ -1322,7 +1319,7 @@ def evaluate(
 
     try:
         arrays = {name: uncertainties._normalize(arrays[name]) for name in arrays}
-    except uncertainties.ScalarTypeError:  # pragma: nocover
+    except uncertainties.UncertainScalarTypeError:  # pragma: nocover
         return NotImplemented
 
     arrays_nominal = {name: arrays[name].nominal for name in arrays}

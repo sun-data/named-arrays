@@ -2039,9 +2039,6 @@ def despike(
 @_implements(na.numexpr.evaluate)
 def evaluate(
     ex: str,
-    # local_dict: None | dict = None,
-    # global_dict: None | dict = None,
-    # out: numpy.ndarray = None,
     order: str = 'K',
     casting: str = 'same_kind',
     sanitize: None | bool = None,
@@ -2075,4 +2072,3 @@ def evaluate(
         ndarray=result,
         axes=axes,
     )
-
