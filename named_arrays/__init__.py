@@ -9,6 +9,7 @@ from . import transformations
 from . import ndfilters
 from . import colorsynth
 from . import regridding
+from . import numexpr
 from ._core import *
 from ._scalars.scalars import *
 from ._scalars.uncertainties.uncertainties import *
