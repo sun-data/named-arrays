@@ -1,5 +1,5 @@
 """
-A :mod:`named_arrays` wrapper around the :mod:`numexpr` package.
+A wrapper around the :mod:`numexpr` package.
 """
 from typing import Literal
 import numexpr
@@ -9,17 +9,74 @@ __all__ = [
     "evaluate",
 ]
 
+numexpr.set_num_threads(numexpr.detect_number_of_cores())
+
+
 def evaluate(
     ex: str,
     local_dict: None | dict = None,
     global_dict: None | dict = None,
-    # out: numpy.ndarray = None,
     order: str = 'K',
     casting: str = 'same_kind',
     sanitize: None | bool = None,
     optimization: Literal["none", "moderate", "aggressive"] = "aggressive",
     truediv: bool | Literal["auto"] = "auto",
 ):
+    """
+    A wrapper around :func:`numexpr.evaluate`.
+
+    Evaluates a mathematical expression element-wise using the virtual machine.
+
+    Parameters
+    ----------
+    ex
+        a string forming an expression, like "2*a+3*b". The values for "a"
+        and "b" will by default be taken from the calling function's frame
+        (through use of sys._getframe()). Alternatively, they can be specified
+        using the 'local_dict' or 'global_dict' arguments.
+
+    local_dict
+        A dictionary that replaces the local operands in current frame.
+
+    global_dict
+        A dictionary that replaces the global operands in current frame.
+
+    order: {'C', 'F', 'A', or 'K'}, optional
+        Controls the iteration order for operands. 'C' means C order, 'F'
+        means Fortran order, 'A' means 'F' order if all the arrays are
+        Fortran contiguous, 'C' order otherwise, and 'K' means as close to
+        the order the array elements appear in memory as possible.  For
+        efficient computations, typically 'K'eep order (the default) is
+        desired.
+
+    casting: {'no', 'equiv', 'safe', 'same_kind', 'unsafe'}, optional
+        Controls what kind of data casting may occur when making a copy or
+        buffering.  Setting this to 'unsafe' is not recommended, as it can
+        adversely affect accumulations.
+
+          * 'no' means the data types should not be cast at all.
+          * 'equiv' means only byte-order changes are allowed.
+          * 'safe' means only casts which can preserve values are allowed.
+          * 'same_kind' means only safe casts or casts within a kind,
+            like float64 to float32, are allowed.
+          * 'unsafe' means any data conversions may be done.
+
+    sanitize: bool
+        `validate` (and by extension `evaluate`) call `eval(ex)`, which is
+        potentially dangerous on non-sanitized inputs. As such, NumExpr by default
+        performs simple sanitization, banning the characters ':;[', the
+        dunder '__[\w+]__', and attribute access to all but '.real' and '.imag'.
+
+        Using `None` defaults to `True` unless the environment variable
+        `NUMEXPR_SANITIZE=0` is set, in which case the default is `False`.
+        Nominally this can be set via `os.environ` before `import numexpr`.
+
+    optimization
+        The optimization level of the compiler
+
+    truediv
+        Whether to use integer or floating-point division.
+    """
 
     kwargs = dict(
         optimization=optimization,
@@ -46,8 +103,6 @@ def evaluate(
     return na._named_array_function(
         func=evaluate,
         ex=ex,
-        # local_dict=local_dict,
-        # global_dict=global_dict,
         order=order,
         casting=casting,
         sanitize=sanitize,
