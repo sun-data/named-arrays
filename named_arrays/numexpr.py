@@ -41,7 +41,7 @@ def evaluate(
         _frame_depth=2,
     )
 
-    arrays = {name: a.item() for name, a in zip(names, args)}
+    arrays = {name: na.as_named_array(a.item()) for name, a in zip(names, args)}
 
     return na._named_array_function(
         func=evaluate,
