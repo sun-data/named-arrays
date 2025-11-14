@@ -2050,6 +2050,11 @@ def evaluate(
     **arrays,
 ) -> na.ScalarArray:
 
+    try:
+        arrays = {name: scalars._normalize(arrays[name]) for name in arrays}
+    except scalars.ScalarTypeError:  # pragma: nocover
+        return NotImplemented
+
     shape = na.shape_broadcasted(*arrays.values())
 
     axes = tuple(shape)

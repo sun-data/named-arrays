@@ -34,9 +34,14 @@ def evaluate(
         sanitize=sanitize,
     )[0]
 
-    args = numexpr.necompiler.getArguments(names, _frame_depth=2)
+    args = numexpr.necompiler.getArguments(
+        names=names,
+        local_dict=local_dict,
+        global_dict=global_dict,
+        _frame_depth=2,
+    )
 
-    arrays = {name: a.item() for name, a in zip(names,args)}
+    arrays = {name: a.item() for name, a in zip(names, args)}
 
     return na._named_array_function(
         func=evaluate,
