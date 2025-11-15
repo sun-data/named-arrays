@@ -978,3 +978,44 @@ def regridding_regrid_from_weights(
         na.CartesianNdVectorArray(new_values_inputs),
         like=values_input.explicit
     )
+
+
+@_implements(na.numexpr.evaluate)
+def evaluate(
+    ex: str,
+    order: str = 'K',
+    casting: str = 'same_kind',
+    sanitize: None | bool = None,
+    optimization: Literal["none", "moderate", "aggressive"] = "aggressive",
+    truediv: bool | Literal["auto"] = "auto",
+    **arrays,
+) -> na.AbstractExplicitVectorArray:
+
+    try:
+        prototype = vectors._prototype(*arrays.values())
+        arrays = {
+            name: vectors._normalize(arrays[name], prototype).explicit
+            for name in arrays
+        }
+    except vectors.VectorTypeError:  # pragma: nocover
+        return NotImplemented
+
+    prototype = next(iter(arrays.values()))
+
+    arrays = {name: arrays[name].components for name in arrays}
+
+    result = dict()
+
+    for c in next(iter(arrays.values())):
+
+        result[c] = na.numexpr.evaluate(
+            ex=ex,
+            local_dict={name: arrays[name][c] for name in arrays},
+            order=order,
+            casting=casting,
+            sanitize=sanitize,
+            optimization=optimization,
+            truediv=truediv,
+        )
+
+    return prototype.type_explicit.from_components(result)

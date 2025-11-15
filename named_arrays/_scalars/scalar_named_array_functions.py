@@ -3,6 +3,7 @@ import collections
 import dataclasses
 import numpy as np
 import numpy.typing as npt
+import numexpr
 import matplotlib.axes
 import matplotlib.artist
 import matplotlib.pyplot as plt
@@ -2033,3 +2034,52 @@ def despike(
         result[index].value.ndarray[:] = result_ndarray[1]
 
     return result
+
+
+@_implements(na.numexpr.evaluate)
+def evaluate(
+    ex: str,
+    order: str = 'K',
+    casting: str = 'same_kind',
+    sanitize: None | bool = None,
+    optimization: Literal["none", "moderate", "aggressive"] = "aggressive",
+    truediv: bool | Literal["auto"] = "auto",
+    **arrays,
+) -> na.ScalarArray:
+
+    try:
+        arrays = {name: scalars._normalize(arrays[name]) for name in arrays}
+    except scalars.ScalarTypeError:  # pragma: nocover
+        return NotImplemented
+
+    shape = na.shape_broadcasted(*arrays.values())
+
+    axes = tuple(shape)
+
+    try:
+        arrays = {
+            name: arrays[name].to(u.dimensionless_unscaled).value
+            for name in arrays
+        }
+    except u.UnitConversionError:
+        units = {name: na.unit(arrays[name]) for name in arrays}
+        raise ValueError(
+            f"All of the arguments should be dimensionless, got {units}."
+        )
+
+    arrays = {name: arrays[name].ndarray_aligned(axes) for name in arrays}
+
+    result = numexpr.evaluate(
+        ex=ex,
+        local_dict=arrays,
+        order=order,
+        casting=casting,
+        sanitize=sanitize,
+        optimization=optimization,
+        truediv=truediv,
+    )
+
+    return na.ScalarArray(
+        ndarray=result,
+        axes=axes,
+    )

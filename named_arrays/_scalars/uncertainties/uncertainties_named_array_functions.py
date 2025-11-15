@@ -1304,3 +1304,43 @@ def despike(
     )
 
     return result
+
+
+@_implements(na.numexpr.evaluate)
+def evaluate(
+    ex: str,
+    order: str = 'K',
+    casting: str = 'same_kind',
+    sanitize: None | bool = None,
+    optimization: Literal["none", "moderate", "aggressive"] = "aggressive",
+    truediv: bool | Literal["auto"] = "auto",
+    **arrays,
+) -> na.UncertainScalarArray:
+
+    try:
+        arrays = {name: uncertainties._normalize(arrays[name]) for name in arrays}
+    except uncertainties.UncertainScalarTypeError:  # pragma: nocover
+        return NotImplemented
+
+    arrays_nominal = {name: arrays[name].nominal for name in arrays}
+    arrays_distribution = {name: arrays[name].distribution for name in arrays}
+
+    kwargs = dict(
+        ex=ex,
+        order=order,
+        casting=casting,
+        sanitize=sanitize,
+        optimization=optimization,
+        truediv=truediv,
+    )
+
+    return na.UncertainScalarArray(
+        nominal=na.numexpr.evaluate(
+            local_dict=arrays_nominal,
+            **kwargs,
+        ),
+        distribution=na.numexpr.evaluate(
+            local_dict=arrays_distribution,
+            **kwargs,
+        )
+    )

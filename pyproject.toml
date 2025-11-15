@@ -17,6 +17,7 @@ classifiers = [
 dependencies = [
     "typing_extensions",
     "numpy<2",
+    "numexpr",
     "matplotlib",
     "scipy",
     "astropy",
