@@ -2,6 +2,7 @@
 A wrapper around the :mod:`numexpr` package.
 """
 from typing import Literal
+import sys
 import numexpr
 import named_arrays as na
 
@@ -10,6 +11,46 @@ __all__ = [
 ]
 
 numexpr.set_num_threads(numexpr.detect_number_of_cores())
+
+
+def _getArguments(names, local_dict=None, global_dict=None, _frame_depth: int=2):
+    """
+    A copy of :func:`numexpr.necompiler.getArguments` which does not
+    use :func:`numpy.asarray`.
+
+    This was necessary since :func:`numpy.asarray` was prematurely stripping the units
+    from the arguments.
+    """
+    call_frame = sys._getframe(_frame_depth)
+
+    clear_local_dict = False
+    if local_dict is None:
+        local_dict = call_frame.f_locals
+        clear_local_dict = True
+    try:
+        frame_globals = call_frame.f_globals
+        if global_dict is None:
+            global_dict = frame_globals
+
+        # If `call_frame` is the top frame of the interpreter we can't clear its
+        # `local_dict`, because it is actually the `global_dict`.
+        clear_local_dict = clear_local_dict and not frame_globals is local_dict
+
+        arguments = []
+        for name in names:
+            try:
+                a = local_dict[name]
+            except KeyError:
+                a = global_dict[name]
+            arguments.append(a)
+    finally:
+        # If we generated local_dict via an explicit reference to f_locals,
+        # clear the dict to prevent creating extra ref counts in the caller's scope
+        # See https://github.com/pydata/numexpr/issues/310
+        if clear_local_dict and hasattr(local_dict, 'clear'):
+            local_dict.clear()
+
+    return arguments
 
 
 def evaluate(
@@ -22,7 +63,7 @@ def evaluate(
     optimization: Literal["none", "moderate", "aggressive"] = "aggressive",
     truediv: bool | Literal["auto"] = "auto",
 ):
-    """
+    r"""
     A wrapper around :func:`numexpr.evaluate`.
 
     Evaluates a mathematical expression element-wise using the virtual machine.
@@ -91,14 +132,14 @@ def evaluate(
         sanitize=sanitize,
     )[0]
 
-    args = numexpr.necompiler.getArguments(
+    args = _getArguments(
         names=names,
         local_dict=local_dict,
         global_dict=global_dict,
         _frame_depth=2,
     )
 
-    arrays = {name: na.as_named_array(a.item()) for name, a in zip(names, args)}
+    arrays = {name: na.as_named_array(a) for name, a in zip(names, args)}
 
     return na._named_array_function(
         func=evaluate,

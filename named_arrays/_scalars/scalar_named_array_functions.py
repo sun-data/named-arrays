@@ -2056,6 +2056,17 @@ def evaluate(
 
     axes = tuple(shape)
 
+    try:
+        arrays = {
+            name: arrays[name].to(u.dimensionless_unscaled).value
+            for name in arrays
+        }
+    except u.UnitConversionError:
+        units = {name: na.unit(arrays[name]) for name in arrays}
+        raise ValueError(
+            f"All of the arguments should be dimensionless, got {units}."
+        )
+
     arrays = {name: arrays[name].ndarray_aligned(axes) for name in arrays}
 
     result = numexpr.evaluate(

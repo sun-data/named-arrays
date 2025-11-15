@@ -1,5 +1,6 @@
 import pytest
 import numpy as np
+import astropy.units as u
 import named_arrays as na
 
 
@@ -7,7 +8,8 @@ import named_arrays as na
     argnames="a",
     argvalues=[
         2,
-        na.ScalarArray(2),
+        2 * u.mm,
+        na.ScalarArray(2) * u.mm,
         na.NormalUncertainScalarArray(2, width=1, num_distribution=11),
         na.Cartesian2dVectorArray(2, 2),
         na.Cartesian2dVectorArray(
@@ -34,6 +36,11 @@ def test_evaluate(
     a: na.AbstractArray,
     b: na.AbstractArray,
 ):
+
+    if na.unit(a) is not None or na.unit(b) is not None:
+        with pytest.raises(ValueError):
+            na.numexpr.evaluate("a * b")
+        return
 
     result = na.numexpr.evaluate("a * b")
 
