@@ -960,8 +960,8 @@ def diff(
     )
 
 
-@implements(np.char.mod)
-def char_mod(
+@implements(np.strings.mod)
+def strings_mod(
     a: str | na.AbstractScalarArray,
     values: str | na.AbstractScalarArray,
 ) -> na.ScalarArray:
@@ -974,7 +974,7 @@ def char_mod(
 
     shape = na.shape_broadcasted(a, values)
 
-    result_ndarray = np.char.mod(
+    result_ndarray = np.strings.mod(
         a=a.ndarray_aligned(shape),
         values=values.ndarray_aligned(shape),
     )
