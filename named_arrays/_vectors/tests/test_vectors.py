@@ -488,13 +488,20 @@ class AbstractTestAbstractVectorArray(
         def test_nan_to_num(self, array: na.AbstractVectorArray, copy: bool):
             components = array.components
 
-            components_expected = {c: np.nan_to_num(components[c], copy=copy) for c in components}
-            result_expected = array.type_explicit.from_components(components_expected)
-
             if not copy and isinstance(array, na.AbstractImplicitArray):
                 with pytest.raises(ValueError, match=r"can\'t write to an array that is not an instance of .*"):
                     np.nan_to_num(array, copy=copy)
                 return
+
+            try:
+                components_expected = {c: np.nan_to_num(components[c], copy=copy) for c in components}
+                result_expected = array.type_explicit.from_components(components_expected)
+            except ValueError as e:
+                match = "Unable to avoid copy"
+                if e.args[0].startswith(match):
+                    with pytest.raises(ValueError, match=match):
+                        np.nan_to_num(array, copy=copy)
+                    return
 
             result = np.nan_to_num(array, copy=copy)
 

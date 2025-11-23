@@ -853,15 +853,18 @@ def nan_to_num(
         posinf: None | float = None,
         neginf: None | float = None,
 ):
+    if not copy:
+        if not isinstance(x, na.AbstractExplicitArray):
+            raise ValueError("can't write to an array that is not an instance of `named_array.AbstractExplictArray`")
+
     result_ndarray = np.nan_to_num(x.ndarray, copy=copy, nan=nan, posinf=posinf, neginf=neginf)
+
     if copy:
         return na.ScalarArray(
             ndarray=result_ndarray,
             axes=x.axes,
         )
     else:
-        if not isinstance(x, na.AbstractExplicitArray):
-            raise ValueError("can't write to an array that is not an instance of `named_array.AbstractExplictArray`")
         return x
 
 
@@ -960,8 +963,8 @@ def diff(
     )
 
 
-@implements(np.char.mod)
-def char_mod(
+@implements(np.strings.mod)
+def strings_mod(
     a: str | na.AbstractScalarArray,
     values: str | na.AbstractScalarArray,
 ) -> na.ScalarArray:
@@ -974,7 +977,7 @@ def char_mod(
 
     shape = na.shape_broadcasted(a, values)
 
-    result_ndarray = np.char.mod(
+    result_ndarray = np.strings.mod(
         a=a.ndarray_aligned(shape),
         values=values.ndarray_aligned(shape),
     )

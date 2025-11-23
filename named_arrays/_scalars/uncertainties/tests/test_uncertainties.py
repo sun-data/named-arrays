@@ -651,9 +651,17 @@ class AbstractTestAbstractUncertainScalarArray(
                     np.nan_to_num(array, copy=copy)
                 return
 
+            try:
+                result_nominal = np.nan_to_num(array.nominal, copy=copy)
+                result_distribution = np.nan_to_num(array.distribution, copy=copy)
+            except ValueError as e:
+                match = "Unable to avoid copy"
+                if e.args[0].startswith(match):
+                    with pytest.raises(ValueError, match=match):
+                        np.nan_to_num(array, copy=copy)
+                    return
+
             result = np.nan_to_num(array, copy=copy)
-            result_nominal = np.nan_to_num(array.nominal, copy=copy)
-            result_distribution = np.nan_to_num(array.distribution, copy=copy)
 
             assert np.all(result.nominal == result_nominal)
             assert np.all(result.distribution == result_distribution)
@@ -1011,7 +1019,6 @@ class TestUncertainScalarPoissonRandomSample(
     named_arrays.tests.test_core.AbstractTestAbstractPoissonRandomSample,
 ):
     pass
-
 
 
 class AbstractTestAbstractParameterizedUncertainScalarArray(

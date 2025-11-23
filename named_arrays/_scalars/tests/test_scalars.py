@@ -1061,8 +1061,16 @@ class AbstractTestAbstractScalarArray(
                     np.nan_to_num(array, copy=copy)
                 return
 
+            try:
+                expected = np.nan_to_num(array.ndarray, copy=copy)
+            except ValueError as e:
+                match = "Unable to avoid copy"
+                if e.args[0].startswith(match):
+                    with pytest.raises(ValueError, match=match):
+                        np.nan_to_num(array, copy=copy)
+                    return
+
             result = np.nan_to_num(array, copy=copy)
-            expected = np.nan_to_num(array.ndarray, copy=copy)
 
             if not copy:
                 assert result is array

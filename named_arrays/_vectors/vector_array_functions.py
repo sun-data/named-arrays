@@ -496,7 +496,7 @@ def moveaxis(
 @implements(np.reshape)
 def reshape(a: na.AbstractVectorArray, newshape: dict[str, int]) -> na.AbstractExplicitVectorArray:
     components = a.broadcasted.components
-    return a.type_explicit.from_components({c: np.reshape(a=components[c], newshape=newshape) for c in components})
+    return a.type_explicit.from_components({c: np.reshape(components[c], newshape=newshape) for c in components})
 
 
 def array_function_stack_like(
@@ -795,6 +795,10 @@ def nan_to_num(
         posinf: None | float = None,
         neginf: None | float = None,
 ):
+    if not copy:
+        if not isinstance(x, na.AbstractExplicitArray):
+            raise ValueError("can't write to an array that is not an instance of `named_array.AbstractExplictArray`")
+
     components = x.components
     components_result = dict()
 
@@ -810,8 +814,6 @@ def nan_to_num(
     if copy:
         return x.type_explicit.from_components(components_result)
     else:
-        if not isinstance(x, na.AbstractExplicitArray):
-            raise ValueError("can't write to an array that is not an instance of `named_array.AbstractExplictArray`")
         return x
 
 
@@ -869,8 +871,8 @@ def diff(
     return prototype.type_explicit.from_components(result)
 
 
-@implements(np.char.mod)
-def char_mod(
+@implements(np.strings.mod)
+def strings_mod(
         a: str | na.AbstractScalar,
         values: str | na.AbstractScalar,
 ) -> na.ScalarArray:
@@ -887,7 +889,7 @@ def char_mod(
 
     result = dict()
     for c in components_a:
-        result[c] = np.char.mod(
+        result[c] = np.strings.mod(
             a=components_a[c],
             values=components_values[c],
         )
