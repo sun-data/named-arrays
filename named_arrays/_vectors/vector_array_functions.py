@@ -869,8 +869,8 @@ def diff(
     return prototype.type_explicit.from_components(result)
 
 
-@implements(np.char.mod)
-def char_mod(
+@implements(np.strings.mod)
+def strings_mod(
         a: str | na.AbstractScalar,
         values: str | na.AbstractScalar,
 ) -> na.ScalarArray:
@@ -887,7 +887,7 @@ def char_mod(
 
     result = dict()
     for c in components_a:
-        result[c] = np.char.mod(
+        result[c] = np.strings.mod(
             a=components_a[c],
             values=components_values[c],
         )
