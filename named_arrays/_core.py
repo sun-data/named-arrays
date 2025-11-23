@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, TypeVar, Generic, Sequence, Iterator, Union, Type, Callable, Collection, Any
+from typing import TypeVar, Generic, Sequence, Iterator, Union, Type, Callable, Collection, Any
 from typing_extensions import Self
 import abc
 import dataclasses
