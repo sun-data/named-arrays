@@ -795,6 +795,10 @@ def nan_to_num(
         posinf: None | float = None,
         neginf: None | float = None,
 ):
+    if not copy:
+        if not isinstance(x, na.AbstractExplicitArray):
+            raise ValueError("can't write to an array that is not an instance of `named_array.AbstractExplictArray`")
+
     components = x.components
     components_result = dict()
 
@@ -810,8 +814,6 @@ def nan_to_num(
     if copy:
         return x.type_explicit.from_components(components_result)
     else:
-        if not isinstance(x, na.AbstractExplicitArray):
-            raise ValueError("can't write to an array that is not an instance of `named_array.AbstractExplictArray`")
         return x
 
 

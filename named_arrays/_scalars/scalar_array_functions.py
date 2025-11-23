@@ -853,15 +853,18 @@ def nan_to_num(
         posinf: None | float = None,
         neginf: None | float = None,
 ):
+    if not copy:
+        if not isinstance(x, na.AbstractExplicitArray):
+            raise ValueError("can't write to an array that is not an instance of `named_array.AbstractExplictArray`")
+
     result_ndarray = np.nan_to_num(x.ndarray, copy=copy, nan=nan, posinf=posinf, neginf=neginf)
+
     if copy:
         return na.ScalarArray(
             ndarray=result_ndarray,
             axes=x.axes,
         )
     else:
-        if not isinstance(x, na.AbstractExplicitArray):
-            raise ValueError("can't write to an array that is not an instance of `named_array.AbstractExplictArray`")
         return x
 
 
