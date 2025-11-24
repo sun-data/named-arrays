@@ -1,9 +1,7 @@
-from typing import Type, Callable, Sequence
 import pytest
 import numpy as np
 import astropy.units as u
 import named_arrays as na
-import named_arrays.tests.test_core
 from . import test_vectors_cartesian
 
 __all__ = [
