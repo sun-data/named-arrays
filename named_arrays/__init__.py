@@ -360,7 +360,14 @@ from ._matrices.matrices_input_output import (
     AbstractInputOutputMatrixArray,
     InputOutputMatrixArray,
 )
-from ._functions.functions import *
+from ._functions.functions import (
+    InputValueError,
+    AbstractFunctionArray,
+    FunctionArray,
+    AbstractFunctionArray,
+    AbstractPolynomialFunctionArray,
+    PolynomialFitFunctionArray,
+)
 
 __all__ = [
     "_named_array_function",
@@ -651,4 +658,10 @@ __all__ = [
     "TemporalSpectralDirectionalMatrixArray",
     "AbstractInputOutputMatrixArray",
     "InputOutputMatrixArray",
+    "InputValueError",
+    "AbstractFunctionArray",
+    "FunctionArray",
+    "AbstractFunctionArray",
+    "AbstractPolynomialFunctionArray",
+    "PolynomialFitFunctionArray",
 ]
