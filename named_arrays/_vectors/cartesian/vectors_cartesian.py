@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TypeVar, Generic, Type
+from typing import TypeVar, Type
 from typing_extensions import Self
 import abc
 import dataclasses
@@ -8,19 +8,19 @@ import astropy.units as u
 import named_arrays as na
 
 __all__ = [
-    'AbstractCartesianVectorArray',
-    'AbstractExplicitCartesianVectorArray',
-    'AbstractImplicitCartesianVectorArray',
-    'AbstractCartesianVectorRandomSample',
-    'AbstractCartesianVectorUniformRandomSample',
-    'AbstractCartesianVectorNormalRandomSample',
-    'AbstractParameterizedCartesianVectorArray',
-    'AbstractCartesianVectorArrayRange',
-    'AbstractCartesianVectorSpace',
-    'AbstractCartesianVectorLinearSpace',
-    'AbstractCartesianVectorStratifiedRandomSpace',
-    'AbstractCartesianVectorLogarithmicSpace',
-    'AbstractCartesianVectorGeometricSpace',
+    "AbstractCartesianVectorArray",
+    "AbstractExplicitCartesianVectorArray",
+    "AbstractImplicitCartesianVectorArray",
+    "AbstractCartesianVectorRandomSample",
+    "AbstractCartesianVectorUniformRandomSample",
+    "AbstractCartesianVectorNormalRandomSample",
+    "AbstractParameterizedCartesianVectorArray",
+    "AbstractCartesianVectorArrayRange",
+    "AbstractCartesianVectorSpace",
+    "AbstractCartesianVectorLinearSpace",
+    "AbstractCartesianVectorStratifiedRandomSpace",
+    "AbstractCartesianVectorLogarithmicSpace",
+    "AbstractCartesianVectorGeometricSpace",
 ]
 
 

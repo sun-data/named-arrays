@@ -5,7 +5,7 @@ import named_arrays as na
 
 __all__ = [
     "AbstractCartesianNdVectorArray",
-    "CartesianNdVectorArray"
+    "CartesianNdVectorArray",
 ]
 
 

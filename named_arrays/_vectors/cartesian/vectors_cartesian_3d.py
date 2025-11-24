@@ -8,19 +8,19 @@ import astropy.units as u
 import named_arrays as na
 
 __all__ = [
-    'AbstractCartesian3dVectorArray',
-    'Cartesian3dVectorArray',
-    'AbstractImplicitCartesian3dVectorArray',
-    'AbstractCartesian3dVectorRandomSample',
-    'Cartesian3dVectorUniformRandomSample',
-    'Cartesian3dVectorNormalRandomSample',
-    'AbstractParameterizedCartesian3dVectorArray',
-    'Cartesian3dVectorArrayRange',
-    'AbstractCartesian3dVectorSpace',
-    'Cartesian3dVectorLinearSpace',
-    'Cartesian3dVectorStratifiedRandomSpace',
-    'Cartesian3dVectorLogarithmicSpace',
-    'Cartesian3dVectorGeometricSpace',
+    "AbstractCartesian3dVectorArray",
+    "Cartesian3dVectorArray",
+    "AbstractImplicitCartesian3dVectorArray",
+    "AbstractCartesian3dVectorRandomSample",
+    "Cartesian3dVectorUniformRandomSample",
+    "Cartesian3dVectorNormalRandomSample",
+    "AbstractParameterizedCartesian3dVectorArray",
+    "Cartesian3dVectorArrayRange",
+    "AbstractCartesian3dVectorSpace",
+    "Cartesian3dVectorLinearSpace",
+    "Cartesian3dVectorStratifiedRandomSpace",
+    "Cartesian3dVectorLogarithmicSpace",
+    "Cartesian3dVectorGeometricSpace",
 ]
 
 XT = TypeVar('XT', bound=na.ArrayLike)

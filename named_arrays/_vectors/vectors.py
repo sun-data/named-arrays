@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import ClassVar, Type, Sequence, Callable, Collection, Any, Generic, TypeVar
+from typing import ClassVar, Type, Sequence, Callable, Collection, Any, TypeVar
 from typing_extensions import Self
 import abc
 import dataclasses
@@ -8,23 +8,23 @@ import astropy.units as u
 import named_arrays as na
 
 __all__ = [
-    'VectorPrototypeT',
-    'VectorTypeError',
-    'AbstractVectorArray',
-    'AbstractScalarOrVectorArray',
-    'AbstractExplicitVectorArray',
-    'AbstractImplicitVectorArray',
-    'AbstractVectorRandomSample',
-    'AbstractVectorUniformRandomSample',
-    'AbstractVectorNormalRandomSample',
-    'AbstractParameterizedVectorArray',
-    'AbstractVectorArrayRange',
-    'AbstractVectorSpace',
-    'AbstractVectorLinearSpace',
-    'AbstractVectorStratifiedRandomSpace',
-    'AbstractVectorLogarithmicSpace',
-    'AbstractVectorGeometricSpace',
-    'AbstractWcsVector',
+    "VectorPrototypeT",
+    "VectorTypeError",
+    "AbstractVectorArray",
+    "AbstractScalarOrVectorArray",
+    "AbstractExplicitVectorArray",
+    "AbstractImplicitVectorArray",
+    "AbstractVectorRandomSample",
+    "AbstractVectorUniformRandomSample",
+    "AbstractVectorNormalRandomSample",
+    "AbstractParameterizedVectorArray",
+    "AbstractVectorArrayRange",
+    "AbstractVectorSpace",
+    "AbstractVectorLinearSpace",
+    "AbstractVectorStratifiedRandomSpace",
+    "AbstractVectorLogarithmicSpace",
+    "AbstractVectorGeometricSpace",
+    "AbstractWcsVector",
 ]
 
 VectorPrototypeT = TypeVar("VectorPrototypeT", bound="AbstractVectorArray")
