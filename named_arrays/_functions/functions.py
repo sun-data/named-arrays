@@ -659,7 +659,7 @@ class AbstractFunctionArray(
             where = kwargs.pop("where")
             if isinstance(where, na.AbstractArray):
                 if isinstance(where, AbstractFunctionArray):
-                    if np.any(where.inputs != inputs_inputs[0]):
+                    if np.any(where.inputs != inputs_inputs[0]):  #pragma: nocover
                         raise InputValueError("`where.inputs` must match the rest of the inputs")
                     kwargs["where"] = where.outputs
                 else:

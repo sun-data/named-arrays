@@ -300,7 +300,7 @@ def copyto(
 
     if isinstance(where, na.AbstractArray):
         if isinstance(where, na.AbstractFunctionArray):
-            if np.any(where.inputs != src.inputs):
+            if np.any(where.inputs != src.inputs):  #pragma: nocover
                 raise ValueError("`where.inputs` must be equivalent to `src.inputs`")
             where_inputs = where.inputs
             where_outputs = where.outputs
