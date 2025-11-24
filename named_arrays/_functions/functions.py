@@ -9,7 +9,6 @@ import astropy.units as u
 import astropy.visualization
 import named_arrays as na
 import itertools
-import collections
 
 __all__ = [
     "InputValueError",
