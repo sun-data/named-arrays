@@ -34,7 +34,7 @@ def _getArguments(names, local_dict=None, global_dict=None, _frame_depth: int=2)
 
         # If `call_frame` is the top frame of the interpreter we can't clear its
         # `local_dict`, because it is actually the `global_dict`.
-        clear_local_dict = clear_local_dict and not frame_globals is local_dict
+        clear_local_dict = clear_local_dict and frame_globals is not local_dict
 
         arguments = []
         for name in names:
