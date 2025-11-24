@@ -151,8 +151,6 @@ def array_function_percentile_like(
                 f"the `axis` argument, {axis}, must be `None` or a subset of the shape of `a`, {shape}"
             )
 
-    shape_base = {ax: shape[ax] for ax in axis_normalized}
-
     kwargs = dict(
         overwrite_input=overwrite_input,
         method=method,
@@ -303,7 +301,7 @@ def copyto(
     if isinstance(where, na.AbstractArray):
         if isinstance(where, na.AbstractFunctionArray):
             if np.any(where.inputs != src.inputs):
-                raise ValueError(f"`where.inputs` must be equivalent to `src.inputs`")
+                raise ValueError("`where.inputs` must be equivalent to `src.inputs`")
             where_inputs = where.inputs
             where_outputs = where.outputs
         else:
