@@ -99,12 +99,6 @@ def _cartesian_2d_matrices_2():
         for array_yy in arrays_yy
         for unit in units
     ]
-    vectors = [
-        na.Cartesian2dVectorArray(x=array_xx, y=array_yy) * unit
-        for array_xx in arrays_xx
-        for array_yy in arrays_yy
-        for unit in units
-    ]
     matrices = [
         na.Cartesian2dMatrixArray(
             x=na.Cartesian2dVectorArray(x=array_xx, y=array_xy),
