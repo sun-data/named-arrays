@@ -5,12 +5,12 @@ import dataclasses
 import named_arrays as na
 
 __all__ = [
-    'AbstractSpectralPositionalVectorArray',
-    'SpectralPositionalVectorArray',
-    'AbstractImplicitSpectralPositionalVectorArray',
-    'AbstractParameterizedSpectralPositionalVectorArray',
-    'AbstractSpectralPositionalVectorSpace',
-    'SpectralPositionalVectorLinearSpace',
+    "AbstractSpectralPositionalVectorArray",
+    "SpectralPositionalVectorArray",
+    "AbstractImplicitSpectralPositionalVectorArray",
+    "AbstractParameterizedSpectralPositionalVectorArray",
+    "AbstractSpectralPositionalVectorSpace",
+    "SpectralPositionalVectorLinearSpace",
 ]
 
 PositionT = TypeVar("PositionT", bound=na.ArrayLike)

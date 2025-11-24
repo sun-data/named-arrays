@@ -12,7 +12,6 @@ __all__ = [
     "AbstractParameterizedSpectralVectorArray",
     "AbstractSpectralVectorSpace",
     "SpectralVectorLinearSpace",
-
 ]
 
 WavelengthT = TypeVar("WavelengthT", bound=na.ScalarLike)

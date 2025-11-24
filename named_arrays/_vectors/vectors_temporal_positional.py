@@ -5,13 +5,13 @@ import dataclasses
 import named_arrays as na
 
 __all__ = [
-    'AbstractTemporalPositionalVectorArray',
-    'TemporalPositionalVectorArray',
-    'AbstractImplicitTemporalPositionalVectorArray',
-    'AbstractParameterizedTemporalPositionalVectorArray',
-    'AbstractTemporalPositionalVectorSpace',
-    'TemporalPositionalVectorLinearSpace',
-    'ExplicitTemporalWcsPositionalVectorArray',
+    "AbstractTemporalPositionalVectorArray",
+    "TemporalPositionalVectorArray",
+    "AbstractImplicitTemporalPositionalVectorArray",
+    "AbstractParameterizedTemporalPositionalVectorArray",
+    "AbstractTemporalPositionalVectorSpace",
+    "TemporalPositionalVectorLinearSpace",
+    "ExplicitTemporalWcsPositionalVectorArray",
 ]
 
 TimeT = TypeVar("TimeT", bound=na.ArrayLike)
