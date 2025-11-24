@@ -364,7 +364,6 @@ from ._functions.functions import (
     InputValueError,
     AbstractFunctionArray,
     FunctionArray,
-    AbstractFunctionArray,
     AbstractPolynomialFunctionArray,
     PolynomialFitFunctionArray,
 )
