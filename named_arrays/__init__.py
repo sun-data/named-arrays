@@ -661,7 +661,6 @@ __all__ = [
     "InputValueError",
     "AbstractFunctionArray",
     "FunctionArray",
-    "AbstractFunctionArray",
     "AbstractPolynomialFunctionArray",
     "PolynomialFitFunctionArray",
 ]
