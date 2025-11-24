@@ -46,6 +46,6 @@ def test_evaluate(
 
     result_expected  = a * b
 
-    assert type(result) == type(na.as_named_array(result_expected))
+    assert type(result) is type(na.as_named_array(result_expected))
 
     assert np.all(result == result_expected)
