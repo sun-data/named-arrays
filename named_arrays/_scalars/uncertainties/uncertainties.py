@@ -263,7 +263,6 @@ class AbstractUncertainScalarArray(
             item: dict[str, int | slice | na.AbstractScalar] | na.AbstractScalar,
     ):
         array = self.explicit
-        shape_array = array.shape
         shape_array_distribution = array.shape_distribution
 
         nominal = na.as_named_array(array.nominal)

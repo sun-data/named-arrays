@@ -3,11 +3,9 @@ from typing import Type, Sequence, Callable
 import pytest
 import numpy as np
 import matplotlib
-import matplotlib.pyplot as plt
 import scipy.stats
 import astropy.units as u
 import astropy.visualization
-import astropy.units.quantity_helper.helpers as quantity_helpers
 import named_arrays as na
 from ... import tests
 
@@ -924,7 +922,7 @@ class AbstractTestAbstractScalarArray(
 
                 assert isinstance(result, na.AbstractArray)
                 assert axis[1] in result.axes
-                assert not axis[0] in result.axes
+                assert axis[0] not in result.axes
 
                 assert np.all(result.ndarray == result_expected)
 

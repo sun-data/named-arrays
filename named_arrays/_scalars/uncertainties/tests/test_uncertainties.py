@@ -1,4 +1,4 @@
-from typing import Type, Sequence, Callable
+from typing import Sequence, Callable
 import numpy as np
 import pytest
 import astropy.units as u
@@ -615,7 +615,7 @@ class AbstractTestAbstractUncertainScalarArray(
 
             if axis is not None:
                 if not axis:
-                    with pytest.raises(ValueError, match=f"if `axis` is a sequence, it must not be empty, got .*"):
+                    with pytest.raises(ValueError, match="if `axis` is a sequence, it must not be empty, got .*"):
                         np.sort(array, axis=axis)
                     return
 
@@ -1024,13 +1024,6 @@ class TestUncertainScalarPoissonRandomSample(
 class AbstractTestAbstractParameterizedUncertainScalarArray(
     AbstractTestAbstractImplicitUncertainScalarArray,
     named_arrays.tests.test_core.AbstractTestAbstractParameterizedArray,
-):
-    pass
-
-
-class TestUncertainScalarLinearSpace(
-    AbstractTestAbstractUncertainScalarRandomSample,
-    named_arrays.tests.test_core.AbstractTestAbstractPoissonRandomSample,
 ):
     pass
 
