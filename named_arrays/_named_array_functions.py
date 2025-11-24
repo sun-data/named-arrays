@@ -47,7 +47,7 @@ WhereT = TypeVar("WhereT", bound="bool | na.AbstractScalarArray")
 
 
 def _is_subclass(a: Any, b: Any):
-    if type(a) == type(b):
+    if type(a) is type(b):
         return 0
     elif isinstance(a, type(b)):
         return 1
