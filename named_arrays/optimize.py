@@ -6,7 +6,7 @@ Analogous to :mod:`scipy.optimize`.
 
 from __future__ import annotations
 from typing import TypeVar, Callable
-import functools
+import astropy.units as u
 import named_arrays as na
 
 __all__ = [
@@ -55,7 +55,11 @@ def root_newton(
         root being computed.
     """
     if jacobian is None:
-        jacobian = lambda x: na.jacobian(function=function, x=x)
+        def jacobian(x: float | u.Quantity | na.AbstractArray):
+            return na.jacobian(
+                function=function,
+                x=x,
+            )
 
     f_guess = function(guess)
     if max_abs_error is None:
