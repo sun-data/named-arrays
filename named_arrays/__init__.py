@@ -276,22 +276,90 @@ from ._vectors.vectors_input_output import (
     AbstractInputOutputVectorSpace,
     InputOutputVectorLinearSpace,
 )
-from ._matrices.matrices import *
-from ._matrices.cartesian.matrices_cartesian import *
-from ._matrices.cartesian.matrices_cartesian_2d import *
-from ._matrices.cartesian.matrices_cartesian_3d import *
-from ._matrices.cartesian.matrices_cartesian_nd import *
-from ._matrices.matrices_temporal import *
-from ._matrices.matrices_spectral import *
-from ._matrices.matrices_positional import *
-from ._matrices.matrices_directional import *
-from ._matrices.matrices_spectral_positional import *
-from ._matrices.matrices_spectral_directional import *
-from ._matrices.matrices_temporal_spectral import *
-from ._matrices.matrices_temporal_positional import *
-from ._matrices.matrices_temporal_spectral_positional import *
-from ._matrices.matrices_temporal_spectral_directional import *
-from ._matrices.matrices_input_output import *
+from ._matrices.matrices import (
+    AbstractMatrixArray,
+    AbstractExplicitMatrixArray,
+    AbstractImplicitMatrixArray,
+    AbstractMatrixRandomSample,
+    AbstractMatrixUniformRandomSample,
+    AbstractMatrixNormalRandomSample,
+    AbstractParameterizedMatrixArray,
+)
+from ._matrices.cartesian.matrices_cartesian import (
+    AbstractCartesianMatrixArray,
+    AbstractExplicitCartesianMatrixArray,
+    AbstractImplicitCartesianMatrixArray,
+    AbstractCartesianMatrixRandomSample,
+    AbstractCartesianMatrixUniformRandomSample,
+    AbstractCartesianMatrixNormalRandomSample,
+    AbstractParameterizedCartesianMatrixArray,
+)
+from ._matrices.cartesian.matrices_cartesian_2d import (
+    AbstractCartesian2dMatrixArray,
+    Cartesian2dMatrixArray,
+    AbstractImplicitCartesian2dMatrixArray,
+    Cartesian2dIdentityMatrixArray,
+    AbstractCartesian2dRotationMatrixArray,
+    Cartesian2dRotationMatrixArray,
+)
+from ._matrices.cartesian.matrices_cartesian_3d import (
+    AbstractCartesian3dMatrixArray,
+    Cartesian3dMatrixArray,
+    AbstractImplicitCartesian3dMatrixArray,
+    Cartesian3dIdentityMatrixArray,
+    AbstractCartesian3dRotationMatrixArray,
+    Cartesian3dXRotationMatrixArray,
+    Cartesian3dYRotationMatrixArray,
+    Cartesian3dZRotationMatrixArray,
+)
+from ._matrices.cartesian.matrices_cartesian_nd import (
+    AbstractCartesianNdMatrixArray,
+    CartesianNdMatrixArray,
+)
+from ._matrices.matrices_temporal import (
+    AbstractTemporalMatrixArray,
+    TemporalMatrixArray,
+)
+from ._matrices.matrices_spectral import (
+    AbstractSpectralMatrixArray,
+    SpectralMatrixArray,
+)
+from ._matrices.matrices_positional import (
+    AbstractPositionalMatrixArray,
+    PositionalMatrixArray,
+)
+from ._matrices.matrices_directional import (
+    AbstractDirectionalMatrixArray,
+    DirectionalMatrixArray,
+)
+from ._matrices.matrices_spectral_positional import (
+    AbstractSpectralPositionalMatrixArray,
+    SpectralPositionalMatrixArray,
+)
+from ._matrices.matrices_spectral_directional import (
+    AbstractSpectralDirectionalMatrixArray,
+    SpectralDirectionalMatrixArray,
+)
+from ._matrices.matrices_temporal_spectral import (
+    AbstractTemporalSpectralMatrixArray,
+    TemporalSpectralMatrixArray,
+)
+from ._matrices.matrices_temporal_positional import (
+    AbstractTemporalPositionalMatrixArray,
+    TemporalPositionalMatrixArray,
+)
+from ._matrices.matrices_temporal_spectral_positional import (
+    AbstractTemporalSpectralPositionalMatrixArray,
+    TemporalSpectralPositionalMatrixArray,
+)
+from ._matrices.matrices_temporal_spectral_directional import (
+    AbstractTemporalSpectralDirectionalMatrixArray,
+    TemporalSpectralDirectionalMatrixArray,
+)
+from ._matrices.matrices_input_output import (
+    AbstractInputOutputMatrixArray,
+    InputOutputMatrixArray,
+)
 from ._functions.functions import *
 
 __all__ = [
@@ -531,4 +599,56 @@ __all__ = [
     "AbstractParameterizedInputOutputVectorArray",
     "AbstractInputOutputVectorSpace",
     "InputOutputVectorLinearSpace",
+    "AbstractMatrixArray",
+    "AbstractExplicitMatrixArray",
+    "AbstractImplicitMatrixArray",
+    "AbstractMatrixRandomSample",
+    "AbstractMatrixUniformRandomSample",
+    "AbstractMatrixNormalRandomSample",
+    "AbstractParameterizedMatrixArray",
+    "AbstractCartesianMatrixArray",
+    "AbstractExplicitCartesianMatrixArray",
+    "AbstractImplicitCartesianMatrixArray",
+    "AbstractCartesianMatrixRandomSample",
+    "AbstractCartesianMatrixUniformRandomSample",
+    "AbstractCartesianMatrixNormalRandomSample",
+    "AbstractParameterizedCartesianMatrixArray",
+    "AbstractCartesian2dMatrixArray",
+    "Cartesian2dMatrixArray",
+    "AbstractImplicitCartesian2dMatrixArray",
+    "Cartesian2dIdentityMatrixArray",
+    "AbstractCartesian2dRotationMatrixArray",
+    "Cartesian2dRotationMatrixArray",
+    "AbstractCartesian3dMatrixArray",
+    "Cartesian3dMatrixArray",
+    "AbstractImplicitCartesian3dMatrixArray",
+    "Cartesian3dIdentityMatrixArray",
+    "AbstractCartesian3dRotationMatrixArray",
+    "Cartesian3dXRotationMatrixArray",
+    "Cartesian3dYRotationMatrixArray",
+    "Cartesian3dZRotationMatrixArray",
+    "AbstractCartesianNdMatrixArray",
+    "CartesianNdMatrixArray",
+    "AbstractTemporalMatrixArray",
+    "TemporalMatrixArray",
+    "AbstractSpectralMatrixArray",
+    "SpectralMatrixArray",
+    "AbstractPositionalMatrixArray",
+    "PositionalMatrixArray",
+    "AbstractDirectionalMatrixArray",
+    "DirectionalMatrixArray",
+    "AbstractSpectralPositionalMatrixArray",
+    "SpectralPositionalMatrixArray",
+    "AbstractSpectralDirectionalMatrixArray",
+    "SpectralDirectionalMatrixArray",
+    "AbstractTemporalSpectralMatrixArray",
+    "TemporalSpectralMatrixArray",
+    "AbstractTemporalPositionalMatrixArray",
+    "TemporalPositionalMatrixArray",
+    "AbstractTemporalSpectralPositionalMatrixArray",
+    "TemporalSpectralPositionalMatrixArray",
+    "AbstractTemporalSpectralDirectionalMatrixArray",
+    "TemporalSpectralDirectionalMatrixArray",
+    "AbstractInputOutputMatrixArray",
+    "InputOutputMatrixArray",
 ]

@@ -3,11 +3,10 @@ from typing import TypeVar, Generic, Type
 import abc
 import dataclasses
 import named_arrays as na
-import numpy as np
 
 __all__ = [
-    'AbstractPositionalMatrixArray',
-    'PositionalMatrixArray',
+    "AbstractPositionalMatrixArray",
+    "PositionalMatrixArray",
 ]
 
 PositionT = TypeVar('PositionT', bound=na.AbstractVectorArray)

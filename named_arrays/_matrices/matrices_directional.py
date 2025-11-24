@@ -5,8 +5,8 @@ import dataclasses
 import named_arrays as na
 
 __all__ = [
-    'AbstractDirectionalMatrixArray',
-    'DirectionalMatrixArray',
+    "AbstractDirectionalMatrixArray",
+    "DirectionalMatrixArray",
 ]
 
 DirectionT = TypeVar('DirectionT', bound=na.AbstractVectorArray)
