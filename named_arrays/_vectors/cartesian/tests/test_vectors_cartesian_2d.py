@@ -1,4 +1,4 @@
-from typing import Type, Callable, Sequence
+from typing import Sequence
 import pytest
 import numpy as np
 import astropy.units as u

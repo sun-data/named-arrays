@@ -5,8 +5,8 @@ import dataclasses
 import named_arrays as na
 
 __all__ = [
-    'AbstractTemporalMatrixArray',
-    'TemporalMatrixArray',
+    "AbstractTemporalMatrixArray",
+    "TemporalMatrixArray",
 ]
 
 TimeT = TypeVar('TimeT', bound=na.AbstractVectorArray)

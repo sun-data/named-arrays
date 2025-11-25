@@ -117,7 +117,7 @@ class AbstractTestAbstractFunctionArrayVertices(
         for ax in newshape:
             if ax in array.axes_vertex or (ax not in array.axes and len(array.axes_vertex) != 0):
                 with pytest.raises(ValueError):
-                    result = np.reshape(array, newshape=newshape)
+                    np.reshape(array, newshape=newshape)
                 return
 
         super().test_reshape(array, newshape)
@@ -179,7 +179,7 @@ class AbstractTestAbstractFunctionArrayVertices(
             for ax in newshape:
                 if ax in array.axes_vertex or (ax not in array.axes and len(array.axes_vertex) != 0):
                     with pytest.raises(ValueError):
-                        result = np.reshape(array, newshape=newshape)
+                        np.reshape(array, newshape=newshape)
                     return
 
             super().test_reshape(array, newshape)

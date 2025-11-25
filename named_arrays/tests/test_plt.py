@@ -440,11 +440,11 @@ def test_set_xlim(
     ax: None | matplotlib.axes.Axes | na.AbstractScalar,
 ):
     na.plt.set_xlim(left, right, ax=ax, emit=False)
-    l, r = na.plt.get_xlim(ax)
+    left_saved, right_saved = na.plt.get_xlim(ax)
     if left is not None:
-        assert np.all(l == left)
+        assert np.all(left_saved == left)
     if right is not None:
-        assert np.all(r == right)
+        assert np.all(right_saved == right)
 
 
 @pytest.mark.parametrize(

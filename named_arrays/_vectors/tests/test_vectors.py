@@ -1,8 +1,6 @@
 from typing import Type, Callable, Sequence, Literal
 import pytest
-import abc
 import numpy as np
-import matplotlib.axes
 import astropy.units as u
 import named_arrays as na
 
@@ -461,7 +459,7 @@ class AbstractTestAbstractVectorArray(
 
             if axis is not None:
                 if not axis:
-                    with pytest.raises(ValueError, match=f"if `axis` is a sequence, it must not be empty, got .*"):
+                    with pytest.raises(ValueError, match="if `axis` is a sequence, it must not be empty, got .*"):
                         np.sort(array, axis=axis)
                     return
 

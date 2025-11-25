@@ -6,13 +6,12 @@ import dataclasses
 import named_arrays as na
 
 __all__ = [
-    'AbstractPositionalVectorArray',
-    'PositionalVectorArray',
-    'AbstractImplicitPositionalVectorArray',
-    'AbstractParameterizedPositionalVectorArray',
-    'AbstractPositionalVectorSpace',
-    'PositionalVectorLinearSpace',
-
+    "AbstractPositionalVectorArray",
+    "PositionalVectorArray",
+    "AbstractImplicitPositionalVectorArray",
+    "AbstractParameterizedPositionalVectorArray",
+    "AbstractPositionalVectorSpace",
+    "PositionalVectorLinearSpace",
 ]
 
 PositionT = TypeVar("PositionT", bound=na.ArrayLike)

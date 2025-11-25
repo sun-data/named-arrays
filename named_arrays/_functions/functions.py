@@ -9,13 +9,11 @@ import astropy.units as u
 import astropy.visualization
 import named_arrays as na
 import itertools
-import collections
 
 __all__ = [
     "InputValueError",
     "AbstractFunctionArray",
     "FunctionArray",
-    "AbstractFunctionArray",
     "AbstractPolynomialFunctionArray",
     "PolynomialFitFunctionArray",
 ]
@@ -661,8 +659,8 @@ class AbstractFunctionArray(
             where = kwargs.pop("where")
             if isinstance(where, na.AbstractArray):
                 if isinstance(where, AbstractFunctionArray):
-                    if np.any(where.inputs != inputs_inputs[0]):
-                        raise InputValueError(f"`where.inputs` must match the rest of the inputs")
+                    if np.any(where.inputs != inputs_inputs[0]):  #pragma: nocover
+                        raise InputValueError("`where.inputs` must match the rest of the inputs")
                     kwargs["where"] = where.outputs
                 else:
                     return NotImplemented

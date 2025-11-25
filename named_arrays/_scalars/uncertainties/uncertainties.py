@@ -10,22 +10,24 @@ import named_arrays as na
 
 __all__ = [
     "nominal",
-    'UncertainScalarStartT',
-    'UncertainScalarStopT',
-    'UncertainScalarTypeError',
-    'AbstractUncertainScalarArray',
-    'UncertainScalarArray',
-    'UniformUncertainScalarArray',
-    'NormalUncertainScalarArray',
-    'UncertainScalarUniformRandomSample',
-    'UncertainScalarNormalRandomSample',
-    'UncertainScalarPoissionRandomSample',
-    'AbstractParameterizedUncertainScalarArray',
-    'AbstractUncertainScalarSpace',
-    'UncertainScalarLinearSpace',
-    'UncertainScalarStratifiedRandomSpace',
-    'UncertainScalarLogarithmicSpace',
-    'UncertainScalarGeometricSpace',
+    "UncertainScalarStartT",
+    "UncertainScalarStopT",
+    "UncertainScalarTypeError",
+    "AbstractUncertainScalarArray",
+    "UncertainScalarArray",
+    "AbstractImplicitUncertainScalarArray",
+    "UniformUncertainScalarArray",
+    "NormalUncertainScalarArray",
+    "AbstractUncertainScalarRandomSample",
+    "UncertainScalarUniformRandomSample",
+    "UncertainScalarNormalRandomSample",
+    "UncertainScalarPoissionRandomSample",
+    "AbstractParameterizedUncertainScalarArray",
+    "AbstractUncertainScalarSpace",
+    "UncertainScalarLinearSpace",
+    "UncertainScalarStratifiedRandomSpace",
+    "UncertainScalarLogarithmicSpace",
+    "UncertainScalarGeometricSpace",
 ]
 
 AnyT = TypeVar("AnyT")
@@ -261,7 +263,6 @@ class AbstractUncertainScalarArray(
             item: dict[str, int | slice | na.AbstractScalar] | na.AbstractScalar,
     ):
         array = self.explicit
-        shape_array = array.shape
         shape_array_distribution = array.shape_distribution
 
         nominal = na.as_named_array(array.nominal)

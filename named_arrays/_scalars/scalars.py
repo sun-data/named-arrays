@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TypeVar, Generic, ClassVar, Type, Sequence, Callable, Collection, Any, Union, cast, Dict
+from typing import TypeVar, Generic, ClassVar, Type, Sequence, Callable, Collection, Any, Union
 from typing_extensions import Self
 import abc
 import dataclasses
@@ -11,25 +11,26 @@ import named_arrays as na
 import xarray as xr
 
 __all__ = [
-    'ScalarStartT',
-    'ScalarStopT',
-    'ScalarTypeError',
-    'as_named_array',
-    'AbstractScalar',
-    'AbstractScalarArray',
-    'ScalarLike',
-    'ScalarArray',
-    'AbstractImplicitScalarArray',
-    'ScalarUniformRandomSample',
-    'ScalarNormalRandomSample',
-    'ScalarPoissonRandomSample',
-    'AbstractParameterizedScalarArray',
-    'ScalarArrayRange',
-    'AbstractScalarSpace',
-    'ScalarLinearSpace',
-    'ScalarStratifiedRandomSpace',
-    'ScalarLogarithmicSpace',
-    'ScalarGeometricSpace',
+    "ScalarStartT",
+    "ScalarStopT",
+    "ScalarTypeError",
+    "as_named_array",
+    "AbstractScalar",
+    "AbstractScalarArray",
+    "ScalarLike",
+    "ScalarArray",
+    "AbstractImplicitScalarArray",
+    "AbstractScalarRandomSample",
+    "ScalarUniformRandomSample",
+    "ScalarNormalRandomSample",
+    "ScalarPoissonRandomSample",
+    "AbstractParameterizedScalarArray",
+    "ScalarArrayRange",
+    "AbstractScalarSpace",
+    "ScalarLinearSpace",
+    "ScalarStratifiedRandomSpace",
+    "ScalarLogarithmicSpace",
+    "ScalarGeometricSpace",
 ]
 
 NDArrayT = TypeVar('NDArrayT', bound=npt.ArrayLike)

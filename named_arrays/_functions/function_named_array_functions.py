@@ -1,4 +1,3 @@
-import dataclasses
 from typing import Callable, Literal, Sequence
 import numpy as np
 import matplotlib
@@ -233,8 +232,8 @@ def ndfilter(
         where = where.explicit
         if np.all(where.inputs != array.inputs):    # pragma: nocover
             raise ValueError(
-                f"if `where` is an instance of `na.AbstractFunctionArray`, "
-                f"its inputs must match `array`."
+                "if `where` is an instance of `na.AbstractFunctionArray`, "
+                "its inputs must match `array`."
             )
     else:
         return NotImplemented   # pragma: nocover

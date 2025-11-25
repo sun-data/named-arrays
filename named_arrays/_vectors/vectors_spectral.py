@@ -6,13 +6,12 @@ import dataclasses
 import named_arrays as na
 
 __all__ = [
-    'AbstractSpectralVectorArray',
-    'SpectralVectorArray',
-    'AbstractImplicitSpectralVectorArray',
-    'AbstractParameterizedSpectralVectorArray',
-    'AbstractSpectralVectorSpace',
-    'SpectralVectorLinearSpace',
-
+    "AbstractSpectralVectorArray",
+    "SpectralVectorArray",
+    "AbstractImplicitSpectralVectorArray",
+    "AbstractParameterizedSpectralVectorArray",
+    "AbstractSpectralVectorSpace",
+    "SpectralVectorLinearSpace",
 ]
 
 WavelengthT = TypeVar("WavelengthT", bound=na.ScalarLike)

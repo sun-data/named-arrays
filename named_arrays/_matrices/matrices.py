@@ -5,13 +5,13 @@ import dataclasses
 import named_arrays as na
 
 __all__ = [
-    'AbstractMatrixArray',
-    'AbstractExplicitMatrixArray',
-    'AbstractImplicitMatrixArray',
-    'AbstractMatrixRandomSample',
-    'AbstractMatrixUniformRandomSample',
-    'AbstractMatrixNormalRandomSample',
-    'AbstractParameterizedMatrixArray',
+    "AbstractMatrixArray",
+    "AbstractExplicitMatrixArray",
+    "AbstractImplicitMatrixArray",
+    "AbstractMatrixRandomSample",
+    "AbstractMatrixUniformRandomSample",
+    "AbstractMatrixNormalRandomSample",
+    "AbstractParameterizedMatrixArray",
 ]
 
 

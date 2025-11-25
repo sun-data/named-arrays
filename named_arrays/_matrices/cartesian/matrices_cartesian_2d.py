@@ -6,12 +6,12 @@ import numpy as np
 import named_arrays as na
 
 __all__ = [
-    'AbstractCartesian2dMatrixArray',
-    'Cartesian2dMatrixArray',
-    'AbstractImplicitCartesian2dMatrixArray',
-    'Cartesian2dIdentityMatrixArray',
-    'AbstractCartesian2dRotationMatrixArray',
-    'Cartesian2dRotationMatrixArray'
+    "AbstractCartesian2dMatrixArray",
+    "Cartesian2dMatrixArray",
+    "AbstractImplicitCartesian2dMatrixArray",
+    "Cartesian2dIdentityMatrixArray",
+    "AbstractCartesian2dRotationMatrixArray",
+    "Cartesian2dRotationMatrixArray",
 ]
 
 XT = TypeVar('XT', bound=na.AbstractVectorArray)

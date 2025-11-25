@@ -6,22 +6,22 @@ import astropy.units as u
 import named_arrays as na
 
 __all__ = [
-    '_named_array_function',
-    'asarray',
-    'asanyarray',
-    'arange',
-    'step',
-    'linspace',
-    'logspace',
-    'geomspace',
-    'ndim',
-    'shape',
-    'unit',
-    'unit_normalized',
-    'broadcast_to',
-    'stack',
-    'concatenate',
-    'add_axes',
+    "_named_array_function",
+    "asarray",
+    "asanyarray",
+    "arange",
+    "step",
+    "linspace",
+    "logspace",
+    "geomspace",
+    "ndim",
+    "shape",
+    "unit",
+    "unit_normalized",
+    "broadcast_to",
+    "stack",
+    "concatenate",
+    "add_axes",
     "vmr",
     "mean_trimmed",
     "interp",
@@ -29,8 +29,8 @@ __all__ = [
     "histogram2d",
     "histogramdd",
     "convolve",
-    'jacobian',
-    'despike',
+    "jacobian",
+    "despike",
 ]
 
 NDArrayT = TypeVar("NDArrayT", bound=np.ndarray)
@@ -47,7 +47,7 @@ WhereT = TypeVar("WhereT", bound="bool | na.AbstractScalarArray")
 
 
 def _is_subclass(a: Any, b: Any):
-    if type(a) == type(b):
+    if type(a) is type(b):
         return 0
     elif isinstance(a, type(b)):
         return 1

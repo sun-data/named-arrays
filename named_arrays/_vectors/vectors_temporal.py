@@ -6,13 +6,12 @@ import dataclasses
 import named_arrays as na
 
 __all__ = [
-    'AbstractTemporalVectorArray',
-    'TemporalVectorArray',
-    'AbstractImplicitTemporalVectorArray',
-    'AbstractParameterizedTemporalVectorArray',
-    'AbstractTemporalVectorSpace',
-    'TemporalVectorLinearSpace',
-
+    "AbstractTemporalVectorArray",
+    "TemporalVectorArray",
+    "AbstractImplicitTemporalVectorArray",
+    "AbstractParameterizedTemporalVectorArray",
+    "AbstractTemporalVectorSpace",
+    "TemporalVectorLinearSpace",
 ]
 
 TimeT = TypeVar("TimeT", bound=na.ArrayLike)

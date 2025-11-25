@@ -1,6 +1,5 @@
 from typing import Callable, Sequence, Any, Literal
 import collections
-import dataclasses
 import numpy as np
 import numpy.typing as npt
 import numexpr

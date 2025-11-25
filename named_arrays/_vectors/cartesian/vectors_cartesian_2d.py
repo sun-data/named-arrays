@@ -1,27 +1,25 @@
 from __future__ import annotations
 from typing import TypeVar, Type, Generic, Sequence
 import math
-import numpy as np
 from typing_extensions import Self
 import abc
 import dataclasses
-import astropy.units as u
 import named_arrays as na
 
 __all__ = [
-    'AbstractCartesian2dVectorArray',
-    'Cartesian2dVectorArray',
-    'AbstractImplicitCartesian2dVectorArray',
-    'AbstractCartesian2dVectorRandomSample',
-    'Cartesian2dVectorUniformRandomSample',
-    'Cartesian2dVectorNormalRandomSample',
-    'AbstractParameterizedCartesian2dVectorArray',
-    'Cartesian2dVectorArrayRange',
-    'AbstractCartesian2dVectorSpace',
-    'Cartesian2dVectorLinearSpace',
-    'Cartesian2dVectorStratifiedRandomSpace',
-    'Cartesian2dVectorLogarithmicSpace',
-    'Cartesian2dVectorGeometricSpace',
+    "AbstractCartesian2dVectorArray",
+    "Cartesian2dVectorArray",
+    "AbstractImplicitCartesian2dVectorArray",
+    "AbstractCartesian2dVectorRandomSample",
+    "Cartesian2dVectorUniformRandomSample",
+    "Cartesian2dVectorNormalRandomSample",
+    "AbstractParameterizedCartesian2dVectorArray",
+    "Cartesian2dVectorArrayRange",
+    "AbstractCartesian2dVectorSpace",
+    "Cartesian2dVectorLinearSpace",
+    "Cartesian2dVectorStratifiedRandomSpace",
+    "Cartesian2dVectorLogarithmicSpace",
+    "Cartesian2dVectorGeometricSpace",
 ]
 
 XT = TypeVar('XT', bound=na.ArrayLike)

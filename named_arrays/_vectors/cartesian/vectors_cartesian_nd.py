@@ -1,11 +1,11 @@
 from __future__ import annotations
-from typing import Type, Sequence
+from typing import Type
 import dataclasses
 import named_arrays as na
 
 __all__ = [
     "AbstractCartesianNdVectorArray",
-    "CartesianNdVectorArray"
+    "CartesianNdVectorArray",
 ]
 
 

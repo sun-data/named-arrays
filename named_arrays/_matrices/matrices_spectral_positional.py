@@ -1,14 +1,11 @@
 from __future__ import annotations
-from typing import TypeVar, Generic, Type
-import abc
+from typing import Type
 import dataclasses
 import named_arrays as na
-import numpy as np
-import astropy.units as u
 
 __all__ = [
-    'AbstractSpectralPositionalMatrixArray',
-    'SpectralPositionalMatrixArray',
+    "AbstractSpectralPositionalMatrixArray",
+    "SpectralPositionalMatrixArray",
 ]
 
 

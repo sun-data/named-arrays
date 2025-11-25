@@ -471,7 +471,7 @@ class AbstractTestAbstractFunctionArray(
 
             if axis in array.axes_vertex:
                 with pytest.raises(ValueError, match=f"Array cannot be repeated along vertex axis {axis}."):
-                    result = np.repeat(
+                    np.repeat(
                         a=array,
                         repeats=repeats,
                         axis=axis,

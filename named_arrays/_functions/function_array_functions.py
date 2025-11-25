@@ -1,5 +1,4 @@
 from typing import Callable, Sequence
-import dataclasses
 import numpy as np
 import astropy.units as u
 import named_arrays as na
@@ -15,7 +14,6 @@ __all__ = [
     "array_function_percentile_like",
     "array_function_arg_reduce",
     "array_function_stack_like",
-    "broadcast_to",
     "tranpose",
     "moveaxis",
     "reshape",
@@ -152,8 +150,6 @@ def array_function_percentile_like(
             raise ValueError(
                 f"the `axis` argument, {axis}, must be `None` or a subset of the shape of `a`, {shape}"
             )
-
-    shape_base = {ax: shape[ax] for ax in axis_normalized}
 
     kwargs = dict(
         overwrite_input=overwrite_input,
@@ -304,8 +300,8 @@ def copyto(
 
     if isinstance(where, na.AbstractArray):
         if isinstance(where, na.AbstractFunctionArray):
-            if np.any(where.inputs != src.inputs):
-                raise ValueError(f"`where.inputs` must be equivalent to `src.inputs`")
+            if np.any(where.inputs != src.inputs):  #pragma: nocover
+                raise ValueError("`where.inputs` must be equivalent to `src.inputs`")
             where_inputs = where.inputs
             where_outputs = where.outputs
         else:

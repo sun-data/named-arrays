@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Sequence, Type, Callable
+from typing import Sequence, Callable
 import pytest
 import abc
 import warnings
@@ -593,7 +593,7 @@ class AbstractTestAbstractArray(
                     shape_normalized = shape
 
                 assert result.shape == shape_normalized
-                assert type(result) == array.type_explicit
+                assert type(result) is array.type_explicit
 
                 if func is np.zeros_like:
                     assert np.all(result.value == 0)
@@ -1852,7 +1852,7 @@ class AbstractTestAbstractExplicitArray(
             else:
                 result_0 = result.reshape(dict(dummy=-1))[dict(dummy=0)]
             value_0 + result_0
-        except u.UnitConversionError as e:
+        except u.UnitConversionError:
             with pytest.raises((TypeError, u.UnitConversionError)):
                 result[item] = value
             return
