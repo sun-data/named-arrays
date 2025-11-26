@@ -49,7 +49,7 @@ def point_in_polygon(
         axis = "vertex"
         num_vertices = 7
         radius = na.random.uniform(5, 15, shape_random={axis: num_vertices})
-        angle = na.linspace(0, 360, axis=axis, num=num_vertices) * u.deg
+        angle = na.linspace(0, 2 * np.pi, axis=axis, num=num_vertices)
         vertices_x = radius * np.cos(angle)
         vertices_y = radius * np.sin(angle)
 
