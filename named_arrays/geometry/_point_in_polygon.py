@@ -80,7 +80,7 @@ def point_in_polygon(
             y,
             where=where,
             ax=ax,
-        )
+        );
     """
     return na._named_array_function(
         func=point_in_polygon,
