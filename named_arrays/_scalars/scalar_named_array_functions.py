@@ -14,6 +14,7 @@ import colorsynth
 import regridding
 import named_arrays as na
 from . import scalars
+from ..geometry._point_in_polygon import _point_in_polygon_quantity
 
 __all__ = [
     "ASARRAY_LIKE_FUNCTIONS",
@@ -2082,3 +2083,53 @@ def evaluate(
         ndarray=result,
         axes=axes,
     )
+
+
+@_implements(na.geometry.point_in_polygon)
+def point_in_polygon(
+    x: na.AbstractScalarArray,
+    y: na.AbstractScalarArray,
+    vertices_x: na.AbstractScalarArray,
+    vertices_y: na.AbstractScalarArray,
+    axis: str,
+) -> na.ScalarArray:
+
+    try:
+        x = scalars._normalize(x)
+        y = scalars._normalize(y)
+        vertices_x = scalars._normalize(vertices_x)
+        vertices_y = scalars._normalize(vertices_y)
+    except scalars.ScalarTypeError:  # pragma: nocover
+        return NotImplemented
+
+    shape_vertices = na.shape_broadcasted(
+        x,
+        y,
+        vertices_x,
+        vertices_y,
+    )
+
+    shape = {a: shape_vertices[a] for a in shape_vertices if a != axis}
+
+    num_vertices = shape_vertices[axis]
+    shape_vertices = shape.copy()
+    shape_vertices[axis] = num_vertices
+
+    x = na.broadcast_to(x, shape)
+    y = na.broadcast_to(y, shape)
+    vertices_x = na.broadcast_to(vertices_x, shape_vertices)
+    vertices_y = na.broadcast_to(vertices_y, shape_vertices)
+
+    result = _point_in_polygon_quantity(
+        x=x.ndarray,
+        y=y.ndarray,
+        vertices_x=vertices_x.ndarray,
+        vertices_y=vertices_y.ndarray,
+    )
+
+    result = na.ScalarArray(
+        ndarray=result,
+        axes=tuple(shape),
+    )
+
+    return result

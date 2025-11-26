@@ -1343,3 +1343,42 @@ def evaluate(
             **kwargs,
         )
     )
+
+
+@_implements(na.geometry.point_in_polygon)
+def point_in_polygon(
+    x: na.AbstractScalar,
+    y: na.AbstractScalar,
+    vertices_x: na.AbstractScalar,
+    vertices_y: na.AbstractScalar,
+    axis: str,
+) -> na.UncertainScalarArray:
+
+    try:
+        x = uncertainties._normalize(x)
+        y = uncertainties._normalize(y)
+        vertices_x = uncertainties._normalize(vertices_x)
+        vertices_y = uncertainties._normalize(vertices_y)
+    except uncertainties.UncertainScalarTypeError:  # pragma: nocover
+        return NotImplemented
+
+    result_nominal = na.geometry.point_in_polygon(
+        x=x.nominal,
+        y=y.nominal,
+        vertices_x=vertices_x.nominal,
+        vertices_y=vertices_y.nominal,
+        axis=axis,
+    )
+
+    result_distribution = na.geometry.point_in_polygon(
+        x=x.distribution,
+        y=y.distribution,
+        vertices_x=vertices_x.distribution,
+        vertices_y=vertices_y.distribution,
+        axis=axis,
+    )
+
+    return na.UncertainScalarArray(
+        nominal=result_nominal,
+        distribution=result_distribution,
+    )
