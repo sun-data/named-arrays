@@ -262,6 +262,9 @@ class AbstractVectorArray(
         shape_array = array.shape
         components = array.components
 
+        if isinstance(item, bool):
+            item = na.as_named_array(item)
+
         if isinstance(item, na.AbstractArray):
             item = item.explicit
             shape_item = item.shape
@@ -609,6 +612,9 @@ class AbstractExplicitVectorArray(
             value: AbstractScalarOrVectorArray,
     ):
         components_self = self.components
+
+        if isinstance(item, bool):
+            item = na.as_named_array(item)
 
         if isinstance(item, na.AbstractArray):
             if isinstance(item, na.AbstractVectorArray):

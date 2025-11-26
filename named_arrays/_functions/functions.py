@@ -438,6 +438,9 @@ class AbstractFunctionArray(
         inputs = array.inputs
         outputs = array.outputs
 
+        if isinstance(item, bool):
+            item = na.as_named_array(item)
+
         if isinstance(item, na.AbstractArray):
             if isinstance(item, na.AbstractFunctionArray):
                 if not np.all(item.inputs == array.inputs):
@@ -990,6 +993,9 @@ class FunctionArray(
             item: dict[str, int | slice | na.AbstractScalar | na.AbstractFunctionArray] | na.AbstractFunctionArray,
             value: float | u.Quantity | na.FunctionArray,
     ):
+
+        if isinstance(item, bool):
+            item = na.as_named_array(item)
 
         if isinstance(item, na.AbstractFunctionArray):
             if not np.all(item.inputs == self.inputs):

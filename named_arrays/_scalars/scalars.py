@@ -393,6 +393,9 @@ class AbstractScalarArray(
             item: dict[str, int | slice | AbstractScalarArray] | AbstractScalarArray,
     ):
 
+        if isinstance(item, bool):
+            item = na.as_named_array(item)
+
         if isinstance(item, AbstractScalarArray):
 
             if not set(item.shape).issubset(self.axes):
@@ -1015,6 +1018,9 @@ class ScalarArray(
                 )
         else:
             value = ScalarArray(value)
+
+        if isinstance(item, bool):
+            item = na.as_named_array(item)
 
         if isinstance(item, AbstractScalarArray):
 
