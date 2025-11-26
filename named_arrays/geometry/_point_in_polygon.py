@@ -33,6 +33,54 @@ def point_in_polygon(
         The :math:`y`-coordinates of the polygon's vertices.
     axis
         The logical axis representing the different vertices of the polygon.
+
+    Examples
+    --------
+
+    Check if some random points are inside a randomly-generated polygon.
+
+    .. jupyter-execute::
+
+        import numpy as np
+        import matplotlib.pyplot as plt
+        import named_arrays as na
+
+        # Define a random polygon
+        axis = "vertex"
+        num_vertices = 7
+        radius = na.random.uniform(5, 15, shape_random={axis: num_vertices})
+        angle = na.linspace(0, 360, axis=axis, num=num_vertices) * u.deg
+        vertices_x = radius * np.cos(angle)
+        vertices_y = radius * np.sin(angle)
+
+        # Define some random points
+        x = na.random.uniform(-20, 20, shape_random=dict(r=1000))
+        y = na.random.uniform(-20, 20, shape_random=dict(r=1000))
+
+        # Select which points are inside the polygon
+        where = na.geometry.point_in_polygon(
+            x=x,
+            y=y,
+            vertices_x=vertices_x,
+            vertices_y=vertices_y,
+            axis=axis,
+        )
+
+        # Plot the results as a scatter plot
+        fig, ax = plt.subplots()
+        na.plt.fill(
+            vertices_x,
+            vertices_y,
+            ax=ax,
+            facecolor="none",
+            edgecolor="black",
+        )
+        na.plt.scatter(
+            x,
+            y,
+            where=where,
+            ax=ax,
+        )
     """
     return na._named_array_function(
         func=point_in_polygon,
@@ -104,7 +152,7 @@ def _point_in_polygon_numba(
     y: np.ndarray,
     vertices_x: np.ndarray,
     vertices_y: np.ndarray,
-) -> np.ndarray:
+) -> np.ndarray:  # pragma: nocover
     """
     Numba-accelerated check if a given point is inside or on the boundary of a polygon.
 
