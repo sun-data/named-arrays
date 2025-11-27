@@ -108,6 +108,7 @@ def _cartesian2d_items() -> list[na.AbstractArray | dict[str, int, slice, na.Abs
                     )
                 )
             ),
+            True,
             na.ScalarLinearSpace(0, 1, axis='y', num=_num_y) > 0.5,
             na.UniformUncertainScalarArray(
                 nominal=na.ScalarLinearSpace(0, 1, axis='y', num=_num_y),
@@ -259,6 +260,7 @@ class TestCartesian2dVectorArray(
                     y=na.ScalarArrayRange(0, _num_y, axis='y'),
                 )
             ),
+            True,
             na.ScalarArray.ones(shape=dict(y=_num_y), dtype=bool),
             np.ones_like(na.Cartesian2dVectorArray(), dtype=bool, shape=dict(y=_num_y)),
         ],

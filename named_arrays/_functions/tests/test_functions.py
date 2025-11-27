@@ -194,6 +194,7 @@ class AbstractTestAbstractFunctionArray(
 
         with pytest.raises(NotImplementedError):
             array.interp_linear(array.indices)
+
     @pytest.mark.parametrize(
         argnames='item',
         argvalues=[
@@ -206,6 +207,7 @@ class AbstractTestAbstractFunctionArray(
                     outputs=na.ScalarArrayRange(0, 2, axis='y'),
                 )
             ),
+            True,
             na.ScalarLinearSpace(0, 1, axis='y', num=_num_y) > 0.5,
             na.FunctionArray(
                 inputs=na.ScalarLinearSpace(0, 1, axis='y', num=_num_y),
@@ -225,9 +227,6 @@ class AbstractTestAbstractFunctionArray(
             )
         ],
     )
-
-
-
     def test__getitem__(
             self,
             array: na.AbstractFunctionArray,
@@ -947,6 +946,7 @@ class TestFunctionArray(
             dict(y=slice(None)),
             dict(y=na.ScalarArrayRange(0, _num_y, axis='y')),
             dict(x=na.ScalarArrayRange(0, _num_x, axis='x'), y=na.ScalarArrayRange(0, _num_y, axis='y')),
+            True,
             na.FunctionArray(
                 inputs=na.ScalarLinearSpace(0, 1, axis='y', num=_num_y),
                 outputs=na.ScalarArray.ones(shape=dict(y=_num_y), dtype=bool),

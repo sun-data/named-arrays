@@ -703,7 +703,7 @@ class UncertainScalarArray(
 
         else:
             raise TypeError(
-                f"`item` must be an instance of `{na.AbstractArray.__name__}` or {dict.__name__}, "
+                f"`item` must be an instance of `bool`, `{na.AbstractArray.__name__}`, or {dict.__name__}, "
                 f"got `{type(item)}`"
             )
 

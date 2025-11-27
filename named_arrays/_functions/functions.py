@@ -1017,7 +1017,7 @@ class FunctionArray(
                     item_inputs[ax] = item_outputs[ax] = item_ax
         else:
             raise TypeError(
-                f"`item` must be an instance of `{dict.__name__}`, or `{na.AbstractFunctionArray.__name__}`, "
+                f"`item` must be an instance of `bool`, `{dict.__name__}`, or `{na.AbstractFunctionArray.__name__}`, "
                 f"got `{type(item)}`"
             )
 

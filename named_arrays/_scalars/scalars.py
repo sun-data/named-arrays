@@ -1086,6 +1086,12 @@ class ScalarArray(
 
             self.ndarray_aligned(axes_self)[tuple(index)] = value
 
+        else:
+            raise TypeError(
+                f"`item` must be an instance of `bool`, `{na.AbstractArray.__name__}`, or {dict.__name__}, "
+                f"got `{type(item)}`"
+            )
+
 
 @dataclasses.dataclass(eq=False, repr=False)
 class AbstractImplicitScalarArray(

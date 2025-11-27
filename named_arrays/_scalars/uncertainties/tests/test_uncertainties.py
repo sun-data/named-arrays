@@ -114,6 +114,7 @@ class AbstractTestAbstractUncertainScalarArray(
                     )
                 )
             ),
+            True,
             na.ScalarLinearSpace(0, 1, axis='y', num=_num_y) > 0.5,
             na.UncertainScalarArray(
                 nominal=na.ScalarLinearSpace(0, 1, axis='y', num=_num_y),
@@ -795,6 +796,7 @@ class TestUncertainScalarArray(
             dict(y=slice(None)),
             dict(y=na.ScalarArrayRange(0, _num_y, axis='y')),
             dict(x=na.ScalarArrayRange(0, _num_x, axis='x'), y=na.ScalarArrayRange(0, _num_y, axis='y')),
+            True,
             na.ScalarArray.ones(shape=dict(y=_num_y), dtype=bool),
         ],
     )
