@@ -37,7 +37,6 @@ test = [
 doc = [
     "pytest",
     "graphviz",
-    "Sphinx<8.2",
     "sphinx-autodoc-typehints",
     "sphinxcontrib-bibtex",
     "pydata-sphinx-theme",

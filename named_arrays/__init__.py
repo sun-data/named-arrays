@@ -35,6 +35,7 @@ from . import transformations
 from . import ndfilters
 from . import colorsynth
 from . import numexpr
+from . import geometry
 from ._core import (
     QuantityLike,
     StartT,
@@ -402,6 +403,7 @@ __all__ = [
     "ndfilters",
     "colorsynth",
     "numexpr",
+    "geometry",
     "QuantityLike",
     "StartT",
     "StopT",
