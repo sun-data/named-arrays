@@ -133,7 +133,10 @@ class AbstractTestAbstractUncertainScalarArray(
     ):
         super().test__getitem__(array=array, item=item)
 
-        if isinstance(item, na.AbstractArray):
+        if isinstance(item, bool):
+            item_nominal = item_distribution = item
+
+        elif isinstance(item, na.AbstractArray):
 
             if not set(item.shape).issubset(array.shape_distribution):
                 with pytest.raises(ValueError):

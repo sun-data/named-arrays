@@ -239,6 +239,9 @@ class AbstractTestAbstractFunctionArray(
                 array[item]
             return
 
+        if isinstance(item, bool):
+            item_outputs = item_inputs = item
+
         if isinstance(item, na.AbstractArray):
             item = item.explicit
             if isinstance(item, na.AbstractFunctionArray):
@@ -260,7 +263,7 @@ class AbstractTestAbstractFunctionArray(
                     item_outputs[ax] = item_ax.outputs
                 else:
                     if ax in array.axes_center:
-                        #can't assume center ax is in both outputs and inputs
+                        # can't assume center ax is in both outputs and inputs
                         if ax in array.inputs.shape:
                             item_inputs[ax] = item_ax
                         if ax in array.outputs.shape:
@@ -407,7 +410,6 @@ class AbstractTestAbstractFunctionArray(
                 assert np.all(result[i].inputs == inputs_expected[i])
                 assert np.all(result[i] == result_out[i])
                 assert result_out[i] is out[i]
-
 
     class TestMatmul(
         named_arrays.tests.test_core.AbstractTestAbstractArray.TestMatmul
@@ -703,7 +705,6 @@ class AbstractTestAbstractFunctionArray(
 
                 assert np.all(result.outputs == outputs_expected)
 
-
         class TestFFTLikeFunctions(
             named_arrays.tests.test_core.AbstractTestAbstractArray.TestArrayFunctions.TestFFTLikeFunctions,
         ):
@@ -863,7 +864,7 @@ class AbstractTestAbstractFunctionArray(
 
                 components = list(array.inputs.components.keys())[:2]
 
-                #probably a smarter way to deal with plotting broadcasting during testing
+                # probably a smarter way to deal with plotting broadcasting during testing
                 if len(array.axes) > 2:
                     array = array[dict(z=0)]
 
@@ -982,7 +983,6 @@ class TestFunctionArray(
         AbstractTestAbstractFunctionArray.TestMatmul
     ):
         pass
-
 
 
 @pytest.mark.parametrize("type_array", [na.FunctionArray])
@@ -1125,6 +1125,3 @@ class TestPolynomialFitFunctionArray(
         AbstractTestAbstractFunctionArray.TestMatmul
     ):
         pass
-
-
-

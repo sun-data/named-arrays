@@ -449,7 +449,10 @@ class AbstractTestAbstractScalarArray(
         else:
             if array.shape:
                 result = array[item]
-                item_expected = (Ellipsis, item.ndarray)
+                if isinstance(item, bool):
+                    item_expected = item
+                else:
+                    item_expected = (Ellipsis, item.ndarray)
             else:
                 with pytest.raises(ValueError):
                     array[item]
