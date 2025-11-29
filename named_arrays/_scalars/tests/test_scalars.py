@@ -425,6 +425,7 @@ class AbstractTestAbstractScalarArray(
             dict(y=0),
             dict(y=slice(0,1)),
             dict(y=na.ScalarArray(np.array([0, 1]), axes=('y', ))),
+            True,
             na.ScalarLinearSpace(0, 1, axis='y', num=_num_y) > 0.5,
         ]
     )
@@ -448,7 +449,10 @@ class AbstractTestAbstractScalarArray(
         else:
             if array.shape:
                 result = array[item]
-                item_expected = (Ellipsis, item.ndarray)
+                if isinstance(item, bool):
+                    item_expected = item
+                else:
+                    item_expected = (Ellipsis, item.ndarray)
             else:
                 with pytest.raises(ValueError):
                     array[item]
@@ -1319,6 +1323,7 @@ class TestScalarArray(
             dict(y=slice(None)),
             dict(y=na.ScalarArrayRange(0, _num_y, axis='y')),
             dict(x=na.ScalarArrayRange(0, _num_x, axis='x'), y=na.ScalarArrayRange(0, _num_y, axis='y')),
+            True,
             na.ScalarArray.ones(shape=dict(y=_num_y), dtype=bool),
         ],
     )

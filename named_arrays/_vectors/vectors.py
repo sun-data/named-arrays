@@ -262,6 +262,9 @@ class AbstractVectorArray(
         shape_array = array.shape
         components = array.components
 
+        if isinstance(item, bool):
+            item = na.as_named_array(item)
+
         if isinstance(item, na.AbstractArray):
             item = item.explicit
             shape_item = item.shape
@@ -610,6 +613,9 @@ class AbstractExplicitVectorArray(
     ):
         components_self = self.components
 
+        if isinstance(item, bool):
+            item = na.as_named_array(item)
+
         if isinstance(item, na.AbstractArray):
             if isinstance(item, na.AbstractVectorArray):
                 if item.type_abstract == self.type_abstract:
@@ -662,7 +668,7 @@ class AbstractExplicitVectorArray(
 
         else:
             raise TypeError(
-                f"`item` must be an instance of `{na.AbstractArray.__name__}` or {dict.__name__}, "
+                f"`item` must be an instance of `bool`, `{na.AbstractArray.__name__}`, or {dict.__name__}, "
                 f"got `{type(item)}`"
             )
 

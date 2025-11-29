@@ -438,6 +438,9 @@ class AbstractFunctionArray(
         inputs = array.inputs
         outputs = array.outputs
 
+        if isinstance(item, bool):
+            item = na.as_named_array(item)
+
         if isinstance(item, na.AbstractArray):
             if isinstance(item, na.AbstractFunctionArray):
                 if not np.all(item.inputs == array.inputs):
@@ -991,6 +994,9 @@ class FunctionArray(
             value: float | u.Quantity | na.FunctionArray,
     ):
 
+        if isinstance(item, bool):
+            item = na.as_named_array(item)
+
         if isinstance(item, na.AbstractFunctionArray):
             if not np.all(item.inputs == self.inputs):
                 raise ValueError("boolean advanced index does not have the same inputs as the array")
@@ -1011,7 +1017,7 @@ class FunctionArray(
                     item_inputs[ax] = item_outputs[ax] = item_ax
         else:
             raise TypeError(
-                f"`item` must be an instance of `{dict.__name__}`, or `{na.AbstractFunctionArray.__name__}`, "
+                f"`item` must be an instance of `bool`, `{dict.__name__}`, or `{na.AbstractFunctionArray.__name__}`, "
                 f"got `{type(item)}`"
             )
 

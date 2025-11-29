@@ -194,6 +194,7 @@ class AbstractTestAbstractFunctionArray(
 
         with pytest.raises(NotImplementedError):
             array.interp_linear(array.indices)
+
     @pytest.mark.parametrize(
         argnames='item',
         argvalues=[
@@ -206,6 +207,7 @@ class AbstractTestAbstractFunctionArray(
                     outputs=na.ScalarArrayRange(0, 2, axis='y'),
                 )
             ),
+            True,
             na.ScalarLinearSpace(0, 1, axis='y', num=_num_y) > 0.5,
             na.FunctionArray(
                 inputs=na.ScalarLinearSpace(0, 1, axis='y', num=_num_y),
@@ -225,9 +227,6 @@ class AbstractTestAbstractFunctionArray(
             )
         ],
     )
-
-
-
     def test__getitem__(
             self,
             array: na.AbstractFunctionArray,
@@ -239,6 +238,9 @@ class AbstractTestAbstractFunctionArray(
             with pytest.raises(ValueError):
                 array[item]
             return
+
+        if isinstance(item, bool):
+            item_outputs = item_inputs = item
 
         if isinstance(item, na.AbstractArray):
             item = item.explicit
@@ -261,7 +263,7 @@ class AbstractTestAbstractFunctionArray(
                     item_outputs[ax] = item_ax.outputs
                 else:
                     if ax in array.axes_center:
-                        #can't assume center ax is in both outputs and inputs
+                        # can't assume center ax is in both outputs and inputs
                         if ax in array.inputs.shape:
                             item_inputs[ax] = item_ax
                         if ax in array.outputs.shape:
@@ -408,7 +410,6 @@ class AbstractTestAbstractFunctionArray(
                 assert np.all(result[i].inputs == inputs_expected[i])
                 assert np.all(result[i] == result_out[i])
                 assert result_out[i] is out[i]
-
 
     class TestMatmul(
         named_arrays.tests.test_core.AbstractTestAbstractArray.TestMatmul
@@ -704,7 +705,6 @@ class AbstractTestAbstractFunctionArray(
 
                 assert np.all(result.outputs == outputs_expected)
 
-
         class TestFFTLikeFunctions(
             named_arrays.tests.test_core.AbstractTestAbstractArray.TestArrayFunctions.TestFFTLikeFunctions,
         ):
@@ -864,7 +864,7 @@ class AbstractTestAbstractFunctionArray(
 
                 components = list(array.inputs.components.keys())[:2]
 
-                #probably a smarter way to deal with plotting broadcasting during testing
+                # probably a smarter way to deal with plotting broadcasting during testing
                 if len(array.axes) > 2:
                     array = array[dict(z=0)]
 
@@ -947,6 +947,7 @@ class TestFunctionArray(
             dict(y=slice(None)),
             dict(y=na.ScalarArrayRange(0, _num_y, axis='y')),
             dict(x=na.ScalarArrayRange(0, _num_x, axis='x'), y=na.ScalarArrayRange(0, _num_y, axis='y')),
+            True,
             na.FunctionArray(
                 inputs=na.ScalarLinearSpace(0, 1, axis='y', num=_num_y),
                 outputs=na.ScalarArray.ones(shape=dict(y=_num_y), dtype=bool),
@@ -982,7 +983,6 @@ class TestFunctionArray(
         AbstractTestAbstractFunctionArray.TestMatmul
     ):
         pass
-
 
 
 @pytest.mark.parametrize("type_array", [na.FunctionArray])
@@ -1125,6 +1125,3 @@ class TestPolynomialFitFunctionArray(
         AbstractTestAbstractFunctionArray.TestMatmul
     ):
         pass
-
-
-
