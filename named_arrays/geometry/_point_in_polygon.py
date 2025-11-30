@@ -117,9 +117,11 @@ def _point_in_polygon_quantity(
 
     if isinstance(x, u.Quantity):
         unit = x.unit
-        y = y.to_value(unit)
-        vertices_x = vertices_x.to_value(unit)
-        vertices_y = vertices_y.to_value(unit)
+        if unit != 1:
+            x = x.value
+            y = y.to_value(unit)
+            vertices_x = vertices_x.to_value(unit)
+            vertices_y = vertices_y.to_value(unit)
 
     shape_points = np.broadcast(x, y).shape
     shape_vertices = np.broadcast(vertices_x, vertices_y).shape
