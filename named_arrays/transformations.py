@@ -5,10 +5,11 @@ Designed to be composed together into arbitrary transformations.
 """
 
 from __future__ import annotations
-from typing import TypeVar, Generic, Iterator
+from typing import TypeVar, Generic, Iterator, Type
 from typing_extensions import Self
 import abc
 import dataclasses
+import numba
 import astropy.units as u
 import named_arrays as na
 
@@ -35,6 +36,138 @@ MatrixT = TypeVar("MatrixT", bound="na.AbstractMatrixArray")
 TransformationT = TypeVar("TransformationT", bound="AbstractTransformation")
 LinearTransformationT = TypeVar("LinearTransformationT", bound="AbstractLinearTransformation")
 TranslationT = TypeVar("TranslationT", bound="AbstractTranslation")
+
+
+def _dot_3d(
+    a: na.AbstractCartesian3dVectorArray,
+    b: na.AbstractCartesian3dVectorArray,
+) -> na.AbstractScalarArray:
+    """
+    Compute the dot product between two 3-dimensional vectors.
+
+    Parameters
+    ----------
+    a
+        The first vector operand.
+    b
+        The second vector operand.
+    """
+
+    ax = a.x
+    ay = a.y
+    az = a.z
+
+    bx = b.x
+    by = b.y
+    bz = b.z
+
+    unit_a = na.unit(ax)
+    unit_b = na.unit(bx)
+
+    if unit_a is not None:
+        ax = (ax << unit_a).value
+        ay = (ay << unit_a).value
+        az = (az << unit_a).value
+
+    if unit_b is not None:
+        bx = (bx << unit_b).value
+        by = (by << unit_b).value
+        bz = (bz << unit_b).value
+
+    result = _dot_3d_numba(ax, ay, az, bx, by, bz)
+
+    if unit_a is not None:
+        if unit_b is not None:
+            unit = unit_a * unit_b
+        else:
+            unit = unit_a
+    else:
+        if unit_b is not None:
+            unit = unit_b
+        else:
+            unit = None
+
+    return result << unit
+
+
+@numba.vectorize(cache=True)
+def _dot_3d_numba(
+    ax: float,
+    ay: float,
+    az: float,
+    bx: float,
+    by: float,
+    bz: float,
+) -> float:
+    return ax *  bx + ay * by + az * bz
+
+
+def _matvec_3d(
+    a: na.AbstractCartesian3dMatrixArray,
+    b: na.AbstractCartesian3dVectorArray,
+) -> na.Cartesian3dVectorArray:
+    """
+    Matrix-vector dot product for 3-dimensional Cartesian vectors.
+
+    Parameters
+    ----------
+    a
+        Matrix operand.
+    b
+        Vector operand.
+    """
+    return na.Cartesian3dVectorArray(
+        x=_dot_3d(a.x, b),
+        y=_dot_3d(a.y, b),
+        z=_dot_3d(a.z, b),
+    )
+
+
+def _transpose_3d(
+    a: na.AbstractCartesian3dMatrixArray,
+) -> na.Cartesian3dMatrixArray:
+    """
+    Take the transpose of a 3-dimensional Cartesian matrix.
+
+    Parameters
+    ----------
+    a
+        The matrix to transpose.
+    """
+
+    ax = a.x
+    ay = a.y
+    az = a.z
+
+    return na.Cartesian3dMatrixArray(
+        x = na.Cartesian3dVectorArray(ax.x, ay.x, az.x),
+        y = na.Cartesian3dVectorArray(ay.x, ay.y, ay.z),
+        z = na.Cartesian3dVectorArray(az.x, az.y, az.z),
+    )
+
+
+def _matmul_3d(
+    a: na.AbstractCartesian3dMatrixArray,
+    b: na.AbstractCartesian3dMatrixArray,
+) -> na.Cartesian3dMatrixArray:
+    """
+    Matrix product for 3-dimensional Cartesian matrices
+
+    Parameters
+    ----------
+    a
+        Left matrix operand.
+    b
+        Right matrix operand.
+    """
+
+    b = _transpose_3d(b)
+
+    return na.Cartesian3dMatrixArray(
+        x=_matvec_3d(a, b.x),
+        y=_matvec_3d(a, b.y),
+        z=_matvec_3d(a, b.z),
+    )
 
 
 @dataclasses.dataclass(eq=False)
@@ -266,9 +399,51 @@ class Cartesian3dTranslation(
     z: na.ScalarLike = 0 * u.mm
     """The :math:`z` component of this translation."""
 
+    @classmethod
+    def from_vector(
+        cls: Type[Self],
+        vector: na.AbstractCartesian3dVectorArray,
+    ) -> Self:
+        return cls(
+            x=vector.x,
+            y=vector.y,
+            z=vector.z,
+        )
+
     @property
     def vector(self) -> na.Cartesian3dVectorArray:
         return na.Cartesian3dVectorArray(self.x, self.y, self.z)
+
+    def __call__(
+        self,
+        a: na.AbstractCartesian3dVectorArray,
+    ) -> na.Cartesian3dVectorArray:
+        return na.Cartesian3dVectorArray(
+            x=self.x + a.x,
+            y=self.y + a.y,
+            z=self.z + a.z,
+        )
+
+    @property
+    def inverse(self: Self) -> Self:
+        return Cartesian3dTranslation(
+            x=-self.x,
+            y=-self.y,
+            z=-self.z,
+        )
+
+    def __matmul__(
+        self,
+        other: Cartesian3dTranslation,
+    ) -> Cartesian3dTranslation:
+        if isinstance(other, Cartesian3dTranslation):
+            return Cartesian3dTranslation(
+                x=self.x + other.x,
+                y=self.y + other.y,
+                z=self.z + other.z,
+            )
+        else:
+            return NotImplemented
 
 
 @dataclasses.dataclass(eq=False)
@@ -322,6 +497,8 @@ class AbstractLinearTransformation(
                 transformation_linear=self,
                 translation=other,
             )
+        else:
+            return NotImplemented
 
 
 @dataclasses.dataclass(eq=False)
@@ -385,6 +562,64 @@ class LinearTransformation(
     """
     matrix: MatrixT = dataclasses.MISSING
 
+@dataclasses.dataclass(eq=False)
+class AbstractCartesian3dOrthogonalTransformation(
+    AbstractLinearTransformation,
+):
+    """
+    An orthogonal transformation of a 3-dimensional Cartesian vector.
+    """
+
+    def __call__(
+        self,
+        a: na.AbstractCartesian3dVectorArray,
+    ) -> na.Cartesian3dVectorArray:
+        return _matvec_3d(self.matrix, a)
+
+    @property
+    def inverse(self: Self) -> Self:
+        return Cartesian3dOrthogonalTransformation(
+            matrix=_transpose_3d(self.matrix),
+        )
+
+    def __matmul__(
+            self,
+            other: AbstractCartesian3dOrthogonalTransformation | Cartesian3dTranslation,
+    ) -> LinearTransformation | AffineTransformation:
+        if isinstance(other, AbstractCartesian3dOrthogonalTransformation):
+            return Cartesian3dOrthogonalTransformation(
+                _matmul_3d(self.matrix, other.matrix),
+            )
+        elif isinstance(other, Cartesian3dTranslation):
+            return AffineTransformation(
+                transformation_linear=self,
+                translation=Cartesian3dTranslation.from_vector(
+                    self.matrix @ other.vector,
+                ),
+            )
+        else:
+            return NotImplemented
+
+    def __rmatmul__(
+            self,
+            other: Cartesian3dTranslation,
+    ) -> AffineTransformation:
+        if isinstance(other, Cartesian3dTranslation):
+            return AffineTransformation(
+                transformation_linear=self,
+                translation=other,
+            )
+        else:
+            return NotImplemented
+
+
+@dataclasses.dataclass(eq=False)
+class Cartesian3dOrthogonalTransformation(
+    AbstractCartesian3dOrthogonalTransformation,
+    LinearTransformation[na.Cartesian3dMatrixArray],
+):
+    pass
+
 
 @dataclasses.dataclass(eq=False)
 class AbstractCartesian3dRotation(
@@ -405,6 +640,44 @@ class AbstractCartesian3dRotation(
     @property
     def matrix(self) -> na.AbstractCartesian3dRotationMatrixArray:
         return self._matrix_type()(self.angle)
+
+    def __call__(
+        self,
+        a: na.AbstractCartesian3dVectorArray,
+    ) -> na.Cartesian3dVectorArray:
+        return _matvec_3d(self.matrix, a)
+
+    @property
+    def inverse(self: Self) -> Self:
+        return dataclasses.replace(self, angle=-self.angle)
+
+    def __matmul__(
+            self,
+            other: AbstractLinearTransformation | AbstractTranslation,
+    ) -> LinearTransformation | AffineTransformation:
+        if isinstance(other, AbstractLinearTransformation):
+            return LinearTransformation(
+                self.matrix @ other.matrix,
+            )
+        elif isinstance(other, AbstractTranslation):
+            return AffineTransformation(
+                transformation_linear=self,
+                translation=Translation(self.matrix @ other.vector),
+            )
+        else:
+            return NotImplemented
+
+    def __rmatmul__(
+            self,
+            other: AbstractTranslation,
+    ) -> AffineTransformation:
+        if isinstance(other, AbstractTranslation):
+            return AffineTransformation(
+                transformation_linear=self,
+                translation=other,
+            )
+        else:
+            return NotImplemented
 
 
 @dataclasses.dataclass(eq=False)
