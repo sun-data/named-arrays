@@ -293,7 +293,7 @@ class AbstractVectorArray(
                         item[ax] = self.type_explicit.from_scalar(item[ax], like=self)
                     else:
                         return NotImplemented
-                elif isinstance(item[ax], (int, slice)):
+                elif isinstance(item[ax], (int, slice, np.integer)):
                     item[ax] = self.type_explicit.from_scalar(item[ax], like=self)
                 elif item[ax] is None:
                     item[ax] = self.type_explicit.from_scalar(item[ax], like=self)
