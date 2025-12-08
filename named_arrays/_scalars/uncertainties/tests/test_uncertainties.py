@@ -114,6 +114,7 @@ class AbstractTestAbstractUncertainScalarArray(
                     )
                 )
             ),
+            True,
             na.ScalarLinearSpace(0, 1, axis='y', num=_num_y) > 0.5,
             na.UncertainScalarArray(
                 nominal=na.ScalarLinearSpace(0, 1, axis='y', num=_num_y),
@@ -132,7 +133,10 @@ class AbstractTestAbstractUncertainScalarArray(
     ):
         super().test__getitem__(array=array, item=item)
 
-        if isinstance(item, na.AbstractArray):
+        if isinstance(item, bool):
+            item_nominal = item_distribution = item
+
+        elif isinstance(item, na.AbstractArray):
 
             if not set(item.shape).issubset(array.shape_distribution):
                 with pytest.raises(ValueError):
@@ -795,6 +799,7 @@ class TestUncertainScalarArray(
             dict(y=slice(None)),
             dict(y=na.ScalarArrayRange(0, _num_y, axis='y')),
             dict(x=na.ScalarArrayRange(0, _num_x, axis='x'), y=na.ScalarArrayRange(0, _num_y, axis='y')),
+            True,
             na.ScalarArray.ones(shape=dict(y=_num_y), dtype=bool),
         ],
     )
