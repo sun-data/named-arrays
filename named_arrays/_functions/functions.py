@@ -163,6 +163,19 @@ class AbstractFunctionArray(
             ),
         )
 
+    def to_value(
+        self,
+        unit: u.UnitBase,
+        equivalencies: None | list[tuple[u.Unit, u.Unit]] = [],
+    ) -> FunctionArray:
+        exp = self.explicit
+        return exp.replace(
+            outputs=exp.outputs.to_value(
+                unit=unit,
+                equivalencies=equivalencies,
+            ),
+        )
+
     @property
     def length(self) -> FunctionArray:
         exp = self.explicit

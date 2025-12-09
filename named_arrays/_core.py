@@ -456,6 +456,26 @@ class AbstractArray(
             Boolean flag controlling whether to copy the array.
         """
 
+    @abc.abstractmethod
+    def to_value(
+        self: Self,
+        unit: u.UnitBase,
+        equivalencies: None | list[tuple[u.Unit, u.Unit]] = [],
+    ) -> Self:
+        """
+        The numerical value of this array, possibly in a different unit.
+
+        Equivalent to :meth:`astropy.units.Quantity.to_value`.
+
+        Parameters
+        ----------
+        unit
+            New unit of the returned array
+        equivalencies
+            A list of equivalence pairs to try if the units are not directly
+            convertible.
+        """
+
     @property
     @abc.abstractmethod
     def length(self: Self) -> na.AbstractScalar:

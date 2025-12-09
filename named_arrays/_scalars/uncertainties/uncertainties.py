@@ -215,6 +215,19 @@ class AbstractUncertainScalarArray(
             distribution=self.distribution.to(unit),
         )
 
+    def to_value(
+        self,
+        unit: u.UnitBase,
+        equivalencies: None | list[tuple[u.Unit, u.Unit]] = None,
+    ) -> UncertainScalarArray:
+        return UncertainScalarArray(
+            nominal=na.as_named_array(self.nominal).to_value(
+                unit=unit,
+                equivalencies=equivalencies,
+            ),
+            distribution=self.distribution.to(unit),
+        )
+
     def add_axes(self, axes: str | Sequence[str]) -> UncertainScalarArray:
         return UncertainScalarArray(
             nominal=na.as_named_array(self.nominal).add_axes(axes),

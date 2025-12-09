@@ -264,6 +264,22 @@ class AbstractScalarArray(
             axes=self.axes,
         )
 
+    def to_value(
+        self: Self,
+        unit: u.UnitBase,
+        equivalencies: None | list[tuple[u.Unit, u.Unit]] = [],
+    ) -> Self:
+        ndarray = self.ndarray
+        if not isinstance(ndarray, u.Quantity):
+            ndarray = ndarray << u.dimensionless_unscaled
+        return ScalarArray(
+            ndarray=ndarray.to_value(
+                unit=unit,
+                equivalencies=equivalencies,
+            ),
+            axes=self.axes,
+        )
+
     def ndarray_aligned(self: Self, axes: Sequence[str]) -> np.ndarray:
         """
         Align :attr:`ndarray` to a particular sequence of axes.

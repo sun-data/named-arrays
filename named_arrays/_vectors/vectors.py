@@ -205,6 +205,29 @@ class AbstractVectorArray(
                 components_result[c] = components[c]
         return self.type_explicit.from_components(components_result)
 
+    def to_value(
+        self: Self,
+        unit: u.UnitBase | dict[str, None | u.UnitBase],
+        equivalencies: None | list[tuple[u.Unit, u.Unit]] = [],
+    ) -> AbstractExplicitVectorArray:
+        components = self.components
+        if not isinstance(unit, dict):
+            unit = {c: unit for c in components}
+        components_result = dict()
+        for c in components:
+            if unit[c] is not None:
+                if not isinstance(components[c], (u.Quantity, na.AbstractArray)):
+                    components_c = components[c] << u.dimensionless_unscaled
+                else:
+                    components_c = components[c]
+                components_result[c] = components_c.to_value(
+                    unit=unit[c],
+                    equivalencies=equivalencies,
+                )
+            else:
+                components_result[c] = components[c]
+        return self.type_explicit.from_components(components_result)
+
     def add_axes(self: Self, axes: str | Sequence[str]) -> AbstractExplicitVectorArray:
         components = self.components
         return self.type_explicit.from_components({c: na.add_axes(components[c], axes) for c in components})
