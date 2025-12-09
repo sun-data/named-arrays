@@ -225,7 +225,7 @@ class AbstractUncertainScalarArray(
                 unit=unit,
                 equivalencies=equivalencies,
             ),
-            distribution=self.distribution.to(unit),
+            distribution=self.distribution.to_value(unit),
         )
 
     def add_axes(self, axes: str | Sequence[str]) -> UncertainScalarArray:
