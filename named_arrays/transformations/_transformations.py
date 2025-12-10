@@ -1,9 +1,3 @@
-"""
-Vector transformation primitives.
-
-Designed to be composed together into arbitrary transformations.
-"""
-
 from __future__ import annotations
 from typing import TypeVar, Generic, Iterator, Type
 from typing_extensions import Self
@@ -18,13 +12,8 @@ __all__ = [
     "IdentityTransformation",
     "AbstractTranslation",
     "Translation",
-    "Cartesian3dTranslation",
     "AbstractLinearTransformation",
     "LinearTransformation",
-    "AbstractCartesian3dRotation",
-    "Cartesian3dRotationX",
-    "Cartesian3dRotationY",
-    "Cartesian3dRotationZ",
     "AbstractAffineTransformation",
     "AffineTransformation",
     "AbstractTransformationList",
@@ -38,138 +27,6 @@ LinearTransformationT = TypeVar("LinearTransformationT", bound="AbstractLinearTr
 TranslationT = TypeVar("TranslationT", bound="AbstractTranslation")
 
 
-def _dot_3d(
-    a: na.AbstractCartesian3dVectorArray,
-    b: na.AbstractCartesian3dVectorArray,
-) -> na.AbstractScalarArray:
-    """
-    Compute the dot product between two 3-dimensional vectors.
-
-    Parameters
-    ----------
-    a
-        The first vector operand.
-    b
-        The second vector operand.
-    """
-
-    ax = a.x
-    ay = a.y
-    az = a.z
-
-    bx = b.x
-    by = b.y
-    bz = b.z
-
-    unit_a = na.unit(ax)
-    unit_b = na.unit(bx)
-
-    if unit_a is not None:
-        ax = (ax << unit_a).value
-        ay = (ay << unit_a).value
-        az = (az << unit_a).value
-
-    if unit_b is not None:
-        bx = (bx << unit_b).value
-        by = (by << unit_b).value
-        bz = (bz << unit_b).value
-
-    result = _dot_3d_numba(ax, ay, az, bx, by, bz)
-
-    if unit_a is not None:
-        if unit_b is not None:
-            unit = unit_a * unit_b
-        else:
-            unit = unit_a
-    else:
-        if unit_b is not None:
-            unit = unit_b
-        else:
-            unit = None
-
-    return result << unit
-
-
-@numba.vectorize(cache=True)
-def _dot_3d_numba(
-    ax: float,
-    ay: float,
-    az: float,
-    bx: float,
-    by: float,
-    bz: float,
-) -> float:
-    return ax *  bx + ay * by + az * bz
-
-
-def _matvec_3d(
-    a: na.AbstractCartesian3dMatrixArray,
-    b: na.AbstractCartesian3dVectorArray,
-) -> na.Cartesian3dVectorArray:
-    """
-    Matrix-vector dot product for 3-dimensional Cartesian vectors.
-
-    Parameters
-    ----------
-    a
-        Matrix operand.
-    b
-        Vector operand.
-    """
-    return na.Cartesian3dVectorArray(
-        x=_dot_3d(a.x, b),
-        y=_dot_3d(a.y, b),
-        z=_dot_3d(a.z, b),
-    )
-
-
-def _transpose_3d(
-    a: na.AbstractCartesian3dMatrixArray,
-) -> na.Cartesian3dMatrixArray:
-    """
-    Take the transpose of a 3-dimensional Cartesian matrix.
-
-    Parameters
-    ----------
-    a
-        The matrix to transpose.
-    """
-
-    ax = a.x
-    ay = a.y
-    az = a.z
-
-    return na.Cartesian3dMatrixArray(
-        x = na.Cartesian3dVectorArray(ax.x, ay.x, az.x),
-        y = na.Cartesian3dVectorArray(ay.x, ay.y, ay.z),
-        z = na.Cartesian3dVectorArray(az.x, az.y, az.z),
-    )
-
-
-def _matmul_3d(
-    a: na.AbstractCartesian3dMatrixArray,
-    b: na.AbstractCartesian3dMatrixArray,
-) -> na.Cartesian3dMatrixArray:
-    """
-    Matrix product for 3-dimensional Cartesian matrices
-
-    Parameters
-    ----------
-    a
-        Left matrix operand.
-    b
-        Right matrix operand.
-    """
-
-    b = _transpose_3d(b)
-
-    return na.Cartesian3dMatrixArray(
-        x=_matvec_3d(a, b.x),
-        y=_matvec_3d(a, b.y),
-        z=_matvec_3d(a, b.z),
-    )
-
-
 @dataclasses.dataclass(eq=False)
 class AbstractTransformation(
     abc.ABC
@@ -180,13 +37,22 @@ class AbstractTransformation(
 
     @property
     @abc.abstractmethod
+    def type_concrete(self) -> Type[AbstractTransformation]:
+        """
+        The default concrete implementation of this transformation.
+
+        This is used to create new instances of this transformation.
+        """
+
+    @property
+    @abc.abstractmethod
     def shape(self) -> dict[str, int]:
-        """The shape of the transformation."""
+        """The logical shape of the arrays comprising this transformation."""
 
     @abc.abstractmethod
     def __call__(
-            self,
-            a: na.AbstractVectorArray,
+        self,
+        a: na.AbstractVectorArray,
     ) -> na.AbstractVectorArray:
         """
         Apply this transformation to the given vector.
@@ -215,7 +81,7 @@ class AbstractTransformation(
         Parameters
         ----------
         other
-            another transformation to compose with this one
+            Another transformation to compose with this one.
 
         Examples
         --------
@@ -262,6 +128,10 @@ class IdentityTransformation(
     """
 
     @property
+    def type_concrete(self) -> Type[IdentityTransformation]:
+        return IdentityTransformation
+
+    @property
     def shape(self) -> dict[str, int]:
         return dict()
 
@@ -285,15 +155,25 @@ class IdentityTransformation(
 @dataclasses.dataclass(eq=False)
 class AbstractTranslation(
     AbstractTransformation,
+    Generic[VectorT],
 ):
     """
     An interface describing an arbitrary translation of a vector.
     """
 
     @property
+    def type_concrete(self) -> Type[Translation]:
+        return Translation
+
+    @property
     @abc.abstractmethod
-    def vector(self) -> na.AbstractVectorArray:
+    def vector(self) -> VectorT:
         """A vector representing this translation."""
+
+    @classmethod
+    @abc.abstractmethod
+    def from_vector(cls, v: VectorT) -> AbstractTranslation[VectorT]:
+        """Create a new instance of this transformation from a vector."""
 
     @property
     def shape(self) -> dict[str, int]:
@@ -304,21 +184,18 @@ class AbstractTranslation(
 
     @property
     def inverse(self: Self) -> Self:
-        return Translation(vector=-self.vector)
+        return self.type_concrete.from_vector(-self.vector)
 
     def __matmul__(self, other: AbstractTranslation) -> AbstractTranslation:
         if isinstance(other, AbstractTranslation):
-            return Translation(
-                vector=self.vector + other.vector
-            )
+            return self.type_concrete.from_vector(self.vector + other.vector)
         else:
             return NotImplemented
 
 
 @dataclasses.dataclass(eq=False)
 class Translation(
-    AbstractTranslation,
-    Generic[VectorT]
+    AbstractTranslation[VectorT],
 ):
     """
     A translation-only vector transformation.
@@ -382,81 +259,27 @@ class Translation(
     vector: VectorT = dataclasses.MISSING
     """A vector representing the translation."""
 
-@dataclasses.dataclass(eq=False)
-class Cartesian3dTranslation(
-    AbstractTranslation
-):
-    """
-    A translation in a 3D Cartesian space.
-    """
-
-    x: na.ScalarLike = 0 * u.mm
-    """The :math:`x` component of this translation."""
-
-    y: na.ScalarLike = 0 * u.mm
-    """The :math:`y` component of this translation."""
-
-    z: na.ScalarLike = 0 * u.mm
-    """The :math:`z` component of this translation."""
-
     @classmethod
-    def from_vector(
-        cls: Type[Self],
-        vector: na.AbstractCartesian3dVectorArray,
-    ) -> Self:
-        return cls(
-            x=vector.x,
-            y=vector.y,
-            z=vector.z,
-        )
-
-    @property
-    def vector(self) -> na.Cartesian3dVectorArray:
-        return na.Cartesian3dVectorArray(self.x, self.y, self.z)
-
-    def __call__(
-        self,
-        a: na.AbstractCartesian3dVectorArray,
-    ) -> na.Cartesian3dVectorArray:
-        return na.Cartesian3dVectorArray(
-            x=self.x + a.x,
-            y=self.y + a.y,
-            z=self.z + a.z,
-        )
-
-    @property
-    def inverse(self: Self) -> Self:
-        return Cartesian3dTranslation(
-            x=-self.x,
-            y=-self.y,
-            z=-self.z,
-        )
-
-    def __matmul__(
-        self,
-        other: Cartesian3dTranslation,
-    ) -> Cartesian3dTranslation:
-        if isinstance(other, Cartesian3dTranslation):
-            return Cartesian3dTranslation(
-                x=self.x + other.x,
-                y=self.y + other.y,
-                z=self.z + other.z,
-            )
-        else:
-            return NotImplemented
+    def from_vector(cls, v: VectorT) -> Translation[VectorT]:
+        return cls(vector=v)
 
 
 @dataclasses.dataclass(eq=False)
 class AbstractLinearTransformation(
     AbstractTransformation,
+    Generic[MatrixT],
 ):
     """
     An interface describing an arbitrary linear transformation.
     """
 
     @property
+    def type_concrete(self) -> Type[LinearTransformation]:
+        return LinearTransformation
+
+    @property
     @abc.abstractmethod
-    def matrix(self) -> na.AbstractMatrixArray:
+    def matrix(self) -> MatrixT:
         """
         The matrix representation of this linear transformation.
         """
@@ -470,20 +293,18 @@ class AbstractLinearTransformation(
 
     @property
     def inverse(self: Self) -> Self:
-        return LinearTransformation(matrix=self.matrix.inverse)
+        return self.type_concrete(matrix=self.matrix.inverse)
 
     def __matmul__(
             self,
             other: AbstractLinearTransformation | AbstractTranslation,
     ) -> LinearTransformation | AffineTransformation:
         if isinstance(other, AbstractLinearTransformation):
-            return LinearTransformation(
-                self.matrix @ other.matrix,
-            )
+            return self.type_concrete.from_matrix(self.matrix @ other.matrix)
         elif isinstance(other, AbstractTranslation):
             return AffineTransformation(
                 transformation_linear=self,
-                translation=Translation(self.matrix @ other.vector),
+                translation=other.type_concrete.from_vector(self(other.vector)),
             )
         else:
             return NotImplemented
@@ -562,149 +383,9 @@ class LinearTransformation(
     """
     matrix: MatrixT = dataclasses.MISSING
 
-@dataclasses.dataclass(eq=False)
-class AbstractCartesian3dOrthogonalTransformation(
-    AbstractLinearTransformation,
-):
-    """
-    An orthogonal transformation of a 3-dimensional Cartesian vector.
-    """
-
-    def __call__(
-        self,
-        a: na.AbstractCartesian3dVectorArray,
-    ) -> na.Cartesian3dVectorArray:
-        return _matvec_3d(self.matrix, a)
-
-    @property
-    def inverse(self: Self) -> Self:
-        return Cartesian3dOrthogonalTransformation(
-            matrix=_transpose_3d(self.matrix),
-        )
-
-    def __matmul__(
-            self,
-            other: AbstractCartesian3dOrthogonalTransformation | Cartesian3dTranslation,
-    ) -> LinearTransformation | AffineTransformation:
-        if isinstance(other, AbstractCartesian3dOrthogonalTransformation):
-            return Cartesian3dOrthogonalTransformation(
-                _matmul_3d(self.matrix, other.matrix),
-            )
-        elif isinstance(other, Cartesian3dTranslation):
-            return AffineTransformation(
-                transformation_linear=self,
-                translation=Cartesian3dTranslation.from_vector(
-                    self.matrix @ other.vector,
-                ),
-            )
-        else:
-            return NotImplemented
-
-    def __rmatmul__(
-            self,
-            other: Cartesian3dTranslation,
-    ) -> AffineTransformation:
-        if isinstance(other, Cartesian3dTranslation):
-            return AffineTransformation(
-                transformation_linear=self,
-                translation=other,
-            )
-        else:
-            return NotImplemented
-
-
-@dataclasses.dataclass(eq=False)
-class Cartesian3dOrthogonalTransformation(
-    AbstractCartesian3dOrthogonalTransformation,
-    LinearTransformation[na.Cartesian3dMatrixArray],
-):
-    pass
-
-
-@dataclasses.dataclass(eq=False)
-class AbstractCartesian3dRotation(
-    AbstractLinearTransformation
-):
-    """
-    An interface describing an arbitrary rotation in a 3D Cartesian space.
-    """
-
-    angle: na.ScalarLike = 0 * u.deg
-    """The angle of rotation."""
-
     @classmethod
-    @abc.abstractmethod
-    def _matrix_type(cls) -> type[na.AbstractCartesian3dRotationMatrixArray]:
-        """to be used by subclasses to specify which rotation matrix to use"""
-
-    @property
-    def matrix(self) -> na.AbstractCartesian3dRotationMatrixArray:
-        return self._matrix_type()(self.angle)
-
-    def __call__(
-        self,
-        a: na.AbstractCartesian3dVectorArray,
-    ) -> na.Cartesian3dVectorArray:
-        return _matvec_3d(self.matrix, a)
-
-    @property
-    def inverse(self: Self) -> Self:
-        return dataclasses.replace(self, angle=-self.angle)
-
-    def __matmul__(
-            self,
-            other: AbstractLinearTransformation | AbstractTranslation,
-    ) -> LinearTransformation | AffineTransformation:
-        if isinstance(other, AbstractLinearTransformation):
-            return LinearTransformation(
-                self.matrix @ other.matrix,
-            )
-        elif isinstance(other, AbstractTranslation):
-            return AffineTransformation(
-                transformation_linear=self,
-                translation=Translation(self.matrix @ other.vector),
-            )
-        else:
-            return NotImplemented
-
-    def __rmatmul__(
-            self,
-            other: AbstractTranslation,
-    ) -> AffineTransformation:
-        if isinstance(other, AbstractTranslation):
-            return AffineTransformation(
-                transformation_linear=self,
-                translation=other,
-            )
-        else:
-            return NotImplemented
-
-
-@dataclasses.dataclass(eq=False)
-class Cartesian3dRotationX(
-    AbstractCartesian3dRotation
-):
-    """A rotation about the $x$ axis."""
-    def _matrix_type(cls):
-        return na.Cartesian3dXRotationMatrixArray
-
-
-@dataclasses.dataclass(eq=False)
-class Cartesian3dRotationY(
-    AbstractCartesian3dRotation
-):
-    """A rotation about the $y$ axis."""
-    def _matrix_type(cls):
-        return na.Cartesian3dYRotationMatrixArray
-
-
-@dataclasses.dataclass(eq=False)
-class Cartesian3dRotationZ(
-    AbstractCartesian3dRotation
-):
-    """A rotation about the $z$ axis."""
-    def _matrix_type(cls):
-        return na.Cartesian3dZRotationMatrixArray
+    def from_matrix(cls, m: MatrixT) -> LinearTransformation[MatrixT]:
+        return cls(matrix=m)
 
 
 @dataclasses.dataclass(eq=False)
@@ -712,6 +393,10 @@ class AbstractAffineTransformation(
     AbstractTransformation,
 ):
     """An interface describing an arbitrary affine transformation."""
+
+    @property
+    def type_concrete(self) -> Type[AffineTransformation]:
+        return AffineTransformation
 
     @property
     @abc.abstractmethod
@@ -743,19 +428,23 @@ class AbstractAffineTransformation(
         translation = self.translation.inverse
         return AffineTransformation(
             transformation_linear=transformation_linear,
-            translation=Translation(transformation_linear(translation.vector)),
+            translation=translation.from_vector(
+                v=transformation_linear(translation.vector),
+            ),
         )
 
     def __matmul__(
-            self,
-            other: AbstractAffineTransformation | AbstractLinearTransformation | AbstractTranslation
+        self,
+        other: AbstractAffineTransformation | AbstractLinearTransformation | AbstractTranslation
     ) -> AffineTransformation:
         transformation_linear = self.transformation_linear
         translation = self.translation
         if isinstance(other, AbstractAffineTransformation):
             return AffineTransformation(
                 transformation_linear=transformation_linear @ other.transformation_linear,
-                translation=Translation(transformation_linear.matrix @ other.translation.vector + translation.vector),
+                translation=translation.from_vector(
+                    translation(transformation_linear(other.translation.vector)),
+                ),
             )
         elif isinstance(other, AbstractLinearTransformation):
             return AffineTransformation(
@@ -765,7 +454,9 @@ class AbstractAffineTransformation(
         elif isinstance(other, AbstractTranslation):
             return AffineTransformation(
                 transformation_linear=transformation_linear,
-                translation=Translation(transformation_linear.matrix @ other.vector + translation.vector)
+                translation=translation.from_vector(
+                    translation(transformation_linear(other.vector)),
+                ),
             )
         else:
             return NotImplemented
@@ -777,7 +468,9 @@ class AbstractAffineTransformation(
         if isinstance(other, AbstractLinearTransformation):
             return AffineTransformation(
                 transformation_linear=other @ self.transformation_linear,
-                translation=Translation(other.matrix @ self.translation.vector),
+                translation=self.translation.from_vector(
+                    other(self.translation.vector),
+                ),
             )
         elif isinstance(other, AbstractTranslation):
             return AffineTransformation(
@@ -811,6 +504,10 @@ class AbstractTransformationList(
     AbstractTransformation,
 ):
     """An interface describing a sequence of transformations."""
+
+    @property
+    def type_concrete(self) -> Type[TransformationList]:
+        return TransformationList
 
     @property
     @abc.abstractmethod
