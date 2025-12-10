@@ -211,6 +211,18 @@ class AbstractTestAbstractArray(
     def test_to(self, array: na.AbstractArray, unit: None | u.UnitBase):
         pass
 
+    @pytest.mark.parametrize("unit", [u.one, u.m])
+    def test_to_value(self, array: na.AbstractArray, unit: u.UnitBase):
+        try:
+            result_expected = array.to(unit).value
+        except u.UnitConversionError:
+            with pytest.raises(u.UnitConversionError):
+                array.to_value(unit)
+            return
+
+        result = array.to_value(unit)
+        assert np.all(result == result_expected)
+
     @abc.abstractmethod
     def test_length(self, array: na.AbstractArray):
         pass
