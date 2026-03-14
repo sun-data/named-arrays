@@ -3,6 +3,7 @@ from typing import TypeVar, Generic, Iterator, Type
 from typing_extensions import Self
 import abc
 import dataclasses
+import numpy as np
 import numba
 import astropy.units as u
 import named_arrays as na
@@ -11,7 +12,7 @@ from ._transformations import (
     Translation,
     AbstractLinearTransformation,
     LinearTransformation,
-    AffineTransformation, MatrixT,
+    AffineTransformation, MatrixT, AbstractTransformation,
 )
 
 
@@ -48,8 +49,8 @@ def _dot_3d(
     by = b.y
     bz = b.z
 
-    unit_a = na.unit(a)
-    unit_b = na.unit(b)
+    unit_a = na.unit(ax)
+    unit_b = na.unit(bx)
 
     if unit_a is not None:
         ax = (ax << unit_a).value
@@ -61,7 +62,20 @@ def _dot_3d(
         by = (by << unit_b).value
         bz = (bz << unit_b).value
 
-    result = _dot_3d_numba(ax, ay, az, bx, by, bz)
+    result = _dot_3d_numexpr(ax, ay, az, bx, by, bz)
+
+    # shape = na.shape_broadcasted(ax, ay, az, bx, by, bz)
+    #
+    # result = _dot_3d_ndarray(
+    #     ax.ndarray_aligned(shape),
+    #     ay.ndarray_aligned(shape),
+    #     az.ndarray_aligned(shape),
+    #     bx.ndarray_aligned(shape),
+    #     by.ndarray_aligned(shape),
+    #     bz.ndarray_aligned(shape),
+    # )
+    #
+    # result = na.ScalarArray(result, axes=tuple(shape))
 
     if unit_a is not None:
         if unit_b is not None:
@@ -77,8 +91,60 @@ def _dot_3d(
     return result << unit
 
 
-@numba.vectorize(cache=True)
-def _dot_3d_numba(
+def _dot_3d_ndarray(
+    ax: np.ndarray,
+    ay: np.ndarray,
+    az: np.ndarray,
+    bx: np.ndarray,
+    by: np.ndarray,
+    bz: np.ndarray,
+) -> np.ndarray:
+
+    ax, ay, az, bx, by, bz = np.broadcast_arrays(ax, ay, az, bx, by, bz)
+
+    shape = ax.shape
+
+    result = _dot_3d_njit(
+        ax.reshape(-1),
+        ay.reshape(-1),
+        az.reshape(-1),
+        bx.reshape(-1),
+        by.reshape(-1),
+        bz.reshape(-1),
+    )
+
+    result = result.reshape(shape)
+
+    return result
+
+
+@numba.njit(parallel=True, fastmath=True)
+def _dot_3d_njit(
+    ax: np.ndarray,
+    ay: np.ndarray,
+    az: np.ndarray,
+    bx: np.ndarray,
+    by: np.ndarray,
+    bz: np.ndarray,
+) -> np.ndarray:
+
+    num, = ax.shape
+
+    result = np.empty(num)
+
+    for i in numba.prange(num):
+        result[i] = ax[i] * bx[i] + ay[i] * by[i] + az[i] * bz[i]
+
+    return result
+
+
+@numba.vectorize(
+    ["float64(float64,float64,float64,float64,float64,float64)"],
+    cache=True,
+    target="parallel",
+    fastmath=True,
+)
+def _dot_3d_vectorized(
     ax: float,
     ay: float,
     az: float,
@@ -87,6 +153,17 @@ def _dot_3d_numba(
     bz: float,
 ) -> float:
     return ax * bx + ay * by + az * bz
+
+
+def _dot_3d_numexpr(
+    ax: float,
+    ay: float,
+    az: float,
+    bx: float,
+    by: float,
+    bz: float,
+) -> float:
+    return na.numexpr.evaluate("ax * bx + ay * by + az * bz")
 
 
 def _matvec_3d(
@@ -109,6 +186,29 @@ def _matvec_3d(
         z=_dot_3d(a.z, b),
     )
 
+def _vecmat_3d(
+    a: na.AbstractCartesian3dVectorArray,
+    b_T: na.AbstractCartesian3dMatrixArray,
+) -> na.Cartesian3dVectorArray:
+    """
+    Vector-matrix dot product for 3-dimensional Cartesian vectors.
+
+    Parameters
+    ----------
+    a
+        Vector operand.
+    b
+        Transposed matrix operand.
+
+        This is provided instead of the untransposed version so that repeated
+        calls to this function don't invoke multiple calls to :func:`transpose`.
+    """
+    return na.Cartesian3dVectorArray(
+        x=_dot_3d(a, b_T.x),
+        y=_dot_3d(a, b_T.y),
+        z=_dot_3d(a, b_T.z),
+    )
+
 
 def _transpose_3d(
     a: na.AbstractCartesian3dMatrixArray,
@@ -128,8 +228,8 @@ def _transpose_3d(
 
     return na.Cartesian3dMatrixArray(
         x=na.Cartesian3dVectorArray(ax.x, ay.x, az.x),
-        y=na.Cartesian3dVectorArray(ay.x, ay.y, ay.z),
-        z=na.Cartesian3dVectorArray(az.x, az.y, az.z),
+        y=na.Cartesian3dVectorArray(ax.y, ay.y, az.y),
+        z=na.Cartesian3dVectorArray(ax.z, ay.z, az.z),
     )
 
 
@@ -148,17 +248,25 @@ def _matmul_3d(
         Right matrix operand.
     """
 
-    b = _transpose_3d(b)
+    b_T = _transpose_3d(b)
 
     return na.Cartesian3dMatrixArray(
-        x=_matvec_3d(a, b.x),
-        y=_matvec_3d(a, b.y),
-        z=_matvec_3d(a, b.z),
+        x=_vecmat_3d(a.x, b_T),
+        y=_vecmat_3d(a.y, b_T),
+        z=_vecmat_3d(a.z, b_T),
     )
 
 
 @dataclasses.dataclass(eq=False)
+class AbstractCartesian3dTransformation(
+    AbstractTransformation,
+):
+    """An arbitrary transformation of a 3D vector."""
+
+
+@dataclasses.dataclass(eq=False)
 class Cartesian3dTranslation(
+    AbstractCartesian3dTransformation,
     AbstractTranslation,
 ):
     """
@@ -227,6 +335,7 @@ class Cartesian3dTranslation(
 
 @dataclasses.dataclass(eq=False)
 class AbstractCartesian3dLinearTransformation(
+    AbstractCartesian3dTransformation,
     AbstractLinearTransformation,
 ):
     """
@@ -254,6 +363,7 @@ class AbstractCartesian3dLinearTransformation(
         self,
         other: AbstractCartesian3dLinearTransformation | Cartesian3dTranslation,
     ) -> Cartesian3dLinearTransformation | AffineTransformation:
+        print("here")
         if isinstance(other, AbstractCartesian3dOrthogonalTransformation):
             return Cartesian3dOrthogonalTransformation(
                 _matmul_3d(self.matrix, other.matrix),
@@ -307,18 +417,29 @@ class AbstractCartesian3dOrthogonalTransformation(
     """
 
     @property
+    def type_concrete(self) -> Type[Cartesian3dOrthogonalTransformation]:
+        return Cartesian3dOrthogonalTransformation
+
+    @property
     def inverse(self: Self) -> Self:
         return Cartesian3dOrthogonalTransformation(
             matrix=_transpose_3d(self.matrix),
         )
+    #
+    # def __matmul__(
+    #     self,
+    #     other: AbstractCartesian3dTransformation | AbstractCartesian3dOrthogonalTransformation,
+    # ) -> Cartesian3dOrthogonalTransformation | Cartesian3dLinearTransformation | AffineTransformation:
+    #     if isinstance(other, AbstractCartesian3dOrthogonalTransformation):
+    #         return self.type_concrete.from_matrix()
 
 
 @dataclasses.dataclass(eq=False)
 class Cartesian3dOrthogonalTransformation(
     AbstractCartesian3dOrthogonalTransformation,
-    LinearTransformation[na.Cartesian3dMatrixArray],
+    Cartesian3dLinearTransformation,
 ):
-    pass
+    """A concrete implementation of a 3-dimensional orthogonal transformation."""
 
 
 @dataclasses.dataclass(eq=False)
@@ -350,34 +471,6 @@ class AbstractCartesian3dRotation(
     @property
     def inverse(self: Self) -> Self:
         return dataclasses.replace(self, angle=-self.angle)
-
-    def __matmul__(
-            self,
-            other: AbstractLinearTransformation | AbstractTranslation,
-    ) -> LinearTransformation | AffineTransformation:
-        if isinstance(other, AbstractLinearTransformation):
-            return LinearTransformation(
-                self.matrix @ other.matrix,
-            )
-        elif isinstance(other, AbstractTranslation):
-            return AffineTransformation(
-                transformation_linear=self,
-                translation=Translation(self.matrix @ other.vector),
-            )
-        else:
-            return NotImplemented
-
-    def __rmatmul__(
-            self,
-            other: AbstractTranslation,
-    ) -> AffineTransformation:
-        if isinstance(other, AbstractTranslation):
-            return AffineTransformation(
-                transformation_linear=self,
-                translation=other,
-            )
-        else:
-            return NotImplemented
 
 
 @dataclasses.dataclass(eq=False)
