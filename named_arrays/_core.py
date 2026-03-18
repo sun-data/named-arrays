@@ -912,7 +912,7 @@ class AbstractArray(
         shape
             The new shape of the array, must be compatible with this array.
         """
-        return np.reshape(self, newshape=shape)
+        return np.reshape(self, shape)
 
     def min(
             self: Self,

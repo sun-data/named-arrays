@@ -494,9 +494,9 @@ def moveaxis(
 
 
 @implements(np.reshape)
-def reshape(a: na.AbstractVectorArray, newshape: dict[str, int]) -> na.AbstractExplicitVectorArray:
+def reshape(a: na.AbstractVectorArray, shape: dict[str, int]) -> na.AbstractExplicitVectorArray:
     components = a.broadcasted.components
-    return a.type_explicit.from_components({c: np.reshape(components[c], newshape=newshape) for c in components})
+    return a.type_explicit.from_components({c: np.reshape(components[c], shape) for c in components})
 
 
 def array_function_stack_like(

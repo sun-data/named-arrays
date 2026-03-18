@@ -385,17 +385,17 @@ def moveaxis(
 @_implements(np.reshape)
 def reshape(
         a: na.AbstractFunctionArray,
-        newshape: dict[str, int],
+        shape: dict[str, int],
 ) -> na.FunctionArray:
 
     a = a.broadcasted
-    for ax in newshape:
+    for ax in shape:
         if ax in a.axes_vertex or (ax not in a.axes and len(a.axes_vertex) != 0):
             raise ValueError(f"Cannot reshape along axes vertex {a.axes_vertex}.")
 
     return a.type_explicit(
-        inputs=np.reshape(a.inputs, newshape=newshape),
-        outputs=np.reshape(a.outputs, newshape=newshape)
+        inputs=np.reshape(a.inputs, shape),
+        outputs=np.reshape(a.outputs, shape)
     )
 
 
