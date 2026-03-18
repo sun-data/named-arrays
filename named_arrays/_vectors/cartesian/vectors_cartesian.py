@@ -129,7 +129,7 @@ class AbstractCartesianVectorArray(
             if "out" in kwargs_c:
                 out = kwargs_c.pop("out")
                 if out is not None:
-                    out_c = out.components[c]
+                    out_c = tuple(o.components[c] if o is not None else o for o in out)
                 else:
                     out_c = None
                 kwargs_c["out"] = out_c
