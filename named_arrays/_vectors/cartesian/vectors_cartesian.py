@@ -115,37 +115,33 @@ class AbstractCartesianVectorArray(
                 components_inp = {c: inp for c in components}
             components_inputs.append(components_inp)
 
-        if "out" in kwargs:
-            out = kwargs.pop("out")
-            components_out = dict()
-            for c in components:
-                components_out[c] = tuple(o.components[c] if o is not None else o for o in out)
-                components_out[c] = tuple(o if isinstance(np.ndarray, na.AbstractArray) else None for o in out)
-        else:
-            out = (None, ) * function.nout
-            components_out = {c: (None, ) * function.nout for c in components}
+        components_result = tuple(dict() for _ in range(function.nout))
+        func = getattr(function, method)
+        for c in components:
 
-        if "where" in kwargs:
-            where = kwargs.pop("where")
-            if isinstance(where, na.AbstractArray):
+            kwargs_c = kwargs.copy()
+
+            if "out" in kwargs_c:
+                out = kwargs_c.pop("out")
+                if out is not None:
+                    out_c = out.components[c]
+                else:
+                    out_c = None
+                kwargs_c["out"] = out_c
+
+            if "where" in kwargs_c:
+                where = kwargs_c.pop("where")
                 if where.type_abstract == self.type_abstract:
-                    components_where = where.components
+                    where_c = where.components[c]
                 elif isinstance(where, na.AbstractScalar):
-                    components_where = {c: where for c in components}
+                    where_c = where
                 else:
                     return NotImplemented
-            else:
-                components_where = {c: where for c in components}
-        else:
-            components_where = {c: True for c in components}
+                kwargs_c["where"] = where_c
 
-        components_result = tuple(dict() for _ in range(function.nout))
-        for c in components:
-            component_result = getattr(function, method)(
+            component_result = func(
                 *[inp[c] for inp in components_inputs],
-                out=components_out[c],
-                where=components_where[c],
-                **kwargs,
+                **kwargs_c,
             )
             if function.nout == 1:
                 component_result = (component_result, )
