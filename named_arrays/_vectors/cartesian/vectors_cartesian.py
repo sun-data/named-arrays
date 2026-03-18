@@ -115,6 +115,11 @@ class AbstractCartesianVectorArray(
                 components_inp = {c: inp for c in components}
             components_inputs.append(components_inp)
 
+        if "out" in kwargs:
+            out = kwargs["out"]
+        else:
+            out = (None, ) * function.nout
+
         components_result = tuple(dict() for _ in range(function.nout))
         func = getattr(function, method)
         for c in components:
