@@ -188,7 +188,7 @@ class AbstractTestAbstractVectorArray(
 
             result = np.matmul(array, array_2)
 
-            out = 0 * result
+            out = na.asanyarray(0 * result)
             result_out = np.matmul(array, array_2, out=out)
 
             assert np.all(result == result_expected)
