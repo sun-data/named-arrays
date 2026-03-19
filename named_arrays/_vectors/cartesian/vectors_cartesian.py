@@ -136,12 +136,15 @@ class AbstractCartesianVectorArray(
 
             if "where" in kwargs_c:
                 where = kwargs_c.pop("where")
-                if where.type_abstract == self.type_abstract:
-                    where_c = where.components[c]
-                elif isinstance(where, na.AbstractScalar):
-                    where_c = where
+                if isinstance(where, na.AbstractArray):
+                    if where.type_abstract == self.type_abstract:
+                        where_c = where.components[c]
+                    elif isinstance(where, na.AbstractScalar):
+                        where_c = where
+                    else:
+                        return NotImplemented
                 else:
-                    return NotImplemented
+                    where_c = where
                 kwargs_c["where"] = where_c
 
             component_result = func(

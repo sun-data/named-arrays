@@ -570,6 +570,8 @@ class AbstractTestAbstractScalarArray(
 
             if "where" in kwargs:
                 kwargs_ndarray["where"] = kwargs["where"].ndarray
+                kwargs["out"] = None
+                kwargs_ndarray["out"] = None
 
             try:
                 ufunc(array.ndarray, **kwargs_ndarray)
@@ -586,7 +588,7 @@ class AbstractTestAbstractScalarArray(
             else:
                 out = tuple(0 * np.nan_to_num(r) for r in result)
 
-            result_out = ufunc(array, out=out, **kwargs)
+            result_out = ufunc(array, **(kwargs | {"out": out}))
 
             if ufunc.nout == 1:
                 out = (out, )
@@ -634,6 +636,8 @@ class AbstractTestAbstractScalarArray(
             if "where" in kwargs:
                 kwargs["where"] = na.broadcast_to(kwargs["where"], shape)
                 kwargs_ndarray["where"] = kwargs["where"].ndarray
+                kwargs["out"] =  None
+                kwargs_ndarray["out"] = None
 
             try:
                 ufunc(array_ndarray, array_2_ndarray, **kwargs_ndarray)
@@ -650,7 +654,7 @@ class AbstractTestAbstractScalarArray(
             else:
                 out = tuple(0 * np.nan_to_num(r) for r in result)
 
-            result_out = ufunc(array, array_2, out=out, **kwargs)
+            result_out = ufunc(array, array_2, **(kwargs | {"out": out}))
 
             if ufunc.nout == 1:
                 out = (out,)
