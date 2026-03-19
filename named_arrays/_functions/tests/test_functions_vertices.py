@@ -111,16 +111,16 @@ class AbstractTestAbstractFunctionArrayVertices(
                 method=method,
             )
 
-    @pytest.mark.parametrize('newshape', [dict(r=-1)])
-    def test_reshape(self, array: na.AbstractArray, newshape: dict[str, int]):
+    @pytest.mark.parametrize('shape', [dict(r=-1)])
+    def test_reshape(self, array: na.AbstractArray, shape: dict[str, int]):
 
-        for ax in newshape:
+        for ax in shape:
             if ax in array.axes_vertex or (ax not in array.axes and len(array.axes_vertex) != 0):
                 with pytest.raises(ValueError):
-                    np.reshape(array, newshape=newshape)
+                    np.reshape(array, shape)
                 return
 
-        super().test_reshape(array, newshape)
+        super().test_reshape(array, shape)
     @pytest.mark.parametrize('axes', [None, ('x', 'y'), ('x', 'y', 'z')])
     def test_combine_axes(
             self,
@@ -173,16 +173,16 @@ class AbstractTestAbstractFunctionArrayVertices(
     class TestArrayFunctions(
         test_functions.AbstractTestAbstractFunctionArray.TestArrayFunctions
     ):
-        @pytest.mark.parametrize('newshape', [dict(r=-1)])
-        def test_reshape(self, array: na.AbstractArray, newshape: dict[str, int]):
+        @pytest.mark.parametrize('shape', [dict(r=-1)])
+        def test_reshape(self, array: na.AbstractArray, shape: dict[str, int]):
 
-            for ax in newshape:
+            for ax in shape:
                 if ax in array.axes_vertex or (ax not in array.axes and len(array.axes_vertex) != 0):
                     with pytest.raises(ValueError):
-                        np.reshape(array, newshape=newshape)
+                        np.reshape(array, shape)
                     return
 
-            super().test_reshape(array, newshape)
+            super().test_reshape(array, shape)
 
         @pytest.mark.parametrize('axis', ['x', 'y'])
         def test_concatenate(
