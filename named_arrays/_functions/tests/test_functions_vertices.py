@@ -113,14 +113,9 @@ class AbstractTestAbstractFunctionArrayVertices(
 
     @pytest.mark.parametrize('shape', [dict(r=-1)])
     def test_reshape(self, array: na.AbstractArray, shape: dict[str, int]):
+        with pytest.raises(ValueError):
+            np.reshape(array, shape)
 
-        for ax in shape:
-            if ax in array.axes_vertex or (ax not in array.axes and len(array.axes_vertex) != 0):
-                with pytest.raises(ValueError):
-                    np.reshape(array, shape)
-                return
-
-        super().test_reshape(array, shape)
     @pytest.mark.parametrize('axes', [None, ('x', 'y'), ('x', 'y', 'z')])
     def test_combine_axes(
             self,
@@ -140,7 +135,6 @@ class AbstractTestAbstractFunctionArrayVertices(
 
         super().test_combine_axes(array=array, axes=axes)
 
-
     @pytest.mark.parametrize(
         argnames='item',
         argvalues=[
@@ -156,7 +150,6 @@ class AbstractTestAbstractFunctionArrayVertices(
     ):
 
         super().test__getitem__(array=array, item=item)
-
 
     @pytest.mark.parametrize("array_2", _function_arrays_2())
     class TestUfuncBinary(
@@ -175,14 +168,8 @@ class AbstractTestAbstractFunctionArrayVertices(
     ):
         @pytest.mark.parametrize('shape', [dict(r=-1)])
         def test_reshape(self, array: na.AbstractArray, shape: dict[str, int]):
-
-            for ax in shape:
-                if ax in array.axes_vertex or (ax not in array.axes and len(array.axes_vertex) != 0):
-                    with pytest.raises(ValueError):
-                        np.reshape(array, shape)
-                    return
-
-            super().test_reshape(array, shape)
+            with pytest.raises(ValueError):
+                np.reshape(array, shape)
 
         @pytest.mark.parametrize('axis', ['x', 'y'])
         def test_concatenate(
@@ -200,7 +187,7 @@ class AbstractTestAbstractFunctionArrayVertices(
         def test_nonzero(self, array: na.AbstractArray):
             if len(array.axes_vertex) != 0:
                 with pytest.raises(ValueError, match=f"item not supported by array with type {type(array)}"):
-                    #matches test_core, but is a bad test. nonzero only applied to boolean arrays
+                    # matches test_core, but is a bad test. nonzero only applied to boolean arrays
                     array[np.nonzero(array>array.mean())]
                 return
             super().test_nonzero(array=array)

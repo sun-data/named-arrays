@@ -388,10 +388,13 @@ def reshape(
         shape: dict[str, int],
 ) -> na.FunctionArray:
 
+    if a.axes_vertex:
+        raise ValueError(
+            f"Cannot reshape an {type(a)} containing axes on cell vertices, "
+            f"got {a.axes_vertex=}."
+        )
+
     a = a.broadcasted
-    for ax in shape:
-        if ax in a.axes_vertex or (ax not in a.axes and len(a.axes_vertex) != 0):
-            raise ValueError(f"Cannot reshape along axes vertex {a.axes_vertex}.")
 
     return a.type_explicit(
         inputs=np.reshape(a.inputs, shape),
