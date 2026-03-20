@@ -525,7 +525,7 @@ def moveaxis(
 @implements(np.reshape)
 def reshape(
         a: na.AbstractUncertainScalarArray,
-        newshape: dict[str, int],
+        shape: dict[str, int],
 ) -> na.UncertainScalarArray:
 
     a = a.explicit
@@ -533,11 +533,11 @@ def reshape(
     a.distribution = na.broadcast_to(a.distribution, shape=a.shape_distribution)
     a.distribution.change_axis_index(axis=a.axis_distribution, index=~0)
 
-    newshape_distribution = newshape | {a.axis_distribution: a.num_distribution}
+    shape_distribution = shape | {a.axis_distribution: a.num_distribution}
 
     return na.UncertainScalarArray(
-        nominal=np.reshape(a.nominal, newshape=newshape),
-        distribution=np.reshape(a.distribution, newshape=newshape_distribution)
+        nominal=np.reshape(a.nominal, shape),
+        distribution=np.reshape(a.distribution, shape_distribution)
     )
 
 
