@@ -1921,8 +1921,7 @@ def regridding_regrid_from_weights(
     shape_output = na.broadcast_shapes(shape_orthogonal, shape_output)
 
     weights = weights.broadcast_to({
-        a: shape_input[a] if a not in axis_input else 1
-        for a in shape_input
+        a: shape_input[a] for a in shape_input if a not in axis_input
     })
     values_input = values_input.broadcast_to(shape_input)
 
