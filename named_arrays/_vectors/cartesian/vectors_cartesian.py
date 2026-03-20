@@ -109,7 +109,7 @@ class AbstractCartesianVectorArray(
                     components_inp = inp.components
                 elif isinstance(inp, na.AbstractScalar):
                     components_inp = {c: inp for c in components}
-                else:
+                else:  # pragma: nocover
                     return NotImplemented
             else:
                 components_inp = {c: inp for c in components}

@@ -96,6 +96,9 @@ class AbstractTestAbstractCartesianVectorArray(
             except u.UnitConversionError:
                 pass
 
+            if "where" in kwargs:
+                kwargs["out"] =  None
+
             for c in components:
                 for k in kwargs:
                     if isinstance(kwargs[k], na.AbstractVectorArray):
@@ -124,7 +127,7 @@ class AbstractTestAbstractCartesianVectorArray(
             else:
                 out = tuple(na.asanyarray(0 * np.nan_to_num(r)) for r in result)
 
-            result_out = ufunc(array, out=out, **kwargs)
+            result_out = ufunc(array, **(kwargs | {"out": out}))
 
             if ufunc.nout == 1:
                 out = (out,)
@@ -202,7 +205,7 @@ class AbstractTestAbstractCartesianVectorArray(
             else:
                 out = tuple(na.asanyarray(0 * np.nan_to_num(r)) for r in result)
 
-            result_out = ufunc(array, array_2, out=out, **kwargs)
+            result_out = ufunc(array, array_2, **(kwargs | {"out": out}))
 
             if ufunc.nout == 1:
                 out = (out,)

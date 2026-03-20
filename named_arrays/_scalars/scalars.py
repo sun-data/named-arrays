@@ -564,7 +564,6 @@ class AbstractScalarArray(
             kwargs_ndarray["out"] = tuple(out_normalized)
         else:
             out = (None, ) * nout
-            kwargs_ndarray["out"] = out
 
         out_arrays = tuple(o for o in out if o is not None)
         if out_arrays:
