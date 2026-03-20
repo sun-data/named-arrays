@@ -97,7 +97,7 @@ class AbstractTestAbstractCartesianVectorArray(
                 pass
 
             if "where" in kwargs:
-                kwargs["out"] =  None
+                kwargs["out"] = None
 
             for c in components:
                 for k in kwargs:
