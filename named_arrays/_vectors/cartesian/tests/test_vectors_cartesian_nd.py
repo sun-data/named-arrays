@@ -130,6 +130,19 @@ class AbstractTestAbstractCartesianNdVectorArray(
     ):
         super().test__getitem__(array=array, item=item)
 
+    @pytest.mark.parametrize(
+        argnames="name",
+        argvalues=["y"],
+    )
+    def test__getattr__(
+        self,
+        array: na.AbstractCartesianNdVectorArray,
+        name: str,
+    ):
+        result = getattr(array, name)
+        result_expected = array.components[name]
+        assert np.all(result == result_expected)
+
     @pytest.mark.parametrize('array_2', _cartesian_nd_arrays_2())
     class TestUfuncBinary(
         test_vectors_cartesian.AbstractTestAbstractCartesianVectorArray.TestUfuncBinary

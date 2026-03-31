@@ -29,6 +29,14 @@ class AbstractCartesianNdVectorArray(
     def type_matrix(self) -> Type[na.CartesianNdMatrixArray]:
         return na.CartesianNdMatrixArray
 
+    def __getattr__(self, name: str):
+        try:
+            return self.components[name]
+        except KeyError:
+            raise AttributeError(
+                f"component {name} is not a member of {self.components.values()=}"
+            )
+
 
 @dataclasses.dataclass(eq=False, repr=False)
 class CartesianNdVectorArray(
