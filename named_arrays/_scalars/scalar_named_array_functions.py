@@ -1917,13 +1917,11 @@ def regridding_regrid_from_weights(
     }
     shape_orthogonal = na.broadcast_shapes(shape_orthogonal, shape_weights)
 
-    shape_input = na.broadcast_shapes(shape_orthogonal, shape_input)
-    shape_output = na.broadcast_shapes(shape_orthogonal, shape_output)
+    shape_values_input = shape_orthogonal | shape_input
+    shape_values_output = shape_orthogonal | shape_output
 
-    weights = weights.broadcast_to({
-        a: shape_input[a] for a in shape_input if a not in axis_input
-    })
-    values_input = values_input.broadcast_to(shape_input)
+    weights = weights.broadcast_to(shape_orthogonal)
+    values_input = values_input.broadcast_to(shape_values_input)
 
     result = regridding.regrid_from_weights(
         weights=weights.ndarray,
@@ -1936,7 +1934,7 @@ def regridding_regrid_from_weights(
 
     result = na.ScalarArray(
         ndarray=result,
-        axes=tuple(shape_output),
+        axes=tuple(shape_values_output),
     )
 
     return result
