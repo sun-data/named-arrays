@@ -962,6 +962,53 @@ def convolve(
     )
 
 
+@implements(np.clip)
+def clip(
+    a: na.AbstractScalarArray,
+    a_min: None | float | na.AbstractScalarArray = np._NoValue,
+    a_max: None | float | na.AbstractScalarArray = np._NoValue,
+    out: None | na.ScalarArray = None,
+):
+    try:
+        a = scalars._normalize(a)
+        if a_min is not None:
+            a_min = scalars._normalize(a_min)
+        if a_max is not None:
+            a_max = scalars._normalize(a_max)
+    except scalars.ScalarTypeError:
+        return NotImplemented
+
+    if out is not None:
+        shape = out.shape
+        out_ndarray = out.ndarray
+    else:
+        shape = a.shape
+        out_ndarray = None
+
+    a = a.broadcast_to(shape).ndarray
+    if a_min is not None:
+        a_min = a_min.broadcast_to(shape).ndarray
+    if a_max is not None:
+        a_max = a_max.broadcast_to(shape).ndarray
+
+    result = np.clip(
+        a=a,
+        a_min=a_min,
+        a_max=a_max,
+        out=out_ndarray,
+    )
+
+    if out is not None:
+        result = a.type_explicit(
+            ndarray=result,
+            axes=tuple(shape),
+        )
+    else:
+        result = out
+
+    return result
+
+
 @implements(np.repeat)
 def repeat(
     a: na.AbstractScalarArray,

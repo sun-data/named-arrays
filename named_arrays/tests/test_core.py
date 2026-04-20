@@ -1072,6 +1072,29 @@ class AbstractTestAbstractArray(
         def test_convolve(self, array: na.AbstractArray, v: na.AbstractArray, mode: str):
             pass
 
+        def test_clip(
+            self,
+            array: na.AbstractArray,
+            a_min: None | float | na.AbstractArray,
+            a_max: None | float | na.AbstractArray,
+        ):
+            result = np.clip(array, a_min, a_max)
+
+            result_expected = array
+            if a_min is not None:
+                result_expected = np.maximum(result_expected, a_min)
+            if a_max is not None:
+                result_expected = np.minimum(result_expected, a_max)
+
+            assert np.all(result == result_expected)
+
+            out = 0 * result
+
+            result_out = np.clip(array, a_min, a_max, out=out)
+
+            assert result_out is out
+            assert np.all(result == result_out)
+
         @pytest.mark.parametrize(
             argnames="repeats",
             argvalues=[
