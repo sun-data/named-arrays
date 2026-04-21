@@ -19,6 +19,7 @@ from ._named_array_functions import (
     add_axes,
     vmr,
     mean_trimmed,
+    argpercentile,
     interp,
     histogram,
     histogram2d,
