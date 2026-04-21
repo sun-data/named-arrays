@@ -143,6 +143,8 @@ def array_function_cumulative_reduce(
         _axis = tuple(shape)
     elif axis is str:
         _axis = (axis, )
+    else:
+        _axis = axis
 
     if len(_axis) != 1:
         raise ValueError(f"only one axis is supported, got {_axis}.")
@@ -169,7 +171,7 @@ def array_function_cumulative_reduce(
     shape_base = {_axis: shape[_axis]}
 
     outputs_result = func(
-        a=na.broadcast_to(outputs, shape_base, append=True),
+        na.broadcast_to(outputs, shape_base, append=True),
         axis=_axis,
         out=outputs_out,
         **kwargs,
