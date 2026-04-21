@@ -1073,6 +1073,50 @@ class AbstractTestAbstractArray(
             pass
 
         @pytest.mark.parametrize(
+            argnames="a_min",
+            argvalues=[
+                0,
+            ],
+        )
+        @pytest.mark.parametrize(
+            argnames="a_max",
+            argvalues=[
+                None,
+                1,
+            ],
+        )
+        def test_clip(
+            self,
+            array: na.AbstractArray,
+            a_min: None | float | na.AbstractArray,
+            a_max: None | float | na.AbstractArray,
+        ):
+
+            unit = na.unit(array)
+            if unit is not None:
+                if a_min is not None:
+                    a_min = a_min * unit
+                if a_max is not None:
+                    a_max = a_max * unit
+
+            result = np.clip(array, a_min, a_max)
+
+            result_expected = array
+            if a_min is not None:
+                result_expected = np.maximum(result_expected, a_min)
+            if a_max is not None:
+                result_expected = np.minimum(result_expected, a_max)
+
+            assert np.all(result == result_expected)
+
+            out = na.asanyarray(0 * result)
+
+            result_out = np.clip(array, a_min, a_max, out=out)
+
+            assert result_out is out
+            assert np.all(result == result_out)
+
+        @pytest.mark.parametrize(
             argnames="repeats",
             argvalues=[
                 2,

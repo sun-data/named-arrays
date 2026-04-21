@@ -924,6 +924,47 @@ def convolve(
     raise ValueError("`numpy.convolve` is not supported for instances of `named_arrays.AbstractUncertainScalarArray`")
 
 
+@implements(np.clip)
+def clip(
+    a: na.AbstractScalar,
+    a_min: None | float | na.AbstractScalar,
+    a_max: None | float | na.AbstractScalar,
+    out: None | na.UncertainScalarArray = None,
+):
+    try:
+        a = uncertainties._normalize(a)
+        a_min = uncertainties._normalize(a_min)
+        a_max = uncertainties._normalize(a_max)
+        _out = uncertainties._normalize(out)
+    except uncertainties.UncertainScalarTypeError:  # pragma: nocover
+        return NotImplemented
+
+    a = a.explicit
+
+    result_nominal = np.clip(
+        a=a.nominal,
+        a_min=a_min.nominal,
+        a_max=a_max.nominal,
+        out=_out.nominal,
+    )
+    result_distribution = np.clip(
+        a=a.distribution,
+        a_min=a_min.distribution,
+        a_max=a_max.distribution,
+        out=_out.distribution
+    )
+
+    if out is None:
+        result = a.replace(
+            nominal=result_nominal,
+            distribution=result_distribution,
+        )
+    else:
+        result = out
+
+    return result
+
+
 @implements(np.repeat)
 def repeat(
     a: na.AbstractUncertainScalarArray,

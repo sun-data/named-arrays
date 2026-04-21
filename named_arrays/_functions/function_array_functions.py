@@ -533,6 +533,38 @@ def nonzero(a: na.AbstractFunctionArray) -> dict[str, na.AbstractArray]:
     return np.nonzero(a.outputs)
 
 
+@_implements(np.clip)
+def clip(
+    a: na.AbstractFunctionArray,
+    a_min: None | float | na.AbstractScalarArray | na.AbstractVectorArray = np._NoValue,
+    a_max: None | float | na.AbstractScalarArray | na.AbstractVectorArray = np._NoValue,
+    out: None | na.FunctionArray = None,
+) -> na.FunctionArray:
+
+    a = a.explicit
+
+    a_outputs = a.outputs
+
+    if out is not None:
+        _out = out.outputs
+    else:
+        _out = None
+
+    result = np.clip(
+        a=a_outputs,
+        a_min=a_min,
+        a_max=a_max,
+        out=_out,
+    )
+
+    if out is None:
+        result = a.replace(outputs=result)
+    else:
+        result = out
+
+    return result
+
+
 @_implements(np.repeat)
 def repeat(
     a: na.AbstractFunctionArray,
