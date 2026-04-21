@@ -21,6 +21,7 @@ __all__ = [
 ]
 
 DEFAULT_FUNCTIONS = named_arrays._scalars.uncertainties.uncertainties_array_functions.DEFAULT_FUNCTIONS
+CUMULATIVE_REDUCE_FUNCTIONS = named_arrays._scalars.uncertainties.uncertainties_array_functions.CUMULATIVE_REDUCE_FUNCTIONS
 PERCENTILE_LIKE_FUNCTIONS = named_arrays._scalars.uncertainties.uncertainties_array_functions.PERCENTILE_LIKE_FUNCTIONS
 ARG_REDUCE_FUNCTIONS = named_arrays._scalars.uncertainties.uncertainties_array_functions.ARG_REDUCE_FUNCTIONS
 STACK_LIKE_FUNCTIONS = named_arrays._scalars.uncertainties.uncertainties_array_functions.STACK_LIKE_FUNCTIONS
@@ -109,6 +110,69 @@ def array_function_default(
     outputs_result = func(
         a=na.broadcast_to(outputs, shape_outputs),
         axis=[ax for ax in shape_outputs if ax in axis_normalized],
+        out=outputs_out,
+        **kwargs,
+    )
+
+    if out is None:
+        result = a.replace(
+            inputs=inputs_result,
+            outputs=outputs_result,
+        )
+    else:
+        result = out
+
+    return result
+
+
+def array_function_cumulative_reduce(
+    func: Callable,
+    a: na.AbstractFunctionArray,
+    axis: None | str | Sequence[str] = None,
+    dtype: None | type | np.dtype = np._NoValue,
+    out: None | na.AbstractFunctionArray = None,
+) -> na.FunctionArray:
+
+    a = a.explicit
+    inputs = a.inputs
+    outputs = a.outputs
+
+    shape = a.shape
+
+    if axis is None:
+        _axis = tuple(shape)
+    elif isinstance(axis, str):
+        _axis = (axis, )
+    else:
+        _axis = axis
+
+    if len(_axis) != 1:
+        raise ValueError(f"only one axis is supported, got {_axis}.")
+
+    _axis = _axis[0]
+
+    kwargs = dict()
+
+    if dtype is not np._NoValue:
+        kwargs["dtype"] = dtype
+
+    if isinstance(out, na.AbstractFunctionArray):
+        inputs_out = out.inputs
+        outputs_out = out.outputs
+    else:
+        inputs_out = outputs_out = out
+
+    if inputs_out is not None:
+        np.copyto(src=inputs, dst=inputs_out)
+        inputs_result = inputs_out
+    else:
+        inputs_result = inputs
+
+    shape_base = {_axis: shape[_axis]}
+
+    outputs_result = func(
+        na.broadcast_to(outputs, shape_base, append=True),
+        axis=_axis,
         out=outputs_out,
         **kwargs,
     )

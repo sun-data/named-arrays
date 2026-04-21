@@ -615,6 +615,56 @@ class AbstractTestAbstractFunctionArray(
                 assert np.all(result == result_out)
                 assert result_out is out
 
+        class TestCumulativeReductionFunctions(
+            named_arrays.tests.test_core.AbstractTestAbstractArray.TestArrayFunctions.TestCumulativeReductionFunctions
+        ):
+            def test_cumulative_reduction_functions(
+                    self,
+                    func: Callable,
+                    array: na.AbstractFunctionArray,
+                    axis: None | str | Sequence[str],
+                    dtype: None | type | np.dtype,
+            ):
+
+                shape = array.shape
+                array_broadcasted = na.broadcast_to(array, shape)
+
+                if axis is None:
+                    _axis = tuple(shape)
+                elif isinstance(axis, str):
+                    _axis = (axis,)
+                else:
+                    _axis = axis
+
+                kwargs = dict()
+                kwargs_output = dict()
+                if dtype is not np._NoValue:
+                    kwargs["dtype"] = kwargs_output["dtype"] = dtype
+
+                try:
+                    outputs_expected = func(
+                        array_broadcasted.outputs,
+                        axis=_axis,
+                        **kwargs_output,
+                    )
+
+                    inputs_expected = array_broadcasted.inputs
+                except Exception as e:
+                    with pytest.raises(type(e)):
+                        func(array, axis=axis, **kwargs)
+                    return
+
+                result = func(array, axis=axis, **kwargs)
+
+                out = 0 * result
+                out.inputs = 0 * out.inputs
+                result_out = func(array, axis=axis, out=out, **kwargs)
+
+                assert np.allclose(result.inputs, inputs_expected)
+                assert np.allclose(result.outputs, outputs_expected)
+                assert np.all(result == result_out)
+                assert result_out is out
+
         class TestPercentileLikeFunctions(
             named_arrays.tests.test_core.AbstractTestAbstractArray.TestArrayFunctions.TestPercentileLikeFunctions,
         ):

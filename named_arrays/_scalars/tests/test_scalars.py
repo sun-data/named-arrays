@@ -790,6 +790,66 @@ class AbstractTestAbstractScalarArray(
                 assert np.allclose(result, result_out)
                 assert result_out is out
 
+        class TestCumulativeReductionFunctions(
+            AbstractTestAbstractScalar.TestArrayFunctions.TestCumulativeReductionFunctions
+        ):
+
+            def test_cumulative_reduction_functions(
+                    self,
+                    func: Callable,
+                    array: na.AbstractScalarArray,
+                    axis: None | str | Sequence[str],
+                    dtype: None | type | np.dtype,
+            ):
+                super().test_cumulative_reduction_functions(
+                    func=func,
+                    array=array,
+                    axis=axis,
+                    dtype=dtype,
+
+                )
+
+                kwargs = dict(
+                    axis=axis,
+                )
+
+                axis_normalized = na.axis_normalized(array, axis=axis)
+
+                if len(axis_normalized) != 1:
+                    with pytest.raises(ValueError):
+                        func(array, axis=axis)
+                    return
+
+                axis_normalized = axis_normalized[0]
+
+                if axis_normalized not in array.shape:
+                    with pytest.raises(ValueError):
+                        func(array, axis=axis)
+                    return
+
+                kwargs_ndarray = dict(
+                    axis=array.axes.index(axis_normalized),
+                )
+
+                if dtype is not np._NoValue:
+                    kwargs["dtype"] = kwargs_ndarray["dtype"] = dtype
+
+                try:
+                    result_ndarray = func(array.ndarray, **kwargs_ndarray)
+                except (ValueError, TypeError, u.UnitsError) as e:
+                    with pytest.raises(type(e)):
+                        func(array, **kwargs)
+                    return
+
+                result = func(array, **kwargs)
+
+                out = 0 * result
+                result_out = func(array, out=out, **kwargs)
+
+                assert np.all(result.ndarray == result_ndarray)
+                assert np.allclose(result, result_out)
+                assert result_out is out
+
         class TestPercentileLikeFunctions(
             AbstractTestAbstractScalar.TestArrayFunctions.TestPercentileLikeFunctions
         ):

@@ -9,6 +9,7 @@ __all__ = [
     'SINGLE_ARG_FUNCTIONS',
     'ARRAY_CREATION_LIKE_FUNCTIONS',
     'DEFAULT_FUNCTIONS',
+    'CUMULATIVE_REDUCE_FUNCTIONS',
     'PERCENTILE_LIKE_FUNCTIONS',
     'ARG_REDUCE_FUNCTIONS',
     'FFT_LIKE_FUNCTIONS',
@@ -52,6 +53,14 @@ DEFAULT_FUNCTIONS = [
     np.any,
     np.ptp,
     np.count_nonzero,
+]
+CUMULATIVE_REDUCE_FUNCTIONS = [
+    np.cumsum,
+    np.cumulative_sum,
+    np.nancumsum,
+    np.cumprod,
+    np.cumulative_prod,
+    np.nancumprod,
 ]
 PERCENTILE_LIKE_FUNCTIONS = [
     np.percentile,
@@ -226,6 +235,62 @@ def array_function_default(
         result = na.ScalarArray(
             ndarray=result_ndarray,
             axes=axes_result,
+        )
+    else:
+        out.ndarray = result_ndarray
+        result = out
+    return result
+
+
+def array_function_cumulative_reduce(
+    func: Callable,
+    a: na.AbstractScalarArray,
+    axis: None | str | Sequence[str] = None,
+    dtype: type | np.dtype = np._NoValue,
+    out: None | na.ScalarArray = None,
+):
+    a = a.explicit
+    shape = a.shape
+
+    axis_normalized = na.axis_normalized(a, axis=axis)
+    if len(axis_normalized) != 1:
+        raise ValueError(
+            f"only one axis is supported, got {axis_normalized}."
+        )
+    axis_normalized = axis_normalized[0]
+
+    if axis is not None:
+        if not set(axis_normalized).issubset(shape):
+            raise ValueError(
+                f"the `axis` argument must be `None` or a member of {a.shape=},"
+                f"but got {axis=}."
+            )
+
+    if out is not None:
+        if not isinstance(out, na.ScalarArray):
+            raise ValueError(
+                f"`out` should be `None` or an instance of `{a.type_explicit}`,"
+                f"got `{type(out)}`"
+            )
+        axes_ndarray = out.axes
+    else:
+        axes_ndarray = tuple(shape)
+
+    kwargs = dict()
+    kwargs["axis"] = axes_ndarray.index(axis_normalized)
+    if dtype is not np._NoValue:
+        kwargs["dtype"] = dtype
+    if out is not None and isinstance(out.ndarray, np.ndarray):
+        kwargs["out"] = out.ndarray
+    else:
+        kwargs["out"] = None
+
+    result_ndarray = func(a.ndarray, **kwargs)
+
+    if out is None:
+        result = na.ScalarArray(
+            ndarray=result_ndarray,
+            axes=axes_ndarray,
         )
     else:
         out.ndarray = result_ndarray

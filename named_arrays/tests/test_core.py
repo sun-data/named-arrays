@@ -653,6 +653,31 @@ class AbstractTestAbstractArray(
                 pass
 
         @pytest.mark.parametrize(
+            argnames="func",
+            argvalues=[
+                np.cumsum,
+                np.cumulative_sum,
+                np.nancumsum,
+                np.cumprod,
+                np.cumulative_prod,
+                np.nancumprod,
+            ],
+        )
+        @pytest.mark.parametrize("dtype", [np._NoValue, float])
+        @pytest.mark.parametrize("axis", [None, "y", ("y",)])
+        class TestCumulativeReductionFunctions(abc.ABC):
+
+            @abc.abstractmethod
+            def test_cumulative_reduction_functions(
+                self,
+                func: Callable,
+                array: na.AbstractArray,
+                axis: None | str | Sequence[str],
+                dtype: None | type | np.dtype,
+            ):
+                pass
+
+        @pytest.mark.parametrize(
             argnames='func',
             argvalues=[
                 np.percentile,
@@ -1009,7 +1034,7 @@ class AbstractTestAbstractArray(
 
         def test_nonzero(self, array: na.AbstractArray):
 
-            #not quite working
+            # not quite working
             # if isinstance(array, na.AbstractFunctionArray):
             #     test_array = array.outputs
             # else:
