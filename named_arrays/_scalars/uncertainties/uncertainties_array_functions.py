@@ -23,6 +23,7 @@ SINGLE_ARG_FUNCTIONS = named_arrays._scalars.scalar_array_functions.SINGLE_ARG_F
 ARRAY_CREATION_LIKE_FUNCTIONS = named_arrays._scalars.scalar_array_functions.ARRAY_CREATION_LIKE_FUNCTIONS
 SEQUENCE_FUNCTIONS = named_arrays._scalars.scalar_array_functions.SEQUENCE_FUNCTIONS
 DEFAULT_FUNCTIONS = named_arrays._scalars.scalar_array_functions.DEFAULT_FUNCTIONS
+CUMULATIVE_REDUCE_FUNCTIONS = named_arrays._scalars.scalar_array_functions.CUMULATIVE_REDUCE_FUNCTIONS
 PERCENTILE_LIKE_FUNCTIONS = named_arrays._scalars.scalar_array_functions.PERCENTILE_LIKE_FUNCTIONS
 ARG_REDUCE_FUNCTIONS = named_arrays._scalars.scalar_array_functions.ARG_REDUCE_FUNCTIONS
 FFT_LIKE_FUNCTIONS = named_arrays._scalars.scalar_array_functions.FFT_LIKE_FUNCTIONS
@@ -165,6 +166,64 @@ def array_function_default(
 
     result_nominal = func(na.as_named_array(a.nominal), **kwargs_nominal)
     result_distribution = func(a.distribution, **kwargs_distribution)
+
+    if out is None:
+        result = na.UncertainScalarArray(
+            nominal=result_nominal,
+            distribution=result_distribution,
+        )
+    else:
+        out.nominal = result_nominal
+        out.distribution = result_distribution
+        result = out
+    return result
+
+
+def array_function_cumulative_reduce(
+    func: Callable,
+    a: na.AbstractUncertainScalarArray,
+    axis: None | str = None,
+    dtype: type | np.dtype = np._NoValue,
+    out: None | na.UncertainScalarArray = None,
+) -> na.UncertainScalarArray:
+
+    shape = a.shape
+
+    kwargs = dict()
+    kwargs_nominal = dict()
+    kwargs_distribution = dict()
+
+    if axis is None:
+        _axis = tuple(shape)
+    elif axis is str:
+        _axis = (axis, )
+
+    if len(_axis) != 1:
+        raise ValueError(f"only one axis is supported, got {_axis}.")
+
+    _axis = _axis[0]
+    kwargs["axis"] = _axis
+
+    if dtype is not np._NoValue:
+        kwargs["dtype"] = dtype
+
+    if out is not None:
+        if not isinstance(out, na.UncertainScalarArray):
+            raise ValueError(f"`out` must be `None or an instance of `{a.type_explicit}`, got `{type(out)}`")
+        kwargs_nominal["out"] = out.nominal
+        kwargs_distribution["out"] = out.distribution
+    else:
+        kwargs["out"] = out
+
+    kwargs_nominal = kwargs | kwargs_nominal
+    kwargs_distribution = kwargs | kwargs_distribution
+
+    shape_axis = {_axis: shape[_axis]}
+    a_nominal = na.broadcast_to(a.nominal, shape_axis, append=True)
+    a_distribution = na.broadcast_to(a.distribution, shape_axis, append=True)
+
+    result_nominal = func(a_nominal, **kwargs_nominal)
+    result_distribution = func(a_distribution, **kwargs_distribution)
 
     if out is None:
         result = na.UncertainScalarArray(

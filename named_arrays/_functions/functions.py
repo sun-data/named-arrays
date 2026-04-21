@@ -723,6 +723,9 @@ class AbstractFunctionArray(
         if func in function_array_functions.DEFAULT_FUNCTIONS:
             return function_array_functions.array_function_default(func, *args, **kwargs)
 
+        if func in function_array_functions.CUMULATIVE_REDUCE_FUNCTIONS:
+            return function_array_functions.array_function_cumulative_reduce(func, *args, **kwargs)
+
         if func in function_array_functions.PERCENTILE_LIKE_FUNCTIONS:
             return function_array_functions.array_function_percentile_like(func, *args, **kwargs)
 

@@ -44,6 +44,7 @@ DEFAULT_FUNCTIONS = [
     np.ptp,
     np.count_nonzero,
 ]
+CUMULATIVE_REDUCE_FUNCTIONS = named_arrays._scalars.scalar_array_functions.CUMULATIVE_REDUCE_FUNCTIONS
 PERCENTILE_LIKE_FUNCTIONS = [
     np.percentile,
     np.nanpercentile,
@@ -204,6 +205,53 @@ def array_function_default(
             out=components_out[c],
             **kwargs_base,
             **kwargs,
+        )
+
+    if out is not None:
+        result = out
+
+    return result
+
+
+def array_function_cumulative_reduce(
+    func: Callable,
+    a: na.AbstractVectorArray,
+    axis: None | str = None,
+    dtype: None | type | np.dtype = np._NoValue,
+    out: None | na.AbstractExplicitVectorArray = None,
+) -> na.AbstractExplicitVectorArray:
+
+    shape = a.shape
+
+    if axis is None:
+        _axis = tuple(shape)
+    elif axis is str:
+        _axis = (axis, )
+
+    if len(_axis) != 1:
+        raise ValueError(f"only one axis is supported, got {_axis}.")
+
+    _axis = _axis[0]
+
+    shape_base = {_axis: shape[_axis]}
+
+    components = a.components
+    components_out = out.components if isinstance(out, na.AbstractVectorArray) else {c: out for c in components}
+
+    kwargs_base = dict(
+        axis=axis,
+    )
+
+    if dtype is not np._NoValue:
+        kwargs_base["dtype"] = dtype
+
+    result = a.prototype_vector
+    for c in components:
+        component = na.broadcast_to(components[c], shape_base, append=True)
+        result.components[c] = func(
+            component,
+            out=components_out[c],
+            **kwargs_base,
         )
 
     if out is not None:

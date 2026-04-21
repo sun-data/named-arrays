@@ -635,6 +635,9 @@ class AbstractScalarArray(
         if func in scalar_array_functions.DEFAULT_FUNCTIONS:
             return scalar_array_functions.array_function_default(func, *args, **kwargs)
 
+        if func in scalar_array_functions.CUMULATIVE_REDUCE_FUNCTIONS:
+            return scalar_array_functions.array_function_cumulative_reduce(func, *args, **kwargs)
+
         if func in scalar_array_functions.PERCENTILE_LIKE_FUNCTIONS:
             return scalar_array_functions.array_function_percentile_like(func, *args, **kwargs)
 
