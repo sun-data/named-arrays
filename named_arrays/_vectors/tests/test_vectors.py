@@ -312,6 +312,69 @@ class AbstractTestAbstractVectorArray(
                 assert np.allclose(result, result_out)
                 assert result_out is out
 
+        class TestCumulativeReductionFunctions(
+            named_arrays.tests.test_core.AbstractTestAbstractArray.TestArrayFunctions.TestCumulativeReductionFunctions,
+        ):
+
+            def test_cumulative_reduction_functions(
+                    self,
+                    func: Callable,
+                    array: na.AbstractVectorArray,
+                    axis: None | str | Sequence[str],
+                    dtype: Type,
+            ):
+                super().test_cumulative_reduction_functions(
+                    func=func,
+                    array=array,
+                    axis=axis,
+                    dtype=dtype,
+                )
+
+                shape = array.shape
+                components = array.components
+
+                if not shape:
+                    return
+
+                kwargs = dict(
+                    axis=axis,
+
+                )
+
+                if dtype is not np._NoValue:
+                    kwargs["dtype"] = dtype
+
+                kwargs_components = {c: dict() for c in components}
+                for c in components:
+                    for k in kwargs:
+                        if isinstance(kwargs[k], na.AbstractVectorArray):
+                            kwargs_components[c][k] = kwargs[k].components[c]
+                        else:
+                            kwargs_components[c][k] = kwargs[k]
+
+                        if isinstance(kwargs_components[c][k], na.AbstractArray):
+                            kwargs_components[c][k] = kwargs_components[c][k].broadcast_to(shape)
+
+                try:
+                    result_expected = array.prototype_vector
+                    for c in components:
+                        component = na.as_named_array(array.components[c]).broadcast_to(shape)
+                        result_expected.components[c] = func(component, **kwargs_components[c])
+                except (ValueError, TypeError, u.UnitsError) as e:
+                    with pytest.raises(type(e)):
+                        func(array, **kwargs)
+                    return
+
+                result = func(array, **kwargs)
+
+                out = 0 * result
+
+                result_out = func(array, out=out, **kwargs)
+
+                assert np.allclose(result, result_expected)
+                assert np.allclose(result, result_out)
+                assert result_out is out
+
         class TestPercentileLikeFunctions(
             named_arrays.tests.test_core.AbstractTestAbstractArray.TestArrayFunctions.TestPercentileLikeFunctions,
         ):
