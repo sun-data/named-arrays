@@ -968,7 +968,7 @@ def clip(
     a_min: None | float | na.AbstractScalarArray = np._NoValue,
     a_max: None | float | na.AbstractScalarArray = np._NoValue,
     out: None | na.ScalarArray = None,
-):
+) -> na.ScalarArray:
     try:
         a = scalars._normalize(a)
         if a_min is not None:
@@ -999,7 +999,7 @@ def clip(
     )
 
     if out is None:
-        result = a.type_explicit(
+        result = a.replace(
             ndarray=result,
             axes=tuple(shape),
         )

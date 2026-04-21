@@ -873,8 +873,36 @@ def clip(
     a_min: None | float | na.AbstractScalar | na.AbstractVectorArray,
     a_max: None | float | na.AbstractScalar | na.AbstractVectorArray,
     out: None | na.AbstractExplicitVectorArray = None,
-):
-    pass
+) -> na.AbstractExplicitVectorArray:
+    try:
+        prototype = vectors._prototype(a, a_min, a_max)
+        a = vectors._normalize(a, prototype)
+        a_min = vectors._normalize(a_min, prototype)
+        a_max = vectors._normalize(a_max, prototype)
+        _out = vectors._normalize(out, prototype)
+    except vectors.VectorTypeError:
+        return NotImplemented
+
+    components = a.components
+    components_min = a_min.components
+    components_max = a_max.components
+    components_out = _out.components
+    components_result = dict()
+
+    for c in components:
+        components_result[c] = np.clip(
+            a=components[c],
+            a_min=components_min[c],
+            a_max=components_max[c],
+            out=components_out[c],
+        )
+
+    if out is None:
+        result = a.type_explicit.from_components(components_result)
+    else:
+        result = out
+
+    return result
 
 
 @implements(np.repeat)

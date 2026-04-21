@@ -1095,9 +1095,9 @@ class AbstractTestAbstractArray(
             unit = na.unit(array)
             if unit is not None:
                 if a_min is not None:
-                    a_min = a_min << unit
+                    a_min = a_min * unit
                 if a_max is not None:
-                    a_max = a_max << unit
+                    a_max = a_max * unit
 
             result = np.clip(array, a_min, a_max)
 
