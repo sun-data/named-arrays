@@ -939,6 +939,8 @@ def clip(
     except uncertainties.UncertainScalarTypeError:
         return NotImplemented
 
+    a = a.explicit
+
     result_nominal = np.clip(
         a=a.nominal,
         a_min=a_min.nominal,
