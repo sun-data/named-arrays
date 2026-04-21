@@ -985,20 +985,20 @@ def clip(
         shape = a.shape
         out_ndarray = None
 
-    a = a.broadcast_to(shape).ndarray
+    a = a.broadcast_to(shape)
     if a_min is not None:
         a_min = a_min.broadcast_to(shape).ndarray
     if a_max is not None:
         a_max = a_max.broadcast_to(shape).ndarray
 
     result = np.clip(
-        a=a,
+        a=a.ndarray,
         a_min=a_min,
         a_max=a_max,
         out=out_ndarray,
     )
 
-    if out is not None:
+    if out is None:
         result = a.type_explicit(
             ndarray=result,
             axes=tuple(shape),

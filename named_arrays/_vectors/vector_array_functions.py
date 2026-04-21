@@ -867,6 +867,16 @@ def nan_to_num(
         return x
 
 
+@implements(np.clip)
+def clip(
+    a: float | na.AbstractScalar | na.AbstractVectorArray,
+    a_min: None | float | na.AbstractScalar | na.AbstractVectorArray,
+    a_max: None | float | na.AbstractScalar | na.AbstractVectorArray,
+    out: None | na.AbstractExplicitVectorArray = None,
+):
+    pass
+
+
 @implements(np.repeat)
 def repeat(
     a: na.AbstractVectorArray,
