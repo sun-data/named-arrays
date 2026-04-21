@@ -344,16 +344,7 @@ class AbstractTestAbstractVectorArray(
                 if dtype is not np._NoValue:
                     kwargs["dtype"] = dtype
 
-                kwargs_components = {c: dict() for c in components}
-                for c in components:
-                    for k in kwargs:
-                        if isinstance(kwargs[k], na.AbstractVectorArray):
-                            kwargs_components[c][k] = kwargs[k].components[c]
-                        else:
-                            kwargs_components[c][k] = kwargs[k]
-
-                        if isinstance(kwargs_components[c][k], na.AbstractArray):
-                            kwargs_components[c][k] = kwargs_components[c][k].broadcast_to(shape)
+                kwargs_components = {c: kwargs for c in components}
 
                 try:
                     result_expected = array.prototype_vector

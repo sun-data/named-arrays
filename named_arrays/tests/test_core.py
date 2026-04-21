@@ -664,7 +664,7 @@ class AbstractTestAbstractArray(
             ],
         )
         @pytest.mark.parametrize("dtype", [np._NoValue, float])
-        @pytest.mark.parametrize("axis", [None, "y",])
+        @pytest.mark.parametrize("axis", [None, "y", ("y",)])
         class TestCumulativeReductionFunctions(abc.ABC):
 
             @abc.abstractmethod
@@ -1034,7 +1034,7 @@ class AbstractTestAbstractArray(
 
         def test_nonzero(self, array: na.AbstractArray):
 
-            #not quite working
+            # not quite working
             # if isinstance(array, na.AbstractFunctionArray):
             #     test_array = array.outputs
             # else:
