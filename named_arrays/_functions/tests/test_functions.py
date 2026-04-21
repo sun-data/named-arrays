@@ -622,7 +622,7 @@ class AbstractTestAbstractFunctionArray(
                     self,
                     func: Callable,
                     array: na.AbstractFunctionArray,
-                    axis: None | str,
+                    axis: None | str | Sequence[str],
                     dtype: None | type | np.dtype,
             ):
 

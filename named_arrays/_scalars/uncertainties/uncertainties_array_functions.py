@@ -182,7 +182,7 @@ def array_function_default(
 def array_function_cumulative_reduce(
     func: Callable,
     a: na.AbstractUncertainScalarArray,
-    axis: None | str = None,
+    axis: None | str | Sequence[str] = None,
     dtype: type | np.dtype = np._NoValue,
     out: None | na.UncertainScalarArray = None,
 ) -> na.UncertainScalarArray:
@@ -195,7 +195,7 @@ def array_function_cumulative_reduce(
 
     if axis is None:
         _axis = tuple(shape)
-    elif axis is str:
+    elif isinstance(axis, str):
         _axis = (axis, )
     else:
         _axis = axis

@@ -338,7 +338,6 @@ class AbstractTestAbstractVectorArray(
 
                 kwargs = dict(
                     axis=axis,
-
                 )
 
                 if dtype is not np._NoValue:

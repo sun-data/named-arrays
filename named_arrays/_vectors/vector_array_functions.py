@@ -216,7 +216,7 @@ def array_function_default(
 def array_function_cumulative_reduce(
     func: Callable,
     a: na.AbstractVectorArray,
-    axis: None | str = None,
+    axis: None | str | Sequence[str] = None,
     dtype: None | type | np.dtype = np._NoValue,
     out: None | na.AbstractExplicitVectorArray = None,
 ) -> na.AbstractExplicitVectorArray:
@@ -225,7 +225,7 @@ def array_function_cumulative_reduce(
 
     if axis is None:
         _axis = tuple(shape)
-    elif axis is str:
+    elif isinstance(axis, str):
         _axis = (axis, )
     else:
         _axis = axis

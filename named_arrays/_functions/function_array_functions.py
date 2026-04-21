@@ -141,7 +141,7 @@ def array_function_cumulative_reduce(
 
     if axis is None:
         _axis = tuple(shape)
-    elif axis is str:
+    elif isinstance(axis, str):
         _axis = (axis, )
     else:
         _axis = axis
