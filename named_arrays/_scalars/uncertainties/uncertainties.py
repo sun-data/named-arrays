@@ -530,7 +530,7 @@ class AbstractUncertainScalarArray(
             return uncertainties_array_functions.array_function_default(func, *args, **kwargs)
 
         if func in uncertainties_array_functions.CUMULATIVE_REDUCE_FUNCTIONS:
-            return uncertainties_array_functions.ar
+            return uncertainties_array_functions.array_function_cumulative_reduce(func, *args, **kwargs)
 
         if func in uncertainties_array_functions.PERCENTILE_LIKE_FUNCTIONS:
             return uncertainties_array_functions.array_function_percentile_like(func, *args, **kwargs)

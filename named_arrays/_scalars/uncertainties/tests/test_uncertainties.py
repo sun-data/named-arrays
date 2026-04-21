@@ -466,6 +466,60 @@ class AbstractTestAbstractUncertainScalarArray(
                 assert np.allclose(result, result_out)
                 assert result_out is out
 
+        class TestCumlativeReductionFunctions(
+            named_arrays._scalars.tests.test_scalars.AbstractTestAbstractScalar.TestArrayFunctions.
+            TestCumulativeReductionFunctions,
+        ):
+
+            def test_cumulative_reduction_functions(
+                    self,
+                    func: Callable,
+                    array: na.AbstractUncertainScalarArray,
+                    axis: None | str | Sequence[str],
+                    dtype: None | type | np.dtype,
+            ):
+                super().test_cumulative_reduction_functions(
+                    func=func,
+                    array=array,
+                    axis=axis,
+                    dtype=dtype,
+                )
+
+                if not array.shape:
+                    return
+
+                kwargs = dict(
+                    axis=axis,
+                    dtype=dtype,
+                )
+
+                kwargs_nominal = kwargs.copy()
+                kwargs_distribution = kwargs.copy()
+
+                if axis is None:
+                    axis_normalized = na.axis_normalized(array, axis)
+                    kwargs_nominal["axis"] = axis_normalized
+                    kwargs_distribution["axis"] = axis_normalized
+
+                try:
+                    result_nominal = func(array.broadcasted.nominal, **kwargs_nominal)
+                    result_distribution = func(array.broadcasted.distribution, **kwargs_distribution)
+                except (ValueError, TypeError, u.UnitsError) as e:
+                    with pytest.raises(type(e)):
+                        func(array, **kwargs)
+                    return
+
+                result = func(array, **kwargs)
+
+                out = 0 * result
+                result_out = func(array, out=out, **kwargs)
+
+                assert np.all(result.nominal == result_nominal)
+                assert np.all(result.distribution == result_distribution)
+                assert np.allclose(result, result_out)
+                assert result_out is out
+
+
         @pytest.mark.parametrize(
             argnames='q',
             argvalues=[

@@ -197,6 +197,8 @@ def array_function_cumulative_reduce(
         _axis = tuple(shape)
     elif axis is str:
         _axis = (axis, )
+    else:
+        _axis = axis
 
     if len(_axis) != 1:
         raise ValueError(f"only one axis is supported, got {_axis}.")
