@@ -975,7 +975,7 @@ def clip(
             a_min = scalars._normalize(a_min)
         if a_max is not None:
             a_max = scalars._normalize(a_max)
-    except scalars.ScalarTypeError:
+    except scalars.ScalarTypeError:  # pragma: nocover
         return NotImplemented
 
     if out is not None:

@@ -880,7 +880,7 @@ def clip(
         a_min = vectors._normalize(a_min, prototype)
         a_max = vectors._normalize(a_max, prototype)
         _out = vectors._normalize(out, prototype)
-    except vectors.VectorTypeError:
+    except vectors.VectorTypeError:  # pragma: nocover
         return NotImplemented
 
     components = a.components

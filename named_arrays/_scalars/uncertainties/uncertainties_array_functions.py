@@ -936,7 +936,7 @@ def clip(
         a_min = uncertainties._normalize(a_min)
         a_max = uncertainties._normalize(a_max)
         _out = uncertainties._normalize(out)
-    except uncertainties.UncertainScalarTypeError:
+    except uncertainties.UncertainScalarTypeError:  # pragma: nocover
         return NotImplemented
 
     a = a.explicit
