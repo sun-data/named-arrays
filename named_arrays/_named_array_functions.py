@@ -24,7 +24,6 @@ __all__ = [
     "add_axes",
     "vmr",
     "mean_trimmed",
-    "argpercentile",
     "interp",
     "histogram",
     "histogram2d",
@@ -943,47 +942,6 @@ def mean_trimmed(
         out=out,
         keepdims=keepdims,
     )
-
-
-def argpercentile(
-    a: ArrayT,
-    q: QuantileT,
-    axis: None | str =  None,
-) -> ArrayT | QuantileT:
-    """
-    Find the fractional, 1D index of the array `a` corresponding to
-    the percentile `q`.
-
-    This function finds the fractional index using linear interpolation.
-
-    Parameters
-    ----------
-    a
-        The array on which to compute the percentile.
-    q
-        The percentile(s) to compute.
-    axis
-        The axis of `a` along which to compute the percentile.
-        If :obj:`None` (the default), `a` must have only one logical dimension.
-    """
-    cs = np.cumsum(a, axis=axis)
-
-    y = q * cs[{axis: ~0}] / 100
-
-    i1 = np.argmax(cs > y, axis=axis)
-
-    x1 = i1[axis]
-    x0 = x1 - 1
-
-    i0 = i1.copy()
-    i0[axis] = x0
-
-    y0 = cs[i0]
-    y1 = cs[i1]
-
-    x = (y - y0) / (y1 - y0) * (x1 - x0) + x0
-
-    return x
 
 
 def interp(

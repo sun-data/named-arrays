@@ -19,7 +19,6 @@ from ._named_array_functions import (
     add_axes,
     vmr,
     mean_trimmed,
-    argpercentile,
     interp,
     histogram,
     histogram2d,
@@ -37,6 +36,7 @@ from . import ndfilters
 from . import colorsynth
 from . import numexpr
 from . import geometry
+from . import pdf
 from ._core import (
     QuantityLike,
     StartT,

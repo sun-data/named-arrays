@@ -131,6 +131,7 @@ def array_function_cumulative_reduce(
     axis: None | str | Sequence[str] = None,
     dtype: None | type | np.dtype = np._NoValue,
     out: None | na.AbstractFunctionArray = None,
+    **kwargs,
 ) -> na.FunctionArray:
 
     a = a.explicit
@@ -150,8 +151,6 @@ def array_function_cumulative_reduce(
         raise ValueError(f"only one axis is supported, got {_axis}.")
 
     _axis = _axis[0]
-
-    kwargs = dict()
 
     if dtype is not np._NoValue:
         kwargs["dtype"] = dtype

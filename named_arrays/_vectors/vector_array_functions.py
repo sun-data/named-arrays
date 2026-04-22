@@ -219,6 +219,7 @@ def array_function_cumulative_reduce(
     axis: None | str | Sequence[str] = None,
     dtype: None | type | np.dtype = np._NoValue,
     out: None | na.AbstractExplicitVectorArray = None,
+    **kwargs,
 ) -> na.AbstractExplicitVectorArray:
 
     shape = a.shape
@@ -254,6 +255,7 @@ def array_function_cumulative_reduce(
             component,
             out=components_out[c],
             **kwargs_base,
+            **kwargs,
         )
 
     if out is not None:
