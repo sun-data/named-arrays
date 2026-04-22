@@ -261,7 +261,7 @@ def array_function_cumulative_reduce(
     axis_normalized = axis_normalized[0]
 
     if axis is not None:
-        if not set(axis_normalized).issubset(shape):
+        if axis_normalized not in shape:
             raise ValueError(
                 f"the `axis` argument must be `None` or a member of {a.shape=},"
                 f"but got {axis=}."
