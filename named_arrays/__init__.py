@@ -405,6 +405,7 @@ __all__ = [
     "colorsynth",
     "numexpr",
     "geometry",
+    "pdf",
     "QuantityLike",
     "StartT",
     "StopT",
