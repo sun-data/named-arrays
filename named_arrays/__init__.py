@@ -36,6 +36,7 @@ from . import ndfilters
 from . import colorsynth
 from . import numexpr
 from . import geometry
+from . import pdf
 from ._core import (
     QuantityLike,
     StartT,
@@ -404,6 +405,7 @@ __all__ = [
     "colorsynth",
     "numexpr",
     "geometry",
+    "pdf",
     "QuantityLike",
     "StartT",
     "StopT",

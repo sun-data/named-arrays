@@ -248,6 +248,7 @@ def array_function_cumulative_reduce(
     axis: None | str | Sequence[str] = None,
     dtype: type | np.dtype = np._NoValue,
     out: None | na.ScalarArray = None,
+    **kwargs,
 ):
     a = a.explicit
     shape = a.shape
@@ -260,7 +261,7 @@ def array_function_cumulative_reduce(
     axis_normalized = axis_normalized[0]
 
     if axis is not None:
-        if not set(axis_normalized).issubset(shape):
+        if axis_normalized not in shape:
             raise ValueError(
                 f"the `axis` argument must be `None` or a member of {a.shape=},"
                 f"but got {axis=}."
@@ -276,7 +277,6 @@ def array_function_cumulative_reduce(
     else:
         axes_ndarray = tuple(shape)
 
-    kwargs = dict()
     kwargs["axis"] = axes_ndarray.index(axis_normalized)
     if dtype is not np._NoValue:
         kwargs["dtype"] = dtype

@@ -185,11 +185,11 @@ def array_function_cumulative_reduce(
     axis: None | str | Sequence[str] = None,
     dtype: type | np.dtype = np._NoValue,
     out: None | na.UncertainScalarArray = None,
+    **kwargs,
 ) -> na.UncertainScalarArray:
 
     shape = a.shape
 
-    kwargs = dict()
     kwargs_nominal = dict()
     kwargs_distribution = dict()
 
