@@ -104,3 +104,85 @@ def test_pdf_argpercentile(
 
     for ax in result:
         assert np.all(result[ax] == result_expected[ax])
+
+
+@pytest.mark.parametrize(
+    argnames="x,f,q,axis,result_expected",
+    argvalues=[
+        (
+            na.linspace(-1, 1, axis="x", num=4),
+            na.ScalarArray.ones(dict(x=3)),
+            25,
+            "x",
+            -0.5,
+        ),
+    ],
+)
+def test_percentile(
+    x: na.AbstractScalar,
+    f: na.AbstractScalar,
+    q: float | na.AbstractScalar,
+    axis: None | str | Sequence[str],
+    result_expected: dict[str, na.AbstractScalar],
+):
+    result = na.pdf.percentile(
+        x=x,
+        f=f,
+        q=q,
+        axis=axis,
+    )
+
+    assert np.all(result == result_expected)
+
+
+@pytest.mark.parametrize(
+    argnames="x,f,axis,result_expected",
+    argvalues=[
+        (
+            na.linspace(-1, 1, axis="x", num=4),
+            na.ScalarArray.ones(dict(x=3)),
+            "x",
+            0,
+        ),
+    ],
+)
+def test_median(
+    x: na.AbstractScalar,
+    f: na.AbstractScalar,
+    axis: None | str | Sequence[str],
+    result_expected: dict[str, na.AbstractScalar],
+):
+    result = na.pdf.median(
+        x=x,
+        f=f,
+        axis=axis,
+    )
+
+    assert np.allclose(result, result_expected)
+
+
+@pytest.mark.parametrize(
+    argnames="x,f,axis,result_expected",
+    argvalues=[
+        (
+            na.linspace(-1, 1, axis="x", num=4),
+            na.ScalarArray.ones(dict(x=3)),
+            "x",
+            1,
+        ),
+    ],
+)
+def test_iqr(
+    x: na.AbstractScalar,
+    f: na.AbstractScalar,
+    axis: None | str | Sequence[str],
+    result_expected: dict[str, na.AbstractScalar],
+):
+    result = na.pdf.iqr(
+        x=x,
+        f=f,
+        axis=axis,
+    )
+
+    assert np.allclose(result, result_expected)
+

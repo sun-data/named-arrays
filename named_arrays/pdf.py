@@ -6,6 +6,9 @@ import named_arrays as na
 
 __all__ = [
     "argpercentile",
+    "percentile",
+    "median",
+    "iqr",
 ]
 
 
@@ -64,3 +67,113 @@ def argpercentile(
     x = (y - y0) / (y1 - y0) * (x1 - x0) + x0
 
     return {axis: x}
+
+
+def percentile(
+    x: "na.AbstractScalar",
+    f: "na.AbstractScalar",
+    q: "float | na.AbstractScalar",
+    axis: None | str | Sequence[str] = None,
+) -> "na.AbstractScalar":
+    """
+    Compute the percentile of the given probability mass function, `f`.
+
+    Parameters
+    ----------
+    x
+        The edges of each bin of the probability mass function.
+        This should have one more element than `f` along `axis`.
+    f
+        The probability mass function to compute the percentile of.
+        Does `not` need to be normalized.
+    q
+        The percentile(s) to compute.
+    axis
+        The logical axis corresponding to changing `x`.
+    """
+    axis = na.axis_normalized(f, axis)
+
+    if len(axis) != 1:
+        raise ValueError(
+            f"only one logical axis allowed, got {axis=}"
+        )
+
+    axis = axis[0]
+
+    index = argpercentile(
+        a=f,
+        q=q,
+        axis=axis,
+    )
+
+    index = index[axis]
+
+    result = na.interp(
+        x=index,
+        xp=na.arange(0, x.shape[axis], axis=axis),
+        fp=x,
+    )
+
+    return result
+
+
+def median(
+    x: "na.AbstractScalar",
+    f: "na.AbstractScalar",
+    axis: None | str | Sequence[str] = None,
+) -> "na.AbstractScalar":
+    """
+    Compute the median of the given probability mass function, `f`.
+
+    Parameters
+    ----------
+    x
+        The edges of each bin of the probability mass function.
+        This should have one more element than `f` along `axis`.
+    f
+        The probability mass function to compute the percentile of.
+        Does `not` need to be normalized.
+    axis
+        The logical axis corresponding to changing `x`.
+    """
+    return percentile(
+        x=x,
+        f=f,
+        q=50,
+        axis=axis,
+    )
+
+
+def iqr(
+    x: "na.AbstractScalar",
+    f: "na.AbstractScalar",
+    axis: None | str | Sequence[str] = None,
+) -> "na.AbstractScalar":
+    """
+    Compute the interquartile range of the given probability mass function, `f`.
+
+    Parameters
+    ----------
+    x
+        The edges of each bin of the probability mass function.
+        This should have one more element than `f` along `axis`.
+    f
+        The probability mass function to compute the percentile of.
+        Does `not` need to be normalized.
+    axis
+        The logical axis corresponding to changing `x`.
+    """
+    q1 = percentile(
+        x=x,
+        f=f,
+        q=25,
+        axis=axis,
+    )
+    q3 = percentile(
+        x=x,
+        f=f,
+        q=75,
+        axis=axis,
+    )
+
+    return q3 - q1
