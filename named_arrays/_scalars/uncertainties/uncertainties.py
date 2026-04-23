@@ -281,6 +281,9 @@ class AbstractUncertainScalarArray(
         nominal = na.as_named_array(array.nominal)
         distribution = na.as_named_array(array.distribution)
 
+        if isinstance(item, bool):
+            item = na.as_named_array(item)
+
         if isinstance(item, na.AbstractArray):
             item = item.explicit
             if isinstance(item, AbstractUncertainScalarArray):
@@ -665,6 +668,9 @@ class UncertainScalarArray(
     ):
         shape_self = self.shape
 
+        if isinstance(item, bool):
+            item = na.as_named_array(item)
+
         if isinstance(item, na.AbstractArray):
 
             item = item.explicit
@@ -713,7 +719,7 @@ class UncertainScalarArray(
 
         else:
             raise TypeError(
-                f"`item` must be an instance of `{na.AbstractArray.__name__}` or {dict.__name__}, "
+                f"`item` must be an instance of `bool`, `{na.AbstractArray.__name__}`, or {dict.__name__}, "
                 f"got `{type(item)}`"
             )
 
