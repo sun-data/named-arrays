@@ -29,6 +29,7 @@ from ._named_array_functions import (
 )
 from . import random
 from . import plt
+from . import stats
 from . import optimize
 from . import regridding
 from . import transformations
@@ -398,6 +399,7 @@ __all__ = [
     "despike",
     "random",
     "plt",
+    "stats",
     "optimize",
     "regridding",
     "transformations",
