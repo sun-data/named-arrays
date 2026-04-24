@@ -66,7 +66,7 @@ class AbstractFunctionArray(
                     else:
                         if input_shape[axis] == output_shape[axis] + 1:
                             pass
-                        elif output_shape[axis] == 1:
+                        elif output_shape[axis] == 1 or input_shape[axis] == 1:
                             axes_center += (axis,)
                         else:
                             raise ValueError(
