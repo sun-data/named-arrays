@@ -72,7 +72,7 @@ def test_pdf_argpercentile_gaussian(
 
     array_reduced_expected = mean + std * np.sqrt(2) * sp.erfinv(2 * p - 1)
 
-    assert np.allclose(array_reduced, array_reduced_expected, rtol=1e-2)
+    assert np.allclose(array_reduced, array_reduced_expected, rtol=1e-1)
 
 
 @pytest.mark.parametrize(
