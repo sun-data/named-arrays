@@ -1086,7 +1086,7 @@ class AbstractPolynomialFunctionArray(
     @property
     @abc.abstractmethod
     def degree(self) -> int:
-        """degree of the polynomial"""
+        """The degree of this polynomial."""
 
     @property
     @abc.abstractmethod
@@ -1096,7 +1096,7 @@ class AbstractPolynomialFunctionArray(
     @property
     @abc.abstractmethod
     def axis_polynomial(self) -> None | str | Sequence[str]:
-        """the logical axes along which this polynomial is distributed"""
+        """The logical axes along which this polynomial is distributed."""
 
     @abc.abstractmethod
     def design_matrix(
@@ -1146,15 +1146,17 @@ class PolynomialFitFunctionArray(
     Parameters
     ----------
     inputs
-        the set of independent variables
+        The set of independent variables.
     outputs
-        the set of dependent variables
+        The set of dependent variables.
     degree
-        the degree of the polynomial
+        The degree of this polynomial.
     components_polynomial
-        the components used in the polynomial fit
+        The components of the input that this polynomial depends on.
     axis_polynomial
-        the logical axis of the polynomial fit
+        The logical axes along which this polynomial is distributed.
+    where_polynomial
+        A boolean mask controlling which elements to use for fitting.
 
     Examples
     --------
@@ -1167,14 +1169,24 @@ class PolynomialFitFunctionArray(
     """
 
     degree: int = None
+    """The degree of this polynomial."""
+
     components_polynomial: None | str | Sequence[str] = None
+    """The components of the input that this polynomial depends on."""
+
     axis_polynomial: None | str | Sequence[str] = None
+    """The logical axes along which this polynomial is distributed."""
+
+    where_polynomial: bool | na.ScalarArray = True
+    """A boolean mask controlling which elements to use for fitting."""
 
     @functools.cached_property
     def coefficients(self) -> na.AbstractVectorArray | na.AbstractMatrixArray:
         d = self.design_matrix(self.inputs)
-        dTd = self._outer(d, d, self.axis_polynomial)
-        dTo = self._outer(d, self.outputs, self.axis_polynomial)
+        axis = self.axis_polynomial
+        where = self.where_polynomial
+        dTd = self._outer(d, d, axis=axis, where=where)
+        dTo = self._outer(d, self.outputs, axis=axis, where=where)
 
         return dTd.inverse @ dTo
 
@@ -1213,7 +1225,13 @@ class PolynomialFitFunctionArray(
         return design_matrix
 
     @classmethod
-    def _outer(cls, v1, v2, axis):
+    def _outer(
+        cls,
+        v1: na.AbstractVectorArray,
+        v2: float | u.Quantity | na.AbstractScalar | na.AbstractVectorArray,
+        axis: None | str | Sequence[str] = None,
+        where: bool | na.AbstractScalar = True,
+    ):
         v1_T_v2_components = {}
 
         if isinstance(v1, na.AbstractVectorArray):
@@ -1225,17 +1243,17 @@ class PolynomialFitFunctionArray(
                     for c2 in v2_broadcasted:
                         row_components[c2] = (
                                 v1_broadcasted[c1] * v2_broadcasted[c2]
-                        ).sum(axis=axis)
+                        ).sum(axis=axis, where=where)
                     v1_T_v2_components[c1] = v2.type_explicit.from_components(row_components)
                 v1_T_v2 = v1.type_matrix.from_components(v1_T_v2_components)
 
             else:
                 for c1 in v1_broadcasted:
-                        row_components = (v1_broadcasted[c1] * v2).sum(axis=axis)
-                        v1_T_v2_components[c1] = row_components
+                    row_components = (v1_broadcasted[c1] * v2).sum(axis=axis, where=where)
+                    v1_T_v2_components[c1] = row_components
                 v1_T_v2 = v1.type_explicit.from_components(v1_T_v2_components)
 
+        else:
+            raise NotImplementedError
+
         return v1_T_v2
-
-
-
