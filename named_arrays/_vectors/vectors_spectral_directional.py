@@ -1,6 +1,5 @@
 from __future__ import annotations
 from typing import Type, TypeVar
-from typing_extensions import Self
 import dataclasses
 import named_arrays as na
 
@@ -43,14 +42,7 @@ class SpectralDirectionalVectorArray(
     na.DirectionalVectorArray[DirectionT],
     na.SpectralVectorArray[WavelengthT],
 ):
-
-    @classmethod
-    def from_scalar(
-            cls: Type[Self],
-            scalar: na.AbstractScalar,
-            like: None | na.AbstractExplicitVectorArray = None,
-    ) -> SpectralDirectionalVectorArray:
-        return cls(wavelength=scalar, direction=scalar)
+    pass
 
 
 @dataclasses.dataclass(eq=False, repr=False)

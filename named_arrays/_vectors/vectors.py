@@ -537,7 +537,6 @@ class AbstractExplicitVectorArray(
         return cls(**components)
 
     @classmethod
-    @abc.abstractmethod
     def from_scalar(
             cls: Type[Self],
             scalar: na.ScalarLike,
@@ -550,7 +549,8 @@ class AbstractExplicitVectorArray(
         if like is not None:
             return like.type_explicit.from_components({c: scalar for c in like.components})
         else:
-            return NotImplemented
+            kwargs = {field.name: scalar for field in dataclasses.fields(cls)}
+            return cls(**kwargs)
 
     @classmethod
     def from_cartesian_nd(

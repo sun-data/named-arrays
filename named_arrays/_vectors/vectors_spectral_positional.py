@@ -1,6 +1,5 @@
 from __future__ import annotations
 from typing import Type, TypeVar
-from typing_extensions import Self
 import dataclasses
 import named_arrays as na
 
@@ -42,14 +41,7 @@ class SpectralPositionalVectorArray(
     na.PositionalVectorArray[PositionT],
     na.SpectralVectorArray[WavelengthT],
 ):
-
-    @classmethod
-    def from_scalar(
-            cls: Type[Self],
-            scalar: na.AbstractScalar,
-            like: None | na.AbstractExplicitVectorArray = None,
-    ) -> SpectralPositionalVectorArray:
-        return cls(wavelength=scalar, position=scalar)
+    pass
 
 
 @dataclasses.dataclass(eq=False, repr=False)

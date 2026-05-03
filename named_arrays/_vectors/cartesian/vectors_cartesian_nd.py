@@ -70,12 +70,7 @@ class CartesianNdVectorArray(
         if like is None:
             raise ValueError("like argument must be specified for CartesianNdArrays")
 
-        result = super().from_scalar(scalar, like=like)
-        if result is not NotImplemented:
-            return result
-        else:
-            raise ValueError("all implementations of from_scalar return NotImplemented")
-
+        return super().from_scalar(scalar, like=like)
 
 
     @classmethod

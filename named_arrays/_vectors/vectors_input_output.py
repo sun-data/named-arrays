@@ -1,6 +1,5 @@
 from __future__ import annotations
 from typing import Type, Generic, TypeVar
-from typing_extensions import Self
 import abc
 import dataclasses
 import named_arrays as na
@@ -58,17 +57,6 @@ class InputOutputVectorArray(
 ):
     input: InputT = 0
     output: OutputT = 0
-
-    @classmethod
-    def from_scalar(
-        cls: Type[Self],
-        scalar: na.AbstractScalar,
-        like: None | na.AbstractExplicitVectorArray = None,
-    ) -> InputOutputVectorArray:
-        result = super().from_scalar(scalar, like=like)
-        if result is not NotImplemented:
-            return result
-        return cls(input=scalar, output=scalar)
 
 
 @dataclasses.dataclass(eq=False, repr=False)
