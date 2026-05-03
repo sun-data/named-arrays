@@ -50,17 +50,6 @@ class DirectionalVectorArray(
 ):
     direction: DirectionT = 0
 
-    @classmethod
-    def from_scalar(
-        cls: Type[Self],
-        scalar: na.AbstractScalar,
-        like: None | na.AbstractExplicitVectorArray = None,
-    ) -> DirectionalVectorArray:
-        result = super().from_scalar(scalar, like=like)
-        if result is not NotImplemented:
-            return result
-        return cls(direction=scalar)
-
 
 @dataclasses.dataclass(eq=False, repr=False)
 class AbstractImplicitDirectionalVectorArray(

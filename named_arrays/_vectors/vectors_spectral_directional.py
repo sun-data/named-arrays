@@ -43,14 +43,7 @@ class SpectralDirectionalVectorArray(
     na.DirectionalVectorArray[DirectionT],
     na.SpectralVectorArray[WavelengthT],
 ):
-
-    @classmethod
-    def from_scalar(
-            cls: Type[Self],
-            scalar: na.AbstractScalar,
-            like: None | na.AbstractExplicitVectorArray = None,
-    ) -> SpectralDirectionalVectorArray:
-        return cls(wavelength=scalar, direction=scalar)
+    pass
 
 
 @dataclasses.dataclass(eq=False, repr=False)

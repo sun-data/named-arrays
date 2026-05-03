@@ -46,14 +46,7 @@ class TemporalSpectralDirectionalVectorArray(
     na.SpectralVectorArray[WavelengthT],
     na.TemporalVectorArray
 ):
-
-    @classmethod
-    def from_scalar(
-            cls: Type[Self],
-            scalar: na.AbstractScalar,
-            like: None | na.AbstractExplicitVectorArray = None,
-    ) -> TemporalSpectralDirectionalVectorArray:
-        return cls(time=scalar, wavelength=scalar, direction=scalar)
+    pass
 
 
 @dataclasses.dataclass(eq=False, repr=False)

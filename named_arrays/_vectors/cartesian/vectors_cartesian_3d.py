@@ -250,16 +250,6 @@ class Cartesian3dVectorArray(
     z: ZT = 0
     """The :math:`z` component of this vector."""
 
-    @classmethod
-    def from_scalar(
-            cls: Type[Self],
-            scalar: na.AbstractScalar,
-            like: None | na.AbstractExplicitVectorArray = None,
-    ) -> Cartesian3dVectorArray:
-        result = super().from_scalar(scalar, like=like)
-        result.z = scalar
-        return result
-
 
 @dataclasses.dataclass(eq=False, repr=False)
 class AbstractImplicitCartesian3dVectorArray(

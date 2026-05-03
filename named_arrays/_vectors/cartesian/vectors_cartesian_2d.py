@@ -118,18 +118,6 @@ class Cartesian2dVectorArray(
     y: YT = 0
     """The :math:`y` component of this vector."""
 
-    @classmethod
-    def from_scalar(
-            cls: Type[Self],
-            scalar: na.AbstractScalar,
-            like: None | na.AbstractExplicitVectorArray = None,
-    ) -> Cartesian2dVectorArray:
-        result = super().from_scalar(scalar, like=like)
-        if result is not NotImplemented:
-            return result
-
-        return cls(x=scalar, y=scalar)
-
 
 @dataclasses.dataclass(eq=False, repr=False)
 class AbstractImplicitCartesian2dVectorArray(
