@@ -1,6 +1,5 @@
 from __future__ import annotations
 from typing import Type, TypeVar
-from typing_extensions import Self
 import dataclasses
 import named_arrays as na
 
