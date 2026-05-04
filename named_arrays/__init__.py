@@ -201,6 +201,11 @@ from ._vectors.vectors_spectral import (
     AbstractSpectralVectorSpace,
     SpectralVectorLinearSpace,
 )
+from ._vectors.vectors_doppler import (
+    AbstractDopplerVectorArray,
+    DopplerVectorArray,
+    AbstractImplicitDopplerVectorArray,
+)
 from ._vectors.vectors_positional import (
     AbstractPositionalVectorArray,
     PositionalVectorArray,
@@ -233,6 +238,11 @@ from ._vectors.vectors_spectral_directional import (
     AbstractSpectralDirectionalVectorSpace,
     SpectralDirectionalVectorLinearSpace,
     WcsSpectralDirectionalVectorArray,
+)
+from ._vectors.vectors_doppler_positional import (
+    AbstractDopplerPositionalVectorArray,
+    DopplerPositionalVectorArray,
+    AbstractImplicitDopplerPositionalVectorArray,
 )
 from ._vectors.vectors_temporal_spectral import (
     AbstractTemporalSpectralVectorArray,
@@ -270,6 +280,12 @@ from ._vectors.vectors_temporal_spectral_directional import (
     AbstractTemporalSpectralDirectionalVectorSpace,
     TemporalSpectralDirectionalVectorLinearSpace,
     ExplicitTemporalWcsSpectralDirectionalVectorArray,
+)
+from ._vectors.vectors_temporal_doppler_positonal import (
+    AbstractTemporalDopplerPositionalVectorArray,
+    TemporalDopplerPositionalVectorArray,
+    AbstractImplicitTemporalDopplerPositionalVectorArray,
+    ExplicitTemporalWcsDopplerPositionalVectorArray,
 )
 from ._vectors.vectors_input_output import (
     AbstractInputOutputVectorArray,
