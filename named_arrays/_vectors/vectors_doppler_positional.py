@@ -29,7 +29,7 @@ class AbstractDopplerPositionalVectorArray(
 
     @property
     def type_matrix(self) -> Type[na.AbstractMatrixArray]:
-        raise NotImplementedError
+        return na.DopplerPositionalMatrixArray
 
 
 @dataclasses.dataclass(eq=False, repr=False)

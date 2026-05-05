@@ -36,8 +36,8 @@ class AbstractDopplerVectorArray(
         return DopplerVectorArray
 
     @property
-    def type_matrix(self) -> Type[na.SpectralMatrixArray]:
-        raise NotImplementedError
+    def type_matrix(self) -> Type[na.DopplerMatrixArray]:
+        return na.DopplerMatrixArray
 
     @property
     def velocity(self) -> na.ArrayLike:
