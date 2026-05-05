@@ -2,7 +2,6 @@ import pytest
 import numpy as np
 import astropy.units as u
 import named_arrays as na
-from ..tests import test_vectors
 from ..cartesian.tests import test_vectors_cartesian
 
 _num_x = test_vectors_cartesian._num_x

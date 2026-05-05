@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Type, Generic, TypeVar, Self
+from typing import Type, Generic, TypeVar
 import abc
 import dataclasses
 import astropy.constants
