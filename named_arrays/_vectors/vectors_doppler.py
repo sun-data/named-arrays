@@ -2,6 +2,7 @@ from __future__ import annotations
 from typing import Type, Generic, TypeVar
 import abc
 import dataclasses
+import astropy.units as u
 import astropy.constants
 import named_arrays as na
 
@@ -42,7 +43,10 @@ class AbstractDopplerVectorArray(
     @property
     def velocity(self) -> na.ArrayLike:
         """The line-of-sight velocity of the wave emitter."""
-        return (1 - self.wavelength / self.wavelength_rest) * astropy.constants.c
+        w = self.wavelength
+        w0 = self.wavelength_rest
+        result = astropy.constants.c * (w / w0 - 1)
+        return result.to(u.km / u.s)
 
 
 @dataclasses.dataclass(eq=False, repr=False)

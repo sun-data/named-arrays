@@ -48,6 +48,22 @@ class AbstractTestAbstractDopplerVectorArray(
         assert isinstance(na.as_named_array(array.wavelength), na.AbstractScalar)
         assert np.all(array.wavelength > 0)
 
+    def test_velocity(self, array: na.AbstractDopplerVectorArray):
+        result = array.velocity
+        kms = dict(
+            unit=u.km / u.s,
+            equivalencies=u.doppler_optical(array.wavelength_rest),
+        )
+        assert np.allclose(result, array.wavelength.to(**kms))
+
+        b = array.type_explicit.from_velocity(
+            velocity=array.velocity,
+            wavelength_rest=array.wavelength_rest,
+        )
+
+        assert np.allclose(b.wavelength, array.wavelength)
+
+
     @pytest.mark.parametrize(
         argnames='item',
         argvalues=_doppler_items()
