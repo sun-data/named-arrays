@@ -127,7 +127,8 @@ class AbstractVectorArray(
     @abc.abstractmethod
     def components(self: Self) -> dict[str, na.ArrayLike]:
         """
-        The vector components of this array expressed as a :class:`dict` where the keys are the names of the component.
+        The vector components of this array expressed as a :class:`dict`,
+        where the keys are the names of the component.
         """
         return dict()
 

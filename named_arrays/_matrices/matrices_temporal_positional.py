@@ -28,7 +28,7 @@ class AbstractTemporalPositionalMatrixArray(
 
     @property
     def determinant(self) -> na.ScalarLike:     # pragma: nocover
-        return NotImplementedError
+        raise NotImplementedError
 
 
 @dataclasses.dataclass(eq=False, repr=False)
