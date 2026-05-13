@@ -423,6 +423,7 @@ class AbstractTestAbstractScalarArray(
         argnames='item',
         argvalues=[
             dict(y=0),
+            dict(y=np.int64(0)),
             dict(y=slice(0,1)),
             dict(y=na.ScalarArray(np.array([0, 1]), axes=('y', ))),
             na.ScalarLinearSpace(0, 1, axis='y', num=_num_y) > 0.5,

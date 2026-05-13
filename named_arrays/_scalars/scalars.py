@@ -455,7 +455,7 @@ class AbstractScalarArray(
                         item_advanced[axis] = item_axis
                     else:
                         return NotImplemented
-                elif isinstance(item_axis, int):
+                elif np.issubdtype(type(item_axis), np.integer):
                     item_advanced[axis] = item_axis
 
             shape_advanced = na.shape_broadcasted(*item_advanced.values())

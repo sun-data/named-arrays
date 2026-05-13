@@ -84,6 +84,7 @@ def _cartesian2d_arrays_2():
 def _cartesian2d_items() -> list[na.AbstractArray | dict[str, int, slice, na.AbstractArray]]:
     return [
             dict(y=0),
+            dict(y=np.int64(0)),
             dict(y=slice(0, 1)),
             dict(y=na.ScalarArrayRange(0, 2, axis='y')),
             dict(

@@ -323,7 +323,9 @@ class AbstractUncertainScalarArray(
                         item_nominal[ax] = item_distribution[ax] = item[ax]
                     else:
                         return NotImplemented
-                elif isinstance(item[ax], (int, slice)):
+                elif isinstance(item[ax], slice):
+                    item_nominal[ax] = item_distribution[ax] = item[ax]
+                elif np.issubdtype(type(item[ax]), np.integer):
                     item_nominal[ax] = item_distribution[ax] = item[ax]
                 else:
                     return NotImplemented
