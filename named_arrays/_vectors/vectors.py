@@ -101,7 +101,6 @@ class AbstractVectorArray(
             else:
                 raise NotImplementedError
 
-
         return self.type_matrix.from_components(new_dict)
 
     @property
@@ -317,7 +316,9 @@ class AbstractVectorArray(
                         item[ax] = self.type_explicit.from_scalar(item[ax], like=self)
                     else:
                         return NotImplemented
-                elif isinstance(item[ax], (int, slice)):
+                elif isinstance(item[ax], slice):
+                    item[ax] = self.type_explicit.from_scalar(item[ax], like=self)
+                elif np.issubdtype(type(item[ax]), np.integer):
                     item[ax] = self.type_explicit.from_scalar(item[ax], like=self)
                 elif item[ax] is None:
                     item[ax] = self.type_explicit.from_scalar(item[ax], like=self)
@@ -898,4 +899,3 @@ class AbstractWcsVector(
     def explicit(self) -> na.AbstractExplicitArray:
         components = self._components_explicit | self._components_wcs
         return self.type_explicit.from_components(components)
-

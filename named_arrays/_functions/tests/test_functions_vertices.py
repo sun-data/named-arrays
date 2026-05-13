@@ -139,6 +139,7 @@ class AbstractTestAbstractFunctionArrayVertices(
         argnames='item',
         argvalues=[
             dict(y=0),
+            dict(y=np.int64(0)),
             dict(y=slice(0, 1)),
         ]
 
