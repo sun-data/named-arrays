@@ -7,7 +7,6 @@ import numpy as np
 import numpy.typing as npt
 import scipy.ndimage
 import astropy.units as u
-import astropy.constants
 import named_arrays as na
 import xarray as xr
 
@@ -1316,69 +1315,3 @@ class ScalarGeometricSpace(
     na.AbstractGeometricSpace[StartT, StopT, str, int],
 ):
     pass
-
-
-@dataclasses.dataclass(eq=False, repr=False)
-class AbstractDopplerArray(
-    AbstractImplicitScalarArray,
-):
-    """An array representing the wavelength of Doppler-shifted light."""
-
-    @property
-    @abc.abstractmethod
-    def velocity(self) -> na.AbstractScalar:
-        """The line-of-sight velocity of the light emitter."""
-
-    @property
-    @abc.abstractmethod
-    def wavelength(self):
-        """The observed wavelength of the emitted light."""
-
-    @property
-    @abc.abstractmethod
-    def wavelength_rest(self) -> u.Quantity | na.AbstractScalar:
-        """The rest wavelength of the emitted light."""
-
-    @property
-    def explicit(self: Self) -> AbstractExplicitArray:
-        return self.wavelength
-
-
-@dataclasses.dataclass(eq=False, repr=False)
-class DopplerVelocityArray(
-    AbstractDopplerArray,
-):
-    """
-    Represent Doppler-shifted light by specifying a rest wavelength and
-    line-of-sight velocity.
-    """
-
-    velocity: u.Quantity | na.AbstractScalar
-    """The line-of-sight velocity of the light emitter."""
-
-    wavelength_rest: u.Quantity | na.AbstractScalar
-    """The rest wavelength of the emitted light."""
-
-    @property
-    def wavelength(self: Self) -> AbstractExplicitArray:
-        return (1 + self.velocity / astropy.constants.c) * self.wavelength_rest
-
-
-@dataclasses.dataclass(eq=False, repr=False)
-class DopplerWavelengthArray(
-    AbstractDopplerArray,
-):
-    """
-    Represent Doppler-shifted light by specifying a rest wavelength and
-    observed wavelength.
-    """
-
-    wavelength: u.Quantity | na.AbstractScalar
-    """The observed wavelength of the emitted light."""
-
-    wavelength_rest: u.Quantity | na.AbstractScalar
-    """The rest wavelength of the emitted light."""
-
-    @property
-    def velocity(self) -> na.AbstractScalar:
-        return (1 - self.wavelength / self.wavelength_rest) * astropy.constants.c
