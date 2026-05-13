@@ -267,7 +267,7 @@ class AbstractTestAbstractFunctionArray(
                         if ax in array.outputs.shape:
                             item_outputs[ax] = item_ax
                     if ax in array.axes_vertex:
-                        if isinstance(item_ax, int):
+                        if np.issubdtype(type(item_ax), np.integer):
                             item_outputs[ax] = slice(item_ax, item_ax + 1)
                             item_inputs[ax] = slice(item_ax, item_ax + 2)
                         elif isinstance(item_ax, slice):
