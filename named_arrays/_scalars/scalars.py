@@ -33,8 +33,6 @@ __all__ = [
     "ScalarGeometricSpace",
 ]
 
-from named_arrays import AbstractExplicitArray
-
 NDArrayT = TypeVar('NDArrayT', bound=npt.ArrayLike)
 StartT = TypeVar('StartT', bound='ScalarLike')
 StopT = TypeVar('StopT', bound='ScalarLike')
