@@ -865,7 +865,9 @@ def regridding_weights(
     coordinates_output: na.AbstractVectorArray,
     axis_input: None | str | Sequence[str] = None,
     axis_output: None | str | Sequence[str] = None,
+    weights_input: None | na.AbstractScalar = None,
     method: Literal['multilinear', 'conservative'] = 'multilinear',
+    perturb: None | bool = None
 ) -> tuple[na.AbstractScalar, dict[str, int], dict[str, int]]:
 
     try:
@@ -883,6 +885,8 @@ def regridding_weights(
             if coordinates_output[c] is not None
         }
         coordinates_output = na.CartesianNdVectorArray(coordinates_output)
+        if weights_input is not None:
+            weights_input = scalars._normalize(weights_input)
     except scalars.ScalarTypeError:  # pragma: nocover
         return NotImplemented
 
@@ -941,12 +945,17 @@ def regridding_weights(
     axis_input = tuple(tuple(shape_input).index(a) for a in axis_input)
     axis_output = tuple(tuple(shape_output).index(a) for a in axis_output)
 
+    if weights_input is not None:
+        weights_input = weights_input.ndarray_aligned(shape_output)
+
     result, _shape_input, _shape_output = regridding.weights(
         coordinates_input=coordinates_input,
         coordinates_output=coordinates_output,
         axis_input=axis_input,
         axis_output=axis_output,
+        weights_input=weights_input,
         method=method,
+        perturb=perturb
     )
 
     result = na.ScalarArray(result, tuple(shape_orthogonal))
