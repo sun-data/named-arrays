@@ -115,6 +115,21 @@ def test_regrid_conservative_2d(
         method="conservative",
     )
 
+    weights = na.regridding.weights(
+        coordinates_input=coordinates_input,
+        coordinates_output=coordinates_output,
+        axis_input=axis_input,
+        axis_output=axis_output,
+        weights_input=1,
+        method="conservative",
+    )
+    result2 = na.regridding.regrid_from_weights(
+        *weights,
+        values_input=values_input,
+    )
+
+    assert np.allclose(result, result2)
+
     if axis_output is None:
         axis_output = tuple(coordinates_output.shape)
     elif isinstance(axis_output, str):
