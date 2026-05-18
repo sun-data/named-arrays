@@ -1872,7 +1872,9 @@ def regridding_weights(
     coordinates_output: na.AbstractScalarArray | na.AbstractVectorArray,
     axis_input: None | str | Sequence[str] = None,
     axis_output: None | str | Sequence[str] = None,
+    weights_input: None | na.AbstractScalar = None,
     method: Literal['multilinear', 'conservative'] = 'multilinear',
+    perturb: None | bool = None,
 ) -> tuple[na.AbstractScalar, dict[str, int], dict[str, int]]:
 
     if not isinstance(coordinates_output, na.AbstractVectorArray):
@@ -1886,7 +1888,9 @@ def regridding_weights(
         coordinates_output=coordinates_output,
         axis_input=axis_input,
         axis_output=axis_output,
+        weights_input=weights_input,
         method=method,
+        perturb=perturb,
     )
 
 

@@ -23,6 +23,7 @@ def regrid(
     axis_input: None | Sequence[str] = None,
     axis_output: None | Sequence[str] = None,
     method: Literal['multilinear', 'conservative'] = 'multilinear',
+    perturb: None | bool = None,
 ) -> na.AbstractScalarArray:
     """
     Regrid an array of values defined on a logically-rectangular curvilinear
@@ -51,6 +52,14 @@ def regrid(
         coordinates in the output grid.
     method
         The type of regridding to use.
+    perturb
+        Whether to perturb `coordinates_output` by a small value to avoid degenerate
+        grids. This is helpful for some methods, like ``conservative``, which
+        sometimes cannot handle degenerate grids.
+        If :obj:`None` (the default), no perturbation is applied unless `method`
+        is ``conservative`` and the dimensions of the grid are 2D or higher.
+        If :obj:`True`, each point is perturbed using a normal distribution
+        with standard deviation equal to ``1e-9`` of the grid width.
 
     Examples
     --------
@@ -115,7 +124,8 @@ def regrid(
         coordinates_output=coordinates_output,
         axis_input=axis_input,
         axis_output=axis_output,
-        method=method
+        method=method,
+        perturb=perturb,
     )
 
     result = regrid_from_weights(
@@ -133,7 +143,9 @@ def weights(
     coordinates_output: na.AbstractScalar | na.AbstractVectorArray,
     axis_input: None | str | Sequence[str] = None,
     axis_output: None | str | Sequence[str] = None,
+    weights_input: None | na.AbstractScalar = None,
     method: Literal['multilinear', 'conservative'] = 'multilinear',
+    perturb: None | bool = None,
 ) -> tuple[na.AbstractScalar, dict[str, int], dict[str, int]]:
     """
     Save the results of a regridding operation as a sequence of weights,
@@ -164,8 +176,18 @@ def weights(
         axes in the input grid.
         The number of axes should be equal to the number of
         coordinates in the output grid.
+    weights_input
+        Weights applied to the values of the input grid before resampling.
     method
         The type of regridding to use.
+    perturb
+        Whether to perturb `coordinates_output` by a small value to avoid degenerate
+        grids. This is helpful for some methods, like ``conservative``, which
+        sometimes cannot handle degenerate grids.
+        If :obj:`None` (the default), no perturbation is applied unless `method`
+        is ``conservative`` and the dimensions of the grid are 2D or higher.
+        If :obj:`True`, each point is perturbed using a normal distribution
+        with standard deviation equal to ``1e-9`` of the grid width.
 
     See Also
     --------
@@ -180,7 +202,9 @@ def weights(
         coordinates_output=coordinates_output,
         axis_input=axis_input,
         axis_output=axis_output,
+        weights_input=weights_input,
         method=method,
+        perturb=perturb,
     )
 
 
