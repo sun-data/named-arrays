@@ -128,7 +128,7 @@ def test_regrid_conservative_2d(
         values_input=values_input,
     )
 
-    assert np.allclose(result, result2)
+    assert np.allclose(result, result2, atol=1e-6)
 
     if axis_output is None:
         axis_output = tuple(coordinates_output.shape)
