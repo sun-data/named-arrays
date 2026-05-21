@@ -1956,6 +1956,38 @@ def regridding_transpose_weights(
 
     return (na.ScalarArray(new_weights, axes=weights.axes), shape_output, shape_input)
 
+
+@_implements(na.regridding.transpose_weights_conservative)
+def regridding_transpose_weights_conservative(
+    weights: na.AbstractScalar,
+    shape_input: dict[str, int],
+    shape_output: dict[str, int],
+    coordinates_input: na.AbstractScalarArray,
+    coordinates_output: na.AbstractScalarArray,
+    axis_input: None | str | Sequence[str] = None,
+    axis_output: None | str | Sequence[str] = None,
+    weights_input: None | na.AbstractScalar = None,
+) -> tuple[na.AbstractScalar, dict[str, int], dict[str, int]]:
+
+    if not isinstance(coordinates_output, na.AbstractVectorArray):
+        coordinates_output = na.CartesianNdVectorArray(dict(x=coordinates_output))
+    else:
+        return NotImplemented
+
+    if not isinstance(coordinates_input, na.AbstractVectorArray):
+        coordinates_input = na.CartesianNdVectorArray(dict(x=coordinates_input))
+    else:
+        return NotImplemented
+
+    na.regridding.transpose_weights_conservative(
+        weights=(weights, shape_input, shape_output),
+        coordinates_input=coordinates_input,
+        coordinates_output=coordinates_output,
+        axis_input=axis_input,
+        axis_output=axis_output,
+        weights_input=weights_input,
+    )
+
 @_implements(na.despike)
 def despike(
     array: na.AbstractScalarArray,

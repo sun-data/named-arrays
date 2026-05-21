@@ -13,6 +13,7 @@ __all__ = [
     "weights",
     "regrid_from_weights",
     "transpose_weights",
+    "transpose_weights_conservative",
 ]
 
 
@@ -248,6 +249,54 @@ def transpose_weights(
     ----------
     weights
         Ragged array of weights computed by :func:`weights`.
+    """
+
+    weights, shape_input, shape_output = weights
+
+    return na._named_array_function(
+        func=transpose_weights,
+        weights=weights,
+        shape_input=shape_input,
+        shape_output=shape_output,
+    )
+
+
+def transpose_weights_conservative(
+    weights: tuple[na.AbstractScalar, dict[str, int], dict[str, int]],
+    coordinates_input: na.AbstractScalar | na.AbstractVectorArray,
+    coordinates_output: na.AbstractScalar | na.AbstractVectorArray,
+    axis_input: None | str | Sequence[str] = None,
+    axis_output: None | str | Sequence[str] = None,
+    weights_input: None | na.AbstractScalar = None,
+) -> tuple[na.AbstractScalar, dict[str, int], dict[str, int]]:
+    """
+    Transpose weight matrix and normalize to be conservative.
+
+    This is a thin wrapper around :func:`regridding.transpose_weights_conservative`.
+
+    Parameters
+    ----------
+    weights
+        Ragged array of weights computed by :func:`weights`.
+    coordinates_input
+        Coordinates of the input grid.
+    coordinates_output
+        Coordinates of the output grid.
+        Should have the same number of coordinates as the input grid.
+    axis_input
+        Logical axes of the input grid to resample.
+        If :obj:`None`, resample all the axes of the input grid.
+        The number of axes should be equal to the number of
+        coordinates in the input grid.
+    axis_output
+        Logical axes of the output grid corresponding to the resampled axes
+        of the input grid.
+        If :obj:`None`, all the axes of the output grid correspond to resampled
+        axes in the input grid.
+        The number of axes should be equal to the number of
+        coordinates in the output grid.
+    weights_input
+        Weights applied to the values of the input grid before resampling.
 
     Examples
     --------
@@ -291,7 +340,11 @@ def transpose_weights(
         )
 
         # Transpose weights
-        weights_transposed = na.regridding.transpose_weights(weights)
+        weights_transposed = na.regridding.transpose_weights_conservative(
+            weights=weights,
+            coordinates_input=coordinates_input,
+            coordinates_output=coordinates_output,
+        )
 
         # Regrid the regridded values back onto original grid using transposed weights.
         values_transposed = na.regridding.regrid_from_weights(
@@ -307,9 +360,9 @@ def transpose_weights(
             figsize=(8, 4),
             constrained_layout=True,
         );
-        na.plt.pcolormesh(coordinates_input, C=values_input, ax=ax[0])
-        na.plt.pcolormesh(coordinates_output, C=values_output, ax=ax[1])
-        na.plt.pcolormesh(coordinates_input, C=values_transposed, ax=ax[2])
+        na.plt.pcolormesh(coordinates_input, C=values_input, ax=ax[0], vmin=0, vmax=1)
+        na.plt.pcolormesh(coordinates_output, C=values_output, ax=ax[1], vmin=0, vmax=1)
+        na.plt.pcolormesh(coordinates_input, C=values_transposed, ax=ax[2], vmin=0, vmax=1)
         ax[0].set_title("original");
         ax[1].set_title("rotated");
         ax[2].set_title("rotated and transposed");
@@ -318,8 +371,13 @@ def transpose_weights(
     weights, shape_input, shape_output = weights
 
     return na._named_array_function(
-        func=transpose_weights,
+        func=transpose_weights_conservative,
         weights=weights,
         shape_input=shape_input,
         shape_output=shape_output,
+        coordinates_input=coordinates_input,
+        coordinates_output=coordinates_output,
+        axis_input=axis_input,
+        axis_output=axis_output,
+        weights_input=weights_input,
     )
