@@ -236,6 +236,14 @@ def test_transpose_weights(
             ("x", "y"),
             None,
         ),
+        (
+            x,
+            na.random.uniform(0, 1, shape_random=shape_centers),
+            "x",
+            x,
+            "x",
+            None,
+        )
     ],
 )
 def test_transpose_weights_conservative(

@@ -1979,7 +1979,7 @@ def regridding_transpose_weights_conservative(
     else:
         return NotImplemented
 
-    na.regridding.transpose_weights_conservative(
+    return na.regridding.transpose_weights_conservative(
         weights=(weights, shape_input, shape_output),
         coordinates_input=coordinates_input,
         coordinates_output=coordinates_output,
