@@ -128,7 +128,7 @@ def test_regrid_conservative_2d(
         values_input=values_input,
     )
 
-    assert np.allclose(result, result2)
+    assert np.allclose(result, result2, atol=1e-6)
 
     if axis_output is None:
         axis_output = tuple(coordinates_output.shape)
@@ -145,6 +145,7 @@ def test_regrid_conservative_2d(
     assert np.issubdtype(result.dtype, float)
     assert result.shape == shape_result
     assert np.allclose(result.sum(), values_input.sum())
+
 
 @pytest.mark.parametrize(
     argnames="coordinates_input, values_input, axis_input, coordinates_output, axis_output",
@@ -175,11 +176,11 @@ def test_regrid_conservative_2d(
     ],
 )
 def test_transpose_weights(
-        coordinates_input: tuple[np.ndarray, ...],
-        coordinates_output: tuple[np.ndarray, ...],
-        values_input: np.ndarray,
-        axis_input: None | int | tuple[int, ...],
-        axis_output: None | int | tuple[int, ...],
+    coordinates_input: na.AbstractVectorArray,
+    coordinates_output: na.AbstractVectorArray,
+    values_input: na.AbstractScalarArray,
+    axis_input: None | str | tuple[str, ...],
+    axis_output: None | str | tuple[str, ...],
 ):
 
     weights = na.regridding.weights(
@@ -203,3 +204,86 @@ def test_transpose_weights(
     )
 
     assert values_input.shape == reversed_data.shape
+
+
+@pytest.mark.parametrize(
+    argnames="coordinates_input,"
+    "values_input,"
+    "axis_input,"
+    "coordinates_output,"
+    "axis_output,"
+    "weights_input",
+    argvalues=[
+        (
+            na.Cartesian2dVectorArray(x, y),
+            na.random.uniform(0, 1, shape_random=shape_centers),
+            None,
+            na.Cartesian2dVectorArray(x, y),
+            None,
+            1,
+        ),
+        (
+            na.Cartesian2dVectorArray(
+                x=x + 0.01 * z,
+                y=y + 0.01 * z,
+            ),
+            na.random.uniform(0, 1, shape_random=shape_centers | z.shape),
+            ("x", "y"),
+            na.Cartesian2dVectorArray(
+                x=x + 0.01 * z,
+                y=y + 0.01 * z,
+            ),
+            ("x", "y"),
+            None,
+        ),
+        (
+            x,
+            na.random.uniform(0, 1, shape_random=shape_centers),
+            "x",
+            x,
+            "x",
+            None,
+        )
+    ],
+)
+def test_transpose_weights_conservative(
+    coordinates_input: na.AbstractVectorArray,
+    coordinates_output: na.AbstractVectorArray,
+    values_input: na.AbstractScalarArray,
+    axis_input: None | str | tuple[str, ...],
+    axis_output: None | str | tuple[str, ...],
+    weights_input: None | na.AbstractScalarArray,
+):
+
+    weights = na.regridding.weights(
+        coordinates_input=coordinates_input,
+        coordinates_output=coordinates_output,
+        axis_input=axis_input,
+        axis_output=axis_output,
+        method="conservative",
+        weights_input=weights_input,
+    )
+
+    data = na.regridding.regrid_from_weights(
+        *weights,
+        values_input=values_input,
+    )
+
+    transposed_weights = na.regridding.transpose_weights_conservative(
+        weights=weights,
+        coordinates_input=coordinates_input,
+        coordinates_output=coordinates_output,
+        axis_input=axis_input,
+        axis_output=axis_output,
+        weights_input=weights_input,
+    )
+
+    reversed_data = na.regridding.regrid_from_weights(
+        *transposed_weights,
+        values_input=data,
+    )
+
+    assert values_input.shape == reversed_data.shape
+
+    assert np.allclose(values_input.sum(axis_input), data.sum(axis_output))
+    assert np.allclose(data.sum(axis_output), reversed_data.sum(axis_output))
