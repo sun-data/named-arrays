@@ -64,7 +64,7 @@ class DopplerVectorArray(
     def from_velocity(
         cls,
         velocity: na.ArrayLike,
-        wavelength_rest: na.Arralike,
+        wavelength_rest: na.ArrayLike,
         **kwargs,
     ):
         """
