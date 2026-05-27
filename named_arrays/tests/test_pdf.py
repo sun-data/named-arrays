@@ -10,6 +10,62 @@ import named_arrays as na
     argvalues=[
         0,
         na.ScalarArray(2),
+        na.linspace(0, 1, axis="y", num=11),
+        na.NormalUncertainScalarArray(0, width=1),
+    ],
+)
+@pytest.mark.parametrize(
+    argnames="std",
+    argvalues=[
+        1,
+    ],
+)
+@pytest.mark.parametrize(
+    argnames="axis",
+    argvalues=[
+        None,
+        "x",
+        ("x",),
+        ("x", "y"),
+    ],
+)
+def test_fwhm_gaussian(
+    mean: float | na.AbstractScalar,
+    std: float | na.AbstractScalar,
+    axis: None | str | Sequence[str],
+):
+    """
+    For a Gaussian with standard deviation *std*, the exact FWHM is
+    2 * sqrt(2 * ln 2) * std ≈ 2.355 * std.
+    """
+    x = na.linspace(
+        start=mean - 5 * std,
+        stop=mean + 5 * std,
+        axis="x",
+        num=100001,
+    )
+
+    f = np.exp(-np.square((x - mean) / std) / 2) / np.sqrt(2 * np.pi) / std
+
+    _axis = na.axis_normalized(f, axis=axis)
+
+    if len(_axis) != 1:
+        with pytest.raises(ValueError):
+            na.pdf.fwhm(x=x, f=f, axis=axis)
+        return
+
+    result = na.pdf.fwhm(x=x, f=f, axis=axis)
+
+    expected = 2 * np.sqrt(2 * np.log(2)) * std
+
+    assert np.allclose(result, expected, rtol=1e-3)
+
+
+@pytest.mark.parametrize(
+    argnames="mean",
+    argvalues=[
+        0,
+        na.ScalarArray(2),
         na.linspace(0,1, axis="y", num=11),
         na.NormalUncertainScalarArray(0, width=1,)
     ]

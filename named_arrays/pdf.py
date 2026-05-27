@@ -9,6 +9,7 @@ __all__ = [
     "percentile",
     "median",
     "iqr",
+    "fwhm",
 ]
 
 
@@ -177,3 +178,102 @@ def iqr(
     )
 
     return q3 - q1
+
+
+def fwhm(
+    x: "na.AbstractScalar",
+    f: "na.AbstractScalar",
+    axis: None | str | Sequence[str] = None,
+) -> "na.AbstractScalar":
+    """
+    Compute the full-width at half maximum (FWHM) of the function `f`
+    evaluated at coordinates `x`.
+
+    Uses linear interpolation to locate the two half-maximum crossings
+    (one on each side of the peak), then returns their separation.
+
+    Parameters
+    ----------
+    x
+        The coordinates at which `f` is evaluated.
+        Must have the same number of elements as `f` along `axis`.
+    f
+        The function values for which to compute the FWHM.
+        Should have a single peak; the values at the endpoints of `axis`
+        should be below half the maximum.
+    axis
+        The logical axis along which to compute the FWHM.
+        If :obj:`None` (the default), `f` must have only one logical dimension.
+    """
+    axis = na.axis_normalized(f, axis)
+
+    if len(axis) != 1:
+        raise ValueError(
+            f"only one logical axis allowed, got {axis=}"
+        )
+
+    axis = axis[0]
+
+    # Shift f so that the half-maximum is at zero.
+    # g > 0 where f is above half-max, g < 0 where f is below.
+    half_max = np.max(f, axis=axis) / 2
+    g = f - half_max
+
+    n = f.shape[axis]
+
+    # ------------------------------------------------------------------
+    # Left crossing: first sample index where g transitions from
+    # negative to non-negative (ascending edge of the peak).
+    # ------------------------------------------------------------------
+    i_left = np.argmax(g >= 0, axis=axis)   # dict {axis: index, ...}
+    i_left_hi = i_left[axis]                # first index with g >= 0
+    i_left_lo = i_left_hi - 1               # preceding index (g < 0)
+
+    i_left_lo_idx = i_left.copy()
+    i_left_lo_idx[axis] = i_left_lo
+
+    g_left_lo = g[i_left_lo_idx]   # negative value just before crossing
+    g_left_hi = g[i_left]          # non-negative value just after crossing
+
+    # Linear interpolation: solve g_left_lo + t*(g_left_hi - g_left_lo) = 0
+    frac_left = i_left_lo + (-g_left_lo) / (g_left_hi - g_left_lo)
+
+    x_left = na.interp(
+        x=frac_left,
+        xp=na.arange(0, n, axis=axis),
+        fp=x,
+    )
+
+    # ------------------------------------------------------------------
+    # Right crossing: last sample index where g is non-negative
+    # (descending edge of the peak).  Found by reversing g along axis
+    # and repeating the ascending-edge search.
+    # ------------------------------------------------------------------
+    g_rev = g[{axis: slice(None, None, -1)}]
+    i_right_rev = np.argmax(g_rev >= 0, axis=axis)   # dict, indices into reversed array
+    i_right_rev_val = i_right_rev[axis]               # first index (reversed) with g >= 0
+
+    # Convert reversed index back to original coordinates.
+    # i_right_lo is the *last* original index where g >= 0.
+    i_right_lo = (n - 1) - i_right_rev_val
+    i_right_hi = i_right_lo + 1
+
+    i_right_lo_idx = i_right_rev.copy()
+    i_right_lo_idx[axis] = i_right_lo
+
+    i_right_hi_idx = i_right_rev.copy()
+    i_right_hi_idx[axis] = i_right_hi
+
+    g_right_lo = g[i_right_lo_idx]   # non-negative value just before crossing
+    g_right_hi = g[i_right_hi_idx]   # negative value just after crossing
+
+    # Linear interpolation: solve g_right_lo + t*(g_right_hi - g_right_lo) = 0
+    frac_right = i_right_lo + g_right_lo / (g_right_lo - g_right_hi)
+
+    x_right = na.interp(
+        x=frac_right,
+        xp=na.arange(0, n, axis=axis),
+        fp=x,
+    )
+
+    return x_right - x_left
