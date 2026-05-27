@@ -214,66 +214,49 @@ def fwhm(
 
     axis = axis[0]
 
-    # Shift f so that the half-maximum is at zero.
-    # g > 0 where f is above half-max, g < 0 where f is below.
     half_max = np.max(f, axis=axis) / 2
-    g = f - half_max
 
     n = f.shape[axis]
 
-    # ------------------------------------------------------------------
-    # Left crossing: first sample index where g transitions from
-    # negative to non-negative (ascending edge of the peak).
-    # ------------------------------------------------------------------
-    i_left = np.argmax(g >= 0, axis=axis)   # dict {axis: index, ...}
-    i_left_hi = i_left[axis]                # first index with g >= 0
-    i_left_lo = i_left_hi - 1               # preceding index (g < 0)
+    index_left_upper = np.argmax(f >= half_max, axis=axis)
 
-    i_left_lo_idx = i_left.copy()
-    i_left_lo_idx[axis] = i_left_lo
+    i_left_upper = index_left_upper[axis]
+    i_left_lower = i_left_upper - 1
 
-    g_left_lo = g[i_left_lo_idx]   # negative value just before crossing
-    g_left_hi = g[i_left]          # non-negative value just after crossing
+    index_left_lower = index_left_upper | {axis: i_left_lower}
 
-    # Linear interpolation: solve g_left_lo + t*(g_left_hi - g_left_lo) = 0
-    frac_left = i_left_lo + (-g_left_lo) / (g_left_hi - g_left_lo)
+    x_left_lower = x[index_left_lower]
+    x_left_upper = x[index_left_upper]
+    
+    f_left_upper = f[index_left_upper]
+    f_left_lower = f[index_left_lower]
 
-    x_left = na.interp(
-        x=frac_left,
-        xp=na.arange(0, n, axis=axis),
-        fp=x,
-    )
+    x_left_ptp = x_left_upper - x_left_lower
+    f_left_ptp = f_left_upper - f_left_lower
 
-    # ------------------------------------------------------------------
-    # Right crossing: last sample index where g is non-negative
-    # (descending edge of the peak).  Found by reversing g along axis
-    # and repeating the ascending-edge search.
-    # ------------------------------------------------------------------
-    g_rev = g[{axis: slice(None, None, -1)}]
-    i_right_rev = np.argmax(g_rev >= 0, axis=axis)   # dict, indices into reversed array
-    i_right_rev_val = i_right_rev[axis]               # first index (reversed) with g >= 0
+    x_left = x_left_lower + x_left_ptp * (half_max - f_left_lower) / f_left_ptp
 
-    # Convert reversed index back to original coordinates.
-    # i_right_lo is the *last* original index where g >= 0.
-    i_right_lo = (n - 1) - i_right_rev_val
-    i_right_hi = i_right_lo + 1
+    f_reversed = f[{axis: slice(None, None, -1)}]
 
-    i_right_lo_idx = i_right_rev.copy()
-    i_right_lo_idx[axis] = i_right_lo
+    index_right_reversed = np.argmax(f_reversed >= half_max, axis=axis)
 
-    i_right_hi_idx = i_right_rev.copy()
-    i_right_hi_idx[axis] = i_right_hi
+    i_right_reversed = index_right_reversed[axis]
 
-    g_right_lo = g[i_right_lo_idx]   # non-negative value just before crossing
-    g_right_hi = g[i_right_hi_idx]   # negative value just after crossing
+    i_right_lower = (n - 1) - i_right_reversed
+    i_right_upper = i_right_lower + 1
 
-    # Linear interpolation: solve g_right_lo + t*(g_right_hi - g_right_lo) = 0
-    frac_right = i_right_lo + g_right_lo / (g_right_lo - g_right_hi)
+    index_right_lower = index_right_reversed | {axis: i_right_lower}
+    index_right_upper = index_right_reversed | {axis: i_right_upper}
 
-    x_right = na.interp(
-        x=frac_right,
-        xp=na.arange(0, n, axis=axis),
-        fp=x,
-    )
+    x_right_upper = x[index_right_upper]
+    x_right_lower = x[index_right_lower]
+
+    f_right_upper = f[index_right_upper]
+    f_right_lower = f[index_right_lower]
+
+    x_right_ptp = x_right_upper - x_right_lower
+    f_right_ptp = f_right_upper - f_right_lower
+
+    x_right = x_right_lower + x_right_ptp * (half_max - f_right_lower) / f_right_ptp
 
     return x_right - x_left
