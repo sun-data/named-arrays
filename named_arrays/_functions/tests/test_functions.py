@@ -1119,6 +1119,7 @@ def _polynomial_function_arrays():
                 stop=5,
                 shape_random=dict(x=_num_x, y=_num_y),
             ),
+            center=na.Cartesian2dVectorArray(0.5, 0.5),
             degree=1,
             axis_polynomial="y",
             components_polynomial="y",
