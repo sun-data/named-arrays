@@ -1098,6 +1098,14 @@ class AbstractPolynomialFunctionArray(
     def axis_polynomial(self) -> None | str | Sequence[str]:
         """The logical axes along which this polynomial is distributed."""
 
+    @property
+    @abc.abstractmethod
+    def center(self) -> None | InputsT:
+        """
+        The reference point which is subtracted from the inputs before fitting
+        the polynomial.
+        """
+
     @abc.abstractmethod
     def design_matrix(
         self,
@@ -1121,9 +1129,10 @@ class AbstractPolynomialFunctionArray(
         self,
         inputs: float | u.Quantity | na.ScalarArray | na.AbstractVectorArray,
     ) -> na.AbstractFunctionArray:
-        return na.FunctionArray(
-            inputs, self.design_matrix(inputs) @ self.coefficients
-        )
+
+        outputs = self.design_matrix(inputs) @ self.coefficients
+
+        return na.FunctionArray(inputs, outputs)
 
     @property
     def predictions(self) -> OutputsT:
@@ -1136,7 +1145,7 @@ class AbstractPolynomialFunctionArray(
 
 @dataclasses.dataclass(eq=False, repr=False)
 class PolynomialFitFunctionArray(
-    FunctionArray,
+    FunctionArray[InputsT, OutputsT],
     AbstractPolynomialFunctionArray,
 ):
     """
@@ -1168,6 +1177,9 @@ class PolynomialFitFunctionArray(
         ../tutorials/PolynomialFunctionArray
     """
 
+    center: None | InputsT = None
+    """The reference point which is subtracted from the inputs before fitting."""
+
     degree: int = None
     """The degree of this polynomial."""
 
@@ -1194,6 +1206,9 @@ class PolynomialFitFunctionArray(
         self,
         inputs: float | u.Quantity | na.AbstractScalar | na.AbstractVectorArray,
     ) -> na.AbstractVectorArray:
+
+        if self.center is not None:
+            inputs = inputs - self.center
 
         design_matrix = {}
 
