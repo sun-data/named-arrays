@@ -9,8 +9,8 @@ import named_arrays as na
     argnames="x, y, axis, where",
     argvalues=[
         (
-            na.random.normal(0, 1, dict(x=101)),
-            na.random.normal(0, 1, dict(x=101)),
+            na.random.uniform(0, 100, dict(x=101)).astype(int),
+            na.random.uniform(0, 100, dict(x=101)).astype(int),
             "x",
             True,
         ),
@@ -64,8 +64,8 @@ def test_pearsonr(
     argnames="x, y, axis",
     argvalues=[
         (
-            na.random.normal(0, 1, dict(x=101)),
-            na.random.normal(0, 1, dict(x=101)),
+            na.random.uniform(0, 10, dict(x=101)).astype(int),
+            na.random.uniform(0, 10, dict(x=101)).astype(int),
             "x",
         ),
         (
@@ -96,3 +96,67 @@ def test_spearmanr(
         result_expected = scipy.stats.spearmanr(_x[i].ndarray, _y[i].ndarray)
 
         assert np.allclose(result[i].ndarray, result_expected.statistic)
+
+
+@pytest.mark.parametrize("method", ["average", "min", "max", "dense", "invalid"])
+@pytest.mark.parametrize(
+    argnames="a, axis, where",
+    argvalues=[
+        (
+            na.random.uniform(0, 10, dict(x=101)).astype(int),
+            "x",
+            True,
+        ),
+        (
+            na.random.uniform(0, 10, dict(x=11, y=101)).astype(int),
+            "y",
+            True,
+        ),
+        (
+            na.random.uniform(0, 10, dict(x=101, y=11)).astype(int),
+            "x",
+            na.random.uniform(0, 1, dict(x=101, y=11)) > 0.2,
+        ),
+        (
+            na.random.uniform(0, 10, dict(x=11, y=13)).astype(int),
+            ("x", "y"),
+            True,
+        ),
+        (
+            na.random.uniform(0, 10, dict(x=11, y=13)).astype(int),
+            None,
+            na.random.uniform(0, 1, dict(x=11, y=13)) > 0.2,
+        ),
+    ],
+)
+def test_rankdata(
+    a: na.AbstractScalarArray,
+    axis: None | str | Sequence[str],
+    where: bool | na.AbstractScalarArray,
+    method: str,
+):
+    if method not in ("average", "min", "max", "dense"):
+        with pytest.raises(ValueError):
+            na.stats.rankdata(a, axis=axis, method=method, where=where)
+        return
+
+    result = na.stats.rankdata(a, axis=axis, method=method, where=where)
+
+    # The result always lies along the flattened version of `axis`, so combine
+    # the ranking axes on the inputs and compare each remaining slice to scipy.
+    shape = na.shape_broadcasted(a, where)
+    _a = a.broadcast_to(shape)
+    _where = na.broadcast_to(where, shape)
+
+    axis_normalized = na.axis_normalized(_a, axis)
+    axis_flat = na.flatten_axes(axis_normalized)
+    _a = _a.combine_axes(axis_normalized, axis_flat)
+    _where = _where.combine_axes(axis_normalized, axis_flat)
+
+    for i in na.ndindex(_a.shape, axis_ignored=axis_flat):
+
+        mask = _where[i].ndarray
+        result_expected = np.full(mask.shape, np.nan)
+        result_expected[mask] = scipy.stats.rankdata(_a[i].ndarray[mask], method=method)
+
+        assert np.allclose(result[i].ndarray, result_expected, equal_nan=True)
