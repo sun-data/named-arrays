@@ -22,23 +22,10 @@ _fixtures = (
 def test_integrate_shape_contract(array: na.AbstractFunctionArray):
     """``axis`` removed from outputs and inputs; remaining axes preserved."""
     array = array.explicit
-    inputs = array.inputs
 
     # default component=None integrates the whole input via volume_cell,
     # so axis must cover every dim of the inputs.
-    axis = tuple(inputs.shape)
-
-    if not axis:
-        return
-
-    # volume_cell isn't implemented on every fixture (e.g. composite vectors);
-    # if it isn't, integrate is expected to surface that error.
-    try:
-        inputs.volume_cell(axis)
-    except (NotImplementedError, TypeError, ValueError):
-        with pytest.raises((NotImplementedError, TypeError, ValueError)):
-            array.integrate(axis)
-        return
+    axis = tuple(array.inputs.shape)
 
     result = array.integrate(axis)
 
