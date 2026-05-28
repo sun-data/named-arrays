@@ -993,6 +993,34 @@ class ScalarArray(
             axes=tuple(shape.keys()),
         )
 
+    @classmethod
+    def full(
+        cls: Type[Self],
+        shape: dict[str, int],
+        fill_value: float | u.Quantity,
+        dtype: None | Type | np.dtype = None,
+    ) -> Self:
+        """
+        Create a new array filled with `fill_value`.
+
+        Parameters
+        ----------
+        shape
+            shape of the new array
+        fill_value
+            value with which to fill the new array
+        dtype
+            data type of the new array
+
+        Returns
+        -------
+            A new array of the specified shape filled with `fill_value`
+        """
+        return cls(
+            ndarray=np.full(shape=tuple(shape.values()), fill_value=fill_value, dtype=dtype),
+            axes=tuple(shape.keys()),
+        )
+
     @property
     def shape(self: Self) -> dict[str, int]:
         try:

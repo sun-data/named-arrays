@@ -1499,6 +1499,19 @@ class TestScalarArrayCreation(
             assert np.all(result == 1)
             assert result.dtype == dtype
 
+        @pytest.mark.parametrize("fill_value", [0, 1, 3.14])
+        def test_full(
+                self,
+                type_array: type[na.AbstractArray],
+                shape: dict[str, int],
+                dtype: None | type | np.dtype | str,
+                fill_value: float,
+        ):
+            result = type_array.full(shape, fill_value=fill_value, dtype=dtype)
+            assert result.shape == shape
+            assert np.all(result == np.array(fill_value).astype(dtype))
+            assert result.dtype == dtype
+
 
 class AbstractTestAbstractImplicitScalarArray(
     AbstractTestAbstractScalarArray,
