@@ -42,7 +42,7 @@ def test_integrate_constant_center(num: int):
     # constant integrand 3 over [0, 2] -> 3 * 2 = 6, exact.
     f = na.FunctionArray(
         inputs=na.ScalarLinearSpace(0, 2, axis="x", num=num) * u.nm,
-        outputs=na.ScalarArray(np.full(num, 3.0), axes=("x",)) * u.ph,
+        outputs=na.ScalarArray.full(dict(x=num), 3.0) * u.ph,
     )
     result = f.integrate("x")
     assert "x" not in result.outputs.shape
@@ -64,7 +64,7 @@ def test_integrate_constant_vertex():
     # constant integrand 3 over edges spanning [0, 2] -> 6, exact.
     f = na.FunctionArray(
         inputs=na.ScalarLinearSpace(0, 2, axis="x", num=11) * u.nm,
-        outputs=na.ScalarArray(np.full(10, 3.0), axes=("x",)) * u.ph,
+        outputs=na.ScalarArray.full(dict(x=10), 3.0) * u.ph,
     )
     result = f.integrate("x")
     assert "x" not in result.outputs.shape
@@ -80,7 +80,7 @@ def test_integrate_vector_center():
             axis=na.Cartesian2dVectorArray("x", "y"),
             num=na.Cartesian2dVectorArray(51, 41),
         ),
-        outputs=na.ScalarArray(np.full((51, 41), 3.0), axes=("x", "y")),
+        outputs=na.ScalarArray.full(dict(x=51, y=41), 3.0),
     )
     result = f.integrate(("x", "y"))
     assert not result.outputs.shape
@@ -96,7 +96,7 @@ def test_integrate_vector_vertex():
             axis=na.Cartesian2dVectorArray("x", "y"),
             num=na.Cartesian2dVectorArray(51, 41),
         ),
-        outputs=na.ScalarArray(np.full((50, 40), 3.0), axes=("x", "y")),
+        outputs=na.ScalarArray.full(dict(x=50, y=40), 3.0),
     )
     result = f.integrate(("x", "y"))
     assert not result.outputs.shape
@@ -119,7 +119,7 @@ def test_integrate_curved_grid():
     ).broadcasted.explicit
     f = na.FunctionArray(
         inputs=rotated,
-        outputs=na.ScalarArray(np.full((51, 51), 3.0), axes=("x", "y")),
+        outputs=na.ScalarArray.full(dict(x=51, y=51), 3.0),
     )
     # cells may be signed depending on traversal direction; compare magnitude.
     assert np.isclose(abs(float(f.integrate(("x", "y")).outputs.ndarray)), 12.0)
@@ -135,7 +135,7 @@ def test_integrate_component_str():
             axis=na.Cartesian2dVectorArray("x", "y"),
             num=na.Cartesian2dVectorArray(101, 51),
         ),
-        outputs=na.ScalarArray(np.full((101, 51), 3.0), axes=("x", "y")),
+        outputs=na.ScalarArray.full(dict(x=101, y=51), 3.0),
     )
     result = f.integrate("x", component="x")
     assert "x" not in result.outputs.shape
@@ -154,7 +154,7 @@ def test_integrate_mixed_axes():
             axis=na.Cartesian2dVectorArray("x", "y"),
             num=na.Cartesian2dVectorArray(11, 11),
         ),
-        outputs=na.ScalarArray(np.full((10, 11), 3.0), axes=("x", "y")),
+        outputs=na.ScalarArray.full(dict(x=10, y=11), 3.0),
     )
     result = f.integrate(("x", "y"))
     assert not result.outputs.shape
