@@ -431,6 +431,92 @@ class AbstractFunctionArray(
             outputs=exp.outputs.cell_centers(axis, random=random),
         )
 
+    def integrate(
+        self,
+        axis: str | Sequence[str],
+        component: None | str = None,
+    ) -> FunctionArray:
+        """
+        Integrate the outputs over the given input ``axis`` or axes.
+
+        The differential measure is computed from the inputs via
+        :meth:`AbstractArray.volume_cell`:
+
+        * If ``component`` is :obj:`None`, the whole input is used as the
+          integration variable and ``len(axis)`` must match the dimensionality
+          of the inputs (one for a scalar, two for a
+          :class:`Cartesian2dVectorArray`, etc.).
+        * If ``component`` is a :class:`str`, that named sub-element of the
+          inputs (a scalar or a sub-vector) supplies the measure, and
+          ``len(axis)`` must match its dimensionality.
+
+        A vertex axis (where the inputs represent bin edges) is integrated with
+        a Riemann sum, while a center axis (where the inputs represent samples)
+        is integrated with the trapezoidal rule; mixing the two in a single
+        call is supported. The integrated axes are removed from the outputs and
+        collapsed in the inputs by averaging.
+
+        Parameters
+        ----------
+        axis
+            The logical axis or axes to integrate over.
+        component
+            The named input sub-element supplying the integration variable.
+            If :obj:`None`, the whole input is used.
+
+        Examples
+        --------
+
+        Integrate a constant function over a 1D domain.
+
+        .. jupyter-execute::
+
+            import numpy as np
+            import astropy.units as u
+            import named_arrays as na
+
+            f = na.FunctionArray(
+                inputs=na.ScalarLinearSpace(0, 2, axis="x", num=101) * u.nm,
+                outputs=na.ScalarArray(np.full(101, 3.0), axes=("x",)) * u.ph,
+            )
+
+            f.integrate("x")
+        """
+
+        self = self.explicit
+
+        if isinstance(axis, str):
+            axis = (axis,)
+        axis = tuple(axis)
+
+        if not set(axis).issubset(self.axes):
+            raise ValueError(f"axes {set(axis) - set(self.axes)} not in {self.axes}")
+
+        axes_vertex = self.axes_vertex
+        inputs = self.inputs
+        outputs = self.outputs
+
+        # convert outputs to cell centers along the center axes
+        # (corner-averaging across all center axes is the multi-D trapezoidal rule);
+        # vertex axes are already at cell centers relative to their input edges.
+        axes_center = tuple(ax for ax in axis if ax not in axes_vertex)
+        if axes_center:
+            outputs = outputs.cell_centers(axes_center)
+
+        # compute the joint cell measure from the selected component.
+        if component is None:
+            measure = inputs.volume_cell(axis)
+        else:
+            measure = inputs.components[component].volume_cell(axis)
+
+        outputs = (outputs * measure).sum(axis)
+        inputs = inputs.mean(axis)
+
+        return self.replace(
+            inputs=inputs,
+            outputs=outputs,
+        )
+
     def to_string_array(
         self,
         format_value: str = "%.2f",
