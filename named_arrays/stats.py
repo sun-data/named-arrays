@@ -15,16 +15,6 @@ YT = TypeVar('YT', bound="na.AbstractArray")
 AT = TypeVar('AT', bound="na.AbstractScalarArray")
 
 
-def _take(
-    a: "na.AbstractScalarArray",
-    index: "na.AbstractScalarArray",
-    axis: str,
-) -> "na.AbstractScalarArray":
-    """Gather elements of `a` along `axis` using `index`, like :func:`numpy.take_along_axis`."""
-    indices = na.indices(na.shape(a))
-    indices[axis] = index
-    return a[indices]
-
 def pearsonr(
     x: XT,
     y: YT,
@@ -173,7 +163,7 @@ def rankdata(
 
     sorter = np.argsort(a, axis=axis_flat)[axis_flat]
     inverse = np.argsort(sorter, axis=axis_flat)[axis_flat]
-    a_sorted = _take(a, sorter, axis_flat)
+    a_sorted = np.take_along_axis(a, sorter, axis=axis_flat)
 
     index = na.arange(0, n, axis=axis_flat)
 
@@ -195,8 +185,8 @@ def rankdata(
     index_count[axis_flat] = group
     count[index_count] = (index + 1).astype(float)
 
-    count_leq = _take(count, group, axis_flat)
-    count_less = _take(count, group - 1, axis_flat)
+    count_leq = np.take_along_axis(count, group, axis=axis_flat)
+    count_less = np.take_along_axis(count, group - 1, axis=axis_flat)
 
     if method == "average":
         rank_sorted = (count_less + count_leq + 1) / 2
@@ -207,7 +197,7 @@ def rankdata(
     else:  # method == "dense"
         rank_sorted = group
 
-    result = _take(rank_sorted, inverse, axis_flat)
+    result = np.take_along_axis(rank_sorted, inverse, axis=axis_flat)
 
     if masked:
         result = np.where(where, result, np.nan)
