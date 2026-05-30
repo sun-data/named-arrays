@@ -693,6 +693,41 @@ def argsort(
     return result
 
 
+@implements(np.take_along_axis)
+def take_along_axis(
+        arr: na.AbstractVectorArray,
+        indices: na.AbstractScalar | na.AbstractVectorArray,
+        axis: str,
+) -> na.AbstractExplicitVectorArray:
+    if not isinstance(arr, na.AbstractVectorArray):  # pragma: nocover
+        return NotImplemented
+
+    try:
+        indices = vectors._normalize(indices, prototype=arr)
+    except na.VectorTypeError:  # pragma: nocover
+        return NotImplemented
+
+    shape = arr.shape
+    if axis not in shape:
+        raise ValueError(
+            f"`axis`, {axis!r}, must be one of the axes in `arr`, {tuple(shape)}"
+        )
+
+    # Broadcast only `axis` so that components which do not vary along `axis`
+    # are still taken correctly.
+    arr = na.broadcast_to(arr, shape={axis: shape[axis]}, append=True)
+
+    components_arr = arr.components
+    components_indices = indices.components
+
+    components_result = {
+        c: np.take_along_axis(components_arr[c], components_indices[c], axis=axis)
+        for c in components_arr
+    }
+
+    return arr.type_explicit.from_components(components_result)
+
+
 @implements(np.unravel_index)
 def unravel_index(
         indices: na.AbstractVectorArray,

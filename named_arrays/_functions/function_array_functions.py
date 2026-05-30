@@ -465,6 +465,38 @@ def reshape(
     )
 
 
+@_implements(np.take_along_axis)
+def take_along_axis(
+        arr: na.AbstractFunctionArray,
+        indices: na.AbstractArray,
+        axis: str,
+) -> na.FunctionArray:
+
+    arr = arr.explicit
+    shape = arr.shape
+
+    if axis not in shape:
+        raise ValueError(
+            f"`axis`, {axis!r}, must be one of the axes in `arr`, {tuple(shape)}"
+        )
+
+    if axis in arr.axes_vertex:
+        raise ValueError(
+            f"`axis`, {axis!r}, describes input vertices and cannot be used in `take_along_axis`, "
+            f"got vertex axes {arr.axes_vertex}."
+        )
+
+    # Broadcast only `axis` so that `inputs` and `outputs` are reordered
+    # consistently even if one of them does not vary along `axis`.
+    inputs = na.broadcast_to(arr.inputs, shape={axis: shape[axis]}, append=True)
+    outputs = na.broadcast_to(arr.outputs, shape={axis: shape[axis]}, append=True)
+
+    return arr.replace(
+        inputs=np.take_along_axis(inputs, indices, axis=axis),
+        outputs=np.take_along_axis(outputs, indices, axis=axis),
+    )
+
+
 @_implements(np.array_equal)
 def array_equal(
         a1: na.AbstractFunctionArray,

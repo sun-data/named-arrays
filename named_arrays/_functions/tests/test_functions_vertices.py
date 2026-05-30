@@ -185,6 +185,15 @@ class AbstractTestAbstractFunctionArrayVertices(
                 return
             super().test_concatenate(array, axis)
 
+        @pytest.mark.parametrize('axis', ['x', 'y'])
+        def test_take_along_axis(self, array: na.AbstractArray, axis: str):
+            if axis in array.axes_vertex:
+                indices = na.ScalarArray(np.array([0]), axes=axis)
+                with pytest.raises(ValueError, match="describes input vertices"):
+                    np.take_along_axis(array, indices, axis=axis)
+                return
+            super().test_take_along_axis(array=array, axis=axis)
+
         def test_nonzero(self, array: na.AbstractArray):
             if len(array.axes_vertex) != 0:
                 with pytest.raises(ValueError, match=f"item not supported by array with type {type(array)}"):

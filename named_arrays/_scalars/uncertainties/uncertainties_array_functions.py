@@ -705,6 +705,34 @@ def argsort(
     )
 
 
+@implements(np.take_along_axis)
+def take_along_axis(
+        arr: na.AbstractUncertainScalarArray,
+        indices: na.AbstractScalar,
+        axis: str,
+) -> na.UncertainScalarArray:
+    try:
+        arr = uncertainties._normalize(arr)
+        indices = uncertainties._normalize(indices)
+    except na.UncertainScalarTypeError:  # pragma: nocover
+        return NotImplemented
+
+    shape = arr.shape
+    if axis not in shape:
+        raise ValueError(
+            f"`axis`, {axis!r}, must be one of the axes in `arr`, {tuple(shape)}"
+        )
+
+    # Broadcast only `axis` so that a constant `nominal` (which does not vary
+    # along `axis`) is still taken correctly.
+    arr = na.broadcast_to(arr, shape={axis: shape[axis]}, append=True)
+
+    return na.UncertainScalarArray(
+        nominal=np.take_along_axis(arr.nominal, indices.nominal, axis=axis),
+        distribution=np.take_along_axis(arr.distribution, indices.distribution, axis=axis),
+    )
+
+
 @implements(np.partition)
 def partition(
     a: na.AbstractUncertainScalarArray,
