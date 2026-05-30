@@ -1165,6 +1165,27 @@ class AbstractArray(
         """
         return np.any(self, axis=axis, where=where)
 
+    def take_along_axis(
+            self: Self,
+            indices: AbstractArray,
+            axis: str,
+    ) -> Self:
+        """
+        Take values from this array by matching ``indices`` along ``axis``.
+
+        Parameters
+        ----------
+        indices
+            The integer indices to take along ``axis``.
+        axis
+            The axis of this array along which the values are taken.
+
+        See Also
+        --------
+        :func:`named_arrays.take_along_axis`: A functional version of this method.
+        """
+        return na.take_along_axis(self, indices=indices, axis=axis)
+
     def rms(
             self: Self,
             axis: None | str | Sequence[str] = None,

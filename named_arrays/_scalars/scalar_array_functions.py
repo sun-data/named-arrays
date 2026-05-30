@@ -779,6 +779,40 @@ def argsort(
     return result
 
 
+@implements(np.take_along_axis)
+def take_along_axis(
+        arr: na.AbstractScalarArray,
+        indices: na.AbstractScalarArray,
+        axis: str,
+) -> na.ScalarArray:
+    try:
+        arr = scalars._normalize(arr)
+        indices = scalars._normalize(indices)
+    except na.ScalarTypeError:
+        return NotImplemented
+
+    if axis not in arr.axes:
+        raise ValueError(
+            f"`axis`, {axis!r}, must be one of the axes in `arr`, {arr.axes}"
+        )
+
+    # The non-`axis` axes broadcast against each other by matching names.
+    shape = na.broadcast_shapes(
+        {ax: n for ax, n in arr.shape.items() if ax != axis},
+        {ax: n for ax, n in indices.shape.items() if ax != axis},
+    )
+    axes = (axis,) + tuple(shape)
+
+    return na.ScalarArray(
+        ndarray=np.take_along_axis(
+            arr.ndarray_aligned(axes),
+            indices.ndarray_aligned(axes),
+            axis=0,
+        ),
+        axes=axes,
+    )
+
+
 @implements(np.partition)
 def partition(
     a: na.AbstractScalarArray,

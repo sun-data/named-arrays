@@ -983,6 +983,30 @@ class AbstractTestAbstractArray(
             sorted_expected = np.sort(a=array, axis=axis)
             assert np.all(sorted == sorted_expected)
 
+        @pytest.mark.parametrize('axis', ['x', 'y'])
+        def test_take_along_axis(self, array: na.AbstractArray, axis: str):
+
+            if axis not in array.shape:
+                indices = na.ScalarArray(np.array([0]), axes=axis)
+                with pytest.raises(ValueError, match="`axis`, .* must be one of the axes in `arr`, .*"):
+                    np.take_along_axis(array, indices, axis=axis)
+                return
+
+            num = array.shape[axis]
+
+            # Reverse the array along `axis` by taking values in reverse order.
+            indices = na.ScalarArray(np.arange(num)[::-1], axes=axis)
+
+            result = np.take_along_axis(array, indices, axis=axis)
+            expected = array[{axis: slice(None, None, -1)}]
+
+            assert result.shape[axis] == num
+            assert np.all(result == expected)
+
+            # The functional and method versions should agree with `np.take_along_axis`.
+            assert np.all(na.take_along_axis(array, indices, axis=axis) == result)
+            assert np.all(array.take_along_axis(indices, axis=axis) == result)
+
         def test_unravel_index(self, array: na.AbstractArray):
             indices_raveled = na.ScalarArrayRange(0, array.size, axis='raveled').reshape(array.shape)
             indices_raveled = indices_raveled * np.ones_like(array.value, shape=dict(), dtype=int)

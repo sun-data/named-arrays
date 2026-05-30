@@ -24,6 +24,7 @@ __all__ = [
     "add_axes",
     "vmr",
     "mean_trimmed",
+    "take_along_axis",
     "interp",
     "histogram",
     "histogram2d",
@@ -942,6 +943,60 @@ def mean_trimmed(
         out=out,
         keepdims=keepdims,
     )
+
+
+def take_along_axis(
+    a: ArrayT,
+    indices: na.AbstractScalarArray | ArrayT,
+    axis: str,
+) -> ArrayT:
+    """
+    Take values from the input array by matching indices along the given axis.
+
+    This is the named-array analogue of :func:`numpy.take_along_axis`.
+    Unlike the :mod:`numpy` version, ``indices`` is broadcast against ``a`` by
+    matching axis names, so ``indices`` only needs to define the axes it varies
+    along.
+
+    Parameters
+    ----------
+    a
+        The source array to take values from.
+    indices
+        The integer indices to take along ``axis``.
+        For scalars and uncertain scalars this is an instance of
+        :class:`named_arrays.AbstractScalarArray`.
+        For vectors this may either be a scalar (the same indices are used for
+        every component) or a vector of the same type as ``a`` (a separate set
+        of indices for each component).
+    axis
+        The axis of ``a`` along which the values are taken.
+        The result replaces this axis with the axes of ``indices``.
+
+    See Also
+    --------
+    :func:`numpy.take_along_axis` : The equivalent :mod:`numpy` function.
+    :func:`numpy.argsort` : Produces indices suitable for this function.
+    :meth:`named_arrays.AbstractArray.take_along_axis` : A method version of this function.
+
+    Examples
+    --------
+
+    Sort an array by taking values along an axis using indices from
+    :func:`numpy.argsort`.
+
+    .. jupyter-execute::
+
+        import numpy as np
+        import named_arrays as na
+
+        a = na.ScalarArray(np.array([3, 1, 2, 0]), axes="x")
+
+        indices = na.ScalarArray(np.argsort(a.ndarray), axes="x")
+
+        na.take_along_axis(a, indices, axis="x")
+    """
+    return np.take_along_axis(a, indices, axis=axis)
 
 
 def interp(
