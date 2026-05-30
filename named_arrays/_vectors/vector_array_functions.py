@@ -704,7 +704,7 @@ def take_along_axis(
 
     try:
         indices = vectors._normalize(indices, prototype=arr)
-    except na.VectorTypeError:
+    except na.VectorTypeError:  # pragma: nocover
         return NotImplemented
 
     shape = arr.shape

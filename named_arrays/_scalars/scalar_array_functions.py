@@ -788,7 +788,7 @@ def take_along_axis(
     try:
         arr = scalars._normalize(arr)
         indices = scalars._normalize(indices)
-    except na.ScalarTypeError:
+    except na.ScalarTypeError:  # pragma: nocover
         return NotImplemented
 
     if axis not in arr.axes:

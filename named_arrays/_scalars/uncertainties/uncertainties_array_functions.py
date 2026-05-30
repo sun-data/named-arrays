@@ -714,7 +714,7 @@ def take_along_axis(
     try:
         arr = uncertainties._normalize(arr)
         indices = uncertainties._normalize(indices)
-    except na.UncertainScalarTypeError:
+    except na.UncertainScalarTypeError:  # pragma: nocover
         return NotImplemented
 
     shape = arr.shape
