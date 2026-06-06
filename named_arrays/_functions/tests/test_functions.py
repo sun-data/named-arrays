@@ -198,6 +198,7 @@ class AbstractTestAbstractFunctionArray(
         argnames='item',
         argvalues=[
             dict(y=0),
+            dict(z=0),  # an axis not present in the function array: indexing is a no-op
             dict(y=slice(0, 1)),
             dict(y=na.ScalarArrayRange(0, 2, axis='y')),
             dict(
