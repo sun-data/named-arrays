@@ -563,8 +563,11 @@ class AbstractFunctionArray(
 
         elif isinstance(item, dict):
 
-            if not set(item).issubset(array.axes): # pragma: no cover
-                raise ValueError(f"item contains axes {set(item) - set(array.axes)} that does not exist in {set(array.axes)}")
+            # ignore axes that are not present in this function array, so that
+            # indexing is consistent with ``ScalarArray`` and composes with
+            # ``na.getitem`` over heterogeneous structures (e.g. a function
+            # array that lacks the axis being selected is left untouched)
+            item = {ax: item[ax] for ax in item if ax in array.axes}
 
             item_inputs = dict()
             item_outputs = dict()
