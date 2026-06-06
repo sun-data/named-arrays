@@ -133,6 +133,68 @@ class TestIndexingFunctions:
             assert indices[axis][{axis: ~0}] == shape[axis] - 1
 
 
+@dataclasses.dataclass
+class _GetitemContainer:
+    """A simple dataclass used to exercise ``na.getitem`` recursion."""
+    data: na.AbstractArray
+    label: str = "label"
+    size: int = dataclasses.field(init=False, default=-1)
+
+
+class TestGetitem:
+    """Tests for the standalone :func:`named_arrays.getitem` function."""
+
+    def _array(self) -> na.ScalarArray:
+        return na.arange(0, 5, axis="x")
+
+    def _index(self) -> dict[str, na.ScalarArray]:
+        return {"x": na.ScalarArray(np.array([1, 3]), axes="x")}
+
+    def _expected(self) -> na.ScalarArray:
+        return na.ScalarArray(np.array([1, 3]), axes="x")
+
+    def test_getitem_array(self):
+        result = na.getitem(self._array(), self._index())
+        assert isinstance(result, na.AbstractArray)
+        assert np.all(result == self._expected())
+
+    def test_getitem_dict(self):
+        result = na.getitem({"foo": self._array(), "bar": 7}, self._index())
+        assert isinstance(result, dict)
+        assert np.all(result["foo"] == self._expected())
+        assert result["bar"] == 7
+
+    def test_getitem_list(self):
+        result = na.getitem([self._array(), 7], self._index())
+        assert isinstance(result, list)
+        assert np.all(result[0] == self._expected())
+        assert result[1] == 7
+
+    def test_getitem_tuple(self):
+        result = na.getitem((self._array(), 7), self._index())
+        assert isinstance(result, tuple)
+        assert np.all(result[0] == self._expected())
+        assert result[1] == 7
+
+    def test_getitem_nested(self):
+        result = na.getitem({"a": [self._array()]}, self._index())
+        assert np.all(result["a"][0] == self._expected())
+
+    def test_getitem_dataclass(self):
+        container = _GetitemContainer(data=self._array())
+        result = na.getitem(container, self._index())
+        assert isinstance(result, _GetitemContainer)
+        assert np.all(result.data == self._expected())
+        # non-array fields are passed through unchanged
+        assert result.label == "label"
+        # ``init=False`` fields are skipped by ``dataclasses.replace``
+        assert result.size == -1
+
+    def test_getitem_passthrough(self):
+        # values that are neither array-like nor a known container are returned as-is
+        assert na.getitem(7, self._index()) == 7
+
+
 class AbstractTestAbstractArray(
     abc.ABC,
 ):
