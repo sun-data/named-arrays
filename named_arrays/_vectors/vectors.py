@@ -330,8 +330,17 @@ class AbstractVectorArray(
 
         components_result = dict()
         for c in components:
+            component = components[c]
             if isinstance(item, dict):
-                components_result[c] = na.as_named_array(components[c])[{ax: item[ax].components[c] for ax in item}]
+                if na.named_array_like(component):
+                    components_result[c] = na.as_named_array(components[c])[{ax: item[ax].components[c] for ax in item}]
+                elif not na.shape(component):
+                    components_result[c] = component
+                else:
+                    raise ValueError(
+                        f"If component {c=} is not an instance of AbstractArray,"
+                        f"it must be a logical scalar, instead got {na.shape(component)=}."
+                    )
             else:
                 components_result[c] = components[c][na.as_named_array(item.components[c])]
 
