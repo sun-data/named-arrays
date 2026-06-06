@@ -73,8 +73,11 @@ def nominal(
 ) -> AnyT | NominalArrayT:
     """
     Isolate the `nominal` attribute of an uncertain array.
-    If `a` is a nested object, such a vector, this function is recursively
-    applied to all the attributes of the nested object.
+    If `a` is a nested object, such as a vector, or an arbitrarily-nested
+    structure (:class:`dict`, :class:`list`, :class:`tuple`, or
+    :mod:`dataclasses` instance), this function is recursively applied to all
+    the attributes/elements of the nested object, leaving non-array values
+    unchanged.
 
     Parameters
     ----------
@@ -111,12 +114,27 @@ def nominal(
 
         na.nominal(a)
     """
-    try:
-        return na._named_array_function(
-            func=nominal,
-            a=a,
-        )
-    except TypeError:
+    if na.named_array_like(a):
+        try:
+            return na._named_array_function(
+                func=nominal,
+                a=a,
+            )
+        except TypeError:
+            return a
+    elif isinstance(a, dict):
+        return {key: nominal(a[key]) for key in a}
+    elif isinstance(a, list):
+        return [nominal(a_i) for a_i in a]
+    elif isinstance(a, tuple):
+        return tuple(nominal(a_i) for a_i in a)
+    elif dataclasses.is_dataclass(a):
+        return dataclasses.replace(a, **{
+            field.name: nominal(getattr(a, field.name))
+            for field in dataclasses.fields(a)
+            if field.init
+        })
+    else:
         return a
 
 
