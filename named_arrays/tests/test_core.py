@@ -470,6 +470,15 @@ class AbstractTestAbstractArray(
     ):
         pass
 
+    def test_isel(self, array: na.AbstractArray):
+        shape = array.shape
+        if not shape:
+            return
+        # ``isel`` is keyword sugar for dict-indexing along named axes
+        axis = next(iter(shape))
+        item = {axis: 0}
+        assert np.all(array.isel(**item) == array[item])
+
     @abc.abstractmethod
     def test__bool__(self, array: na.AbstractArray):
         pass
