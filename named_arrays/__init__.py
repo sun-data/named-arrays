@@ -76,6 +76,9 @@ from ._core import (
     AbstractNormalRandomSample,
     AbstractPoissonRandomSample,
 )
+from ._mixins import (
+    Indexable,
+)
 from ._scalars.scalars import (
     ScalarStartT,
     ScalarStopT,
@@ -474,6 +477,7 @@ __all__ = [
     "AbstractUniformRandomSample",
     "AbstractNormalRandomSample",
     "AbstractPoissonRandomSample",
+    "Indexable",
     "ScalarStartT",
     "ScalarStopT",
     "ScalarTypeError",
