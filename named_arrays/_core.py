@@ -25,6 +25,7 @@ __all__ = [
     "flatten_axes",
     "axis_normalized",
     "explicit",
+    "getitem",
     "AbstractArray",
     "ArrayLike",
     "AbstractExplicitArray",
@@ -317,6 +318,81 @@ def explicit(value: Any | AbstractArray):
         return value.explicit
     else:
         return value
+
+
+def getitem(
+    a: Any,
+    item: dict | AbstractArray,
+) -> Any:
+    """
+    Recursively index an arbitrarily-nested structure with a named index.
+
+    The index ``item`` is applied only to the leaves of ``a`` that are
+    compatible with the :mod:`named_arrays` API (see :func:`named_array_like`).
+    Containers (:class:`dict`, :class:`list`, :class:`tuple`) and
+    :mod:`dataclasses` are traversed recursively, and any other leaf value is
+    returned unchanged.
+
+    Parameters
+    ----------
+    a
+        The structure to index. May be a named array, a (possibly nested)
+        :class:`dict`, :class:`list`, or :class:`tuple` of named arrays, a
+        :mod:`dataclasses` instance whose fields are named arrays, or any other
+        value (which is returned unchanged).
+    item
+        The named index to apply to each array-like leaf of ``a``, for example
+        a :class:`dict` mapping axis names to index arrays.
+
+    Returns
+    -------
+        A structure with the same shape as ``a`` where every array-like leaf
+        has been indexed by ``item``.
+
+    Examples
+    --------
+
+    .. jupyter-execute::
+
+        import numpy as np
+        import named_arrays as na
+
+        a = na.arange(0, 5, axis="x")
+        index = {"x": na.ScalarArray(np.array([1, 3]), axes="x")}
+
+        na.getitem({"foo": a, "bar": 2 * a}, index)
+
+    Notes
+    -----
+    A :class:`tuple` leaf is rebuilt as a plain :class:`tuple`, so the subtype
+    of a :class:`typing.NamedTuple` is not preserved.
+    """
+
+    if named_array_like(a):
+        return a[item]
+
+    elif isinstance(a, dict):
+        return {
+            key: getitem(a[key], item)
+            for key in a
+        }
+
+    elif isinstance(a, list):
+        return [getitem(a_i, item) for a_i in a]
+
+    elif isinstance(a, tuple):
+        return tuple(getitem(a_i, item) for a_i in a)
+
+    elif dataclasses.is_dataclass(a):
+        changes = {
+            field.name: getitem(getattr(a, field.name), item)
+            for field in dataclasses.fields(a)
+            if field.init
+        }
+        return dataclasses.replace(a, **changes)
+
+    else:
+        return a
 
 
 @dataclasses.dataclass(eq=False, repr=False)
