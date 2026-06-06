@@ -195,6 +195,57 @@ class TestGetitem:
         assert na.getitem(7, self._index()) == 7
 
 
+class TestShape:
+    """Tests for the recursive behavior of :func:`named_arrays.shape`."""
+
+    def _x(self) -> na.ScalarArray:
+        return na.arange(0, 5, axis="x")
+
+    def _y(self) -> na.ScalarArray:
+        return na.arange(0, 3, axis="y")
+
+    def test_shape_array(self):
+        assert na.shape(self._x()) == {"x": 5}
+
+    @pytest.mark.parametrize("a", [7, None, "label"])
+    def test_shape_scalar_unchanged(self, a):
+        # non-array leaves remain zero-dimensional, as before
+        assert na.shape(a) == {}
+
+    def test_shape_dict(self):
+        # the broadcasted shape of all array-like leaves
+        assert na.shape({"a": self._x(), "b": self._y()}) == {"x": 5, "y": 3}
+
+    def test_shape_dict_scalar_leaf(self):
+        # scalar leaves contribute an empty shape, not an error
+        assert na.shape({"a": self._x(), "b": 7}) == {"x": 5}
+
+    def test_shape_list(self):
+        assert na.shape([self._x(), self._x()]) == {"x": 5}
+
+    def test_shape_tuple(self):
+        assert na.shape((self._x(), self._y())) == {"x": 5, "y": 3}
+
+    def test_shape_nested(self):
+        assert na.shape({"a": [self._x()], "b": (self._y(),)}) == {"x": 5, "y": 3}
+
+    def test_shape_dataclass(self):
+        # array fields contribute their shape; non-array fields contribute {}
+        container = _GetitemContainer(data=self._x())
+        assert na.shape(container) == {"x": 5}
+
+    def test_shape_empty_container(self):
+        assert na.shape({}) == {}
+        assert na.shape([]) == {}
+
+    def test_shape_incompatible(self):
+        # leaves whose axes cannot broadcast together raise, rather than
+        # silently returning an empty shape
+        a = [na.arange(0, 5, axis="x"), na.arange(0, 3, axis="x")]
+        with pytest.raises(ValueError, match="shapes .* are not compatible"):
+            na.shape(a)
+
+
 class AbstractTestAbstractArray(
     abc.ABC,
 ):
@@ -235,6 +286,9 @@ class AbstractTestAbstractArray(
         for axis in shape:
             assert isinstance(axis, str)
             assert isinstance(shape[axis], int)
+        # the top-level ``na.shape`` must agree with the ``.shape`` property
+        # for every array family (guards the ``np.shape`` -> ``.shape`` swap)
+        assert na.shape(array) == shape
 
     def test_ndim(self, array: na.AbstractArray):
         assert isinstance(array.ndim, int)

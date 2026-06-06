@@ -1,6 +1,7 @@
 from __future__ import annotations
 from typing import Sequence, overload, Type, Any, Callable, TypeVar, Literal
 import functools
+import dataclasses
 import numpy as np
 import astropy.units as u
 import named_arrays as na
@@ -543,14 +544,42 @@ def shape(a: na.ArrayLike) -> dict[str, int]:
     its position, so the shape is a :class:`dict` where the keys are
     the axis names and the values are number of elements along each axis.
 
+    If ``a`` is an arbitrarily-nested structure (:class:`dict`, :class:`list`,
+    :class:`tuple`, or :mod:`dataclasses` instance), the result is the
+    :func:`broadcast_shapes` of the shapes of all the array-like leaves, so a
+    container of compatible arrays reports their combined broadcasted shape.
+
     Parameters
     ----------
     a
-        The array to compute the shape of.
+        The array, or nested structure of arrays, to compute the shape of.
+
+    Examples
+    --------
+
+    .. jupyter-execute::
+
+        import named_arrays as na
+
+        x = na.arange(0, 5, axis="x")
+        y = na.arange(0, 3, axis="y")
+
+        # the broadcasted shape of every array-like leaf
+        na.shape({"foo": x, "bar": y})
     """
-    if not isinstance(a, na.AbstractArray):
-        a = na.ScalarArray(a)
-    return np.shape(a)
+    if isinstance(a, na.AbstractArray):
+        return a.shape
+    elif isinstance(a, dict):
+        return na.broadcast_shapes(*[shape(a[key]) for key in a])
+    elif isinstance(a, (list, tuple)):
+        return na.broadcast_shapes(*[shape(a_i) for a_i in a])
+    elif dataclasses.is_dataclass(a) and not isinstance(a, type):
+        return na.broadcast_shapes(*[
+            shape(getattr(a, field.name))
+            for field in dataclasses.fields(a)
+        ])
+    else:
+        return np.shape(na.ScalarArray(a))
 
 
 def unit(
