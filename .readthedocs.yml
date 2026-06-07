@@ -14,6 +14,12 @@ build:
         # `fail_on_warning: true` is preserved with `-W --keep-going`.
         - python -m sphinx -T -b html -j auto -W --keep-going -d docs/_build/doctrees -D language=en docs $READTHEDOCS_OUTPUT/html
 
+# kept so Read the Docs still recognizes this as a Sphinx project and creates
+# the virtualenv / runs `python.install`; the actual build is overridden above.
+sphinx:
+  configuration: docs/conf.py
+  fail_on_warning: true
+
 python:
   install:
     - method: pip
