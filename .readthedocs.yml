@@ -6,10 +6,13 @@ build:
     python: "3.12"
   apt_packages:
     - graphviz
-
-sphinx:
-  configuration: docs/conf.py
-  fail_on_warning: true
+  jobs:
+    build:
+      html:
+        # build in parallel (`-j auto`) to stay under the build time limit.
+        # this overrides the default `sphinx:` build, so the equivalent of
+        # `fail_on_warning: true` is preserved with `-W --keep-going`.
+        - python -m sphinx -T -b html -j auto -W --keep-going -d docs/_build/doctrees -D language=en docs $READTHEDOCS_OUTPUT/html
 
 python:
   install:
