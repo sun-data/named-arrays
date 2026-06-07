@@ -899,16 +899,6 @@ class AbstractArray(
         ----------
         item
             The index to apply along each named axis.
-
-        Examples
-        --------
-
-        .. jupyter-execute::
-
-            import named_arrays as na
-
-            a = na.arange(0, 5, axis="x")
-            a.isel(x=slice(1, 3))
         """
         return self[item]
 
