@@ -64,6 +64,17 @@ class AbstractTestIndexable(
         assert result.shape == shape
         assert indexable.shape == shape
 
+    def test_isel(self, indexable: na.Indexable):
+        shape = indexable.shape
+        if not shape:
+            return
+        # ``isel`` is keyword sugar for dict-indexing along named axes
+        axis = next(iter(shape))
+        item = {axis: na.ScalarArray(np.arange(shape[axis]), axes=axis)}
+        result = indexable.isel(**item)
+        assert type(result) is type(indexable)
+        assert result.shape == indexable[item].shape
+
 
 @dataclasses.dataclass(eq=False)
 class _Point(na.Indexable):

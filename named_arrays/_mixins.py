@@ -77,3 +77,25 @@ class Indexable(
             :class:`dict` mapping axis names to index arrays.
         """
         return na.getitem(self, item)
+
+    def isel(
+        self: Self,
+        **item: int | slice | na.AbstractArray,
+    ) -> Self:
+        """
+        Index every array-like field of this object along named axes given as
+        keyword arguments.
+
+        This is a convenience wrapper around :meth:`__getitem__`:
+        ``a.isel(x=0)`` is equivalent to ``a[dict(x=0)]``.
+
+        Since keyword-argument names must be valid Python identifiers, axes
+        whose names are not valid identifiers can only be indexed using the
+        :class:`dict` form, ``a[{...}]``.
+
+        Parameters
+        ----------
+        item
+            The index to apply along each named axis.
+        """
+        return self[item]

@@ -881,6 +881,27 @@ class AbstractArray(
 
         raise ValueError(f"item not supported by array with type {type(self)}")
 
+    def isel(
+            self: Self,
+            **item: int | slice | AbstractArray,
+    ) -> AbstractExplicitArray:
+        """
+        Index this array along named axes given as keyword arguments.
+
+        This is a convenience wrapper around :meth:`__getitem__`:
+        ``a.isel(x=0)`` is equivalent to ``a[dict(x=0)]``.
+
+        Since keyword-argument names must be valid Python identifiers, axes
+        whose names are not valid identifiers can only be indexed using the
+        :class:`dict` form, ``a[{...}]``.
+
+        Parameters
+        ----------
+        item
+            The index to apply along each named axis.
+        """
+        return self[item]
+
     @abc.abstractmethod
     def __bool__(self: Self) -> bool:
         return True
