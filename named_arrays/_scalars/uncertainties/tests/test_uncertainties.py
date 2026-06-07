@@ -1,3 +1,4 @@
+import dataclasses
 from typing import Sequence, Callable
 import numpy as np
 import pytest
@@ -7,6 +8,7 @@ import named_arrays.tests.test_core
 import named_arrays._scalars.tests.test_scalars
 
 __all__ = [
+    'TestNominalRecursive',
     'AbstractTestAbstractUncertainScalarArray',
     'TestUncertainScalarArray',
     'TestUncertainScalarArrayCreation',
@@ -67,6 +69,58 @@ def _uncertain_scalar_arrays_2():
     ]
     arrays = arrays_exact + arrays_uncertain
     return arrays
+
+
+@dataclasses.dataclass(eq=False)
+class _NominalContainer:
+    """A composite dataclass used to exercise the recursion of ``na.nominal``."""
+    data: na.AbstractScalar
+    label: str = "data"
+    size: int = dataclasses.field(init=False, default=-1)
+
+
+class TestNominalRecursive:
+    """Tests for the recursion of :func:`named_arrays.nominal` into nested structures."""
+
+    def _uncertain(self) -> na.UncertainScalarArray:
+        return na.UniformUncertainScalarArray(5, 4, num_distribution=_num_distribution).explicit
+
+    def _expected(self):
+        # the nominal value is deterministic (only the distribution is random)
+        return self._uncertain().nominal
+
+    def test_nominal_scalar_passthrough(self):
+        assert na.nominal(7) == 7
+
+    def test_nominal_dict(self):
+        result = na.nominal({"a": self._uncertain(), "b": 2})
+        assert isinstance(result, dict)
+        assert np.all(result["a"] == self._expected())
+        assert result["b"] == 2
+
+    def test_nominal_list(self):
+        result = na.nominal([self._uncertain()])
+        assert isinstance(result, list)
+        assert np.all(result[0] == self._expected())
+
+    def test_nominal_tuple(self):
+        result = na.nominal((self._uncertain(), 7))
+        assert isinstance(result, tuple)
+        assert np.all(result[0] == self._expected())
+        assert result[1] == 7
+
+    def test_nominal_nested(self):
+        result = na.nominal({"a": [self._uncertain()]})
+        assert np.all(result["a"][0] == self._expected())
+
+    def test_nominal_dataclass(self):
+        result = na.nominal(_NominalContainer(data=self._uncertain()))
+        assert isinstance(result, _NominalContainer)
+        assert np.all(result.data == self._expected())
+        # non-array fields are passed through unchanged
+        assert result.label == "data"
+        # ``init=False`` fields are skipped by ``dataclasses.replace``
+        assert result.size == -1
 
 
 class AbstractTestAbstractUncertainScalarArray(
