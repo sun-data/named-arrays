@@ -1316,15 +1316,13 @@ class PolynomialFitFunctionArray(
             term = 1
             if name:  # the empty string is the constant term
                 for k in name.split("*"):
-                    try:
-                        factor = inputs[k]
-                    except KeyError:
+                    if k not in inputs:
                         raise ValueError(
                             f"coefficient name {name!r} references input component "
                             f"{k!r}, which is not one of the available components "
                             f"{tuple(inputs)}."
-                        ) from None
-                    term = term * factor
+                        )
+                    term = term * inputs[k]
             design_matrix[name] = term
 
         design_matrix = na.CartesianNdVectorArray(design_matrix)
