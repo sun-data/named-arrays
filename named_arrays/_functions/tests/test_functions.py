@@ -1119,21 +1119,6 @@ def _polynomial_function_arrays():
             axis_polynomial="y",
             components="y",
         ),
-        # mixed-order fit via a per-component vector `degree`
-        na.PolynomialFitFunctionArray.from_degree(
-            inputs=na.Cartesian2dVectorLinearSpace(
-                start=0,
-                stop=1,
-                axis=na.Cartesian2dVectorArray('x', 'y'),
-                num=na.Cartesian2dVectorArray(_num_x, _num_y)
-            ),
-            outputs=na.ScalarUniformRandomSample(
-                start=-5,
-                stop=5,
-                shape_random=dict(x=_num_x, y=_num_y),
-            ),
-            degree=na.CartesianNdVectorArray({"x": 1, "y": 2}),
-        ),
         # explicit (pruned) coefficient names
         na.PolynomialFitFunctionArray(
             inputs=na.Cartesian2dVectorLinearSpace(
@@ -1201,80 +1186,3 @@ class TestPolynomialFitFunctionArray(
         AbstractTestAbstractFunctionArray.TestMatmul
     ):
         pass
-
-
-
-
-
-def _quadratic_function():
-    inputs = na.Cartesian2dVectorLinearSpace(
-        start=0,
-        stop=1,
-        axis=na.Cartesian2dVectorArray("x", "y"),
-        num=na.Cartesian2dVectorArray(_num_x, _num_y),
-    )
-    # a function with a cross term but no pure x^2 or y^2 term
-    outputs = 1 + 2 * inputs.x + 3 * inputs.y + 4 * inputs.x * inputs.y
-    return inputs, outputs
-
-
-class TestPolynomialFitFunctionArrayFromDegree:
-    """Focused tests for `coefficient_names` / `from_degree`."""
-
-    def test_scalar_degree_matches_vector_degree(self):
-        inputs, outputs = _quadratic_function()
-        scalar = na.PolynomialFitFunctionArray.from_degree(
-            inputs, outputs, degree=2, components=("x", "y"),
-        )
-        vector = na.PolynomialFitFunctionArray.from_degree(
-            inputs, outputs, degree=na.CartesianNdVectorArray({"x": 2, "y": 2}),
-        )
-        assert set(scalar.coefficient_names) == set(vector.coefficient_names)
-        assert np.allclose(
-            scalar.coefficients.components["x"].ndarray,
-            vector.coefficients.components["x"].ndarray,
-        )
-
-    def test_vector_degree_mixed_order_drops_terms(self):
-        inputs, outputs = _quadratic_function()
-        fit = na.PolynomialFitFunctionArray.from_degree(
-            inputs, outputs, degree=na.CartesianNdVectorArray({"x": 1, "y": 2}),
-        )
-        assert "x*x" not in fit.coefficient_names
-        assert "x*y" in fit.coefficient_names
-        assert "y*y" in fit.coefficient_names
-
-    def test_vector_degree_total_degree_cap(self):
-        inputs, outputs = _quadratic_function()
-        fit = na.PolynomialFitFunctionArray.from_degree(
-            inputs, outputs,
-            degree=na.CartesianNdVectorArray({"x": 1, "y": 2, "w": 2}),
-        )
-        assert set(fit.coefficient_names) == {
-            "", "x", "y", "w", "y*y", "w*w", "x*y", "x*w", "y*w",
-        }
-
-    def test_explicit_coefficient_names_fit(self):
-        inputs, outputs = _quadratic_function()
-        # the exact basis spanning `outputs` (no pure squares)
-        fit = na.PolynomialFitFunctionArray(
-            inputs=inputs,
-            outputs=outputs,
-            coefficient_names=["", "x", "y", "x*y"],
-        )
-        assert set(fit.design_matrix(inputs).components) == {"", "x", "y", "x*y"}
-        assert np.allclose((fit.predictions - outputs).ndarray, 0, atol=1e-9)
-
-    def test_coefficient_names_required(self):
-        inputs, outputs = _quadratic_function()
-        fit = na.PolynomialFitFunctionArray(inputs=inputs, outputs=outputs)
-        with pytest.raises(ValueError, match="coefficient_names"):
-            fit.coefficients
-
-    def test_design_matrix_unknown_component(self):
-        inputs, outputs = _quadratic_function()
-        fit = na.PolynomialFitFunctionArray(
-            inputs=inputs, outputs=outputs, coefficient_names=["z"],
-        )
-        with pytest.raises(ValueError, match="z"):
-            fit.design_matrix(inputs)

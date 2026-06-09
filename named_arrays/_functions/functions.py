@@ -3,7 +3,6 @@ import functools
 from typing import TypeVar, Generic, Type, ClassVar, Sequence, Callable, Collection, Any, Literal
 from typing_extensions import Self
 import abc
-import collections
 import dataclasses
 import numpy as np
 import astropy.units as u
@@ -1337,7 +1336,7 @@ class PolynomialFitFunctionArray(
         cls,
         inputs: InputsT,
         outputs: OutputsT,
-        degree: int | na.AbstractVectorArray,
+        degree: int,
         components: None | str | Sequence[str] = None,
         center: None | InputsT = None,
         axis_polynomial: None | str | Sequence[str] = None,
@@ -1354,17 +1353,11 @@ class PolynomialFitFunctionArray(
         outputs
             The set of dependent variables.
         degree
-            The degree of the polynomial. If an :class:`int`, every monomial with
-            total degree up to ``degree`` (over `components`) is included. If a vector
-            (e.g. a :class:`named_arrays.CartesianNdVectorArray`) of per-component
-            maximum exponents, the term ``x**i * y**j * ...`` is included iff
-            ``i + j + ... <= max(exponents)`` *and* each exponent is within its
-            component's cap, giving a mixed-order fit. When `degree` is a vector its
-            components define which inputs the polynomial depends on, and `components`
-            is ignored.
+            The degree of the polynomial. Every monomial with total degree up to
+            ``degree`` (over `components`) is included.
         components
-            The components of the input that the polynomial depends on. Required when
-            `degree` is an :class:`int`; defaults to all components of `inputs`.
+            The components of the input that the polynomial depends on.
+            Defaults to all components of `inputs`.
         center
             The reference point subtracted from the inputs before fitting.
         axis_polynomial
@@ -1372,34 +1365,19 @@ class PolynomialFitFunctionArray(
         where_polynomial
             A boolean mask controlling which elements to use for fitting.
         """
-        if isinstance(degree, na.AbstractVectorArray):
-            caps = degree.cartesian_nd.components
-            components = tuple(caps)
-            total = max(caps.values())
-
-            def keep(combination: tuple[str, ...]) -> bool:
-                counts = collections.Counter(combination)
-                return all(counts[c] <= caps[c] for c in counts)
-
-        else:
-            if components is None:
-                inputs_nd = inputs
-                if isinstance(inputs_nd, na.AbstractScalar):
-                    # mirror `design_matrix`'s wrapping of scalar inputs
-                    inputs_nd = na.CartesianNdVectorArray({"dummy": inputs_nd})
-                components = tuple(inputs_nd.cartesian_nd.broadcasted.components)
-            elif isinstance(components, str):
-                components = (components,)
-            total = degree
-
-            def keep(combination: tuple[str, ...]) -> bool:
-                return True
+        if components is None:
+            inputs_nd = inputs
+            if isinstance(inputs_nd, na.AbstractScalar):
+                # mirror `design_matrix`'s wrapping of scalar inputs
+                inputs_nd = na.CartesianNdVectorArray({"dummy": inputs_nd})
+            components = tuple(inputs_nd.cartesian_nd.broadcasted.components)
+        elif isinstance(components, str):
+            components = (components,)
 
         coefficient_names = []
-        for i in range(total + 1):
+        for i in range(degree + 1):
             for combination in itertools.combinations_with_replacement(components, i):
-                if keep(combination):
-                    coefficient_names.append("*".join(combination))
+                coefficient_names.append("*".join(combination))
 
         return cls(
             inputs=inputs,
