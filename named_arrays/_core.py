@@ -450,10 +450,6 @@ def pack(a: Any, axis: str = "pack") -> na.ScalarArray:
 
     def visit(x: Any) -> None:
         if isinstance(x, na.AbstractScalarArray):
-            if isinstance(x, na.AbstractUncertainScalarArray):
-                raise NotImplementedError(
-                    "pack of uncertain arrays is not yet supported."
-                )
             chunks.append(np.reshape(value(x).ndarray, -1))
         elif isinstance(x, na.AbstractVectorArray):
             for component in x.components.values():
@@ -535,10 +531,6 @@ def unpack(
     def visit(p: Any) -> Any:
         nonlocal position
         if isinstance(p, na.AbstractScalarArray):
-            if isinstance(p, na.AbstractUncertainScalarArray):
-                raise NotImplementedError(
-                    "unpack of uncertain arrays is not yet supported."
-                )
             shape = na.shape(p)
             num = int(np.prod(tuple(shape.values()), dtype=int))
             chunk = np.reshape(flat[position : position + num], tuple(shape.values()))
