@@ -1,0 +1,21 @@
+name: nbstripout
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  nbstripout:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install nbstripout
+        run: pip install nbstripout
+      - name: Verify notebooks are stripped
+        run: git ls-files '*.ipynb' | xargs --no-run-if-empty nbstripout --verify
