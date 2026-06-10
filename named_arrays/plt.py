@@ -2195,6 +2195,32 @@ def brace_vertical(
     return result
 
 
+def _display_aspect(
+    ax: None | matplotlib.axes.Axes | na.AbstractScalar,
+) -> na.ScalarArray:
+    """
+    The ratio of the vertical to horizontal scale of the data-to-display
+    transform, ``sy / sx``, for each axes.
+
+    This is a snapshot of the current axes limits and size, used by
+    :func:`dimension` to make the displacement direction and label rotation
+    visually correct under a non-equal aspect ratio.
+
+    Assumes the axes are linear and unrotated.
+    """
+    ax = na.as_named_array(ax)
+    result = na.ScalarArray.empty(ax.shape, dtype=float)
+    for index in na.ndindex(ax.shape):
+        ax_index = ax[index].ndarray
+        if ax_index is None:
+            ax_index = plt.gca()
+        bbox = ax_index.bbox
+        xmin, xmax = ax_index.get_xlim()
+        ymin, ymax = ax_index.get_ylim()
+        result[index] = (bbox.height / bbox.width) * ((xmax - xmin) / (ymax - ymin))
+    return result
+
+
 def dimension(
     a: na.AbstractCartesian2dVectorArray,
     b: na.AbstractCartesian2dVectorArray,
@@ -2226,12 +2252,23 @@ def dimension(
     b
         The second point being dimensioned, in data coordinates.
     offset
-        The perpendicular displacement of the dimension line from the segment
-        connecting `a` and `b`, in data coordinates.
+        The displacement of the dimension line from the segment connecting `a`
+        and `b`. The magnitude is given in data coordinates, but the direction
+        is perpendicular to the segment *as it appears on screen*, computed from
+        the data-to-display transform so that the displacement looks orthogonal
+        and the label is rotated correctly even when the aspect ratio is not
+        equal.
         Positive values displace the dimension line 90 degrees
         counterclockwise from the direction pointing from `a` to `b`,
         negative values displace it to the other side.
         Use this to move the annotation away from other components.
+
+        .. note::
+
+            The displacement direction and label rotation are a snapshot of the
+            axes limits and size at the time `dimension` is called, so call it
+            after the data has been plotted and the limits have been set.
+            Linear, unrotated axes are assumed.
     label
         The text label for the dimension.
         If :obj:`None`, the measured distance :math:`|b - a|`,
@@ -2342,9 +2379,15 @@ def dimension(
     kwargs_text = kwargs | kwargs_text
 
     # Direction from `a` to `b` and the unit normal used for the displacement.
+    # The perpendicular direction is computed in display coordinates (via the
+    # snapshot scale ratio `aspect`) so the displacement is visually orthogonal
+    # and the label is rotated correctly even when the aspect ratio is not
+    # equal, while the offset magnitude stays in data coordinates.
     delta = b - a
     length = delta.length
-    normal = na.Cartesian2dVectorArray(-delta.y, delta.x) / length
+    aspect = _display_aspect(ax)
+    normal = na.Cartesian2dVectorArray(-aspect * delta.y, delta.x / aspect)
+    normal = normal / normal.length
 
     # Give a unitless `offset` the same unit as the coordinates so that the
     # default `offset=0` can be displaced against unitful points.
@@ -2395,9 +2438,10 @@ def dimension(
         **kwargs_dimension,
     )
 
-    # Label placed at the midpoint of the dimension line, rotated to match it.
+    # Label placed at the midpoint of the dimension line, rotated to match its
+    # angle as it appears on screen (in display coordinates).
     midpoint = (p1 + p2) / 2
-    rotation = (np.arctan2(delta.y, delta.x) << u.rad).to_value(u.deg)
+    rotation = (np.arctan2(aspect * delta.y, delta.x) << u.rad).to_value(u.deg)
     text(
         x=midpoint.x,
         y=midpoint.y,
