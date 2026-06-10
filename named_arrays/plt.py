@@ -30,6 +30,7 @@ __all__ = [
     "text",
     "annotate",
     "brace_vertical",
+    "dimension",
     "set_xlabel",
     "get_xlabel",
     "set_ylabel",
@@ -2189,6 +2190,223 @@ def brace_vertical(
         ha=ha,
         va="center",
         **kwargs_text
+    )
+
+    return result
+
+
+def dimension(
+    a: na.AbstractCartesian2dVectorArray,
+    b: na.AbstractCartesian2dVectorArray,
+    offset: float | u.Quantity | na.AbstractScalar = 0,
+    label: None | str | na.AbstractScalar = None,
+    decimals: int = 2,
+    gap: float | na.AbstractScalar = 0.1,
+    ax: None | matplotlib.axes.Axes | na.AbstractScalar = None,
+    components: None | tuple[str, str] = None,
+    arrowstyle: str = "<->",
+    kwargs_extension: None | dict[str, Any] = None,
+    kwargs_dimension: None | dict[str, Any] = None,
+    kwargs_text: None | dict[str, Any] = None,
+    **kwargs,
+) -> na.ScalarArray[npt.NDArray[matplotlib.text.Annotation]]:
+    """
+    Annotate the distance between two points like a mechanical drawing.
+
+    A dimension line with arrowheads at both ends is drawn parallel to the
+    segment connecting `a` and `b`, joined to each point by an extension line.
+    The dimension line can be displaced to either side of the segment using the
+    `offset` parameter, which is useful for moving the annotation clear of other
+    components in the drawing.
+
+    Parameters
+    ----------
+    a
+        The first point being dimensioned, in data coordinates.
+    b
+        The second point being dimensioned, in data coordinates.
+    offset
+        The perpendicular displacement of the dimension line from the segment
+        connecting `a` and `b`, in data coordinates.
+        Positive values displace the dimension line 90 degrees
+        counterclockwise from the direction pointing from `a` to `b`,
+        negative values displace it to the other side.
+        Use this to move the annotation away from other components.
+    label
+        The text label for the dimension.
+        If :obj:`None`, the measured distance :math:`|b - a|`,
+        rounded to `decimals` places, is used.
+    decimals
+        The number of decimal places to round the default `label` to.
+        Ignored if `label` is given explicitly.
+    gap
+        The fraction of the `offset` distance to leave as a gap between each
+        point and the start of its extension line, matching the convention of
+        a mechanical drawing.
+    ax
+        A matplotlib axes instance on which to plot the dimension.
+    components
+        If `a` and `b` have more than two components, use this argument to
+        specify which components correspond to the horizontal and vertical
+        positions.
+    arrowstyle
+        The :class:`matplotlib.patches.ArrowStyle` used to draw the
+        dimension line.
+        Defaults to a double-headed arrow, ``"<->"``.
+    kwargs_extension
+        Additional keyword arguments passed to :func:`plot` when drawing the
+        extension lines.
+    kwargs_dimension
+        Additional keyword arguments passed to :func:`annotate` when drawing
+        the dimension line.
+    kwargs_text
+        Additional keyword arguments passed to :func:`text` when drawing the
+        label.
+    kwargs
+        Additional keyword arguments passed to :func:`plot`, :func:`annotate`,
+        and :func:`text`.
+
+    Returns
+    -------
+        The array of annotations representing the dimension lines.
+
+    Examples
+    --------
+
+    Dimension a horizontal distance, displaced below the segment to clear a
+    plotted marker.
+
+    .. jupyter-execute::
+
+        import matplotlib.pyplot as plt
+        import named_arrays as na
+
+        a = na.Cartesian2dVectorArray(0.2, 0.5)
+        b = na.Cartesian2dVectorArray(0.8, 0.5)
+
+        fig, ax = plt.subplots()
+        na.plt.scatter(
+            na.stack([a.x, b.x], axis="point"),
+            na.stack([a.y, b.y], axis="point"),
+            ax=ax,
+        )
+        na.plt.dimension(a, b, offset=-0.15, ax=ax)
+        ax.set_xlim(0, 1)
+        ax.set_ylim(0, 1)
+
+    |
+
+    Dimension an array of distances, alternating the side the annotation is
+    displaced to.
+
+    .. jupyter-execute::
+
+        num = 3
+
+        a = na.Cartesian2dVectorArray(
+            x=na.linspace(0.1, 0.5, axis="d", num=num),
+            y=0.2,
+        )
+        b = na.Cartesian2dVectorArray(
+            x=na.linspace(0.5, 0.9, axis="d", num=num),
+            y=na.linspace(0.4, 0.9, axis="d", num=num),
+        )
+        offset = na.ScalarArray(np.array([0.1, -0.1, 0.1]), axes="d")
+
+        fig, ax = plt.subplots()
+        na.plt.dimension(a, b, offset=offset, ax=ax)
+        ax.set_xlim(0, 1)
+        ax.set_ylim(0, 1)
+    """
+    components_a = a.cartesian_nd.components
+    components_b = b.cartesian_nd.components
+
+    if components is None:
+        components = tuple(components_a)
+
+    cx, cy = components
+    a = na.Cartesian2dVectorArray(components_a[cx], components_a[cy])
+    b = na.Cartesian2dVectorArray(components_b[cx], components_b[cy])
+
+    if kwargs_extension is None:
+        kwargs_extension = dict()
+    kwargs_extension = dict(color="gray") | kwargs | kwargs_extension
+
+    if kwargs_dimension is None:
+        kwargs_dimension = dict()
+    kwargs_dimension = kwargs | kwargs_dimension
+
+    if kwargs_text is None:
+        kwargs_text = dict()
+    kwargs_text = kwargs | kwargs_text
+
+    # Direction from `a` to `b` and the unit normal used for the displacement.
+    delta = b - a
+    length = delta.length
+    normal = na.Cartesian2dVectorArray(-delta.y, delta.x) / length
+
+    # Give a unitless `offset` the same unit as the coordinates so that the
+    # default `offset=0` can be displaced against unitful points.
+    offset = na.as_named_array(offset)
+    if na.unit(offset) is None:
+        offset = offset * na.unit_normalized(length)
+
+    if label is None:
+        label = na.as_named_array(length).to_string_array(f"%.{decimals}f")
+    label = na.as_named_array(label).astype(str).astype(object)
+
+    # Endpoints of the dimension line, displaced to one side of the segment.
+    p1 = a + offset * normal
+    p2 = b + offset * normal
+
+    # Start the extension lines a fraction of the way out from each point so
+    # they do not touch it, as in a mechanical drawing.
+    a_gap = a + gap * offset * normal
+    b_gap = b + gap * offset * normal
+
+    axis = "_dimension"
+
+    # Extension lines joining each point to the dimension line.
+    plot(
+        na.stack([a_gap.x, p1.x], axis=axis),
+        na.stack([a_gap.y, p1.y], axis=axis),
+        ax=ax,
+        axis=axis,
+        **kwargs_extension,
+    )
+    plot(
+        na.stack([b_gap.x, p2.x], axis=axis),
+        na.stack([b_gap.y, p2.y], axis=axis),
+        ax=ax,
+        axis=axis,
+        **kwargs_extension,
+    )
+
+    # Dimension line drawn as a double-headed arrow between the displaced points.
+    arrowprops = dict(arrowstyle=arrowstyle, shrinkA=0, shrinkB=0)
+    arrowprops = arrowprops | kwargs_dimension.pop("arrowprops", dict())
+    result = annotate(
+        text="",
+        xy=p1,
+        xytext=p2,
+        ax=ax,
+        arrowprops=arrowprops,
+        **kwargs_dimension,
+    )
+
+    # Label placed at the midpoint of the dimension line, rotated to match it.
+    midpoint = (p1 + p2) / 2
+    rotation = (np.arctan2(delta.y, delta.x) << u.rad).to_value(u.deg)
+    text(
+        x=midpoint.x,
+        y=midpoint.y,
+        s=label,
+        ax=ax,
+        ha="center",
+        va="bottom",
+        rotation=rotation,
+        rotation_mode="anchor",
+        **kwargs_text,
     )
 
     return result
