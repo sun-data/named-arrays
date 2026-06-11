@@ -6,6 +6,7 @@ import matplotlib.axes
 import matplotlib.transforms
 import matplotlib.animation
 import matplotlib.text
+import matplotlib.colors
 import matplotlib.pyplot as plt
 import astropy.units as u
 import numpy as np
@@ -2221,6 +2222,28 @@ def _display_aspect(
     return result
 
 
+def _facecolor(
+    ax: None | matplotlib.axes.Axes | na.AbstractScalar,
+) -> na.ScalarArray:
+    """
+    The background (face) color of each axes, as a hex string.
+
+    Used by :func:`dimension` to draw the label on a background that matches
+    the axes so it cleanly masks the dimension line underneath.
+    """
+    ax = na.as_named_array(ax)
+    result = na.ScalarArray.empty(ax.shape, dtype=object)
+    for index in na.ndindex(ax.shape):
+        ax_index = ax[index].ndarray
+        if ax_index is None:
+            ax_index = plt.gca()
+        result[index] = matplotlib.colors.to_hex(
+            ax_index.get_facecolor(),
+            keep_alpha=True,
+        )
+    return result
+
+
 def dimension(
     a: na.AbstractCartesian2dVectorArray,
     b: na.AbstractCartesian2dVectorArray,
@@ -2439,18 +2462,24 @@ def dimension(
     )
 
     # Label placed at the midpoint of the dimension line, rotated to match its
-    # angle as it appears on screen (in display coordinates).
+    # angle as it appears on screen (in display coordinates). It is drawn on a
+    # background matching the axes, and above the dimension line, so it masks
+    # the line underneath.
     midpoint = (p1 + p2) / 2
     rotation = (np.arctan2(aspect * delta.y, delta.x) << u.rad).to_value(u.deg)
+    kwargs_text = dict(
+        ha="center",
+        va="center",
+        rotation=rotation,
+        rotation_mode="anchor",
+        backgroundcolor=_facecolor(ax),
+        zorder=5,
+    ) | kwargs_text
     text(
         x=midpoint.x,
         y=midpoint.y,
         s=label,
         ax=ax,
-        ha="center",
-        va="bottom",
-        rotation=rotation,
-        rotation_mode="anchor",
         **kwargs_text,
     )
 
