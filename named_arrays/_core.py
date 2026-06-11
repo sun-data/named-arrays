@@ -26,6 +26,8 @@ __all__ = [
     "axis_normalized",
     "explicit",
     "getitem",
+    "pack",
+    "unpack",
     "AbstractArray",
     "ArrayLike",
     "AbstractExplicitArray",
@@ -59,6 +61,7 @@ WidthT = TypeVar("WidthT", bound="QuantityLike | AbstractArray")
 StartExponentT = TypeVar("StartExponentT", bound="QuantityLike | AbstractArray")
 StopExponentT = TypeVar("StopExponentT", bound="QuantityLike | AbstractArray")
 BaseT = TypeVar("BaseT", bound="QuantityLike | AbstractArray")
+PrototypeT = TypeVar("PrototypeT")
 
 
 def named_array_like(a: Any) -> bool:
@@ -393,6 +396,194 @@ def getitem(
 
     else:
         return a
+
+
+def pack(a: Any, axis: str = "pack") -> na.ScalarArray:
+    """
+    Flatten the numeric leaves of a nested structure into a 1D array.
+
+    The magnitudes of every array-like leaf of ``a`` are stripped of their
+    units and concatenated into a single, one-dimensional, dimensionless
+    :class:`named_arrays.ScalarArray` along ``axis``, in a deterministic
+    traversal order. Containers (:class:`dict`, :class:`list`, :class:`tuple`,
+    :mod:`dataclasses` instances) and composite named arrays
+    (e.g. :class:`named_arrays.AbstractVectorArray`) are traversed recursively;
+    non-numeric values (e.g. :obj:`None`, :class:`str`) are ignored.
+
+    This is the inverse of :func:`unpack`. Together they bridge the gap between
+    the named, united arrays used throughout this package and the flat,
+    dimensionless float vectors expected by optimizers such as those in
+    :mod:`scipy.optimize`. The units, axis names, and structure dropped here are
+    restored by :func:`unpack` from a prototype, so the pair round-trips:
+    ``na.unpack(na.pack(a), a) == a``.
+
+    Parameters
+    ----------
+    a
+        The structure to flatten. May be a named array, a (possibly nested)
+        :class:`dict`, :class:`list`, :class:`tuple`, or :mod:`dataclasses`
+        instance of named arrays, or any other value.
+    axis
+        The name of the logical axis of the flattened result.
+
+    See Also
+    --------
+    unpack : Reconstruct a structure from a flattened array and a prototype.
+
+    Examples
+    --------
+
+    .. jupyter-execute::
+
+        import astropy.units as u
+        import named_arrays as na
+
+        params = na.CartesianNdVectorArray({
+            "yaw": 1 * u.deg,
+            "roll": 2 * u.deg,
+            "defocus": -3 * u.mm,
+        })
+
+        na.pack(params)
+    """
+    chunks = []
+
+    def visit(x: Any) -> None:
+        if isinstance(x, na.AbstractScalarArray):
+            chunks.append(np.reshape(value(x).ndarray, -1))
+        elif isinstance(x, na.AbstractVectorArray):
+            for component in x.components.values():
+                visit(component)
+        elif named_array_like(x):
+            raise NotImplementedError(
+                f"pack is not supported for {type(x).__qualname__!r} leaves."
+            )
+        elif isinstance(x, dict):
+            for element in x.values():
+                visit(element)
+        elif isinstance(x, (list, tuple)):
+            for element in x:
+                visit(element)
+        elif dataclasses.is_dataclass(x) and not isinstance(x, type):
+            for field in dataclasses.fields(x):
+                if field.init:
+                    visit(getattr(x, field.name))
+        elif isinstance(x, (u.Quantity, int, float, complex, np.ndarray)):
+            chunks.append(np.reshape(value(x), -1))
+
+    visit(a)
+    flat = np.concatenate(chunks).astype(float) if chunks else np.empty(0)
+    return na.ScalarArray(flat, axes=axis)
+
+
+def unpack(
+    a: na.AbstractScalarArray | npt.ArrayLike,
+    prototype: PrototypeT,
+    axis: str = "pack",
+) -> PrototypeT:
+    """
+    Reconstruct a structure from a flattened array and a prototype.
+
+    This is the inverse of :func:`pack`. The flat values in ``a`` are
+    distributed, in order, back onto the numeric leaves of a copy of
+    ``prototype``, restoring each leaf's units, axis names, and type from the
+    prototype. Non-numeric parts of the structure are copied from ``prototype``
+    unchanged. Thus ``na.unpack(na.pack(a), a) == a``.
+
+    Parameters
+    ----------
+    a
+        The flattened values, for example the result of :func:`pack` or the
+        ``x`` returned by a :mod:`scipy.optimize` routine.
+    prototype
+        A structure with the same layout as the one that produced ``a``,
+        supplying the units, axes, types, and traversal order used to rebuild it.
+    axis
+        The name of the logical axis of ``a`` if it is a named array.
+
+    See Also
+    --------
+    pack : Flatten the numeric leaves of a structure into a 1D array.
+
+    Examples
+    --------
+
+    .. jupyter-execute::
+
+        import numpy as np
+        import astropy.units as u
+        import named_arrays as na
+
+        prototype = na.CartesianNdVectorArray({
+            "yaw": 0 * u.deg,
+            "roll": 0 * u.deg,
+            "defocus": 0 * u.mm,
+        })
+
+        na.unpack(na.ScalarArray(np.array([1.0, 2.0, -3.0]), axes="pack"), prototype)
+    """
+    if isinstance(a, na.AbstractArray):
+        flat = np.reshape(value(a).ndarray, -1)
+    else:
+        flat = np.reshape(np.asarray(a), -1)
+    position = 0
+
+    def visit(p: Any) -> Any:
+        nonlocal position
+        if isinstance(p, na.AbstractScalarArray):
+            shape = na.shape(p)
+            num = int(np.prod(tuple(shape.values()), dtype=int))
+            chunk = np.reshape(flat[position : position + num], tuple(shape.values()))
+            position += num
+            _unit = na.unit(p)
+            chunk = chunk if _unit is None else chunk << _unit
+            return na.ScalarArray(chunk, axes=tuple(shape))
+        elif isinstance(p, na.AbstractVectorArray):
+            return p.type_explicit.from_cartesian_nd(
+                na.CartesianNdVectorArray(
+                    {name: visit(c) for name, c in p.components.items()}
+                )
+            )
+        elif named_array_like(p):
+            raise NotImplementedError(
+                f"unpack is not supported for {type(p).__qualname__!r} leaves."
+            )
+        elif isinstance(p, dict):
+            return {key: visit(element) for key, element in p.items()}
+        elif isinstance(p, (list, tuple)):
+            return type(p)(visit(element) for element in p)
+        elif dataclasses.is_dataclass(p) and not isinstance(p, type):
+            return dataclasses.replace(
+                p,
+                **{
+                    field.name: visit(getattr(p, field.name))
+                    for field in dataclasses.fields(p)
+                    if field.init
+                },
+            )
+        elif isinstance(p, (u.Quantity, int, float, complex, np.ndarray)):
+            shape = np.shape(value(p))
+            num = int(np.prod(shape, dtype=int))
+            chunk = flat[position : position + num]
+            position += num
+            _unit = na.unit(p)
+            if shape:
+                chunk = np.reshape(chunk, shape)
+            else:
+                chunk = chunk[0]
+                if isinstance(p, (int, float, complex)):
+                    chunk = type(p)(chunk)
+            return chunk if _unit is None else chunk * _unit
+        else:
+            return p
+
+    result = visit(prototype)
+    if position != flat.size:
+        raise ValueError(
+            f"the size of `a` ({flat.size}) does not match the number of "
+            f"elements in `prototype` ({position})."
+        )
+    return result
 
 
 @dataclasses.dataclass(eq=False, repr=False)
