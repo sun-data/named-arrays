@@ -2251,6 +2251,7 @@ def dimension(
     label: None | str | na.AbstractScalar = None,
     decimals: int = 2,
     gap: float | na.AbstractScalar = 0.1,
+    rotate: bool = True,
     ax: None | matplotlib.axes.Axes | na.AbstractScalar = None,
     components: None | tuple[str, str] = None,
     arrowstyle: str = "<->",
@@ -2303,6 +2304,10 @@ def dimension(
         The fraction of the `offset` distance to leave as a gap between each
         point and the start of its extension line, matching the convention of
         a mechanical drawing.
+    rotate
+        If :obj:`True`, the default, rotate the label to match the on-screen
+        angle of the dimension line.
+        If :obj:`False`, draw the label horizontally.
     ax
         A matplotlib axes instance on which to plot the dimension.
     components
@@ -2466,7 +2471,10 @@ def dimension(
     # background matching the axes, and above the dimension line, so it masks
     # the line underneath.
     midpoint = (p1 + p2) / 2
-    rotation = (np.arctan2(aspect * delta.y, delta.x) << u.rad).to_value(u.deg)
+    if rotate:
+        rotation = (np.arctan2(aspect * delta.y, delta.x) << u.rad).to_value(u.deg)
+    else:
+        rotation = 0
     kwargs_text = dict(
         ha="center",
         va="center",

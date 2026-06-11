@@ -223,12 +223,20 @@ def test_annotate(
         "foo",
     ],
 )
+@pytest.mark.parametrize(
+    argnames="rotate",
+    argvalues=[
+        True,
+        False,
+    ],
+)
 def test_dimension(
     a: na.AbstractCartesian2dVectorArray,
     b: na.AbstractCartesian2dVectorArray,
     components: None | tuple[str, str],
     offset: float | na.AbstractScalar,
     label: None | str,
+    rotate: bool,
 ):
     fig, ax = plt.subplots()
 
@@ -237,6 +245,7 @@ def test_dimension(
         b=b,
         offset=offset,
         label=label,
+        rotate=rotate,
         components=components,
         ax=ax,
     )
