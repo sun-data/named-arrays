@@ -256,6 +256,20 @@ def test_dimension(
     plt.close(fig)
 
 
+def test_dimension_default_ax():
+    fig, ax = plt.subplots()
+
+    result = na.plt.dimension(
+        a=na.Cartesian2dVectorArray(0.2, 0.5),
+        b=na.Cartesian2dVectorArray(0.8, 0.5),
+    )
+
+    for element in result.ndarray.flat:
+        assert isinstance(element, matplotlib.text.Annotation)
+
+    plt.close(fig)
+
+
 @pytest.mark.parametrize(
     argnames="W",
     argvalues=[

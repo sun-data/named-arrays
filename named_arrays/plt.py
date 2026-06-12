@@ -2197,7 +2197,7 @@ def brace_vertical(
 
 
 def _display_aspect(
-    ax: None | matplotlib.axes.Axes | na.AbstractScalar,
+    ax: matplotlib.axes.Axes | na.AbstractScalar,
 ) -> na.ScalarArray:
     """
     The ratio of the vertical to horizontal scale of the data-to-display
@@ -2213,8 +2213,6 @@ def _display_aspect(
     result = na.ScalarArray.empty(ax.shape, dtype=float)
     for index in na.ndindex(ax.shape):
         ax_index = ax[index].ndarray
-        if ax_index is None:
-            ax_index = plt.gca()
         bbox = ax_index.bbox
         xmin, xmax = ax_index.get_xlim()
         ymin, ymax = ax_index.get_ylim()
@@ -2223,7 +2221,7 @@ def _display_aspect(
 
 
 def _facecolor(
-    ax: None | matplotlib.axes.Axes | na.AbstractScalar,
+    ax: matplotlib.axes.Axes | na.AbstractScalar,
 ) -> na.ScalarArray:
     """
     The background (face) color of each axes, as a hex string.
@@ -2235,8 +2233,6 @@ def _facecolor(
     result = na.ScalarArray.empty(ax.shape, dtype=object)
     for index in na.ndindex(ax.shape):
         ax_index = ax[index].ndarray
-        if ax_index is None:
-            ax_index = plt.gca()
         result[index] = matplotlib.colors.to_hex(
             ax_index.get_facecolor(),
             keep_alpha=True,
@@ -2384,6 +2380,9 @@ def dimension(
         ax.set_xlim(0, 1)
         ax.set_ylim(0, 1)
     """
+    if ax is None:
+        ax = plt.gca()
+
     components_a = a.cartesian_nd.components
     components_b = b.cartesian_nd.components
 
