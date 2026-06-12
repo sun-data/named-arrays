@@ -128,7 +128,12 @@ def test_pdf_argpercentile_gaussian(
 
     array_reduced_expected = mean + std * np.sqrt(2) * sp.erfinv(2 * p - 1)
 
-    assert np.allclose(array_reduced, array_reduced_expected, rtol=1e-1)
+    # `array_reduced` is found from the discretized grid `x`, so it has an
+    # absolute error of up to one grid spacing, `10 * std / (num - 1)`. When a
+    # random `mean` sample makes the expected percentile fall near zero, this
+    # error can exceed `rtol * |expected|`, so an absolute tolerance is needed
+    # to keep the comparison from being flaky.
+    assert np.allclose(array_reduced, array_reduced_expected, rtol=1e-1, atol=1e-2)
 
 
 @pytest.mark.parametrize(
