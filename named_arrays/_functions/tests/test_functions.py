@@ -1073,21 +1073,15 @@ class AbstractTestAbstractPolynomialFunctionArray(
     def test_coefficients(self, array: na.AbstractPolynomialFunctionArray):
         assert isinstance(array.coefficients, na.AbstractVectorArray)
 
-    def test_degree(self, array: na.AbstractPolynomialFunctionArray):
-        assert isinstance(array.degree, int)
-        assert array.degree >= 0
+    def test_coefficient_names(self, array: na.AbstractPolynomialFunctionArray):
+        result = array.coefficient_names
+        assert len(result) > 0
+        for name in result:
+            assert isinstance(name, str)
 
     def test_axis_polynomial(self, array: na.AbstractPolynomialFunctionArray):
         result = array.axis_polynomial
         if array.axis_polynomial is not None:
-            if isinstance(result, str):
-                result = (result, )
-            for ax in result:
-                assert isinstance(ax, str)
-
-    def test_components_polynomial(self, array: na.AbstractPolynomialFunctionArray):
-        result = array.components_polynomial
-        if array.components_polynomial is not None:
             if isinstance(result, str):
                 result = (result, )
             for ax in result:
@@ -1101,14 +1095,14 @@ class AbstractTestAbstractPolynomialFunctionArray(
 
 def _polynomial_function_arrays():
     return [
-        na.PolynomialFitFunctionArray(
+        na.PolynomialFitFunctionArray.from_degree(
             inputs=function.inputs,
             outputs=function.outputs,
             degree=2,
         )
         for function in _function_arrays()
     ] + [
-        na.PolynomialFitFunctionArray(
+        na.PolynomialFitFunctionArray.from_degree(
             inputs=na.Cartesian2dVectorLinearSpace(
                 start=0,
                 stop=1,
@@ -1123,8 +1117,23 @@ def _polynomial_function_arrays():
             center=na.Cartesian2dVectorArray(0.5, 0.5),
             degree=1,
             axis_polynomial="y",
-            components_polynomial="y",
-        )
+            components="y",
+        ),
+        # explicit (pruned) coefficient names
+        na.PolynomialFitFunctionArray(
+            inputs=na.Cartesian2dVectorLinearSpace(
+                start=0,
+                stop=1,
+                axis=na.Cartesian2dVectorArray('x', 'y'),
+                num=na.Cartesian2dVectorArray(_num_x, _num_y)
+            ),
+            outputs=na.ScalarUniformRandomSample(
+                start=-5,
+                stop=5,
+                shape_random=dict(x=_num_x, y=_num_y),
+            ),
+            coefficient_names=["", "x", "y", "x*y"],
+        ),
     ]
 
 
@@ -1177,6 +1186,3 @@ class TestPolynomialFitFunctionArray(
         AbstractTestAbstractFunctionArray.TestMatmul
     ):
         pass
-
-
-

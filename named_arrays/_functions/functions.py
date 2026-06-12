@@ -1174,13 +1174,8 @@ class AbstractPolynomialFunctionArray(
 
     @property
     @abc.abstractmethod
-    def degree(self) -> int:
-        """The degree of this polynomial."""
-
-    @property
-    @abc.abstractmethod
-    def components_polynomial(self) -> None | str | Sequence[str]:
-        """The components of the input that this polynomial depends on."""
+    def coefficient_names(self) -> Sequence[str]:
+        """The names of the polynomial terms to fit (the design-matrix component keys)."""
 
     @property
     @abc.abstractmethod
@@ -1239,7 +1234,12 @@ class PolynomialFitFunctionArray(
 ):
     """
     A :class:`named_arrays.PolynomialFitFunctionArray` carries the independent variables, inputs, and dependent variables, outputs,
-    of a discrete function, and a linear least squares polynomial fit of specified degree to that function.
+    of a discrete function, and a linear least squares polynomial fit to that function.
+
+    The set of polynomial terms to fit is given explicitly by :attr:`coefficient_names`.
+    Use the :meth:`from_degree` classmethod to generate the standard term set for a
+    given polynomial degree (a scalar total-degree cap, or a per-component vector of
+    maximum exponents for a mixed-order fit).
 
     Parameters
     ----------
@@ -1247,10 +1247,8 @@ class PolynomialFitFunctionArray(
         The set of independent variables.
     outputs
         The set of dependent variables.
-    degree
-        The degree of this polynomial.
-    components_polynomial
-        The components of the input that this polynomial depends on.
+    coefficient_names
+        The names of the polynomial terms to fit (the design-matrix component keys).
     axis_polynomial
         The logical axes along which this polynomial is distributed.
     where_polynomial
@@ -1269,11 +1267,15 @@ class PolynomialFitFunctionArray(
     center: None | InputsT = None
     """The reference point which is subtracted from the inputs before fitting."""
 
-    degree: int = None
-    """The degree of this polynomial."""
+    coefficient_names: None | Sequence[str] = None
+    """
+    The names of the polynomial terms to fit (the design-matrix component keys).
 
-    components_polynomial: None | str | Sequence[str] = None
-    """The components of the input that this polynomial depends on."""
+    Each name is a ``*``-joined product of input component names (dotted for nested
+    vectors, e.g. ``"position.x*wavelength"``); the empty string ``""`` is the
+    constant term. Use :meth:`from_degree` to generate the standard set for a given
+    degree, optionally pruning terms before constructing the fit.
+    """
 
     axis_polynomial: None | str | Sequence[str] = None
     """The logical axes along which this polynomial is distributed."""
@@ -1296,37 +1298,93 @@ class PolynomialFitFunctionArray(
         inputs: float | u.Quantity | na.AbstractScalar | na.AbstractVectorArray,
     ) -> na.AbstractVectorArray:
 
+        if self.coefficient_names is None:
+            raise ValueError(
+                "`coefficient_names` is required; use "
+                "`PolynomialFitFunctionArray.from_degree` to generate it."
+            )
+
         if self.center is not None:
             inputs = inputs - self.center
-
-        design_matrix = {}
 
         if isinstance(inputs, na.AbstractScalar):
             inputs = na.CartesianNdVectorArray({"dummy": inputs})
         inputs = inputs.cartesian_nd.broadcasted.components
 
-        components = self.components_polynomial
-
-        if components is None:
-            components = tuple(inputs)
-        elif isinstance(components, str):
-            components = (components,)
-
-        inputs = {c: inputs[c] for c in components}
-
-        for i in range(self.degree + 1):
-            combinations = itertools.combinations_with_replacement(
-                inputs, i
-            )
-            for combination in combinations:
-                key = "*".join(combination)
-                design_matrix[key] = 1
-                for k in combination:
-                    design_matrix[key] = design_matrix[key] * inputs[k]
+        design_matrix = {}
+        for name in self.coefficient_names:
+            term = 1
+            if name:  # the empty string is the constant term
+                for k in name.split("*"):
+                    if k not in inputs:
+                        raise ValueError(
+                            f"coefficient name {name!r} references input component "
+                            f"{k!r}, which is not one of the available components "
+                            f"{tuple(inputs)}."
+                        )
+                    term = term * inputs[k]
+            design_matrix[name] = term
 
         design_matrix = na.CartesianNdVectorArray(design_matrix)
 
         return design_matrix
+
+    @classmethod
+    def from_degree(
+        cls,
+        inputs: InputsT,
+        outputs: OutputsT,
+        degree: int,
+        components: None | str | Sequence[str] = None,
+        center: None | InputsT = None,
+        axis_polynomial: None | str | Sequence[str] = None,
+        where_polynomial: bool | na.ScalarArray = True,
+    ) -> Self:
+        """
+        Construct a :class:`PolynomialFitFunctionArray` whose :attr:`coefficient_names`
+        are the standard monomial terms for a given polynomial degree.
+
+        Parameters
+        ----------
+        inputs
+            The set of independent variables.
+        outputs
+            The set of dependent variables.
+        degree
+            The degree of the polynomial. Every monomial with total degree up to
+            ``degree`` (over `components`) is included.
+        components
+            The components of the input that the polynomial depends on.
+            Defaults to all components of `inputs`.
+        center
+            The reference point subtracted from the inputs before fitting.
+        axis_polynomial
+            The logical axes along which the polynomial is distributed.
+        where_polynomial
+            A boolean mask controlling which elements to use for fitting.
+        """
+        if components is None:
+            inputs_nd = inputs
+            if isinstance(inputs_nd, na.AbstractScalar):
+                # mirror `design_matrix`'s wrapping of scalar inputs
+                inputs_nd = na.CartesianNdVectorArray({"dummy": inputs_nd})
+            components = tuple(inputs_nd.cartesian_nd.broadcasted.components)
+        elif isinstance(components, str):
+            components = (components,)
+
+        coefficient_names = []
+        for i in range(degree + 1):
+            for combination in itertools.combinations_with_replacement(components, i):
+                coefficient_names.append("*".join(combination))
+
+        return cls(
+            inputs=inputs,
+            outputs=outputs,
+            coefficient_names=coefficient_names,
+            center=center,
+            axis_polynomial=axis_polynomial,
+            where_polynomial=where_polynomial,
+        )
 
     @classmethod
     def _outer(
