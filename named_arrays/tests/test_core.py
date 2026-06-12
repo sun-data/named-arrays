@@ -195,6 +195,137 @@ class TestGetitem:
         assert na.getitem(7, self._index()) == 7
 
 
+@dataclasses.dataclass
+class _PackContainer:
+    """A simple dataclass used to exercise ``na.pack``/``na.unpack`` recursion."""
+    data: na.AbstractArray
+    label: str = "label"
+
+
+class TestPack:
+    """Tests for :func:`named_arrays.pack` and :func:`named_arrays.unpack`."""
+
+    def _scalar(self) -> na.ScalarArray:
+        return na.ScalarArray(np.arange(6.0).reshape(2, 3), axes=("x", "y")) * u.mm
+
+    def _params(self) -> na.CartesianNdVectorArray:
+        # a parameter set with mixed units and a multi-element component
+        return na.CartesianNdVectorArray(
+            {
+                "yaw": na.ScalarArray(np.array([1.0, 2.0, 3.0]), axes="channel") * u.deg,
+                "roll": 4.0 * u.deg,
+                "defocus": -5.0 * u.mm,
+            }
+        )
+
+    def test_pack_array(self):
+        result = na.pack(self._scalar())
+        assert isinstance(result, na.ScalarArray)
+        assert result.axes == ("pack",)
+        assert na.unit_normalized(result) == u.dimensionless_unscaled
+        assert np.all(result.ndarray == np.arange(6.0))
+
+    def test_pack_axis(self):
+        assert na.pack(self._scalar(), axis="p").axes == ("p",)
+
+    def test_pack_length_matches_shape(self):
+        params = self._params()
+        size = sum(
+            int(np.prod([s for s in na.shape(c).values()], dtype=int))
+            for c in params.components.values()
+        )
+        assert na.pack(params).ndarray.size == size
+
+    def test_roundtrip_scalar(self):
+        a = self._scalar()
+        result = na.unpack(na.pack(a), a)
+        assert isinstance(result, na.ScalarArray)
+        assert result.axes == a.axes
+        assert na.unit(result) == na.unit(a)
+        assert np.all(result == a)
+
+    def test_roundtrip_vector_mixed_units(self):
+        params = self._params()
+        result = na.unpack(na.pack(params), params)
+        assert isinstance(result, na.CartesianNdVectorArray)
+        for name, component in params.components.items():
+            assert np.all(result.components[name] == component)
+            assert na.unit(result.components[name]) == na.unit(component)
+
+    def test_roundtrip_dict_nested(self):
+        a = {"a": 1.0 * u.deg, "b": {"c": self._scalar()}}
+        result = na.unpack(na.pack(a), a)
+        assert result["a"] == 1.0 * u.deg
+        assert np.all(result["b"]["c"] == a["b"]["c"])
+        assert na.unit(result["b"]["c"]) == u.mm
+
+    def test_roundtrip_dataclass(self):
+        a = _PackContainer(data=self._scalar())
+        result = na.unpack(na.pack(a), a)
+        assert isinstance(result, _PackContainer)
+        assert np.all(result.data == a.data)
+        # non-numeric fields are restored from the prototype, not the flat array
+        assert result.label == "label"
+
+    def test_unpack_from_plain_ndarray(self):
+        # a flat ``numpy`` array (e.g. a ``scipy.optimize`` result) is accepted
+        params = self._params()
+        x = na.pack(params).ndarray.copy()
+        x[0] += 10
+        result = na.unpack(x, params)
+        assert result.yaw.ndarray[0].value == params.yaw.ndarray[0].value + 10
+        assert na.unit(result.yaw) == u.deg
+        # untouched leaves are unchanged
+        assert result.defocus == params.defocus
+
+    def test_unpack_size_mismatch(self):
+        params = self._params()
+        with pytest.raises(ValueError):
+            na.unpack(np.array([1.0, 2.0]), params)
+
+    def test_roundtrip_list(self):
+        # exercises the list branch and the plain-number / ndarray leaf branches
+        a = [self._scalar(), 2.5, np.array([7.0, 8.0, 9.0])]
+        result = na.unpack(na.pack(a), a)
+        assert isinstance(result, list)
+        assert np.all(result[0] == a[0])
+        assert result[1] == 2.5 and isinstance(result[1], float)
+        assert np.all(result[2] == a[2])
+
+    def test_roundtrip_tuple(self):
+        a = (self._scalar(), 2.5)
+        result = na.unpack(na.pack(a), a)
+        assert isinstance(result, tuple)
+        assert np.all(result[0] == a[0])
+        assert result[1] == 2.5
+
+    def _uncertain(self) -> na.UncertainScalarArray:
+        return na.UncertainScalarArray(
+            nominal=1.0 * u.deg,
+            distribution=na.ScalarArray(
+                np.array([0.9, 1.1]) * u.deg, axes="_distribution"
+            ),
+        )
+
+    def _function(self) -> na.FunctionArray:
+        return na.FunctionArray(
+            inputs=na.ScalarArray(np.array([1.0, 2.0]), axes="k") * u.nm,
+            outputs=na.ScalarArray(np.array([3.0, 4.0]), axes="k"),
+        )
+
+    @pytest.mark.parametrize("kind", ["uncertain", "function"])
+    def test_pack_unsupported_raises(self, kind: str):
+        a = self._uncertain() if kind == "uncertain" else self._function()
+        with pytest.raises(NotImplementedError):
+            na.pack(a)
+
+    @pytest.mark.parametrize("kind", ["uncertain", "function"])
+    def test_unpack_unsupported_raises(self, kind: str):
+        a = self._uncertain() if kind == "uncertain" else self._function()
+        with pytest.raises(NotImplementedError):
+            na.unpack(np.zeros(10), a)
+
+
 class TestShape:
     """Tests for the recursive behavior of :func:`named_arrays.shape`."""
 
