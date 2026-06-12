@@ -182,6 +182,95 @@ def test_annotate(
 
 
 @pytest.mark.parametrize(
+    argnames="a,b,components",
+    argvalues=[
+        (
+            na.Cartesian2dVectorArray(0.2, 0.5) * u.mm,
+            na.Cartesian2dVectorArray(0.8, 0.5) * u.mm,
+            None,
+        ),
+        (
+            na.Cartesian2dVectorArray(
+                x=na.linspace(0.1, 0.5, axis="d", num=3),
+                y=0.2,
+            ) * u.mm,
+            na.Cartesian2dVectorArray(
+                x=0.9,
+                y=na.linspace(0.4, 0.9, axis="d", num=3),
+            ) * u.mm,
+            None,
+        ),
+        (
+            na.Cartesian2dVectorArray(na.Cartesian2dVectorArray(0.2, 0.3), 0.5) * u.mm,
+            na.Cartesian2dVectorArray(na.Cartesian2dVectorArray(0.8, 0.7), 0.5) * u.mm,
+            ("x.y", "y"),
+        ),
+    ],
+)
+@pytest.mark.parametrize(
+    argnames="offset",
+    argvalues=[
+        0,
+        0.0 * u.mm,
+        0.15 * u.mm,
+        na.ScalarArray(np.array([0.1, -0.1, 0.1]), axes="d") * u.mm,
+    ],
+)
+@pytest.mark.parametrize(
+    argnames="label",
+    argvalues=[
+        None,
+        "foo",
+    ],
+)
+@pytest.mark.parametrize(
+    argnames="rotate",
+    argvalues=[
+        True,
+        False,
+    ],
+)
+def test_dimension(
+    a: na.AbstractCartesian2dVectorArray,
+    b: na.AbstractCartesian2dVectorArray,
+    components: None | tuple[str, str],
+    offset: float | na.AbstractScalar,
+    label: None | str,
+    rotate: bool,
+):
+    fig, ax = plt.subplots()
+
+    result = na.plt.dimension(
+        a=a,
+        b=b,
+        offset=offset,
+        label=label,
+        rotate=rotate,
+        components=components,
+        ax=ax,
+    )
+
+    for element in result.ndarray.flat:
+        assert isinstance(element, matplotlib.text.Annotation)
+
+    plt.close(fig)
+
+
+def test_dimension_default_ax():
+    fig, ax = plt.subplots()
+
+    result = na.plt.dimension(
+        a=na.Cartesian2dVectorArray(0.2, 0.5),
+        b=na.Cartesian2dVectorArray(0.8, 0.5),
+    )
+
+    for element in result.ndarray.flat:
+        assert isinstance(element, matplotlib.text.Annotation)
+
+    plt.close(fig)
+
+
+@pytest.mark.parametrize(
     argnames="W",
     argvalues=[
         na.linspace(-1, 1, axis="w", num=_num_w) * u.mm,
