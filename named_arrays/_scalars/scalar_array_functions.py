@@ -307,38 +307,40 @@ def array_function_percentile_like(
         overwrite_input: bool = np._NoValue,
         method: str = np._NoValue,
         keepdims: bool = False,
+        *,
+        weights: na.AbstractScalarArray = np._NoValue,
 ) -> na.ScalarArray:
 
-    if isinstance(a, na.AbstractArray):
-        if isinstance(a, na.AbstractScalarArray):
-            a = a.explicit
-        else:
-            return NotImplemented
-    else:
-        a = na.ScalarArray(a)
+    try:
+         a = scalars._normalize(a)
+         q = scalars._normalize(q)
+         if weights is not np._NoValue:
+             weights = scalars._normalize(weights)
+    except scalars.ScalarTypeError:
+        return NotImplemented
 
-    axes_a = a.axes
+    a = a.explicit
+    q = q.explicit
+    if weights is not np._NoValue:
+        weights = weights.explicit
+
+    shape = na.shape_broadcasted(a, weights)
+
+    axes_a = tuple(shape)
 
     axis_normalized = na.axis_normalized(a, axis=axis)
 
     if axis is not None:
         if not set(axis_normalized).issubset(axes_a):
             raise ValueError(
-                f"the `axis` argument must be `None` or a subset of `a.axes`, "
-                f"got {axis} for `axis`, but `{a.axes} for `a.axes`"
+                f"the `axis` argument must be `None` or a subset of"
+                f"{na.shape_broadcasted(a, weights)=}, "
+                f"got {axis=}."
             )
-
-    if isinstance(q, na.AbstractArray):
-        if isinstance(q, na.AbstractScalarArray):
-            q = q.explicit
-        else:
-            return NotImplemented
-    else:
-        q = na.ScalarArray(q)
 
     axes_q = q.axes
 
-    axis_union = set(a.axes) & set(q.axes)
+    axis_union = set(axes_a) & set(q.axes)
     if axis_union:
         raise ValueError(f"'q' must not have any shared axes with 'a', but axes {axis_union} are shared")
 
@@ -358,9 +360,15 @@ def array_function_percentile_like(
         kwargs['overwrite_input'] = overwrite_input
     if method is not np._NoValue:
         kwargs['method'] = method
+    if weights is not np._NoValue:
+        kwargs['weights'] = weights.broadcast_to(shape).ndarray
     kwargs['keepdims'] = keepdims
 
-    result_ndarray = func(a.ndarray, q.ndarray, **kwargs)
+    result_ndarray = func(
+        a.broadcast_to(shape).ndarray,
+        q.ndarray,
+        **kwargs,
+    )
 
     result = na.ScalarArray(
         ndarray=result_ndarray,
