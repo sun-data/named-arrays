@@ -33,7 +33,6 @@ from . import plt
 from . import stats
 from . import optimize
 from . import regridding
-from . import transformations
 from . import ndfilters
 from . import colorsynth
 from . import numexpr
@@ -405,6 +404,7 @@ from ._functions.functions import (
     AbstractPolynomialFunctionArray,
     PolynomialFitFunctionArray,
 )
+from . import transformations
 
 __all__ = [
     "_named_array_function",
