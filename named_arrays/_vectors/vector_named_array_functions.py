@@ -946,7 +946,7 @@ def regridding_weights(
     axis_output = tuple(tuple(shape_output).index(a) for a in axis_output)
 
     if weights_input is not None:
-        weights_input = weights_input.ndarray_aligned(shape_output)
+        weights_input = weights_input.ndarray_aligned(shape_input)
 
     result, _shape_input, _shape_output = regridding.weights(
         coordinates_input=coordinates_input,
@@ -1086,7 +1086,7 @@ def regridding_transpose_weights_conservative(
     axis_output = tuple(tuple(shape_output).index(a) for a in axis_output)
 
     if weights_input is not None:
-        weights_input = weights_input.ndarray_aligned(shape_output)
+        weights_input = weights_input.ndarray_aligned(shape_input)
 
     result, _, _ = regridding.transpose_weights_conservative(
         weights=weights,

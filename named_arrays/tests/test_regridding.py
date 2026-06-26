@@ -72,7 +72,8 @@ def test_regrid_multilinear_1d(
 
 
 @pytest.mark.parametrize(
-    argnames="coordinates_input, values_input, axis_input, coordinates_output, axis_output",
+    argnames="coordinates_input, values_input, axis_input, "
+    "coordinates_output, axis_output, weights_input",
     argvalues=[
         (
             na.Cartesian2dVectorArray(x, y),
@@ -83,6 +84,7 @@ def test_regrid_multilinear_1d(
                 y=1.2 * y + 0.01,
             ),
             None,
+            1,
         ),
         (
             na.Cartesian2dVectorArray(
@@ -96,6 +98,19 @@ def test_regrid_multilinear_1d(
                 y=1.2 * (y + 0.01 * z) + 0.001,
             ),
             ("x", "y"),
+            1,
+        ),
+        (
+            # distinct output axis names with a per-input-cell ``weights_input``
+            na.Cartesian2dVectorArray(x, y),
+            na.random.normal(0, 1, shape_random=shape_centers),
+            ("x", "y"),
+            na.Cartesian2dVectorArray(
+                x=1.1 * na.linspace(-1, 1, axis="x_new", num=shape_vertices["x"]) + 0.01,
+                y=1.2 * na.linspace(-1, 1, axis="y_new", num=shape_vertices["y"]) + 0.01,
+            ),
+            ("x_new", "y_new"),
+            na.random.uniform(0.5, 1.5, shape_random=shape_centers),
         ),
     ],
 )
@@ -105,6 +120,7 @@ def test_regrid_conservative_2d(
     values_input: np.ndarray,
     axis_input: None | int | tuple[int, ...],
     axis_output: None | int | tuple[int, ...],
+    weights_input: int | na.AbstractScalar,
 ):
     result = na.regridding.regrid(
         coordinates_input=coordinates_input,
@@ -145,6 +161,28 @@ def test_regrid_conservative_2d(
     assert np.issubdtype(result.dtype, float)
     assert result.shape == shape_result
     assert np.allclose(result.sum(), values_input.sum())
+
+    # a non-scalar ``weights_input`` is applied per *input* cell, so passing it
+    # to ``weights`` must be equivalent to folding it into the input values
+    # before regridding.  ``perturb=False`` keeps the two geometric weights
+    # identical so the results can be compared exactly.
+    kwargs_weights = dict(
+        coordinates_input=coordinates_input,
+        coordinates_output=coordinates_output,
+        axis_input=axis_input,
+        axis_output=axis_output,
+        method="conservative",
+        perturb=False,
+    )
+    result_weighted = na.regridding.regrid_from_weights(
+        *na.regridding.weights(weights_input=weights_input, **kwargs_weights),
+        values_input=values_input,
+    )
+    result_folded = na.regridding.regrid_from_weights(
+        *na.regridding.weights(**kwargs_weights),
+        values_input=values_input * weights_input,
+    )
+    assert np.allclose(result_weighted, result_folded)
 
 
 @pytest.mark.parametrize(
