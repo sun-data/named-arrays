@@ -831,15 +831,16 @@ def debroadcast(
 def _debroadcast(
     array: na.AbstractExplicitArray,
     axes: None | str | Sequence[str],
-    axes_skip: tuple[str, ...] = (),
 ) -> na.AbstractExplicitArray:
     """
     Shared value-based implementation of :func:`debroadcast`.
 
     Removes every axis in `axes` (defaulting to all axes of `array`) along
-    which `array` is constant, skipping any axis in `axes_skip`.
+    which `array` is constant.
     Relies only on ``==``, :func:`numpy.all`, and integer indexing, so it
     works for any array family whose axes can be sliced independently.
+    Empty axes (with a length of zero) are never removed, since indexing them
+    is not possible and :func:`numpy.all` is vacuously :obj:`True` along them.
     """
     array = array.explicit
     shape = array.shape
@@ -853,12 +854,8 @@ def _debroadcast(
     for axis in axes:
         if axis not in shape:
             continue
-        if axis in axes_skip:
-            continue
-        if shape[axis] == 0:
-            continue
         other = array[{axis: slice(0, 1)}]
-        if bool(np.all(array == other)):
+        if shape[axis] != 0 and bool(np.all(array == other)):
             index[axis] = 0
 
     return array[index]

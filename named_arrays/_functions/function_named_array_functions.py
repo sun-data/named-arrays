@@ -158,17 +158,16 @@ def debroadcast(
             continue
         if axis in axes_vertex:
             continue
-        if shape[axis] == 0:
-            continue
         # ``outputs`` and ``inputs`` are compared separately (rather than the
         # whole function) so that differing coordinates along ``axis`` register
         # as "not constant" instead of raising.
-        if axis in shape_inputs:
-            if not bool(np.all(inputs == inputs[{axis: slice(0, 1)}])):
-                continue
-        if not bool(np.all(outputs == outputs[{axis: slice(0, 1)}])):
-            continue
-        index[axis] = 0
+        # Empty axes are never removed (see :func:`_debroadcast`).
+        constant = shape[axis] != 0
+        constant = constant and bool(np.all(outputs == outputs[{axis: slice(0, 1)}]))
+        if constant and axis in shape_inputs:
+            constant = bool(np.all(inputs == inputs[{axis: slice(0, 1)}]))
+        if constant:
+            index[axis] = 0
 
     return array[index]
 
