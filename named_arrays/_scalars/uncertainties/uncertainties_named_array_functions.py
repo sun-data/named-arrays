@@ -144,6 +144,14 @@ def broadcast_to(
     )
 
 
+@_implements(na.debroadcast)
+def debroadcast(
+    array: na.AbstractUncertainScalarArray,
+    axes: None | str | Sequence[str] = None,
+) -> na.AbstractExplicitArray:
+    return na._named_array_functions._debroadcast(array, axes)
+
+
 @_implements(na.interp)
 def interp(
         x: float | u.Quantity | na.AbstractScalar,

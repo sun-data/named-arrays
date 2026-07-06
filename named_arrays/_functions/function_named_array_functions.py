@@ -131,6 +131,48 @@ def broadcast_to(
     )
 
 
+@_implements(na.debroadcast)
+def debroadcast(
+    array: na.AbstractFunctionArray,
+    axes: None | str | Sequence[str] = None,
+) -> na.FunctionArray:
+    array = array.explicit
+    shape = array.shape
+
+    if axes is None:
+        axes = tuple(shape)
+    elif isinstance(axes, str):
+        axes = (axes,)
+
+    inputs = array.inputs
+    outputs = array.outputs
+    shape_inputs = na.shape(inputs)
+
+    # A vertex axis represents bin edges, which vary along the axis and so are
+    # never constant, and cannot be sliced symmetrically with the bin centers.
+    axes_vertex = array.axes_vertex
+
+    index = dict()
+    for axis in axes:
+        if axis not in shape:
+            continue
+        if axis in axes_vertex:
+            continue
+        if shape[axis] == 0:
+            continue
+        # ``outputs`` and ``inputs`` are compared separately (rather than the
+        # whole function) so that differing coordinates along ``axis`` register
+        # as "not constant" instead of raising.
+        if axis in shape_inputs:
+            if not bool(np.all(inputs == inputs[{axis: slice(0, 1)}])):
+                continue
+        if not bool(np.all(outputs == outputs[{axis: slice(0, 1)}])):
+            continue
+        index[axis] = 0
+
+    return array[index]
+
+
 @_implements(na.nominal)
 def nominal(
     a: na.AbstractFunctionArray,

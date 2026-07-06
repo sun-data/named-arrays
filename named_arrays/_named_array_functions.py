@@ -20,6 +20,7 @@ __all__ = [
     "unit",
     "unit_normalized",
     "broadcast_to",
+    "debroadcast",
     "stack",
     "concatenate",
     "add_axes",
@@ -758,6 +759,109 @@ def broadcast_to(
         shape=shape,
         append=append,
     )
+
+
+def debroadcast(
+    array: ArrayT,
+    axes: None | str | Sequence[str] = None,
+) -> ArrayT:
+    """
+    Remove redundant axes introduced by broadcasting.
+
+    This is the approximate inverse of :func:`broadcast_to`: it collapses
+    every axis along which `array` is constant (all slices equal), returning
+    the smallest array which broadcasts back to the original.
+    In particular, ``na.debroadcast(na.broadcast_to(a, shape))`` recovers an
+    array equal to `a` whenever `a` is not itself constant along any of its
+    own axes.
+
+    An axis is only removed if every element of `array` is equal along that
+    axis, so any axis containing a NaN (which compares unequal to itself) is
+    never removed.
+
+    Parameters
+    ----------
+    array
+        The array to remove redundant axes from.
+    axes
+        The axes to consider removing.
+        If :obj:`None` (the default), every axis of `array` is considered.
+        Axes not present in `array` are ignored.
+
+    See Also
+    --------
+    :func:`broadcast_to` : Broadcast an array to a given shape.
+
+    Examples
+    --------
+
+    Broadcast a 1D array to two dimensions, then recover the original.
+
+    .. jupyter-execute::
+
+        import named_arrays as na
+
+        a = na.random.uniform(0, 1, dict(x=3))
+
+        b = na.broadcast_to(a, dict(x=3, y=4))
+
+        # ``b`` is constant along ``y``, so that axis is removed
+        c = na.debroadcast(b)
+
+        c.shape
+
+    .. jupyter-execute::
+
+        # the recovered array equals the original
+        bool((c == a).all())
+
+    A subset of axes can be considered by passing `axes` explicitly.
+
+    .. jupyter-execute::
+
+        na.debroadcast(b, axes="x").shape
+    """
+    return na._named_array_function(
+        func=debroadcast,
+        array=na.as_named_array(array),
+        axes=axes,
+    )
+
+
+def _debroadcast(
+    array: na.AbstractExplicitArray,
+    axes: None | str | Sequence[str],
+    axes_skip: tuple[str, ...] = (),
+) -> na.AbstractExplicitArray:
+    """
+    Shared value-based implementation of :func:`debroadcast`.
+
+    Removes every axis in `axes` (defaulting to all axes of `array`) along
+    which `array` is constant, skipping any axis in `axes_skip`.
+    Relies only on ``==``, :func:`numpy.all`, and integer indexing, so it
+    works for any array family whose axes can be sliced independently.
+    """
+    array = array.explicit
+    shape = array.shape
+
+    if axes is None:
+        axes = tuple(shape)
+    elif isinstance(axes, str):
+        axes = (axes,)
+
+    index = dict()
+    for axis in axes:
+        if axis not in shape:
+            continue
+        if axis in axes_skip:
+            continue
+        if shape[axis] == 0:
+            continue
+        other = array[{axis: slice(0, 1)}]
+        if bool(np.all(array == other)):
+            index[axis] = 0
+
+    return array[index]
 
 
 def stack(
