@@ -1188,6 +1188,30 @@ class AbstractArray(
             append=append,
         )
 
+    def debroadcast(
+            self: Self,
+            axes: None | str | Sequence[str] = None,
+    ) -> Self:
+        """
+        Remove redundant axes introduced by broadcasting.
+
+        Parameters
+        ----------
+        axes
+            The axes to consider removing.
+            If :obj:`None` (the default), every axis of this array is
+            considered.
+            Axes not present in this array are ignored.
+
+        See Also
+        --------
+        :func:`named_arrays.debroadcast`: A functional version of this method.
+        """
+        return na.debroadcast(
+            array=self,
+            axes=axes,
+        )
+
     def reshape(
             self: Self,
             shape: dict[str, int],

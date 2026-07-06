@@ -202,6 +202,25 @@ def broadcast_to(
     return array.type_explicit.from_components(components)
 
 
+@_implements(na.debroadcast)
+def debroadcast(
+    array: na.AbstractVectorArray,
+    axes: None | str | Sequence[str] = None,
+) -> na.AbstractExplicitVectorArray:
+    array = array.explicit
+    components = array.components
+
+    components = {
+        c: na.debroadcast(
+            array=components[c],
+            axes=axes,
+        )
+        for c in components
+    }
+
+    return array.type_explicit.from_components(components)
+
+
 @_implements(na.nominal)
 def nominal(
     a: na.AbstractVectorArray,

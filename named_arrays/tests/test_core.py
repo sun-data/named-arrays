@@ -1523,6 +1523,31 @@ class AbstractTestAbstractArray(
         result_expected = na.broadcast_to(array, **kwargs)
         assert np.array_equal(result, result_expected)
 
+    def test_debroadcast(
+            self,
+            array: na.AbstractArray,
+    ):
+        axis = "_debroadcast"
+        broadcast = array.broadcast_to({axis: 3}, append=True)
+
+        result = na.debroadcast(broadcast)
+
+        # the method and the function agree
+        assert np.array_equal(result, broadcast.debroadcast())
+
+        # the newly-broadcasted axis is always removed
+        assert axis not in na.shape(result)
+
+        # re-broadcasting recovers the broadcasted values, so debroadcast is a
+        # left-inverse of broadcast_to
+        assert bool(np.all(result.broadcast_to(broadcast.shape) == broadcast))
+
+        # considering only an absent axis removes nothing
+        assert na.shape(na.debroadcast(broadcast, axes="_absent")) == broadcast.shape
+
+        # considering only the broadcasted axis removes exactly that axis
+        assert axis not in na.shape(na.debroadcast(broadcast, axes=axis))
+
     @pytest.mark.parametrize('shape', [dict(r=-1)])
     def test_reshape(
             self,
