@@ -397,6 +397,13 @@ class AbstractTestAbstractUncertainScalarArray(
     ):
 
         @pytest.mark.parametrize("array_2", _uncertain_scalar_arrays_2())
+        class TestStackLikeFunctions(
+            named_arrays._scalars.tests.test_scalars.AbstractTestAbstractScalar.TestArrayFunctions
+            .TestStackLikeFunctions
+        ):
+            pass
+
+        @pytest.mark.parametrize("array_2", _uncertain_scalar_arrays_2())
         class TestAsArrayLikeFunctions(
             named_arrays._scalars.tests.test_scalars.AbstractTestAbstractScalar.TestArrayFunctions
             .TestAsArrayLikeFunctions

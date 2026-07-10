@@ -679,6 +679,12 @@ class AbstractTestAbstractScalarArray(
     ):
 
         @pytest.mark.parametrize("array_2", _scalar_arrays_2())
+        class TestStackLikeFunctions(
+            AbstractTestAbstractScalar.TestArrayFunctions.TestStackLikeFunctions,
+        ):
+            pass
+
+        @pytest.mark.parametrize("array_2", _scalar_arrays_2())
         class TestAsArrayLikeFunctions(
             AbstractTestAbstractScalar.TestArrayFunctions.TestAsArrayLikeFunctions,
         ):

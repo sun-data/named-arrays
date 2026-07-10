@@ -566,6 +566,11 @@ def array_function_stack_like(
             vector_prototype = array
             break
 
+    for array in arrays:
+        if isinstance(array, na.AbstractVectorArray):
+            if array.type_abstract != vector_prototype.type_abstract:
+                return NotImplemented
+
     arrays = [
         vector_prototype.type_explicit.from_scalar(
             scalar=a,

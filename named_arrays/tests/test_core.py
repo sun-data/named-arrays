@@ -1162,31 +1162,47 @@ class AbstractTestAbstractArray(
 
         @pytest.mark.parametrize('axis', ['y', 'z'])
         @pytest.mark.parametrize('use_out', [False, True])
-        def test_stack(
-                self,
-                array: na.AbstractArray,
-                axis: str,
-                use_out: bool,
-        ):
-            arrays = [array, array]
+        class TestStackLikeFunctions(abc.ABC):
 
-            if axis in array.axes:
-                with pytest.raises(ValueError, match=r"axis .* already in array"):
-                    np.stack(arrays, axis=axis)
-                return
+            def test_stack(
+                    self,
+                    array: na.AbstractArray,
+                    array_2: None | bool | int | float | complex | u.Quantity | na.AbstractArray,
+                    axis: str,
+                    use_out: bool,
+            ):
+                if array_2 is None:
+                    array_2 = array
 
-            if use_out:
-                out = 0 * np.stack(arrays=arrays, axis=axis)
-            else:
-                out = None
+                arrays = [array, array_2]
 
-            result = np.stack(arrays=arrays, axis=axis, out=out)
+                # if the binary ufunc dispatch rejects this combination of
+                # operands, stacking them must be rejected as well
+                try:
+                    np.equal(array, na.as_named_array(array_2))
+                except (ValueError, TypeError) as e:
+                    # expect the base class of the exception since the
+                    # implementation is free to order its checks differently
+                    error = ValueError if isinstance(e, ValueError) else TypeError
+                    with pytest.raises(error):
+                        np.stack(arrays, axis=axis)
+                    return
 
-            assert np.all(result[{axis: 0}] == array)
-            assert np.all(result[{axis: 1}] == array)
+                shape = na.shape_broadcasted(array, na.as_named_array(array_2))
+                if axis in shape:
+                    with pytest.raises(ValueError, match=r"axis .* already in array"):
+                        np.stack(arrays, axis=axis)
+                    return
 
-            if use_out:
-                assert result is out
+                result = np.stack(arrays=arrays, axis=axis)
+
+                if use_out:
+                    out = 0 * result
+                    result = np.stack(arrays=arrays, axis=axis, out=out)
+                    assert result is out
+
+                assert np.all(result[{axis: 0}] == array)
+                assert np.all(result[{axis: 1}] == array_2)
 
         @pytest.mark.parametrize('axis', ['x', 'y'])
         def test_concatenate(

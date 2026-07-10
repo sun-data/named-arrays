@@ -481,6 +481,32 @@ class AbstractTestAbstractFunctionArray(
             super().test_repeat(array, repeats, axis)
 
         @pytest.mark.parametrize("array_2", _function_arrays_2())
+        class TestStackLikeFunctions(
+            named_arrays.tests.test_core.AbstractTestAbstractArray.TestArrayFunctions.TestStackLikeFunctions,
+        ):
+            def test_stack(
+                    self,
+                    array: na.AbstractFunctionArray,
+                    array_2: None | float | u.Quantity | na.AbstractArray,
+                    axis: str,
+                    use_out: bool,
+            ):
+                # stacking a function with an array that is not a function
+                # is rejected since there is no way to promote the other
+                # array to a function
+                if not isinstance(array_2, na.AbstractFunctionArray):
+                    with pytest.raises(TypeError):
+                        np.stack([array, array_2], axis=axis)
+                    return
+
+                super().test_stack(
+                    array=array,
+                    array_2=array_2,
+                    axis=axis,
+                    use_out=use_out,
+                )
+
+        @pytest.mark.parametrize("array_2", _function_arrays_2())
         class TestAsArrayLikeFunctions(
             named_arrays.tests.test_core.AbstractTestAbstractArray.TestArrayFunctions.TestAsArrayLikeFunctions
         ):

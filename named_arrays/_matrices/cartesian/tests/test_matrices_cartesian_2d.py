@@ -204,6 +204,16 @@ class AbstractTestAbstractCartesian2dMatrixArray(
     ):
         pass
 
+    class TestArrayFunctions(
+        named_arrays._vectors.cartesian.tests.test_vectors_cartesian_2d
+        .AbstractTestAbstractCartesian2dVectorArray.TestArrayFunctions,
+    ):
+        @pytest.mark.parametrize('array_2', _cartesian_2d_matrices_2())
+        class TestStackLikeFunctions(
+            named_arrays.tests.test_core.AbstractTestAbstractArray.TestArrayFunctions.TestStackLikeFunctions,
+        ):
+            pass
+
     @pytest.mark.parametrize(
         argnames='array_2',
         argvalues=_cartesian_2d_matrices_2() + [na.Cartesian2dVectorArray(1, 2)]
