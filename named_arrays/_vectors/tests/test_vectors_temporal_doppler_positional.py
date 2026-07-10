@@ -77,6 +77,12 @@ class AbstractTestAbstractTemporalDopplerPositionalVectorArray(
     ):
 
         @pytest.mark.parametrize("array_2", _temporal_doppler_positional_arrays_2())
+        class TestStackLikeFunctions(
+            test_vectors_cartesian.AbstractTestAbstractCartesianVectorArray.TestArrayFunctions.TestStackLikeFunctions,
+        ):
+            pass
+
+        @pytest.mark.parametrize("array_2", _temporal_doppler_positional_arrays_2())
         class TestAsArrayLikeFunctions(
             test_vectors_cartesian.AbstractTestAbstractCartesianVectorArray.TestArrayFunctions.TestAsArrayLikeFunctions,
         ):

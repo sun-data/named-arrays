@@ -80,6 +80,12 @@ class AbstractTestAbstractSpectralDirectionalVectorArray(
     ):
 
         @pytest.mark.parametrize("array_2", _spectral_directional_arrays_2())
+        class TestStackLikeFunctions(
+            test_vectors_cartesian.AbstractTestAbstractCartesianVectorArray.TestArrayFunctions.TestStackLikeFunctions,
+        ):
+            pass
+
+        @pytest.mark.parametrize("array_2", _spectral_directional_arrays_2())
         class TestAsArrayLikeFunctions(
             test_vectors_cartesian.AbstractTestAbstractCartesianVectorArray.TestArrayFunctions.TestAsArrayLikeFunctions,
         ):

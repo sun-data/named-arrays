@@ -623,8 +623,8 @@ def array_function_stack_like(
     arrays_distribution = []
 
     for array in arrays:
-        array = array.broadcasted
         if isinstance(array, na.AbstractArray):
+            array = array.broadcasted
             if isinstance(array, na.AbstractScalar):
                 if isinstance(array, na.AbstractUncertainScalarArray):
                     array_nominal = na.as_named_array(array.nominal)
