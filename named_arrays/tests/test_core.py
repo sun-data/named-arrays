@@ -1161,7 +1161,6 @@ class AbstractTestAbstractArray(
             assert result.axes == tuple(shape.keys())
 
         @pytest.mark.parametrize('axis', ['y', 'z'])
-        @pytest.mark.parametrize('use_out', [False, True])
         class TestStackLikeFunctions(abc.ABC):
 
             def test_stack(
@@ -1169,7 +1168,6 @@ class AbstractTestAbstractArray(
                     array: na.AbstractArray,
                     array_2: None | bool | int | float | complex | u.Quantity | na.AbstractArray,
                     axis: str,
-                    use_out: bool,
             ):
                 if array_2 is None:
                     array_2 = array
@@ -1179,7 +1177,7 @@ class AbstractTestAbstractArray(
                 # if the binary ufunc dispatch rejects this combination of
                 # operands, stacking them must be rejected as well
                 try:
-                    np.equal(array, na.as_named_array(array_2))
+                    np.equal(array, array_2)
                 except (ValueError, TypeError) as e:
                     # expect the base class of the exception since the
                     # implementation is free to order its checks differently
@@ -1188,7 +1186,7 @@ class AbstractTestAbstractArray(
                         np.stack(arrays, axis=axis)
                     return
 
-                shape = na.shape_broadcasted(array, na.as_named_array(array_2))
+                shape = na.shape_broadcasted(array, array_2)
                 if axis in shape:
                     with pytest.raises(ValueError, match=r"axis .* already in array"):
                         np.stack(arrays, axis=axis)
@@ -1196,13 +1194,14 @@ class AbstractTestAbstractArray(
 
                 result = np.stack(arrays=arrays, axis=axis)
 
-                if use_out:
-                    out = 0 * result
-                    result = np.stack(arrays=arrays, axis=axis, out=out)
-                    assert result is out
-
                 assert np.all(result[{axis: 0}] == array)
                 assert np.all(result[{axis: 1}] == array_2)
+
+                out = 0 * result
+                result_out = np.stack(arrays=arrays, axis=axis, out=out)
+
+                assert result_out is out
+                assert np.all(result_out == result)
 
         @pytest.mark.parametrize('axis', ['x', 'y'])
         def test_concatenate(

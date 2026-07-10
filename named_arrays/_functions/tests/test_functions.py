@@ -489,7 +489,6 @@ class AbstractTestAbstractFunctionArray(
                     array: na.AbstractFunctionArray,
                     array_2: None | float | u.Quantity | na.AbstractArray,
                     axis: str,
-                    use_out: bool,
             ):
                 # stacking a function with an array that is not a function
                 # is rejected since there is no way to promote the other
@@ -503,7 +502,6 @@ class AbstractTestAbstractFunctionArray(
                     array=array,
                     array_2=array_2,
                     axis=axis,
-                    use_out=use_out,
                 )
 
         @pytest.mark.parametrize("array_2", _function_arrays_2())
