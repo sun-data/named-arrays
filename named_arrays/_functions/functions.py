@@ -1307,6 +1307,8 @@ class PolynomialFitFunctionArray(
         if self.center is not None:
             inputs = inputs - self.center
 
+        if not isinstance(inputs, na.AbstractArray):
+            inputs = na.ScalarArray(inputs)
         if isinstance(inputs, na.AbstractScalar):
             inputs = na.CartesianNdVectorArray({"dummy": inputs})
         inputs = inputs.cartesian_nd.broadcasted.components
