@@ -13,6 +13,7 @@ import astropy.units as u
 import named_arrays as na
 
 __all__ = [
+    "compose",
     "AbstractTransformation",
     "IdentityTransformation",
     "AbstractTranslation",
@@ -35,6 +36,73 @@ MatrixT = TypeVar("MatrixT", bound="na.AbstractMatrixArray")
 TransformationT = TypeVar("TransformationT", bound="AbstractTransformation")
 LinearTransformationT = TypeVar("LinearTransformationT", bound="AbstractLinearTransformation")
 TranslationT = TypeVar("TranslationT", bound="AbstractTranslation")
+
+
+def compose(
+    a: None | AbstractTransformation,
+    b: None | AbstractTransformation,
+) -> None | AbstractTransformation:
+    r"""
+    Compose two transformations, treating :obj:`None` as the identity.
+
+    This is a convenience wrapper around the ``@`` operator that accepts
+    :obj:`None` for either argument, which is useful when composing optional
+    transformations without having to guard each one. Composition follows the
+    same right-to-left convention as :meth:`AbstractTransformation.__matmul__`:
+    the result applied to a vector :math:`\vec{v}` is :math:`a(b(\vec{v}))`, so
+    `b` is applied first and `a` second.
+
+    Parameters
+    ----------
+    a
+        The outer transformation, applied second.
+        If :obj:`None`, it is treated as the identity and `b` is returned
+        unchanged.
+    b
+        The inner transformation, applied first.
+        If :obj:`None`, it is treated as the identity and `a` is returned
+        unchanged.
+
+    Returns
+    -------
+        The composition ``a @ b``, or :obj:`None` if both `a` and `b` are
+        :obj:`None`.
+
+    Examples
+    --------
+    Compose a rotation with a translation and apply the result to a vector.
+
+    .. jupyter-execute::
+
+        import astropy.units as u
+        import named_arrays as na
+
+        a = na.transformations.Cartesian3dTranslation(x=5 * u.mm)
+        b = na.transformations.Cartesian3dRotationZ(90 * u.deg)
+
+        transformation = na.transformations.compose(a, b)
+
+        v = na.Cartesian3dVectorArray(1, 2, 3) * u.mm
+        transformation(v)
+
+    This is equivalent to applying each transformation in turn.
+
+    .. jupyter-execute::
+
+        a(b(v))
+
+    A :obj:`None` argument acts as the identity, so it is dropped from the
+    composition and the other transformation is returned unchanged.
+
+    .. jupyter-execute::
+
+        na.transformations.compose(a, None) is a
+    """
+    if a is None:
+        return b
+    if b is None:
+        return a
+    return a @ b
 
 
 @dataclasses.dataclass(eq=False)
