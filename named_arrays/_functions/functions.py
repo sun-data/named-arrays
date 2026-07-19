@@ -1365,7 +1365,7 @@ class PolynomialFitFunctionArray(
             A boolean mask controlling which elements to use for fitting.
         """
         if components is None:
-            inputs_nd = inputs
+            inputs_nd = na.as_named_array(inputs)
             if isinstance(inputs_nd, na.AbstractScalar):
                 # mirror `design_matrix`'s wrapping of scalar inputs
                 inputs_nd = na.CartesianNdVectorArray({"dummy": inputs_nd})
