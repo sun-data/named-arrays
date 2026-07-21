@@ -239,4 +239,35 @@ class TestTransformationList(
     pass
 
 
+@pytest.mark.parametrize("a", transformations_basic)
+@pytest.mark.parametrize("b", transformations_basic)
+def test_compose(
+    a: na.transformations.AbstractTransformation,
+    b: na.transformations.AbstractTransformation,
+):
+    result = na.transformations.compose(a, b)
+
+    v = na.Cartesian3dVectorArray(1, 2, 3) * u.mm
+
+    # `compose` is a wrapper around the `@` operator
+    assert np.allclose(result(v), (a @ b)(v))
+
+    # composition is right-to-left: `b` is applied first, then `a`
+    assert np.allclose(result(v), a(b(v)))
+
+
+@pytest.mark.parametrize("a", transformations)
+def test_compose_none(
+    a: na.transformations.AbstractTransformation,
+):
+    # a `None` argument acts as the identity: it is dropped from the
+    # composition and the other argument is returned unchanged
+    assert na.transformations.compose(a, None) is a
+    assert na.transformations.compose(None, a) is a
+
+
+def test_compose_none_none():
+    assert na.transformations.compose(None, None) is None
+
+
 
