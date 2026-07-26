@@ -22,6 +22,37 @@ def _normalize_shape(shape: dict[str, None | int]) -> dict[str, int]:
     return {axis: shape[axis] for axis in shape if shape[axis] is not None}
 
 
+def test_linspace_num_scalar_array():
+    # `num` given as a 0-d integer scalar array must be accepted, both directly
+    # and as the per-component values produced when `linspace` decomposes a
+    # vector `num`.
+
+    # scalar `num` as a 0-d `ScalarArray`
+    result = na.linspace(0, 10, axis="x", num=na.ScalarArray(np.array(4)))
+    assert np.all(result == na.linspace(0, 10, axis="x", num=4))
+
+    # vector `num` whose components are `ScalarArray` instances
+    result = na.linspace(
+        start=na.Cartesian2dVectorArray(
+            x=na.ScalarArray(np.array(0.0)),
+            y=na.ScalarArray(np.array(0.0)),
+        ),
+        stop=na.Cartesian2dVectorArray(
+            x=na.ScalarArray(np.array(10.0)),
+            y=na.ScalarArray(np.array(8.0)),
+        ),
+        axis=na.Cartesian2dVectorArray("x", "y"),
+        num=na.Cartesian2dVectorArray(
+            x=na.ScalarArray(np.array(5)),
+            y=na.ScalarArray(np.array(4)),
+        ),
+    )
+    assert isinstance(result, na.Cartesian2dVectorArray)
+    assert na.shape(result) == {"x": 5, "y": 4}
+    assert np.all(result.x == na.linspace(0, 10, axis="x", num=5))
+    assert np.all(result.y == na.linspace(0, 8, axis="y", num=4))
+
+
 @pytest.mark.parametrize(argnames='shape_1_x', argvalues=[num_x], )
 @pytest.mark.parametrize(argnames='shape_1_y', argvalues=[num_y], )
 @pytest.mark.parametrize(argnames='shape_2_x', argvalues=[None, 1, num_x], )

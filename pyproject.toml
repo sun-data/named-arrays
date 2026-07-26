@@ -54,6 +54,9 @@ Documentation = "https://named-arrays.readthedocs.io/en/latest"
 
 [tool.setuptools_scm]
 
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F"]
+
 [tool.setuptools.package-data]
 named_arrays = ["py.typed"]
 
