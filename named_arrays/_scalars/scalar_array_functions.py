@@ -163,6 +163,12 @@ def array_function_sequence(
         else:
             return NotImplemented
 
+    if isinstance(num, na.AbstractArray):
+        if isinstance(num, na.AbstractScalarArray):
+            num = num.ndarray
+        else:
+            return NotImplemented
+
     return na.ScalarArray(
         ndarray=func(
             *args,
