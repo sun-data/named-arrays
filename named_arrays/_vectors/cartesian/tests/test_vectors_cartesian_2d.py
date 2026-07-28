@@ -462,6 +462,21 @@ def _cartesian_2d_vector_linear_spaces() -> tuple[na.Cartesian2dVectorLinearSpac
     )
 
 
+def test_volume_cell_scalar_step():
+    # a linear space with scalar `start`, `stop`, and `num` has a scalar `step`;
+    # `volume_cell` must still return the correct cell area (regression: the
+    # fast path assumed `step` was a vector).
+    space = na.Cartesian2dVectorLinearSpace(
+        start=-10 * u.arcsec,
+        stop=+10 * u.arcsec,
+        axis=na.Cartesian2dVectorArray("x", "y"),
+        num=5,
+    )
+    assert not isinstance(space.step, na.AbstractVectorArray)
+    result = space.volume_cell(("x", "y"))
+    assert np.allclose(result, space.explicit.volume_cell(("x", "y")))
+
+
 @pytest.mark.parametrize("array", _cartesian_2d_vector_linear_spaces())
 class TestCartesian2dVectorLinearSpace(
     AbstractTestAbstractCartesian2dVectorSpace,

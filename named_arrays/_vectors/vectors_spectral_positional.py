@@ -63,10 +63,8 @@ class AbstractSpectralPositionalVectorArray(
             a for a in shape_position if a in axis and a not in shape_wavelength
         )
 
-        volume_wavelength = self.wavelength.explicit.volume_cell(axis_wavelength)
-        volume_position = na.as_named_array(
-            self.position.explicit.volume_cell(axis_position)
-        )
+        volume_wavelength = self.wavelength.volume_cell(axis_wavelength)
+        volume_position = na.as_named_array(self.position.volume_cell(axis_position))
 
         # if the position varies with wavelength, its cell area spans the
         # wavelength edges; collapse it onto the wavelength cell centers so it
