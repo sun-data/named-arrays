@@ -12,13 +12,22 @@ _num_distribution = test_vectors_cartesian._num_distribution
 
 def _spectral_positional_arrays() -> list[na.SpectralPositionalVectorArray]:
     return [
-        na.SpectralPositionalVectorArray(
-            wavelength=500 * u.nm,
-            position=na.Cartesian2dVectorArray(1, 2) * u.mm,
-        ),
+        # a separable 3d grid: wavelength along "y", position along "x" and "z".
         na.SpectralPositionalVectorArray(
             wavelength=na.linspace(400, 600, axis="y", num=_num_y) * u.nm,
-            position=na.Cartesian2dVectorLinearSpace(1, 2, axis="y", num=_num_y).explicit * u.mm,
+            position=na.Cartesian2dVectorArray(
+                x=na.linspace(1, 2, axis="x", num=_num_x),
+                y=na.linspace(3, 4, axis="z", num=_num_z),
+            ) * u.mm,
+        ),
+        # a 3d grid whose position also varies with wavelength.
+        na.SpectralPositionalVectorArray(
+            wavelength=na.linspace(400, 600, axis="y", num=_num_y) * u.nm,
+            position=na.Cartesian2dVectorArray(
+                x=na.linspace(1, 2, axis="x", num=_num_x)
+                + na.linspace(0, 0.1, axis="y", num=_num_y),
+                y=na.linspace(3, 4, axis="z", num=_num_z),
+            ) * u.mm,
         ),
     ]
 
@@ -61,6 +70,20 @@ class AbstractTestAbstractSpectralPositionalVectorArray(
             item: dict[str, int | slice | na.AbstractArray] | na.AbstractArray
     ):
         super().test__getitem__(array=array, item=item)
+
+    def test_volume_cell(self, array: na.AbstractSpectralPositionalVectorArray):
+        axis = tuple(na.shape(array))
+        result = array.volume_cell(axis)
+
+        # the volume is a scalar with one fewer cell along each grid axis
+        assert isinstance(na.as_named_array(result), na.AbstractScalar)
+        for ax in na.shape(array):
+            assert na.shape(result)[ax] == na.shape(array)[ax] - 1
+        assert np.all(result > 0 * na.unit_normalized(result))
+
+        # the wavelength and position axes are inferred from the array, so the
+        # order in which they are given does not matter
+        assert np.all(result == array.volume_cell(tuple(reversed(axis))))
 
     @pytest.mark.parametrize('array_2', _spectral_positional_arrays_2())
     class TestUfuncBinary(
@@ -179,10 +202,22 @@ class AbstractTestAbstractSpectralPositionalVectorSpace(
 def _spectral_positional_linear_spaces() -> list[na.SpectralPositionalVectorLinearSpace]:
     return [
         na.SpectralPositionalVectorLinearSpace(
-            start=400 * u.nm,
-            stop=600 * u.nm,
-            axis="y",
-            num=_num_y,
+            start=na.SpectralPositionalVectorArray(
+                wavelength=400 * u.nm,
+                position=na.Cartesian2dVectorArray(1, 3) * u.mm,
+            ),
+            stop=na.SpectralPositionalVectorArray(
+                wavelength=600 * u.nm,
+                position=na.Cartesian2dVectorArray(2, 4) * u.mm,
+            ),
+            axis=na.SpectralPositionalVectorArray(
+                wavelength="y",
+                position=na.Cartesian2dVectorArray("x", "z"),
+            ),
+            num=na.SpectralPositionalVectorArray(
+                wavelength=_num_y,
+                position=na.Cartesian2dVectorArray(_num_x, _num_z),
+            ),
         )
     ]
 
