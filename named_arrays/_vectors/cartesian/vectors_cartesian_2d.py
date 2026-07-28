@@ -217,9 +217,17 @@ class Cartesian2dVectorLinearSpace(
                 f"{axis=} must have exactly two elements"
             )
 
+        step = self.step
         if set(axis).issubset(self.axis.components.values()):
-            result = self.step
-            result = math.prod(result.components.values())
+            if isinstance(step, na.AbstractVectorArray):
+                # fast path for a rectilinear grid: the cell area is the product
+                # of the per-component steps.
+                result = math.prod(step.components.values())
+            else:
+                # a scalar step describes a uniform grid with the same spacing
+                # along every component, so the cell volume is the step raised
+                # to the number of components.
+                result = step ** len(components)
         else:
             result = super().volume_cell(axis)
 
