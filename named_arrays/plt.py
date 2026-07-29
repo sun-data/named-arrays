@@ -2537,6 +2537,9 @@ class HypercubeSlicer:
     and the Doppler norm is symmetric about the global intensity-weighted
     mean wavelength coordinate with a half-range given by a high percentile
     of the per-pixel first-moment deviation from that center.
+    Like :mod:`xarray`, each colorbar draws a pointed ``extend`` arrow on
+    any side where its norm clips the global range of the quantity it
+    displays, so saturation of the color scale is always visible.
     The vertical limits of the spectrum panel span the extrema over time of
     the selected pixel's spectra, and are only recomputed when a new point
     is selected.
@@ -2748,8 +2751,9 @@ class HypercubeSlicer:
 
         # The two slit panels display the same physical quantity, so they
         # share a single norm derived from the full 4-dimensional cube.
+        outputs_ndarray = outputs.value.ndarray
         vmin_spectrum, vmax_spectrum = np.nanpercentile(
-            outputs.value.ndarray,
+            outputs_ndarray,
             percentile,
         )
         self._norm_spectrum = matplotlib.colors.Normalize(
@@ -2766,11 +2770,10 @@ class HypercubeSlicer:
         # given by a high percentile of the deviation of the per-pixel first
         # moment from that center over all times.
         center = (wavelength * outputs).sum() / outputs.sum()
-        deviation = np.abs(self._moment(outputs, wavelength) - center)
+        moment = self._moment(outputs, wavelength).value.ndarray
+        deviation = np.abs(moment - float(center.value.ndarray))
         center = float(center.value.ndarray)
-        halfrange = float(
-            np.nanpercentile(deviation.value.ndarray, percentile[~0]),
-        )
+        halfrange = float(np.nanpercentile(deviation, percentile[~0]))
         if not halfrange > 0:
             halfrange = max(
                 center - self._wavelength_min,
@@ -2780,6 +2783,25 @@ class HypercubeSlicer:
         self._norm_doppler = matplotlib.colors.Normalize(
             vmin=center - halfrange,
             vmax=center + halfrange,
+        )
+
+        # Each colorbar advertises whether its norm clips the global range of
+        # the quantity it describes, using pointed "extend" arrows on the
+        # clipped side, like `xarray`.
+        self._extend_intensity = self._extend(
+            norm=self._norm_intensity,
+            vmin=np.nanmin(intensity),
+            vmax=np.nanmax(intensity),
+        )
+        self._extend_doppler = self._extend(
+            norm=self._norm_doppler,
+            vmin=np.nanmin(moment),
+            vmax=np.nanmax(moment),
+        )
+        self._extend_slit = self._extend(
+            norm=self._norm_spectrum,
+            vmin=np.nanmin(outputs_ndarray),
+            vmax=np.nanmax(outputs_ndarray),
         )
 
         # Every label is built from the logical axis names given by the
@@ -2819,8 +2841,9 @@ class HypercubeSlicer:
             width_ratios=(width_ratios[0], width_cax, width_ratios[1], width_cax),
             height_ratios=height_ratios,
         )
+        self._subplotspec_cax_image = gridspec[0, 1]
         self.ax_image = self._fig.add_subplot(gridspec[0, 0])
-        self.cax_image = self._fig.add_subplot(gridspec[0, 1])
+        self.cax_image = self._fig.add_subplot(self._subplotspec_cax_image)
         self.ax_slit_vertical = self._fig.add_subplot(
             gridspec[0, 2],
             sharey=self.ax_image,
@@ -2857,14 +2880,12 @@ class HypercubeSlicer:
             **kwargs_imshow,
         )
 
-        self._colorbar_image = self._fig.colorbar(
-            self._img_image,
-            cax=self.cax_image,
-        )
-        self._colorbar_image.set_label(self._label_colorbar_image)
+        self._colorbar_image = None
+        self._update_colorbar_image()
         self._colorbar_slit = self._fig.colorbar(
             self._img_slit_vertical,
             cax=self.cax_slit,
+            extend=self._extend_slit,
         )
         self._colorbar_slit.set_label(self._label_outputs)
 
@@ -3000,6 +3021,7 @@ class HypercubeSlicer:
             )
         self._mode = mode
         self._update_image()
+        self._update_colorbar_image()
         self._fig.canvas.draw_idle()
 
     @staticmethod
@@ -3008,6 +3030,24 @@ class HypercubeSlicer:
         if unit is not None and unit != u.dimensionless_unscaled:
             return f"{name} ({unit})"
         return name
+
+    @staticmethod
+    def _extend(
+        norm: matplotlib.colors.Normalize,
+        vmin: float,
+        vmax: float,
+    ) -> str:
+        """The colorbar `extend` style for data spanning `vmin` to `vmax`."""
+        clip_min = vmin < norm.vmin
+        clip_max = vmax > norm.vmax
+        if clip_min and clip_max:
+            return "both"
+        elif clip_min:
+            return "min"
+        elif clip_max:
+            return "max"
+        else:
+            return "neither"
 
     @staticmethod
     def _get_item(a: na.AbstractScalarArray, item: dict[str, int]):
@@ -3046,6 +3086,13 @@ class HypercubeSlicer:
             return self._label_intensity
         else:
             return self._label_doppler
+
+    @property
+    def _extend_image(self) -> str:
+        if self._mode == "intensity":
+            return self._extend_intensity
+        else:
+            return self._extend_doppler
 
     def _data_image(self) -> np.ndarray:
         """The current contents of the image panel."""
@@ -3115,8 +3162,26 @@ class HypercubeSlicer:
         self._img_image.set_data(self._data_image())
         self._img_image.set_cmap(self._cmap_image)
         self._img_image.set_norm(self._norm_image)
-        self._colorbar_image.set_label(self._label_colorbar_image)
         self._update_title()
+
+    def _update_colorbar_image(self) -> None:
+        """
+        Draw a fresh colorbar for the image panel.
+
+        A colorbar cannot change its `extend` style in place, so the colorbar
+        is drawn fresh on every mode switch, into a new axes occupying the
+        same dedicated slot of the gridspec so that the layout stays
+        deterministic.
+        """
+        if self._colorbar_image is not None:
+            self._colorbar_image.remove()
+            self.cax_image = self._fig.add_subplot(self._subplotspec_cax_image)
+        self._colorbar_image = self._fig.colorbar(
+            self._img_image,
+            cax=self.cax_image,
+            extend=self._extend_image,
+        )
+        self._colorbar_image.set_label(self._label_colorbar_image)
 
     def _update_spectrum_ylim(self) -> None:
         """

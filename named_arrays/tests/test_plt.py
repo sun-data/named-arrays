@@ -1175,3 +1175,43 @@ def test_hypercube_slicer_labels():
     assert slicer.cax_image.get_ylabel() == f"mean velocity ({unit_velocity})"
 
     plt.close(slicer.fig)
+
+
+def test_hypercube_slicer_extend():
+    """Colorbars must advertise when their norm clips the data range."""
+    # A cube of exact integers with a moment-balanced spectral profile has
+    # an exactly-zero first moment everywhere, which lies strictly inside the
+    # symmetric doppler norm, while its wavelength-integrated intensity (and
+    # its outputs) are spread widely enough that the percentile norms clip
+    # at both ends.
+    time = na.ScalarArray(np.arange(_num_slicer_t, dtype=float), axes=("t",))
+    wavelength = na.linspace(-2, 2, axis="w", num=_num_slicer_w)
+    x = na.ScalarArray(np.arange(_num_slicer_x, dtype=float), axes=("x",))
+    y = na.ScalarArray(np.arange(_num_slicer_y, dtype=float), axes=("y",))
+    # spectral weights with distinct values chosen so the first moment over
+    # the wavelength grid [-2, -1, 0, 1, 2] is exactly zero in integer
+    # arithmetic: -2*1 - 1*6 + 0*3 + 1*4 + 2*2 = 0
+    weights = na.ScalarArray(np.array([1.0, 6.0, 3.0, 4.0, 2.0]), axes=("w",))
+    outputs = (1 + 100 * time + 10 * x + y) * weights
+
+    function_flat = na.FunctionArray(
+        inputs=na.TemporalSpectralPositionalVectorArray(
+            time=time,
+            wavelength=wavelength,
+            position=na.Cartesian2dVectorArray(x, y),
+        ),
+        outputs=outputs,
+    )
+    slicer_flat = na.plt.HypercubeSlicer(function_flat, **_kwargs_slicer)
+
+    assert slicer_flat._colorbar_image.extend == "both"
+    assert slicer_flat._colorbar_slit.extend == "both"
+
+    slicer_flat.set_mode("doppler")
+    assert slicer_flat._colorbar_image.extend == "neither"
+
+    # the extend decision must be re-evaluated on every mode switch
+    slicer_flat.set_mode("intensity")
+    assert slicer_flat._colorbar_image.extend == "both"
+
+    plt.close(slicer_flat.fig)
