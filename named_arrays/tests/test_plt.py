@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.axes
 import matplotlib.animation
 import matplotlib.text
+import matplotlib.backend_bases
 import matplotlib.pyplot as plt
 import astropy.units as u
 import named_arrays as na
@@ -704,3 +705,304 @@ def test_invert_yaxis(
     ax: None | matplotlib.axes.Axes | na.AbstractScalar,
 ):
     na.plt.invert_yaxis(ax)
+
+
+_num_slicer_t = 3
+_num_slicer_w = 5
+_num_slicer_x = 8
+_num_slicer_y = 7
+
+_kwargs_slicer = dict(
+    axis_time="t",
+    axis_wavelength="w",
+    axis_x="x",
+    axis_y="y",
+)
+
+
+def _hypercube_function(units: bool) -> na.FunctionArray:
+    """A moving Gaussian blob with a spatially-varying Doppler shift."""
+    time = na.linspace(0, 2, axis="t", num=_num_slicer_t)
+    wavelength = na.linspace(-2, 2, axis="w", num=_num_slicer_w)
+    x = na.linspace(-1, 1, axis="x", num=_num_slicer_x)
+    y = na.linspace(-1, 1, axis="y", num=_num_slicer_y)
+
+    center = 0.5 * time - 0.5
+    blob = np.exp(-(np.square(x - center) + np.square(y)) / np.square(0.5))
+    line = np.exp(-np.square(wavelength - x) / 2)
+    outputs = 1 + blob * line
+
+    if units:
+        time = time * u.s
+        wavelength = 500 * u.nm + wavelength * u.nm
+        outputs = outputs * u.photon
+
+    return na.FunctionArray(
+        inputs=na.TemporalSpectralPositionalVectorArray(
+            time=time,
+            wavelength=wavelength,
+            position=na.Cartesian2dVectorArray(x, y),
+        ),
+        outputs=outputs,
+    )
+
+
+def _hypercube_wavelength(function: na.FunctionArray) -> na.AbstractScalar:
+    return na.as_named_array(function.inputs.wavelength).broadcast_to(
+        shape={"w": _num_slicer_w},
+    )
+
+
+@pytest.mark.parametrize(
+    argnames="function",
+    argvalues=[
+        _hypercube_function(units=False),
+        _hypercube_function(units=True),
+    ],
+)
+def test_hypercube_slicer(function: na.FunctionArray):
+    slicer = na.plt.HypercubeSlicer(function, **_kwargs_slicer)
+
+    assert isinstance(slicer.fig, plt.Figure)
+    assert slicer.mode == "intensity"
+    assert slicer.index_time == 0
+    assert slicer.index_x == _num_slicer_x // 2
+    assert slicer.index_y == _num_slicer_y // 2
+
+    result = slicer.ax_image.images[0].get_array()
+    expected = function.outputs[dict(t=0)].sum("w")
+    expected = expected.value.ndarray_aligned(("y", "x"))
+    assert result.shape == (_num_slicer_y, _num_slicer_x)
+    np.testing.assert_allclose(result, expected)
+
+    plt.close(slicer.fig)
+
+
+@pytest.mark.parametrize(
+    argnames="function",
+    argvalues=[
+        _hypercube_function(units=False),
+        _hypercube_function(units=True),
+    ],
+)
+def test_hypercube_slicer_set_time(function: na.FunctionArray):
+    slicer = na.plt.HypercubeSlicer(function, **_kwargs_slicer)
+
+    slicer.set_time(1)
+    assert slicer.index_time == 1
+
+    result = slicer.ax_image.images[0].get_array()
+    expected = function.outputs[dict(t=1)].sum("w")
+    expected = expected.value.ndarray_aligned(("y", "x"))
+    np.testing.assert_allclose(result, expected)
+
+    result_slit = slicer.ax_slit_vertical.images[0].get_array()
+    expected_slit = function.outputs[dict(t=1, x=slicer.index_x)]
+    expected_slit = expected_slit.value.ndarray_aligned(("y", "w"))
+    np.testing.assert_allclose(result_slit, expected_slit)
+
+    slicer.set_time(_num_slicer_t)
+    assert slicer.index_time == 0
+
+    slicer.set_time(-1)
+    assert slicer.index_time == _num_slicer_t - 1
+
+    plt.close(slicer.fig)
+
+
+@pytest.mark.parametrize(
+    argnames="function",
+    argvalues=[
+        _hypercube_function(units=False),
+        _hypercube_function(units=True),
+    ],
+)
+def test_hypercube_slicer_set_point(function: na.FunctionArray):
+    slicer = na.plt.HypercubeSlicer(function, **_kwargs_slicer)
+
+    index_x = 2
+    index_y = 3
+    slicer.set_point(index_x, index_y)
+    assert slicer.index_x == index_x
+    assert slicer.index_y == index_y
+
+    outputs = function.outputs
+
+    result_vertical = slicer.ax_slit_vertical.images[0].get_array()
+    expected_vertical = outputs[dict(t=0, x=index_x)]
+    expected_vertical = expected_vertical.value.ndarray_aligned(("y", "w"))
+    assert result_vertical.shape == (_num_slicer_y, _num_slicer_w)
+    np.testing.assert_allclose(result_vertical, expected_vertical)
+
+    result_horizontal = slicer.ax_slit_horizontal.images[0].get_array()
+    expected_horizontal = outputs[dict(t=0, y=index_y)]
+    expected_horizontal = expected_horizontal.value.ndarray_aligned(("w", "x"))
+    assert result_horizontal.shape == (_num_slicer_w, _num_slicer_x)
+    np.testing.assert_allclose(result_horizontal, expected_horizontal)
+
+    spectrum = outputs[dict(t=0, x=index_x, y=index_y)]
+    wavelength = _hypercube_wavelength(function)
+    line = slicer.ax_spectrum.lines[0]
+    np.testing.assert_allclose(
+        line.get_xdata(),
+        wavelength.value.ndarray_aligned(("w",)),
+    )
+    np.testing.assert_allclose(
+        line.get_ydata(),
+        spectrum.value.ndarray_aligned(("w",)),
+    )
+
+    expected_mean = (wavelength * spectrum).sum("w") / spectrum.sum("w")
+    result_mean = slicer._line_spectrum.get_xdata()[0]
+    np.testing.assert_allclose(result_mean, expected_mean.value.ndarray)
+
+    crosshair_x = slicer._crosshair_vertical.get_xdata()[0]
+    crosshair_y = slicer._crosshair_horizontal.get_ydata()[0]
+    assert crosshair_x == index_x
+    assert crosshair_y == index_y
+
+    slicer.set_point(-100, 100)
+    assert slicer.index_x == 0
+    assert slicer.index_y == _num_slicer_y - 1
+
+    plt.close(slicer.fig)
+
+
+@pytest.mark.parametrize(
+    argnames="function",
+    argvalues=[
+        _hypercube_function(units=False),
+        _hypercube_function(units=True),
+    ],
+)
+def test_hypercube_slicer_set_mode(function: na.FunctionArray):
+    slicer = na.plt.HypercubeSlicer(function, **_kwargs_slicer)
+
+    slicer.set_mode("doppler")
+    assert slicer.mode == "doppler"
+
+    outputs = function.outputs[dict(t=0)]
+    wavelength = _hypercube_wavelength(function)
+    expected = (wavelength * outputs).sum("w") / outputs.sum("w")
+    expected = expected.value.ndarray_aligned(("y", "x"))
+
+    result = slicer.ax_image.images[0].get_array()
+    np.testing.assert_allclose(result, expected)
+
+    slicer.set_mode("intensity")
+    assert slicer.mode == "intensity"
+
+    result = slicer.ax_image.images[0].get_array()
+    expected = function.outputs[dict(t=0)].sum("w")
+    expected = expected.value.ndarray_aligned(("y", "x"))
+    np.testing.assert_allclose(result, expected)
+
+    with pytest.raises(ValueError):
+        slicer.set_mode("invalid")
+
+    plt.close(slicer.fig)
+
+
+def test_hypercube_slicer_wavelength_index():
+    function = _hypercube_function(units=False)
+    function = na.FunctionArray(
+        inputs=function.inputs.position,
+        outputs=function.outputs,
+    )
+    slicer = na.plt.HypercubeSlicer(function, **_kwargs_slicer)
+
+    slicer.set_mode("doppler")
+
+    outputs = function.outputs[dict(t=0)]
+    wavelength = na.ScalarArray(np.arange(_num_slicer_w), axes=("w",))
+    expected = (wavelength * outputs).sum("w") / outputs.sum("w")
+    expected = expected.value.ndarray_aligned(("y", "x"))
+
+    result = slicer.ax_image.images[0].get_array()
+    np.testing.assert_allclose(result, expected)
+
+    plt.close(slicer.fig)
+
+
+def test_hypercube_slicer_invalid_axis():
+    function = _hypercube_function(units=False)
+    with pytest.raises(ValueError):
+        na.plt.HypercubeSlicer(function, axis_time="invalid")
+
+
+def test_hypercube_slicer_invalid_mode():
+    function = _hypercube_function(units=False)
+    with pytest.raises(ValueError):
+        na.plt.HypercubeSlicer(function, **_kwargs_slicer, mode="invalid")
+
+
+def test_hypercube_slicer_events():
+    function = _hypercube_function(units=True)
+    slicer = na.plt.HypercubeSlicer(function, **_kwargs_slicer)
+    fig = slicer.fig
+    fig.canvas.draw()
+
+    event_scroll = matplotlib.backend_bases.MouseEvent(
+        name="scroll_event",
+        canvas=fig.canvas,
+        x=0,
+        y=0,
+        button="up",
+    )
+    fig.canvas.callbacks.process("scroll_event", event_scroll)
+    assert slicer.index_time == 1
+
+    event_scroll_down = matplotlib.backend_bases.MouseEvent(
+        name="scroll_event",
+        canvas=fig.canvas,
+        x=0,
+        y=0,
+        button="down",
+    )
+    fig.canvas.callbacks.process("scroll_event", event_scroll_down)
+    assert slicer.index_time == 0
+
+    event_key_right = matplotlib.backend_bases.KeyEvent(
+        name="key_press_event",
+        canvas=fig.canvas,
+        key="right",
+    )
+    fig.canvas.callbacks.process("key_press_event", event_key_right)
+    assert slicer.index_time == 1
+
+    event_key_left = matplotlib.backend_bases.KeyEvent(
+        name="key_press_event",
+        canvas=fig.canvas,
+        key="left",
+    )
+    fig.canvas.callbacks.process("key_press_event", event_key_left)
+    assert slicer.index_time == 0
+
+    event_key_m = matplotlib.backend_bases.KeyEvent(
+        name="key_press_event",
+        canvas=fig.canvas,
+        key="m",
+    )
+    fig.canvas.callbacks.process("key_press_event", event_key_m)
+    assert slicer.mode == "doppler"
+
+    fig.canvas.callbacks.process("key_press_event", event_key_m)
+    assert slicer.mode == "intensity"
+
+    index_x = 4
+    index_y = 2
+    x_display, y_display = slicer.ax_image.transData.transform(
+        (index_x, index_y),
+    )
+    event_click = matplotlib.backend_bases.MouseEvent(
+        name="button_press_event",
+        canvas=fig.canvas,
+        x=x_display,
+        y=y_display,
+        button=matplotlib.backend_bases.MouseButton.LEFT,
+    )
+    fig.canvas.callbacks.process("button_press_event", event_click)
+    assert slicer.index_x == index_x
+    assert slicer.index_y == index_y
+
+    plt.close(fig)

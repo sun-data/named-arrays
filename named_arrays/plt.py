@@ -3,10 +3,12 @@
 from __future__ import annotations
 from typing import Literal, Any, Callable, TypeVar
 import matplotlib.axes
+import matplotlib.figure
 import matplotlib.transforms
 import matplotlib.animation
 import matplotlib.text
 import matplotlib.colors
+import matplotlib.backend_bases
 import matplotlib.pyplot as plt
 import astropy.units as u
 import numpy as np
@@ -54,6 +56,7 @@ __all__ = [
     "twiny",
     "invert_xaxis",
     "invert_yaxis",
+    "HypercubeSlicer",
 ]
 
 
@@ -2491,3 +2494,559 @@ def dimension(
     )
 
     return result
+
+
+class HypercubeSlicer:
+    """
+    An interactive :mod:`matplotlib` viewer for a 4-dimensional
+    spectral-imaging time series.
+
+    The data to visualize is an instance of
+    :class:`named_arrays.FunctionArray` whose ``outputs`` has a temporal,
+    a spectral, and two spatial logical axes.
+    The figure is a 2 :math:`\\times` 2 mosaic of four panels:
+
+    - The `image` panel (upper left, largest) displays the current time step,
+      either integrated over the wavelength axis (``"intensity"`` mode)
+      or as the intensity-weighted mean wavelength coordinate
+      (``"doppler"`` mode).
+      Crosshairs mark the currently-selected spatial point.
+    - The `vertical slit` panel (upper right) displays wavelength (horizontal)
+      vs. vertical position for the selected column of the image,
+      the spectrum a spectrograph with a vertical slit through the selected
+      point would measure.
+    - The `horizontal slit` panel (lower left) displays horizontal position
+      vs. wavelength (vertical) for the selected row of the image.
+    - The `spectrum` panel (lower right) displays the spectrum of the single
+      selected pixel, with a vertical line marking its mean wavelength
+      coordinate.
+
+    The viewer is interactive:
+    left-clicking anywhere on the image panel selects a new spatial point,
+    scrolling the mouse wheel or pressing the left/right arrow keys steps
+    through the time axis,
+    and pressing the ``m`` key toggles between ``"intensity"`` and
+    ``"doppler"`` modes.
+    The same operations are available programmatically through
+    :meth:`set_point`, :meth:`set_time`, and :meth:`set_mode`.
+
+    Parameters
+    ----------
+    function
+        The spectral-imaging time series to visualize.
+        ``function.outputs`` must include the four logical axes given by
+        `axis_time`, `axis_wavelength`, `axis_x`, and `axis_y`.
+        If ``function.inputs`` has a ``wavelength`` component,
+        it is used as the wavelength coordinate,
+        otherwise the index along `axis_wavelength` is used.
+        If ``function.inputs`` has a ``time`` component,
+        it is displayed in the title of the image panel.
+    axis_time
+        The name of the logical axis representing time.
+    axis_wavelength
+        The name of the logical axis representing changing wavelength.
+    axis_x
+        The name of the logical axis representing horizontal position.
+    axis_y
+        The name of the logical axis representing vertical position.
+    index_time
+        The initial index along `axis_time` to display.
+    index_x
+        The initial selected index along `axis_x`.
+        If :obj:`None`, the middle of the axis is used.
+    index_y
+        The initial selected index along `axis_y`.
+        If :obj:`None`, the middle of the axis is used.
+    mode
+        The initial display mode of the image panel,
+        either ``"intensity"`` or ``"doppler"``.
+    cmap
+        The colormap used by the image panel in ``"intensity"`` mode and by
+        the two slit-spectrum panels.
+        If :obj:`None`, the default :mod:`matplotlib` colormap is used.
+    cmap_doppler
+        The colormap used by the image panel in ``"doppler"`` mode.
+    percentile
+        The lower and upper percentiles of the data used to compute the
+        color scale.
+    width_ratios
+        The relative widths of the left and right columns of the figure.
+    height_ratios
+        The relative heights of the upper and lower rows of the figure.
+    kwargs_figure
+        Additional keyword arguments passed to
+        :func:`matplotlib.pyplot.figure`.
+
+    Examples
+    --------
+
+    Visualize a moving Gaussian blob with a spatially-varying Doppler shift.
+
+    .. jupyter-execute::
+
+        import numpy as np
+        import astropy.units as u
+        import named_arrays as na
+
+        # Define the shape of the spectral cube
+        shape = dict(time=5, wavelength=11, x=32, y=32)
+
+        # Define the coordinates of the spectral cube
+        time = na.linspace(0, 20, axis="time", num=shape["time"]) * u.s
+        wavelength = na.linspace(-1, 1, axis="wavelength", num=shape["wavelength"])
+        x = na.linspace(-1, 1, axis="x", num=shape["x"])
+        y = na.linspace(-1, 1, axis="y", num=shape["y"])
+
+        # Define a Gaussian blob that moves horizontally with time
+        center = 0.5 * np.sin(2 * np.pi * u.rad * time / (25 * u.s))
+        blob = np.exp(-(np.square(x - center) + np.square(y)) / np.square(0.4))
+
+        # Define a spectral line whose Doppler shift varies with position
+        line = np.exp(-np.square(wavelength - 0.5 * x) / np.square(0.3))
+
+        # Combine into a 4-dimensional spectral cube
+        outputs = blob * line * u.photon
+
+        # Define the function array to visualize
+        function = na.FunctionArray(
+            inputs=na.TemporalSpectralPositionalVectorArray(
+                time=time,
+                wavelength=500 * u.nm + wavelength * u.nm,
+                position=na.Cartesian2dVectorArray(x, y),
+            ),
+            outputs=outputs,
+        )
+
+        # Create the interactive visualization
+        slicer = na.plt.HypercubeSlicer(
+            function,
+            axis_time="time",
+            axis_wavelength="wavelength",
+            axis_x="x",
+            axis_y="y",
+        )
+    """
+
+    def __init__(
+        self,
+        function: na.AbstractFunctionArray,
+        axis_time: str = "time",
+        axis_wavelength: str = "wavelength",
+        axis_x: str = "x",
+        axis_y: str = "y",
+        index_time: int = 0,
+        index_x: None | int = None,
+        index_y: None | int = None,
+        mode: Literal["intensity", "doppler"] = "intensity",
+        cmap: None | str | matplotlib.colors.Colormap = None,
+        cmap_doppler: None | str | matplotlib.colors.Colormap = "RdBu_r",
+        percentile: tuple[float, float] = (0.1, 99.9),
+        width_ratios: tuple[float, float] = (2.5, 1),
+        height_ratios: tuple[float, float] = (2.5, 1),
+        **kwargs_figure,
+    ):
+        outputs = na.as_named_array(function.outputs).explicit
+
+        axes = (axis_time, axis_wavelength, axis_x, axis_y)
+        for axis in axes:
+            if axis not in outputs.shape:
+                raise ValueError(
+                    f"axis {axis!r} is not in the shape of `function.outputs`,"
+                    f" {outputs.shape}."
+                )
+
+        self._axis_time = axis_time
+        self._axis_wavelength = axis_wavelength
+        self._axis_x = axis_x
+        self._axis_y = axis_y
+        self._outputs = outputs
+        self._shape = {axis: outputs.shape[axis] for axis in axes}
+
+        inputs = function.inputs
+
+        wavelength = getattr(inputs, "wavelength", None)
+        if wavelength is None:
+            wavelength = na.ScalarArray(
+                ndarray=np.arange(self._shape[axis_wavelength]),
+                axes=(axis_wavelength,),
+            )
+        else:
+            wavelength = na.as_named_array(wavelength).explicit
+        if axis_wavelength not in wavelength.shape:
+            wavelength = wavelength.broadcast_to(
+                shape=wavelength.shape | {axis_wavelength: self._shape[axis_wavelength]},
+            )
+        self._wavelength = wavelength
+
+        time = getattr(inputs, "time", None)
+        if time is not None:
+            time = na.as_named_array(time).explicit
+        self._time = time
+
+        if mode not in ("intensity", "doppler"):
+            raise ValueError(
+                f"mode must be 'intensity' or 'doppler', got {mode!r}."
+            )
+        self._mode = mode
+
+        self._index_time = int(index_time) % self._shape[axis_time]
+        if index_x is None:
+            index_x = self._shape[axis_x] // 2
+        if index_y is None:
+            index_y = self._shape[axis_y] // 2
+        self._index_x = int(index_x)
+        self._index_y = int(index_y)
+
+        self._cmap = cmap
+        self._cmap_doppler = cmap_doppler
+
+        intensity = outputs.sum(axis_wavelength).value.ndarray
+        self._vmin_intensity, self._vmax_intensity = np.nanpercentile(
+            intensity,
+            percentile,
+        )
+        self._vmin_spectrum, self._vmax_spectrum = np.nanpercentile(
+            outputs.value.ndarray,
+            percentile,
+        )
+        wavelength_ndarray = wavelength.value.ndarray
+        self._vmin_doppler = np.nanmin(wavelength_ndarray)
+        self._vmax_doppler = np.nanmax(wavelength_ndarray)
+
+        kwargs_figure.setdefault("figsize", (10, 8))
+        kwargs_figure.setdefault("constrained_layout", True)
+        self._fig = plt.figure(**kwargs_figure)
+
+        gridspec = self._fig.add_gridspec(
+            nrows=2,
+            ncols=2,
+            width_ratios=width_ratios,
+            height_ratios=height_ratios,
+        )
+        self.ax_image = self._fig.add_subplot(gridspec[0, 0])
+        self.ax_slit_vertical = self._fig.add_subplot(
+            gridspec[0, 1],
+            sharey=self.ax_image,
+        )
+        self.ax_slit_horizontal = self._fig.add_subplot(
+            gridspec[1, 0],
+            sharex=self.ax_image,
+        )
+        self.ax_spectrum = self._fig.add_subplot(gridspec[1, 1])
+
+        kwargs_imshow = dict(
+            origin="lower",
+            aspect="auto",
+            interpolation="nearest",
+        )
+
+        self._img_image = self.ax_image.imshow(
+            self._data_image(),
+            cmap=self._cmap_image,
+            vmin=self._vmin_image,
+            vmax=self._vmax_image,
+            **kwargs_imshow,
+        )
+        self._img_slit_vertical = self.ax_slit_vertical.imshow(
+            self._data_slit_vertical(),
+            cmap=cmap,
+            vmin=self._vmin_spectrum,
+            vmax=self._vmax_spectrum,
+            **kwargs_imshow,
+        )
+        self._img_slit_horizontal = self.ax_slit_horizontal.imshow(
+            self._data_slit_horizontal(),
+            cmap=cmap,
+            vmin=self._vmin_spectrum,
+            vmax=self._vmax_spectrum,
+            **kwargs_imshow,
+        )
+
+        kwargs_crosshair = dict(
+            color="red",
+            alpha=0.5,
+        )
+        self._crosshair_vertical = self.ax_image.axvline(
+            x=self._index_x,
+            **kwargs_crosshair,
+        )
+        self._crosshair_horizontal = self.ax_image.axhline(
+            y=self._index_y,
+            **kwargs_crosshair,
+        )
+        self._line_slit_vertical = self.ax_slit_vertical.axhline(
+            y=self._index_y,
+            **kwargs_crosshair,
+        )
+        self._line_slit_horizontal = self.ax_slit_horizontal.axvline(
+            x=self._index_x,
+            **kwargs_crosshair,
+        )
+
+        wavelength_spectrum, outputs_spectrum, mean_spectrum = self._data_spectrum()
+        (self._plot_spectrum,) = self.ax_spectrum.plot(
+            wavelength_spectrum,
+            outputs_spectrum,
+        )
+        self._line_spectrum = self.ax_spectrum.axvline(
+            x=mean_spectrum,
+            **kwargs_crosshair,
+        )
+        self.ax_spectrum.set_xlim(self._vmin_doppler, self._vmax_doppler)
+        self.ax_spectrum.set_ylim(self._vmin_spectrum, self._vmax_spectrum)
+
+        unit_wavelength = na.unit(self._wavelength.ndarray)
+        unit_outputs = na.unit(outputs.ndarray)
+        if getattr(inputs, "wavelength", None) is not None:
+            label_wavelength = self._label(axis_wavelength, unit_wavelength)
+        else:
+            label_wavelength = f"{axis_wavelength} (index)"
+
+        self.ax_image.tick_params(labelbottom=False)
+        self.ax_image.set_ylabel(f"{axis_y} (index)")
+        self.ax_slit_vertical.tick_params(labelleft=False)
+        self.ax_slit_vertical.set_xlabel(f"{axis_wavelength} (index)")
+        self.ax_slit_horizontal.set_xlabel(f"{axis_x} (index)")
+        self.ax_slit_horizontal.set_ylabel(f"{axis_wavelength} (index)")
+        self.ax_spectrum.set_xlabel(label_wavelength)
+        self.ax_spectrum.set_ylabel(self._label("outputs", unit_outputs))
+
+        self._update_title()
+
+        self._fig.canvas.mpl_connect("scroll_event", self._on_scroll)
+        self._fig.canvas.mpl_connect("key_press_event", self._on_key_press)
+        self._fig.canvas.mpl_connect("button_press_event", self._on_button_press)
+
+    @property
+    def fig(self) -> matplotlib.figure.Figure:
+        """The figure containing the four panels of the visualization."""
+        return self._fig
+
+    @property
+    def mode(self) -> str:
+        """The current display mode of the image panel."""
+        return self._mode
+
+    @property
+    def index_time(self) -> int:
+        """The index of the currently-displayed time step."""
+        return self._index_time
+
+    @property
+    def index_x(self) -> int:
+        """The horizontal index of the currently-selected point."""
+        return self._index_x
+
+    @property
+    def index_y(self) -> int:
+        """The vertical index of the currently-selected point."""
+        return self._index_y
+
+    def set_time(self, index: int) -> None:
+        """
+        Change the currently-displayed time step and update every panel.
+
+        Parameters
+        ----------
+        index
+            The new index along the time axis.
+            Wraps around using the length of the time axis.
+        """
+        self._index_time = int(index) % self._shape[self._axis_time]
+        self._update_image()
+        self._update_spectra()
+        self._fig.canvas.draw_idle()
+
+    def set_point(self, index_x: float, index_y: float) -> None:
+        """
+        Change the currently-selected spatial point and update the crosshairs
+        and the three spectral panels.
+
+        Parameters
+        ----------
+        index_x
+            The new index along the horizontal axis.
+            Rounded to the nearest integer and clipped to the valid range.
+        index_y
+            The new index along the vertical axis.
+            Rounded to the nearest integer and clipped to the valid range.
+        """
+        num_x = self._shape[self._axis_x]
+        num_y = self._shape[self._axis_y]
+        index_x = min(max(int(round(index_x)), 0), num_x - 1)
+        index_y = min(max(int(round(index_y)), 0), num_y - 1)
+        self._index_x = index_x
+        self._index_y = index_y
+        self._crosshair_vertical.set_xdata([index_x, index_x])
+        self._crosshair_horizontal.set_ydata([index_y, index_y])
+        self._line_slit_vertical.set_ydata([index_y, index_y])
+        self._line_slit_horizontal.set_xdata([index_x, index_x])
+        self._update_spectra()
+        self._fig.canvas.draw_idle()
+
+    def set_mode(self, mode: Literal["intensity", "doppler"]) -> None:
+        """
+        Change the display mode of the image panel.
+
+        Parameters
+        ----------
+        mode
+            The new display mode,
+            either ``"intensity"`` or ``"doppler"``.
+        """
+        if mode not in ("intensity", "doppler"):
+            raise ValueError(
+                f"mode must be 'intensity' or 'doppler', got {mode!r}."
+            )
+        self._mode = mode
+        self._update_image()
+        self._fig.canvas.draw_idle()
+
+    @staticmethod
+    def _label(name: str, unit: None | u.UnitBase) -> str:
+        """Format an axis label with an optional unit."""
+        if unit is not None and unit != u.dimensionless_unscaled:
+            return f"{name} ({unit})"
+        return name
+
+    @staticmethod
+    def _get_item(a: na.AbstractScalarArray, item: dict[str, int]):
+        """Index `a` using only the axes of `item` present in `a`."""
+        item = {axis: item[axis] for axis in item if axis in a.shape}
+        if item:
+            a = a[item]
+        return a
+
+    def _moment(
+        self,
+        outputs: na.AbstractScalarArray,
+        wavelength: na.AbstractScalarArray,
+    ) -> na.AbstractScalarArray:
+        """The intensity-weighted mean wavelength coordinate."""
+        axis = self._axis_wavelength
+        return (wavelength * outputs).sum(axis) / outputs.sum(axis)
+
+    @property
+    def _cmap_image(self) -> None | str | matplotlib.colors.Colormap:
+        if self._mode == "intensity":
+            return self._cmap
+        else:
+            return self._cmap_doppler
+
+    @property
+    def _vmin_image(self) -> float:
+        if self._mode == "intensity":
+            return self._vmin_intensity
+        else:
+            return self._vmin_doppler
+
+    @property
+    def _vmax_image(self) -> float:
+        if self._mode == "intensity":
+            return self._vmax_intensity
+        else:
+            return self._vmax_doppler
+
+    def _data_image(self) -> np.ndarray:
+        """The current contents of the image panel."""
+        item = {self._axis_time: self._index_time}
+        outputs = self._outputs[item]
+        if self._mode == "intensity":
+            result = outputs.sum(self._axis_wavelength)
+        else:
+            wavelength = self._get_item(self._wavelength, item)
+            result = self._moment(outputs, wavelength)
+        return result.value.ndarray_aligned((self._axis_y, self._axis_x))
+
+    def _data_slit_vertical(self) -> np.ndarray:
+        """The current contents of the vertical-slit panel."""
+        item = {
+            self._axis_time: self._index_time,
+            self._axis_x: self._index_x,
+        }
+        outputs = self._outputs[item]
+        return outputs.value.ndarray_aligned(
+            axes=(self._axis_y, self._axis_wavelength),
+        )
+
+    def _data_slit_horizontal(self) -> np.ndarray:
+        """The current contents of the horizontal-slit panel."""
+        item = {
+            self._axis_time: self._index_time,
+            self._axis_y: self._index_y,
+        }
+        outputs = self._outputs[item]
+        return outputs.value.ndarray_aligned(
+            axes=(self._axis_wavelength, self._axis_x),
+        )
+
+    def _data_spectrum(self) -> tuple[np.ndarray, np.ndarray, float]:
+        """The current contents of the single-pixel spectrum panel."""
+        item = {
+            self._axis_time: self._index_time,
+            self._axis_x: self._index_x,
+            self._axis_y: self._index_y,
+        }
+        outputs = self._outputs[item]
+        wavelength = self._get_item(self._wavelength, item)
+        mean = self._moment(outputs, wavelength)
+        axes = (self._axis_wavelength,)
+        return (
+            wavelength.value.ndarray_aligned(axes),
+            outputs.value.ndarray_aligned(axes),
+            float(mean.value.ndarray),
+        )
+
+    def _update_title(self) -> None:
+        """Update the title of the image panel."""
+        title = f"{self._mode}, {self._axis_time} = {self._index_time}"
+        if self._time is not None:
+            item = {self._axis_time: self._index_time}
+            time = self._get_item(self._time, item)
+            if time.shape:
+                time = time.mean()
+            title = f"{title} ({time.ndarray})"
+        self.ax_image.set_title(title)
+
+    def _update_image(self) -> None:
+        """Update the image panel to reflect the current state."""
+        self._img_image.set_data(self._data_image())
+        self._img_image.set_cmap(self._cmap_image)
+        self._img_image.set_clim(self._vmin_image, self._vmax_image)
+        self._update_title()
+
+    def _update_spectra(self) -> None:
+        """Update the three spectral panels to reflect the current state."""
+        self._img_slit_vertical.set_data(self._data_slit_vertical())
+        self._img_slit_horizontal.set_data(self._data_slit_horizontal())
+        wavelength, outputs, mean = self._data_spectrum()
+        self._plot_spectrum.set_data(wavelength, outputs)
+        self._line_spectrum.set_xdata([mean, mean])
+
+    def _on_scroll(self, event: matplotlib.backend_bases.MouseEvent) -> None:
+        """Step through the time axis using the mouse scroll wheel."""
+        if event.button == "up":
+            self.set_time(self._index_time + 1)
+        elif event.button == "down":
+            self.set_time(self._index_time - 1)
+
+    def _on_key_press(self, event: matplotlib.backend_bases.KeyEvent) -> None:
+        """Step through time or toggle the mode using the keyboard."""
+        if event.key == "right":
+            self.set_time(self._index_time + 1)
+        elif event.key == "left":
+            self.set_time(self._index_time - 1)
+        elif event.key == "m":
+            if self._mode == "intensity":
+                self.set_mode("doppler")
+            else:
+                self.set_mode("intensity")
+
+    def _on_button_press(
+        self,
+        event: matplotlib.backend_bases.MouseEvent,
+    ) -> None:
+        """Select a new spatial point by clicking on the image panel."""
+        if event.inaxes is self.ax_image:
+            if event.xdata is not None and event.ydata is not None:
+                self.set_point(event.xdata, event.ydata)
