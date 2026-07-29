@@ -1006,3 +1006,114 @@ def test_hypercube_slicer_events():
     assert slicer.index_y == index_y
 
     plt.close(fig)
+
+
+@pytest.mark.parametrize(
+    argnames="function",
+    argvalues=[
+        _hypercube_function(units=False),
+        _hypercube_function(units=True),
+    ],
+)
+def test_hypercube_slicer_norm_fixed(function: na.FunctionArray):
+    slicer = na.plt.HypercubeSlicer(function, **_kwargs_slicer)
+
+    outputs = function.outputs
+
+    clim_image = slicer.ax_image.images[0].get_clim()
+    clim_vertical = slicer.ax_slit_vertical.images[0].get_clim()
+    clim_horizontal = slicer.ax_slit_horizontal.images[0].get_clim()
+    ylim_spectrum = slicer.ax_spectrum.get_ylim()
+
+    expected_image = np.nanpercentile(
+        outputs.sum("w").value.ndarray,
+        (0.1, 99.9),
+    )
+    np.testing.assert_allclose(clim_image, expected_image)
+
+    expected_slit = np.nanpercentile(outputs.value.ndarray, (0.1, 99.9))
+    np.testing.assert_allclose(clim_vertical, expected_slit)
+    assert clim_vertical == clim_horizontal
+
+    # stepping through time must not change any color scale or the
+    # vertical limits of the spectrum panel
+    slicer.set_time(1)
+    assert slicer.ax_image.images[0].get_clim() == clim_image
+    assert slicer.ax_slit_vertical.images[0].get_clim() == clim_vertical
+    assert slicer.ax_slit_horizontal.images[0].get_clim() == clim_horizontal
+    assert slicer.ax_spectrum.get_ylim() == ylim_spectrum
+
+    # selecting a new point must not change any color scale, but must
+    # recompute the vertical limits of the spectrum panel from the extrema
+    # over time of the new point's spectra
+    index_x = 0
+    index_y = 0
+    slicer.set_point(index_x, index_y)
+    assert slicer.ax_image.images[0].get_clim() == clim_image
+    assert slicer.ax_slit_vertical.images[0].get_clim() == clim_vertical
+
+    spectra = outputs[dict(x=index_x, y=index_y)].value.ndarray
+    lo = spectra.min()
+    hi = spectra.max()
+    pad = 0.1 * (hi - lo)
+    np.testing.assert_allclose(
+        slicer.ax_spectrum.get_ylim(),
+        (lo - pad, hi + pad),
+    )
+
+    plt.close(slicer.fig)
+
+
+@pytest.mark.parametrize(
+    argnames="function",
+    argvalues=[
+        _hypercube_function(units=False),
+        _hypercube_function(units=True),
+    ],
+)
+def test_hypercube_slicer_colorbar(function: na.FunctionArray):
+    slicer = na.plt.HypercubeSlicer(function, **_kwargs_slicer)
+    fig = slicer.fig
+
+    # four panels plus two colorbar axes
+    assert len(fig.axes) == 6
+
+    label_intensity = slicer.cax_image.get_ylabel()
+
+    num_axes = len(fig.axes)
+    num_children = len(fig.get_children())
+    for _ in range(5):
+        slicer.set_mode("doppler")
+        slicer.set_mode("intensity")
+    assert len(fig.axes) == num_axes
+    assert len(fig.get_children()) == num_children
+    assert slicer.cax_image.get_ylabel() == label_intensity
+
+    # the colorbar of the image panel must track the norm, colormap, and
+    # label of the current mode
+    slicer.set_mode("doppler")
+    fig.canvas.draw()
+    assert slicer.cax_image.get_ylabel() != label_intensity
+
+    outputs = function.outputs
+    wavelength = _hypercube_wavelength(function)
+    center = (wavelength * outputs).sum() / outputs.sum()
+    moment = (wavelength * outputs).sum("w") / outputs.sum("w")
+    deviation = np.abs(moment - center).value.ndarray
+    center = float(center.value.ndarray)
+    halfrange = float(np.nanpercentile(deviation, 99.9))
+
+    clim = slicer.ax_image.images[0].get_clim()
+    np.testing.assert_allclose(clim, (center - halfrange, center + halfrange))
+    np.testing.assert_allclose(
+        slicer._colorbar_image.mappable.get_clim(),
+        clim,
+    )
+
+    # the shared slit colorbar reflects the norm of both slit panels
+    np.testing.assert_allclose(
+        slicer._colorbar_slit.mappable.get_clim(),
+        slicer.ax_slit_horizontal.images[0].get_clim(),
+    )
+
+    plt.close(fig)

@@ -2504,22 +2504,38 @@ class HypercubeSlicer:
     The data to visualize is an instance of
     :class:`named_arrays.FunctionArray` whose ``outputs`` has a temporal,
     a spectral, and two spatial logical axes.
-    The figure is a 2 :math:`\\times` 2 mosaic of four panels:
+    The figure is a 2 :math:`\\times` 2 mosaic of four panels,
+    with colorbars in dedicated slots of the grid:
 
     - The `image` panel (upper left, largest) displays the current time step,
       either integrated over the wavelength axis (``"intensity"`` mode)
       or as the intensity-weighted mean wavelength coordinate
       (``"doppler"`` mode).
-      Crosshairs mark the currently-selected spatial point.
+      Crosshairs mark the currently-selected spatial point,
+      and the panel's colorbar updates with the mode.
     - The `vertical slit` panel (upper right) displays wavelength (horizontal)
       vs. vertical position for the selected column of the image,
       the spectrum a spectrograph with a vertical slit through the selected
       point would measure.
     - The `horizontal slit` panel (lower left) displays horizontal position
       vs. wavelength (vertical) for the selected row of the image.
+      It shares a norm and a colorbar with the vertical slit panel since they
+      display the same physical quantity.
     - The `spectrum` panel (lower right) displays the spectrum of the single
       selected pixel, with a vertical line marking its mean wavelength
       coordinate.
+
+    Every color scale is global and data-derived, computed once at
+    construction from percentiles over `all` time steps, so nothing rescales
+    or clips while stepping through time or selecting new points:
+    the intensity norm comes from the wavelength-integrated intensity,
+    the shared slit norm from the full 4-dimensional cube,
+    and the Doppler norm is symmetric about the global intensity-weighted
+    mean wavelength coordinate with a half-range given by a high percentile
+    of the per-pixel first-moment deviation from that center.
+    The vertical limits of the spectrum panel span the extrema over time of
+    the selected pixel's spectra, and are only recomputed when a new point
+    is selected.
 
     The viewer is interactive:
     left-clicking anywhere on the image panel selects a new spatial point,
@@ -2567,10 +2583,11 @@ class HypercubeSlicer:
     cmap_doppler
         The colormap used by the image panel in ``"doppler"`` mode.
     percentile
-        The lower and upper percentiles of the data used to compute the
+        The lower and upper percentiles of the data used to compute every
         color scale.
     width_ratios
-        The relative widths of the left and right columns of the figure.
+        The relative widths of the left and right panel columns of the
+        figure.
     height_ratios
         The relative heights of the upper and lower rows of the figure.
     kwargs_figure
@@ -2700,39 +2717,87 @@ class HypercubeSlicer:
         self._cmap = cmap
         self._cmap_doppler = cmap_doppler
 
+        # Global, data-derived color scales, computed once at construction so
+        # that no panel ever rescales while scrolling through time or
+        # selecting new points.
         intensity = outputs.sum(axis_wavelength).value.ndarray
-        self._vmin_intensity, self._vmax_intensity = np.nanpercentile(
-            intensity,
-            percentile,
+        vmin_intensity, vmax_intensity = np.nanpercentile(intensity, percentile)
+        self._norm_intensity = matplotlib.colors.Normalize(
+            vmin=vmin_intensity,
+            vmax=vmax_intensity,
         )
-        self._vmin_spectrum, self._vmax_spectrum = np.nanpercentile(
+
+        # The two slit panels display the same physical quantity, so they
+        # share a single norm derived from the full 4-dimensional cube.
+        vmin_spectrum, vmax_spectrum = np.nanpercentile(
             outputs.value.ndarray,
             percentile,
         )
-        wavelength_ndarray = wavelength.value.ndarray
-        self._vmin_doppler = np.nanmin(wavelength_ndarray)
-        self._vmax_doppler = np.nanmax(wavelength_ndarray)
+        self._norm_spectrum = matplotlib.colors.Normalize(
+            vmin=vmin_spectrum,
+            vmax=vmax_spectrum,
+        )
 
-        kwargs_figure.setdefault("figsize", (10, 8))
+        wavelength_ndarray = wavelength.value.ndarray
+        self._wavelength_min = np.nanmin(wavelength_ndarray)
+        self._wavelength_max = np.nanmax(wavelength_ndarray)
+
+        # The Doppler scale is a symmetric norm centered on the global
+        # intensity-weighted mean wavelength coordinate, with half-range
+        # given by a high percentile of the deviation of the per-pixel first
+        # moment from that center over all times.
+        center = (wavelength * outputs).sum() / outputs.sum()
+        deviation = np.abs(self._moment(outputs, wavelength) - center)
+        center = float(center.value.ndarray)
+        halfrange = float(
+            np.nanpercentile(deviation.value.ndarray, percentile[~0]),
+        )
+        if not halfrange > 0:
+            halfrange = max(
+                center - self._wavelength_min,
+                self._wavelength_max - center,
+                1,
+            )
+        self._norm_doppler = matplotlib.colors.Normalize(
+            vmin=center - halfrange,
+            vmax=center + halfrange,
+        )
+
+        unit_wavelength = na.unit(wavelength.ndarray)
+        unit_outputs = na.unit(outputs.ndarray)
+        if getattr(inputs, "wavelength", None) is not None:
+            self._label_wavelength = self._label(axis_wavelength, unit_wavelength)
+        else:
+            self._label_wavelength = f"{axis_wavelength} (index)"
+        self._label_intensity = self._label("intensity", unit_outputs)
+        self._label_outputs = self._label("outputs", unit_outputs)
+
+        kwargs_figure.setdefault("figsize", (11, 8))
         kwargs_figure.setdefault("constrained_layout", True)
         self._fig = plt.figure(**kwargs_figure)
 
+        # The colorbars live in explicit thin columns of the gridspec so that
+        # the panel layout is deterministic and does not reflow when the mode
+        # is toggled.
+        width_cax = 0.05 * sum(width_ratios)
         gridspec = self._fig.add_gridspec(
             nrows=2,
-            ncols=2,
-            width_ratios=width_ratios,
+            ncols=4,
+            width_ratios=(width_ratios[0], width_cax, width_ratios[1], width_cax),
             height_ratios=height_ratios,
         )
         self.ax_image = self._fig.add_subplot(gridspec[0, 0])
+        self.cax_image = self._fig.add_subplot(gridspec[0, 1])
         self.ax_slit_vertical = self._fig.add_subplot(
-            gridspec[0, 1],
+            gridspec[0, 2],
             sharey=self.ax_image,
         )
+        self.cax_slit = self._fig.add_subplot(gridspec[0, 3])
         self.ax_slit_horizontal = self._fig.add_subplot(
             gridspec[1, 0],
             sharex=self.ax_image,
         )
-        self.ax_spectrum = self._fig.add_subplot(gridspec[1, 1])
+        self.ax_spectrum = self._fig.add_subplot(gridspec[1, 2:])
 
         kwargs_imshow = dict(
             origin="lower",
@@ -2743,24 +2808,32 @@ class HypercubeSlicer:
         self._img_image = self.ax_image.imshow(
             self._data_image(),
             cmap=self._cmap_image,
-            vmin=self._vmin_image,
-            vmax=self._vmax_image,
+            norm=self._norm_image,
             **kwargs_imshow,
         )
         self._img_slit_vertical = self.ax_slit_vertical.imshow(
             self._data_slit_vertical(),
             cmap=cmap,
-            vmin=self._vmin_spectrum,
-            vmax=self._vmax_spectrum,
+            norm=self._norm_spectrum,
             **kwargs_imshow,
         )
         self._img_slit_horizontal = self.ax_slit_horizontal.imshow(
             self._data_slit_horizontal(),
             cmap=cmap,
-            vmin=self._vmin_spectrum,
-            vmax=self._vmax_spectrum,
+            norm=self._norm_spectrum,
             **kwargs_imshow,
         )
+
+        self._colorbar_image = self._fig.colorbar(
+            self._img_image,
+            cax=self.cax_image,
+        )
+        self._colorbar_image.set_label(self._label_colorbar_image)
+        self._colorbar_slit = self._fig.colorbar(
+            self._img_slit_vertical,
+            cax=self.cax_slit,
+        )
+        self._colorbar_slit.set_label(self._label_outputs)
 
         kwargs_crosshair = dict(
             color="red",
@@ -2792,15 +2865,8 @@ class HypercubeSlicer:
             x=mean_spectrum,
             **kwargs_crosshair,
         )
-        self.ax_spectrum.set_xlim(self._vmin_doppler, self._vmax_doppler)
-        self.ax_spectrum.set_ylim(self._vmin_spectrum, self._vmax_spectrum)
-
-        unit_wavelength = na.unit(self._wavelength.ndarray)
-        unit_outputs = na.unit(outputs.ndarray)
-        if getattr(inputs, "wavelength", None) is not None:
-            label_wavelength = self._label(axis_wavelength, unit_wavelength)
-        else:
-            label_wavelength = f"{axis_wavelength} (index)"
+        self.ax_spectrum.set_xlim(self._wavelength_min, self._wavelength_max)
+        self._update_spectrum_ylim()
 
         self.ax_image.tick_params(labelbottom=False)
         self.ax_image.set_ylabel(f"{axis_y} (index)")
@@ -2808,8 +2874,8 @@ class HypercubeSlicer:
         self.ax_slit_vertical.set_xlabel(f"{axis_wavelength} (index)")
         self.ax_slit_horizontal.set_xlabel(f"{axis_x} (index)")
         self.ax_slit_horizontal.set_ylabel(f"{axis_wavelength} (index)")
-        self.ax_spectrum.set_xlabel(label_wavelength)
-        self.ax_spectrum.set_ylabel(self._label("outputs", unit_outputs))
+        self.ax_spectrum.set_xlabel(self._label_wavelength)
+        self.ax_spectrum.set_ylabel(self._label_outputs)
 
         self._update_title()
 
@@ -2882,6 +2948,7 @@ class HypercubeSlicer:
         self._line_slit_vertical.set_ydata([index_y, index_y])
         self._line_slit_horizontal.set_xdata([index_x, index_x])
         self._update_spectra()
+        self._update_spectrum_ylim()
         self._fig.canvas.draw_idle()
 
     def set_mode(self, mode: Literal["intensity", "doppler"]) -> None:
@@ -2934,18 +3001,18 @@ class HypercubeSlicer:
             return self._cmap_doppler
 
     @property
-    def _vmin_image(self) -> float:
+    def _norm_image(self) -> matplotlib.colors.Normalize:
         if self._mode == "intensity":
-            return self._vmin_intensity
+            return self._norm_intensity
         else:
-            return self._vmin_doppler
+            return self._norm_doppler
 
     @property
-    def _vmax_image(self) -> float:
+    def _label_colorbar_image(self) -> str:
         if self._mode == "intensity":
-            return self._vmax_intensity
+            return self._label_intensity
         else:
-            return self._vmax_doppler
+            return self._label_wavelength
 
     def _data_image(self) -> np.ndarray:
         """The current contents of the image panel."""
@@ -3012,8 +3079,32 @@ class HypercubeSlicer:
         """Update the image panel to reflect the current state."""
         self._img_image.set_data(self._data_image())
         self._img_image.set_cmap(self._cmap_image)
-        self._img_image.set_clim(self._vmin_image, self._vmax_image)
+        self._img_image.set_norm(self._norm_image)
+        self._colorbar_image.set_label(self._label_colorbar_image)
         self._update_title()
+
+    def _update_spectrum_ylim(self) -> None:
+        """
+        Update the vertical limits of the single-pixel spectrum panel.
+
+        The limits are computed from the extrema over `every` time step of
+        the spectrum of the currently-selected point, so that stepping
+        through time shows the true amplitude evolution without clipping or
+        rescaling.
+        """
+        item = {
+            self._axis_x: self._index_x,
+            self._axis_y: self._index_y,
+        }
+        spectra = self._outputs[item].value.ndarray
+        lo = float(np.nanmin(spectra))
+        hi = float(np.nanmax(spectra))
+        if not np.isfinite(lo) or not np.isfinite(hi):
+            return
+        pad = 0.1 * (hi - lo)
+        if not pad > 0:
+            pad = max(0.1 * abs(hi), 1)
+        self.ax_spectrum.set_ylim(lo - pad, hi + pad)
 
     def _update_spectra(self) -> None:
         """Update the three spectral panels to reflect the current state."""
