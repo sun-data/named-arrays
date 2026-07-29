@@ -734,7 +734,7 @@ def _hypercube_function(units: bool) -> na.FunctionArray:
 
     if units:
         time = time * u.s
-        wavelength = 500 * u.nm + wavelength * u.nm
+        wavelength = 500 * u.nm + wavelength * (2 * u.nm)
         outputs = outputs * u.photon
 
     return na.FunctionArray(
@@ -751,6 +751,12 @@ def _hypercube_wavelength(function: na.FunctionArray) -> na.AbstractScalar:
     return na.as_named_array(function.inputs.wavelength).broadcast_to(
         shape={"w": _num_slicer_w},
     )
+
+
+def _hypercube_dwavelength(function: na.FunctionArray) -> float:
+    """The mean cell width of the wavelength coordinate."""
+    wavelength = _hypercube_wavelength(function)
+    return float(np.mean(np.abs(np.diff(wavelength.value.ndarray))))
 
 
 @pytest.mark.parametrize(
@@ -771,7 +777,8 @@ def test_hypercube_slicer(function: na.FunctionArray):
 
     result = slicer.ax_image.images[0].get_array()
     expected = function.outputs[dict(t=0)].sum("w")
-    expected = expected.value.ndarray_aligned(("y", "x"))
+    expected = _hypercube_dwavelength(function) * expected.value
+    expected = expected.ndarray_aligned(("y", "x"))
     assert result.shape == (_num_slicer_y, _num_slicer_x)
     np.testing.assert_allclose(result, expected)
 
@@ -793,7 +800,8 @@ def test_hypercube_slicer_set_time(function: na.FunctionArray):
 
     result = slicer.ax_image.images[0].get_array()
     expected = function.outputs[dict(t=1)].sum("w")
-    expected = expected.value.ndarray_aligned(("y", "x"))
+    expected = _hypercube_dwavelength(function) * expected.value
+    expected = expected.ndarray_aligned(("y", "x"))
     np.testing.assert_allclose(result, expected)
 
     result_slit = slicer.ax_slit_vertical.images[0].get_array()
@@ -894,7 +902,8 @@ def test_hypercube_slicer_set_mode(function: na.FunctionArray):
 
     result = slicer.ax_image.images[0].get_array()
     expected = function.outputs[dict(t=0)].sum("w")
-    expected = expected.value.ndarray_aligned(("y", "x"))
+    expected = _hypercube_dwavelength(function) * expected.value
+    expected = expected.ndarray_aligned(("y", "x"))
     np.testing.assert_allclose(result, expected)
 
     with pytest.raises(ValueError):
@@ -1026,7 +1035,7 @@ def test_hypercube_slicer_norm_fixed(function: na.FunctionArray):
     ylim_spectrum = slicer.ax_spectrum.get_ylim()
 
     expected_image = np.nanpercentile(
-        outputs.sum("w").value.ndarray,
+        _hypercube_dwavelength(function) * outputs.sum("w").value.ndarray,
         (0.1, 99.9),
     )
     np.testing.assert_allclose(clim_image, expected_image)
@@ -1117,3 +1126,52 @@ def test_hypercube_slicer_colorbar(function: na.FunctionArray):
     )
 
     plt.close(fig)
+
+
+def test_hypercube_slicer_labels():
+    """Labels must follow the caller's axis names and the coordinate units."""
+    time = na.linspace(0, 2, axis="t", num=_num_slicer_t) * u.s
+    velocity = na.linspace(-100, 100, axis="velocity", num=_num_slicer_w)
+    velocity = velocity * (u.km / u.s)
+    sky_x = na.linspace(-1, 1, axis="sky_x", num=_num_slicer_x) * u.arcsec
+    sky_y = na.linspace(-1, 1, axis="sky_y", num=_num_slicer_y) * u.arcsec
+
+    outputs = np.exp(-np.square(velocity / (50 * u.km / u.s)))
+    outputs = outputs * np.exp(-np.square(sky_x / u.arcsec))
+    outputs = outputs * np.exp(-np.square(sky_y / u.arcsec))
+    outputs = (1 + 0 * time / u.s) * outputs * u.ph
+
+    function = na.FunctionArray(
+        inputs=na.TemporalSpectralPositionalVectorArray(
+            time=time,
+            wavelength=velocity,
+            position=na.Cartesian2dVectorArray(sky_x, sky_y),
+        ),
+        outputs=outputs,
+    )
+
+    slicer = na.plt.HypercubeSlicer(
+        function,
+        axis_time="t",
+        axis_wavelength="velocity",
+        axis_x="sky_x",
+        axis_y="sky_y",
+    )
+
+    unit_velocity = u.km / u.s
+
+    assert slicer.ax_image.get_ylabel() == "sky_y (index)"
+    assert slicer.ax_slit_vertical.get_xlabel() == "velocity (index)"
+    assert slicer.ax_slit_horizontal.get_xlabel() == "sky_x (index)"
+    assert slicer.ax_slit_horizontal.get_ylabel() == "velocity (index)"
+    assert slicer.ax_spectrum.get_xlabel() == f"velocity ({unit_velocity})"
+    assert slicer.ax_spectrum.get_ylabel() == f"outputs ({u.ph})"
+    assert "t = 0" in slicer.ax_image.get_title()
+
+    assert slicer.cax_slit.get_ylabel() == f"outputs ({u.ph})"
+    assert slicer.cax_image.get_ylabel() == f"intensity ({u.ph * unit_velocity})"
+
+    slicer.set_mode("doppler")
+    assert slicer.cax_image.get_ylabel() == f"mean velocity ({unit_velocity})"
+
+    plt.close(slicer.fig)

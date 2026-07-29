@@ -2508,11 +2508,15 @@ class HypercubeSlicer:
     with colorbars in dedicated slots of the grid:
 
     - The `image` panel (upper left, largest) displays the current time step,
-      either integrated over the wavelength axis (``"intensity"`` mode)
+      either integrated over the wavelength coordinate (``"intensity"`` mode,
+      a sum over the wavelength axis weighted by the mean coordinate cell
+      width, so its unit is the product of the outputs and coordinate units)
       or as the intensity-weighted mean wavelength coordinate
       (``"doppler"`` mode).
       Crosshairs mark the currently-selected spatial point,
       and the panel's colorbar updates with the mode.
+      Every label is built from the logical axis names given by the caller
+      and the units read from the coordinates of ``function.inputs``.
     - The `vertical slit` panel (upper right) displays wavelength (horizontal)
       vs. vertical position for the selected column of the image,
       the spectrum a spectrograph with a vertical slit through the selected
@@ -2717,10 +2721,25 @@ class HypercubeSlicer:
         self._cmap = cmap
         self._cmap_doppler = cmap_doppler
 
+        # The mean cell width of the wavelength coordinate, used to weight
+        # the sum over the wavelength axis so that the image panel displays
+        # an integral over the coordinate, with units given by the product of
+        # the outputs and wavelength-coordinate units.
+        dwavelength = np.abs(
+            np.diff(
+                wavelength.value.ndarray,
+                axis=wavelength.axes.index(axis_wavelength),
+            )
+        )
+        dwavelength = float(np.nanmean(dwavelength)) if dwavelength.size else 1.0
+        if not dwavelength > 0:
+            dwavelength = 1.0
+        self._dwavelength = dwavelength
+
         # Global, data-derived color scales, computed once at construction so
         # that no panel ever rescales while scrolling through time or
         # selecting new points.
-        intensity = outputs.sum(axis_wavelength).value.ndarray
+        intensity = dwavelength * outputs.sum(axis_wavelength).value.ndarray
         vmin_intensity, vmax_intensity = np.nanpercentile(intensity, percentile)
         self._norm_intensity = matplotlib.colors.Normalize(
             vmin=vmin_intensity,
@@ -2763,13 +2782,27 @@ class HypercubeSlicer:
             vmax=center + halfrange,
         )
 
+        # Every label is built from the logical axis names given by the
+        # caller and the units read from the corresponding coordinates of
+        # `function.inputs`, when they exist.
         unit_wavelength = na.unit(wavelength.ndarray)
         unit_outputs = na.unit(outputs.ndarray)
         if getattr(inputs, "wavelength", None) is not None:
             self._label_wavelength = self._label(axis_wavelength, unit_wavelength)
+            self._label_doppler = self._label(
+                name=f"mean {axis_wavelength}",
+                unit=unit_wavelength,
+            )
         else:
             self._label_wavelength = f"{axis_wavelength} (index)"
-        self._label_intensity = self._label("intensity", unit_outputs)
+            self._label_doppler = f"mean {axis_wavelength} (index)"
+        if unit_outputs is not None and unit_wavelength is not None:
+            unit_intensity = unit_outputs * unit_wavelength
+        elif unit_outputs is not None:
+            unit_intensity = unit_outputs
+        else:
+            unit_intensity = unit_wavelength
+        self._label_intensity = self._label("intensity", unit_intensity)
         self._label_outputs = self._label("outputs", unit_outputs)
 
         kwargs_figure.setdefault("figsize", (11, 8))
@@ -3012,18 +3045,20 @@ class HypercubeSlicer:
         if self._mode == "intensity":
             return self._label_intensity
         else:
-            return self._label_wavelength
+            return self._label_doppler
 
     def _data_image(self) -> np.ndarray:
         """The current contents of the image panel."""
         item = {self._axis_time: self._index_time}
         outputs = self._outputs[item]
+        axes = (self._axis_y, self._axis_x)
         if self._mode == "intensity":
             result = outputs.sum(self._axis_wavelength)
+            return self._dwavelength * result.value.ndarray_aligned(axes)
         else:
             wavelength = self._get_item(self._wavelength, item)
             result = self._moment(outputs, wavelength)
-        return result.value.ndarray_aligned((self._axis_y, self._axis_x))
+            return result.value.ndarray_aligned(axes)
 
     def _data_slit_vertical(self) -> np.ndarray:
         """The current contents of the vertical-slit panel."""
