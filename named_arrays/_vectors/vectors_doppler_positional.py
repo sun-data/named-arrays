@@ -31,6 +31,22 @@ class AbstractDopplerPositionalVectorArray(
     def type_matrix(self) -> Type[na.AbstractMatrixArray]:
         return na.DopplerPositionalMatrixArray
 
+    @property
+    def spectral_positional(self) -> na.SpectralPositionalVectorArray:
+        """
+        This Doppler vector as a plain
+        :class:`~named_arrays.SpectralPositionalVectorArray`, keeping only the
+        observed wavelength and position (the rest wavelength is discarded).
+
+        This lets a caller accept either a spectral- or Doppler-positional grid
+        and normalize it to a spectral-positional vector with a single property
+        access, e.g. to compute :meth:`volume_cell`.
+        """
+        return na.SpectralPositionalVectorArray(
+            wavelength=self.wavelength,
+            position=self.position,
+        )
+
 
 @dataclasses.dataclass(eq=False, repr=False)
 class DopplerPositionalVectorArray(

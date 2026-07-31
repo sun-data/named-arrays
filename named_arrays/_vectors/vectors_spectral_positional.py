@@ -34,6 +34,22 @@ class AbstractSpectralPositionalVectorArray(
     def type_matrix(self) -> Type[na.SpectralPositionalMatrixArray]:
         return na.SpectralPositionalMatrixArray
 
+    @property
+    def spectral_positional(self) -> "SpectralPositionalVectorArray":
+        """
+        This vector as a plain :class:`SpectralPositionalVectorArray`,
+        exposing only its wavelength and position.
+
+        The same property on other wavelength-and-position vectors, such as
+        :class:`~named_arrays.AbstractDopplerPositionalVectorArray`, projects
+        onto this representation, so a caller can accept either type and
+        normalize it with a single property access.
+        """
+        return SpectralPositionalVectorArray(
+            wavelength=self.wavelength,
+            position=self.position,
+        )
+
     def volume_cell(self, axis: None | str | Sequence[str]) -> na.AbstractScalar:
         """
         The volume of each voxel of the logically-rectangular grid formed by
