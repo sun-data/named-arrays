@@ -17,8 +17,7 @@ WavelengthT = TypeVar("WavelengthT", bound=na.ScalarLike)
 
 @dataclasses.dataclass(eq=False, repr=False)
 class AbstractTemporalDopplerPositionalVectorArray(
-    na.AbstractPositionalVectorArray,
-    na.AbstractDopplerVectorArray,
+    na.AbstractDopplerPositionalVectorArray,
     na.AbstractTemporalVectorArray,
 ):
 
@@ -38,8 +37,7 @@ class AbstractTemporalDopplerPositionalVectorArray(
 @dataclasses.dataclass(eq=False, repr=False)
 class TemporalDopplerPositionalVectorArray(
     AbstractTemporalDopplerPositionalVectorArray,
-    na.PositionalVectorArray[PositionT],
-    na.DopplerVectorArray[WavelengthT],
+    na.DopplerPositionalVectorArray[PositionT, WavelengthT],
     na.TemporalVectorArray[TimeT]
 ):
     pass
@@ -48,8 +46,7 @@ class TemporalDopplerPositionalVectorArray(
 @dataclasses.dataclass(eq=False, repr=False)
 class AbstractImplicitTemporalDopplerPositionalVectorArray(
     AbstractTemporalDopplerPositionalVectorArray,
-    na.AbstractImplicitPositionalVectorArray,
-    na.AbstractImplicitDopplerVectorArray,
+    na.AbstractImplicitDopplerPositionalVectorArray,
     na.AbstractImplicitTemporalVectorArray,
 ):
     pass
