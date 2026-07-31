@@ -85,6 +85,14 @@ class AbstractTestAbstractSpectralPositionalVectorArray(
         # order in which they are given does not matter
         assert np.all(result == array.volume_cell(tuple(reversed(axis))))
 
+    def test_spectral_positional(
+        self, array: na.AbstractSpectralPositionalVectorArray
+    ):
+        result = array.spectral_positional
+        assert isinstance(result, na.SpectralPositionalVectorArray)
+        assert np.all(result.wavelength == array.wavelength)
+        assert np.all(result.position == array.position)
+
     @pytest.mark.parametrize('array_2', _spectral_positional_arrays_2())
     class TestUfuncBinary(
         test_vectors_cartesian.AbstractTestAbstractCartesianVectorArray.TestUfuncBinary

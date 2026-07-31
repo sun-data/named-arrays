@@ -53,6 +53,14 @@ class AbstractTestAbstractDopplerPositionalVectorArray(
     ):
         super().test__getitem__(array=array, item=item)
 
+    def test_spectral_positional(
+        self, array: na.AbstractDopplerPositionalVectorArray
+    ):
+        result = array.spectral_positional
+        assert isinstance(result, na.SpectralPositionalVectorArray)
+        assert np.all(result.wavelength == array.wavelength)
+        assert np.all(result.position == array.position)
+
     @pytest.mark.parametrize('array_2', _doppler_positional_arrays_2())
     class TestUfuncBinary(
         test_vectors_cartesian.AbstractTestAbstractCartesianVectorArray.TestUfuncBinary
