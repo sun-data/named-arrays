@@ -886,7 +886,8 @@ def regridding_weights(
     axis_output: None | str | Sequence[str] = None,
     weights_input: None | na.AbstractScalar = None,
     method: Literal['multilinear', 'conservative'] = 'multilinear',
-    perturb: None | bool = None
+    perturb: None | bool = None,
+    seed: "None | int | np.random.Generator" = na.regridding._seed_default,
 ) -> tuple[na.AbstractScalar, dict[str, int], dict[str, int]]:
 
     try:
@@ -974,7 +975,8 @@ def regridding_weights(
         axis_output=axis_output,
         weights_input=weights_input,
         method=method,
-        perturb=perturb
+        perturb=perturb,
+        seed=seed,
     )
 
     result = na.ScalarArray(result, tuple(shape_orthogonal))
