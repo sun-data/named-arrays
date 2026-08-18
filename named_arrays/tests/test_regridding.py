@@ -325,3 +325,38 @@ def test_transpose_weights_conservative(
 
     assert np.allclose(values_input.sum(axis_input), data.sum(axis_output))
     assert np.allclose(data.sum(axis_output), reversed_data.sum(axis_output))
+
+
+def test_weights_seed():
+    """
+    The output grid of a conservative build is perturbed to break degenerate
+    overlaps, so the result is only reproducible if that perturbation is seeded.
+    """
+    kwargs = dict(
+        coordinates_input=na.Cartesian2dVectorArray(x, y),
+        coordinates_output=na.Cartesian2dVectorArray(
+            x=1.1 * x + 0.01,
+            y=1.2 * y + 0.01,
+        ),
+        values_input=na.random.normal(0, 1, shape_random=shape_centers),
+        method="conservative",
+    )
+
+    result = na.regridding.regrid(**kwargs)
+    result_expected = na.regridding.regrid(**kwargs)
+    assert np.all(result == result_expected)
+
+    # a different seed moves the result, but only in the last few digits
+    result_seed = na.regridding.regrid(seed=1, **kwargs)
+    assert not np.all(result_seed == result)
+    assert np.allclose(result_seed, result, atol=1e-6)
+
+    # an unseeded generator draws a fresh perturbation for every call
+    result_none = na.regridding.regrid(seed=None, **kwargs)
+    result_none_expected = na.regridding.regrid(seed=None, **kwargs)
+    assert not np.all(result_none == result_none_expected)
+
+    # the seed is inert if the grid is not perturbed
+    result_unperturbed = na.regridding.regrid(perturb=False, seed=0, **kwargs)
+    result_unperturbed_expected = na.regridding.regrid(perturb=False, seed=1, **kwargs)
+    assert np.all(result_unperturbed == result_unperturbed_expected)
