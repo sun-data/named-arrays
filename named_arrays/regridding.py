@@ -324,7 +324,11 @@ def transpose_weights_conservative(
         The number of axes should be equal to the number of
         coordinates in the output grid.
     weights_input
-        Weights applied to the values of the input grid before resampling.
+        The weights that were applied to the input values by
+        :func:`weights`. The transpose inverts this weighting (retaining a
+        factor of ``1 / weights_input``) so that regridding a
+        forward-transformed array with the transposed weights recovers the
+        original input values.
 
     Examples
     --------
