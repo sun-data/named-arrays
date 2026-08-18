@@ -11,6 +11,8 @@ authors = [
 description = "Numpy arrays with labeled axes, similar to xarray but with support for uncertainties"
 readme = "README.md"
 requires-python = ">=3.10"
+license = "BSD-3-Clause"
+license-files = ["LICENSE"]
 classifiers = [
     "Programming Language :: Python :: 3",
 ]
