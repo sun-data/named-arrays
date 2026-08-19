@@ -30,11 +30,17 @@ class AbstractCartesianNdVectorArray(
         return na.CartesianNdMatrixArray
 
     def __getattr__(self, name: str):
+        # ``pickle`` probes attributes on a bare instance before any state has
+        # been restored, and relies on receiving ``AttributeError`` (and nothing
+        # else) for missing attributes.
+        components = self.__dict__.get("components")
+        if components is None:
+            raise AttributeError(name)
         try:
-            return self.components[name]
+            return components[name]
         except KeyError:
             raise AttributeError(
-                f"component {name} is not a member of {self.components.values()=}"
+                f"component {name} is not a member of {components.values()=}"
             )
 
 

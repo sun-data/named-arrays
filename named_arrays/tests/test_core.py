@@ -2,6 +2,7 @@ from __future__ import annotations
 from typing import Sequence, Callable
 import pytest
 import abc
+import pickle
 import warnings
 import dataclasses
 import numpy as np
@@ -623,6 +624,18 @@ class AbstractTestAbstractArray(
                 assert [np.all(attr[key] == attr_copy[key] for key in attr)]
             else:
                 assert np.all(attr == attr_copy)
+
+    def test_pickle(self, array: na.AbstractArray):
+        array_pickled = pickle.loads(pickle.dumps(array))
+        assert isinstance(array_pickled, type(array))
+        for field in dataclasses.fields(array):
+            attr = getattr(array, field.name)
+            attr_pickled = getattr(array_pickled, field.name)
+            if isinstance(attr, dict):
+                for key in attr:
+                    assert np.all(attr[key] == attr_pickled[key])
+            else:
+                assert np.all(attr == attr_pickled)
 
     @abc.abstractmethod
     def test__getitem__(
