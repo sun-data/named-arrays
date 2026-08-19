@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.axes
 import matplotlib.animation
 import matplotlib.text
+import matplotlib.backend_bases
 import matplotlib.pyplot as plt
 import astropy.units as u
 import named_arrays as na
@@ -704,3 +705,513 @@ def test_invert_yaxis(
     ax: None | matplotlib.axes.Axes | na.AbstractScalar,
 ):
     na.plt.invert_yaxis(ax)
+
+
+_num_slicer_t = 3
+_num_slicer_w = 5
+_num_slicer_x = 8
+_num_slicer_y = 7
+
+_kwargs_slicer = dict(
+    axis_time="t",
+    axis_wavelength="w",
+    axis_x="x",
+    axis_y="y",
+)
+
+
+def _hypercube_function(units: bool) -> na.FunctionArray:
+    """A moving Gaussian blob with a spatially-varying Doppler shift."""
+    time = na.linspace(0, 2, axis="t", num=_num_slicer_t)
+    wavelength = na.linspace(-2, 2, axis="w", num=_num_slicer_w)
+    x = na.linspace(-1, 1, axis="x", num=_num_slicer_x)
+    y = na.linspace(-1, 1, axis="y", num=_num_slicer_y)
+
+    center = 0.5 * time - 0.5
+    blob = np.exp(-(np.square(x - center) + np.square(y)) / np.square(0.5))
+    line = np.exp(-np.square(wavelength - x) / 2)
+    outputs = 1 + blob * line
+
+    if units:
+        time = time * u.s
+        wavelength = 500 * u.nm + wavelength * (2 * u.nm)
+        outputs = outputs * u.photon
+
+    return na.FunctionArray(
+        inputs=na.TemporalSpectralPositionalVectorArray(
+            time=time,
+            wavelength=wavelength,
+            position=na.Cartesian2dVectorArray(x, y),
+        ),
+        outputs=outputs,
+    )
+
+
+def _hypercube_wavelength(function: na.FunctionArray) -> na.AbstractScalar:
+    return na.as_named_array(function.inputs.wavelength).broadcast_to(
+        shape={"w": _num_slicer_w},
+    )
+
+
+def _hypercube_dwavelength(function: na.FunctionArray) -> float:
+    """The mean cell width of the wavelength coordinate."""
+    wavelength = _hypercube_wavelength(function)
+    return float(np.mean(np.abs(np.diff(wavelength.value.ndarray))))
+
+
+@pytest.mark.parametrize(
+    argnames="function",
+    argvalues=[
+        _hypercube_function(units=False),
+        _hypercube_function(units=True),
+    ],
+)
+def test_hypercube_slicer(function: na.FunctionArray):
+    slicer = na.plt.HypercubeSlicer(function, **_kwargs_slicer)
+
+    assert isinstance(slicer.fig, plt.Figure)
+    assert slicer.mode == "intensity"
+    assert slicer.index_time == 0
+    assert slicer.index_x == _num_slicer_x // 2
+    assert slicer.index_y == _num_slicer_y // 2
+
+    result = slicer.ax_image.images[0].get_array()
+    expected = function.outputs[dict(t=0)].sum("w")
+    expected = _hypercube_dwavelength(function) * expected.value
+    expected = expected.ndarray_aligned(("y", "x"))
+    assert result.shape == (_num_slicer_y, _num_slicer_x)
+    np.testing.assert_allclose(result, expected)
+
+    plt.close(slicer.fig)
+
+
+@pytest.mark.parametrize(
+    argnames="function",
+    argvalues=[
+        _hypercube_function(units=False),
+        _hypercube_function(units=True),
+    ],
+)
+def test_hypercube_slicer_set_time(function: na.FunctionArray):
+    slicer = na.plt.HypercubeSlicer(function, **_kwargs_slicer)
+
+    slicer.set_time(1)
+    assert slicer.index_time == 1
+
+    result = slicer.ax_image.images[0].get_array()
+    expected = function.outputs[dict(t=1)].sum("w")
+    expected = _hypercube_dwavelength(function) * expected.value
+    expected = expected.ndarray_aligned(("y", "x"))
+    np.testing.assert_allclose(result, expected)
+
+    result_slit = slicer.ax_slit_vertical.images[0].get_array()
+    expected_slit = function.outputs[dict(t=1, x=slicer.index_x)]
+    expected_slit = expected_slit.value.ndarray_aligned(("y", "w"))
+    np.testing.assert_allclose(result_slit, expected_slit)
+
+    slicer.set_time(_num_slicer_t)
+    assert slicer.index_time == 0
+
+    slicer.set_time(-1)
+    assert slicer.index_time == _num_slicer_t - 1
+
+    plt.close(slicer.fig)
+
+
+@pytest.mark.parametrize(
+    argnames="function",
+    argvalues=[
+        _hypercube_function(units=False),
+        _hypercube_function(units=True),
+    ],
+)
+def test_hypercube_slicer_set_point(function: na.FunctionArray):
+    slicer = na.plt.HypercubeSlicer(function, **_kwargs_slicer)
+
+    index_x = 2
+    index_y = 3
+    slicer.set_point(index_x, index_y)
+    assert slicer.index_x == index_x
+    assert slicer.index_y == index_y
+
+    outputs = function.outputs
+
+    result_vertical = slicer.ax_slit_vertical.images[0].get_array()
+    expected_vertical = outputs[dict(t=0, x=index_x)]
+    expected_vertical = expected_vertical.value.ndarray_aligned(("y", "w"))
+    assert result_vertical.shape == (_num_slicer_y, _num_slicer_w)
+    np.testing.assert_allclose(result_vertical, expected_vertical)
+
+    result_horizontal = slicer.ax_slit_horizontal.images[0].get_array()
+    expected_horizontal = outputs[dict(t=0, y=index_y)]
+    expected_horizontal = expected_horizontal.value.ndarray_aligned(("w", "x"))
+    assert result_horizontal.shape == (_num_slicer_w, _num_slicer_x)
+    np.testing.assert_allclose(result_horizontal, expected_horizontal)
+
+    spectrum = outputs[dict(t=0, x=index_x, y=index_y)]
+    wavelength = _hypercube_wavelength(function)
+    line = slicer.ax_spectrum.lines[0]
+    np.testing.assert_allclose(
+        line.get_xdata(),
+        wavelength.value.ndarray_aligned(("w",)),
+    )
+    np.testing.assert_allclose(
+        line.get_ydata(),
+        spectrum.value.ndarray_aligned(("w",)),
+    )
+
+    expected_mean = (wavelength * spectrum).sum("w") / spectrum.sum("w")
+    result_mean = slicer._line_spectrum.get_xdata()[0]
+    np.testing.assert_allclose(result_mean, expected_mean.value.ndarray)
+
+    crosshair_x = slicer._crosshair_vertical.get_xdata()[0]
+    crosshair_y = slicer._crosshair_horizontal.get_ydata()[0]
+    assert crosshair_x == index_x
+    assert crosshair_y == index_y
+
+    slicer.set_point(-100, 100)
+    assert slicer.index_x == 0
+    assert slicer.index_y == _num_slicer_y - 1
+
+    plt.close(slicer.fig)
+
+
+@pytest.mark.parametrize(
+    argnames="function",
+    argvalues=[
+        _hypercube_function(units=False),
+        _hypercube_function(units=True),
+    ],
+)
+def test_hypercube_slicer_set_mode(function: na.FunctionArray):
+    slicer = na.plt.HypercubeSlicer(function, **_kwargs_slicer)
+
+    slicer.set_mode("doppler")
+    assert slicer.mode == "doppler"
+
+    outputs = function.outputs[dict(t=0)]
+    wavelength = _hypercube_wavelength(function)
+    expected = (wavelength * outputs).sum("w") / outputs.sum("w")
+    expected = expected.value.ndarray_aligned(("y", "x"))
+
+    result = slicer.ax_image.images[0].get_array()
+    np.testing.assert_allclose(result, expected)
+
+    slicer.set_mode("intensity")
+    assert slicer.mode == "intensity"
+
+    result = slicer.ax_image.images[0].get_array()
+    expected = function.outputs[dict(t=0)].sum("w")
+    expected = _hypercube_dwavelength(function) * expected.value
+    expected = expected.ndarray_aligned(("y", "x"))
+    np.testing.assert_allclose(result, expected)
+
+    with pytest.raises(ValueError):
+        slicer.set_mode("invalid")
+
+    plt.close(slicer.fig)
+
+
+def test_hypercube_slicer_wavelength_index():
+    function = _hypercube_function(units=False)
+    function = na.FunctionArray(
+        inputs=function.inputs.position,
+        outputs=function.outputs,
+    )
+    slicer = na.plt.HypercubeSlicer(function, **_kwargs_slicer)
+
+    slicer.set_mode("doppler")
+
+    outputs = function.outputs[dict(t=0)]
+    wavelength = na.ScalarArray(np.arange(_num_slicer_w), axes=("w",))
+    expected = (wavelength * outputs).sum("w") / outputs.sum("w")
+    expected = expected.value.ndarray_aligned(("y", "x"))
+
+    result = slicer.ax_image.images[0].get_array()
+    np.testing.assert_allclose(result, expected)
+
+    plt.close(slicer.fig)
+
+
+def test_hypercube_slicer_invalid_axis():
+    function = _hypercube_function(units=False)
+    with pytest.raises(ValueError):
+        na.plt.HypercubeSlicer(function, axis_time="invalid")
+
+
+def test_hypercube_slicer_invalid_mode():
+    function = _hypercube_function(units=False)
+    with pytest.raises(ValueError):
+        na.plt.HypercubeSlicer(function, **_kwargs_slicer, mode="invalid")
+
+
+def test_hypercube_slicer_events():
+    function = _hypercube_function(units=True)
+    slicer = na.plt.HypercubeSlicer(function, **_kwargs_slicer)
+    fig = slicer.fig
+    fig.canvas.draw()
+
+    event_scroll = matplotlib.backend_bases.MouseEvent(
+        name="scroll_event",
+        canvas=fig.canvas,
+        x=0,
+        y=0,
+        button="up",
+    )
+    fig.canvas.callbacks.process("scroll_event", event_scroll)
+    assert slicer.index_time == 1
+
+    event_scroll_down = matplotlib.backend_bases.MouseEvent(
+        name="scroll_event",
+        canvas=fig.canvas,
+        x=0,
+        y=0,
+        button="down",
+    )
+    fig.canvas.callbacks.process("scroll_event", event_scroll_down)
+    assert slicer.index_time == 0
+
+    event_key_right = matplotlib.backend_bases.KeyEvent(
+        name="key_press_event",
+        canvas=fig.canvas,
+        key="right",
+    )
+    fig.canvas.callbacks.process("key_press_event", event_key_right)
+    assert slicer.index_time == 1
+
+    event_key_left = matplotlib.backend_bases.KeyEvent(
+        name="key_press_event",
+        canvas=fig.canvas,
+        key="left",
+    )
+    fig.canvas.callbacks.process("key_press_event", event_key_left)
+    assert slicer.index_time == 0
+
+    event_key_m = matplotlib.backend_bases.KeyEvent(
+        name="key_press_event",
+        canvas=fig.canvas,
+        key="m",
+    )
+    fig.canvas.callbacks.process("key_press_event", event_key_m)
+    assert slicer.mode == "doppler"
+
+    fig.canvas.callbacks.process("key_press_event", event_key_m)
+    assert slicer.mode == "intensity"
+
+    index_x = 4
+    index_y = 2
+    x_display, y_display = slicer.ax_image.transData.transform(
+        (index_x, index_y),
+    )
+    event_click = matplotlib.backend_bases.MouseEvent(
+        name="button_press_event",
+        canvas=fig.canvas,
+        x=x_display,
+        y=y_display,
+        button=matplotlib.backend_bases.MouseButton.LEFT,
+    )
+    fig.canvas.callbacks.process("button_press_event", event_click)
+    assert slicer.index_x == index_x
+    assert slicer.index_y == index_y
+
+    plt.close(fig)
+
+
+@pytest.mark.parametrize(
+    argnames="function",
+    argvalues=[
+        _hypercube_function(units=False),
+        _hypercube_function(units=True),
+    ],
+)
+def test_hypercube_slicer_norm_fixed(function: na.FunctionArray):
+    slicer = na.plt.HypercubeSlicer(function, **_kwargs_slicer)
+
+    outputs = function.outputs
+
+    clim_image = slicer.ax_image.images[0].get_clim()
+    clim_vertical = slicer.ax_slit_vertical.images[0].get_clim()
+    clim_horizontal = slicer.ax_slit_horizontal.images[0].get_clim()
+    ylim_spectrum = slicer.ax_spectrum.get_ylim()
+
+    expected_image = np.nanpercentile(
+        _hypercube_dwavelength(function) * outputs.sum("w").value.ndarray,
+        (0.1, 99.9),
+    )
+    np.testing.assert_allclose(clim_image, expected_image)
+
+    expected_slit = np.nanpercentile(outputs.value.ndarray, (0.1, 99.9))
+    np.testing.assert_allclose(clim_vertical, expected_slit)
+    assert clim_vertical == clim_horizontal
+
+    # stepping through time must not change any color scale or the
+    # vertical limits of the spectrum panel
+    slicer.set_time(1)
+    assert slicer.ax_image.images[0].get_clim() == clim_image
+    assert slicer.ax_slit_vertical.images[0].get_clim() == clim_vertical
+    assert slicer.ax_slit_horizontal.images[0].get_clim() == clim_horizontal
+    assert slicer.ax_spectrum.get_ylim() == ylim_spectrum
+
+    # selecting a new point must not change any color scale, but must
+    # recompute the vertical limits of the spectrum panel from the extrema
+    # over time of the new point's spectra
+    index_x = 0
+    index_y = 0
+    slicer.set_point(index_x, index_y)
+    assert slicer.ax_image.images[0].get_clim() == clim_image
+    assert slicer.ax_slit_vertical.images[0].get_clim() == clim_vertical
+
+    spectra = outputs[dict(x=index_x, y=index_y)].value.ndarray
+    lo = spectra.min()
+    hi = spectra.max()
+    pad = 0.1 * (hi - lo)
+    np.testing.assert_allclose(
+        slicer.ax_spectrum.get_ylim(),
+        (lo - pad, hi + pad),
+    )
+
+    plt.close(slicer.fig)
+
+
+@pytest.mark.parametrize(
+    argnames="function",
+    argvalues=[
+        _hypercube_function(units=False),
+        _hypercube_function(units=True),
+    ],
+)
+def test_hypercube_slicer_colorbar(function: na.FunctionArray):
+    slicer = na.plt.HypercubeSlicer(function, **_kwargs_slicer)
+    fig = slicer.fig
+
+    # four panels plus two colorbar axes
+    assert len(fig.axes) == 6
+
+    label_intensity = slicer.cax_image.get_ylabel()
+
+    num_axes = len(fig.axes)
+    num_children = len(fig.get_children())
+    for _ in range(5):
+        slicer.set_mode("doppler")
+        slicer.set_mode("intensity")
+    assert len(fig.axes) == num_axes
+    assert len(fig.get_children()) == num_children
+    assert slicer.cax_image.get_ylabel() == label_intensity
+
+    # the colorbar of the image panel must track the norm, colormap, and
+    # label of the current mode
+    slicer.set_mode("doppler")
+    fig.canvas.draw()
+    assert slicer.cax_image.get_ylabel() != label_intensity
+
+    outputs = function.outputs
+    wavelength = _hypercube_wavelength(function)
+    center = (wavelength * outputs).sum() / outputs.sum()
+    moment = (wavelength * outputs).sum("w") / outputs.sum("w")
+    deviation = np.abs(moment - center).value.ndarray
+    center = float(center.value.ndarray)
+    halfrange = float(np.nanpercentile(deviation, 99.9))
+
+    clim = slicer.ax_image.images[0].get_clim()
+    np.testing.assert_allclose(clim, (center - halfrange, center + halfrange))
+    np.testing.assert_allclose(
+        slicer._colorbar_image.mappable.get_clim(),
+        clim,
+    )
+
+    # the shared slit colorbar reflects the norm of both slit panels
+    np.testing.assert_allclose(
+        slicer._colorbar_slit.mappable.get_clim(),
+        slicer.ax_slit_horizontal.images[0].get_clim(),
+    )
+
+    plt.close(fig)
+
+
+def test_hypercube_slicer_labels():
+    """Labels must follow the caller's axis names and the coordinate units."""
+    time = na.linspace(0, 2, axis="t", num=_num_slicer_t) * u.s
+    velocity = na.linspace(-100, 100, axis="velocity", num=_num_slicer_w)
+    velocity = velocity * (u.km / u.s)
+    sky_x = na.linspace(-1, 1, axis="sky_x", num=_num_slicer_x) * u.arcsec
+    sky_y = na.linspace(-1, 1, axis="sky_y", num=_num_slicer_y) * u.arcsec
+
+    outputs = np.exp(-np.square(velocity / (50 * u.km / u.s)))
+    outputs = outputs * np.exp(-np.square(sky_x / u.arcsec))
+    outputs = outputs * np.exp(-np.square(sky_y / u.arcsec))
+    outputs = (1 + 0 * time / u.s) * outputs * u.ph
+
+    function = na.FunctionArray(
+        inputs=na.TemporalSpectralPositionalVectorArray(
+            time=time,
+            wavelength=velocity,
+            position=na.Cartesian2dVectorArray(sky_x, sky_y),
+        ),
+        outputs=outputs,
+    )
+
+    slicer = na.plt.HypercubeSlicer(
+        function,
+        axis_time="t",
+        axis_wavelength="velocity",
+        axis_x="sky_x",
+        axis_y="sky_y",
+    )
+
+    unit_velocity = u.km / u.s
+
+    assert slicer.ax_image.get_ylabel() == "sky_y (index)"
+    assert slicer.ax_slit_vertical.get_xlabel() == "velocity (index)"
+    assert slicer.ax_slit_horizontal.get_xlabel() == "sky_x (index)"
+    assert slicer.ax_slit_horizontal.get_ylabel() == "velocity (index)"
+    assert slicer.ax_spectrum.get_xlabel() == f"velocity ({unit_velocity})"
+    assert slicer.ax_spectrum.get_ylabel() == f"outputs ({u.ph})"
+    assert "t = 0" in slicer.ax_image.get_title()
+
+    assert slicer.cax_slit.get_ylabel() == f"outputs ({u.ph})"
+    assert slicer.cax_image.get_ylabel() == f"intensity ({u.ph * unit_velocity})"
+
+    slicer.set_mode("doppler")
+    assert slicer.cax_image.get_ylabel() == f"mean velocity ({unit_velocity})"
+
+    plt.close(slicer.fig)
+
+
+def test_hypercube_slicer_extend():
+    """Colorbars must advertise when their norm clips the data range."""
+    # A cube of exact integers with a moment-balanced spectral profile has
+    # an exactly-zero first moment everywhere, which lies strictly inside the
+    # symmetric doppler norm, while its wavelength-integrated intensity (and
+    # its outputs) are spread widely enough that the percentile norms clip
+    # at both ends.
+    time = na.ScalarArray(np.arange(_num_slicer_t, dtype=float), axes=("t",))
+    wavelength = na.linspace(-2, 2, axis="w", num=_num_slicer_w)
+    x = na.ScalarArray(np.arange(_num_slicer_x, dtype=float), axes=("x",))
+    y = na.ScalarArray(np.arange(_num_slicer_y, dtype=float), axes=("y",))
+    # spectral weights with distinct values chosen so the first moment over
+    # the wavelength grid [-2, -1, 0, 1, 2] is exactly zero in integer
+    # arithmetic: -2*1 - 1*6 + 0*3 + 1*4 + 2*2 = 0
+    weights = na.ScalarArray(np.array([1.0, 6.0, 3.0, 4.0, 2.0]), axes=("w",))
+    outputs = (1 + 100 * time + 10 * x + y) * weights
+
+    function_flat = na.FunctionArray(
+        inputs=na.TemporalSpectralPositionalVectorArray(
+            time=time,
+            wavelength=wavelength,
+            position=na.Cartesian2dVectorArray(x, y),
+        ),
+        outputs=outputs,
+    )
+    slicer_flat = na.plt.HypercubeSlicer(function_flat, **_kwargs_slicer)
+
+    assert slicer_flat._colorbar_image.extend == "both"
+    assert slicer_flat._colorbar_slit.extend == "both"
+
+    slicer_flat.set_mode("doppler")
+    assert slicer_flat._colorbar_image.extend == "neither"
+
+    # the extend decision must be re-evaluated on every mode switch
+    slicer_flat.set_mode("intensity")
+    assert slicer_flat._colorbar_image.extend == "both"
+
+    plt.close(slicer_flat.fig)
