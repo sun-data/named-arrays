@@ -2212,6 +2212,35 @@ class AbstractTestAbstractArray(
                     assert isinstance(result.inputs, na.Cartesian2dVectorArray)
                     assert isinstance(result.outputs, na.AbstractArray)
 
+                    # Each of the two new axes should carry the quantity that
+                    # its name advertises: the intensity coordinate varies only
+                    # along the intensity axis, and the wavelength coordinate
+                    # varies only along the wavelength axis.
+                    coordinates = (
+                        (result.inputs.x, "_intensity", "_wavelength"),
+                        (result.inputs.y, "_wavelength", "_intensity"),
+                    )
+                    for coordinate, axis_along, axis_across in coordinates:
+                        shape_coordinate = na.shape(coordinate)
+                        if axis_across in shape_coordinate:
+                            assert np.allclose(
+                                np.ptp(coordinate, axis=axis_across),
+                                0,
+                                equal_nan=True,
+                            )
+                        if axis_along in shape_coordinate:
+                            varies = not np.allclose(
+                                np.ptp(coordinate, axis=tuple(shape_coordinate)),
+                                0,
+                                equal_nan=True,
+                            )
+                            if varies:
+                                assert not np.allclose(
+                                    np.ptp(coordinate, axis=axis_along),
+                                    0,
+                                    equal_nan=True,
+                                )
+
             def test_rgb_and_colorbar(
                 self,
                 array: na.AbstractArray,

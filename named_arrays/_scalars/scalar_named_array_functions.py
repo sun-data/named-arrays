@@ -1813,7 +1813,7 @@ def colorsynth_colorbar(
         squeeze=False,
     )
 
-    axes_new = (axis_wavelength, axis_intensity) + axes
+    axes_new = (axis_intensity, axis_wavelength) + axes
 
     intensity = na.ScalarArray(intensity, axes_new)
     wavelength = na.ScalarArray(wavelength, axes_new)
