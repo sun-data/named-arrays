@@ -1,6 +1,6 @@
 from __future__ import annotations
 import functools
-from typing import TypeVar, Generic, Type, ClassVar, Sequence, Callable, Collection, Any, Literal
+from typing import TYPE_CHECKING, TypeVar, Generic, Type, ClassVar, Sequence, Callable, Collection, Any, Literal
 from typing_extensions import Self
 import abc
 import dataclasses
@@ -624,7 +624,52 @@ class AbstractFunctionArray(
         result = super().__bool__()
         return result and bool(self.outputs)
 
-    def __mul__(self, other: na.ArrayLike | u.UnitBase) -> FunctionArray:
+
+    # A function array applies the operation to its outputs and rebuilds a
+    # function array of the same type, and no other array type absorbs a
+    # function array, so the result is always `Self`. Declarations only; the
+    # implementation is inherited.
+    if TYPE_CHECKING:  # pragma: nocover
+
+        def __add__(self, other: na.ArrayLike) -> Self: ...
+
+        def __sub__(self, other: na.ArrayLike) -> Self: ...
+
+        def __floordiv__(self, other: na.ArrayLike) -> Self: ...
+
+        def __mod__(self, other: na.ArrayLike) -> Self: ...
+
+        def __pow__(self, other: na.ArrayLike) -> Self: ...
+
+        def __radd__(self, other: na.ArrayLike) -> Self: ...
+
+        def __rsub__(self, other: na.ArrayLike) -> Self: ...
+
+        def __rmul__(self, other: na.ArrayLike) -> Self: ...
+
+        def __rtruediv__(self, other: na.ArrayLike) -> Self: ...
+
+        def __rfloordiv__(self, other: na.ArrayLike) -> Self: ...
+
+        def __rmod__(self, other: na.ArrayLike) -> Self: ...
+
+        def __rpow__(self, other: na.ArrayLike) -> Self: ...
+
+        def __lt__(self, other: na.ArrayLike) -> Self: ...
+
+        def __le__(self, other: na.ArrayLike) -> Self: ...
+
+        def __gt__(self, other: na.ArrayLike) -> Self: ...
+
+        def __ge__(self, other: na.ArrayLike) -> Self: ...
+
+        def __neg__(self) -> Self: ...
+
+        def __pos__(self) -> Self: ...
+
+        def __abs__(self) -> Self: ...
+
+    def __mul__(self, other: na.ArrayLike | u.UnitBase) -> Self:
         if isinstance(other, u.UnitBase):
             exp = self.explicit
             return exp.replace(
@@ -633,7 +678,7 @@ class AbstractFunctionArray(
         else:
             return super().__mul__(other)
 
-    def __lshift__(self, other: na.ArrayLike | u.UnitBase) -> FunctionArray:
+    def __lshift__(self, other: na.ArrayLike | u.UnitBase) -> Self:
         if isinstance(other, u.UnitBase):
             exp = self.explicit
             return exp.replace(
@@ -642,7 +687,7 @@ class AbstractFunctionArray(
         else:
             return super().__lshift__(other)
 
-    def __truediv__(self, other: na.ArrayLike | u.UnitBase) -> FunctionArray:
+    def __truediv__(self, other: na.ArrayLike | u.UnitBase) -> Self:
         if isinstance(other, u.UnitBase):
             exp = self.explicit
             return exp.replace(

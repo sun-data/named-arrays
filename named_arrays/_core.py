@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TypeVar, Generic, Sequence, Iterator, Union, Type, Callable, Collection, Any
+from typing import TYPE_CHECKING, TypeVar, Generic, Sequence, Iterator, Union, Type, Callable, Collection, Any
 from typing_extensions import Self
 import abc
 import dataclasses
@@ -1113,147 +1113,104 @@ class AbstractArray(
     # `numpy.lib.mixins.NDArrayOperatorsMixin`, which declares each of them as
     # returning `Any`. That is not merely imprecise: `Any` silences every
     # subsequent check, so a single arithmetic operation disables type checking
-    # for everything downstream of it. Redeclare them here to delegate to the
-    # same implementation with an honest return type. Subclasses are free to
-    # narrow these further, as several already do for `__mul__`.
+    # for everything downstream of it. Declare them here with an honest return
+    # type. These are declarations only: at runtime the mixin's implementation
+    # is inherited unchanged. Subclasses are free to narrow them further, as
+    # the vectors and function arrays do.
 
-    def __add__(self, other: ArrayLike) -> AbstractExplicitArray:
-        return super().__add__(other)
+    if TYPE_CHECKING:  # pragma: nocover
 
-    def __sub__(self, other: ArrayLike) -> AbstractExplicitArray:
-        return super().__sub__(other)
+        def __add__(self, other: ArrayLike) -> AbstractExplicitArray: ...
 
-    def __matmul__(self, other: ArrayLike) -> AbstractExplicitArray:
-        return super().__matmul__(other)
+        def __sub__(self, other: ArrayLike) -> AbstractExplicitArray: ...
 
-    def __floordiv__(self, other: ArrayLike) -> AbstractExplicitArray:
-        return super().__floordiv__(other)
+        def __matmul__(self, other: ArrayLike) -> AbstractExplicitArray: ...
 
-    def __mod__(self, other: ArrayLike) -> AbstractExplicitArray:
-        return super().__mod__(other)
+        def __floordiv__(self, other: ArrayLike) -> AbstractExplicitArray: ...
 
-    def __pow__(self, other: ArrayLike) -> AbstractExplicitArray:
-        return super().__pow__(other)
+        def __mod__(self, other: ArrayLike) -> AbstractExplicitArray: ...
 
-    def __rshift__(self, other: ArrayLike) -> AbstractExplicitArray:
-        return super().__rshift__(other)
+        def __pow__(self, other: ArrayLike) -> AbstractExplicitArray: ...
 
-    def __and__(self, other: ArrayLike) -> AbstractExplicitArray:
-        return super().__and__(other)
+        def __rshift__(self, other: ArrayLike) -> AbstractExplicitArray: ...
 
-    def __xor__(self, other: ArrayLike) -> AbstractExplicitArray:
-        return super().__xor__(other)
+        def __and__(self, other: ArrayLike) -> AbstractExplicitArray: ...
 
-    def __or__(self, other: ArrayLike) -> AbstractExplicitArray:
-        return super().__or__(other)
+        def __xor__(self, other: ArrayLike) -> AbstractExplicitArray: ...
 
-    def __radd__(self, other: ArrayLike) -> AbstractExplicitArray:
-        return super().__radd__(other)
+        def __or__(self, other: ArrayLike) -> AbstractExplicitArray: ...
 
-    def __rsub__(self, other: ArrayLike) -> AbstractExplicitArray:
-        return super().__rsub__(other)
+        def __radd__(self, other: ArrayLike) -> AbstractExplicitArray: ...
 
-    def __rmul__(self, other: ArrayLike) -> AbstractExplicitArray:
-        return super().__rmul__(other)
+        def __rsub__(self, other: ArrayLike) -> AbstractExplicitArray: ...
 
-    def __rmatmul__(self, other: ArrayLike) -> AbstractExplicitArray:
-        return super().__rmatmul__(other)
+        def __rmul__(self, other: ArrayLike) -> AbstractExplicitArray: ...
 
-    def __rtruediv__(self, other: ArrayLike) -> AbstractExplicitArray:
-        return super().__rtruediv__(other)
+        def __rmatmul__(self, other: ArrayLike) -> AbstractExplicitArray: ...
 
-    def __rfloordiv__(self, other: ArrayLike) -> AbstractExplicitArray:
-        return super().__rfloordiv__(other)
+        def __rtruediv__(self, other: ArrayLike) -> AbstractExplicitArray: ...
 
-    def __rmod__(self, other: ArrayLike) -> AbstractExplicitArray:
-        return super().__rmod__(other)
+        def __rfloordiv__(self, other: ArrayLike) -> AbstractExplicitArray: ...
 
-    def __rpow__(self, other: ArrayLike) -> AbstractExplicitArray:
-        return super().__rpow__(other)
+        def __rmod__(self, other: ArrayLike) -> AbstractExplicitArray: ...
 
-    def __rlshift__(self, other: ArrayLike) -> AbstractExplicitArray:
-        return super().__rlshift__(other)
+        def __rpow__(self, other: ArrayLike) -> AbstractExplicitArray: ...
 
-    def __rrshift__(self, other: ArrayLike) -> AbstractExplicitArray:
-        return super().__rrshift__(other)
+        def __rlshift__(self, other: ArrayLike) -> AbstractExplicitArray: ...
 
-    def __rand__(self, other: ArrayLike) -> AbstractExplicitArray:
-        return super().__rand__(other)
+        def __rrshift__(self, other: ArrayLike) -> AbstractExplicitArray: ...
 
-    def __rxor__(self, other: ArrayLike) -> AbstractExplicitArray:
-        return super().__rxor__(other)
+        def __rand__(self, other: ArrayLike) -> AbstractExplicitArray: ...
 
-    def __ror__(self, other: ArrayLike) -> AbstractExplicitArray:
-        return super().__ror__(other)
+        def __rxor__(self, other: ArrayLike) -> AbstractExplicitArray: ...
 
-    def __iadd__(self, other: ArrayLike) -> AbstractExplicitArray:
-        return super().__iadd__(other)
+        def __ror__(self, other: ArrayLike) -> AbstractExplicitArray: ...
 
-    def __isub__(self, other: ArrayLike) -> AbstractExplicitArray:
-        return super().__isub__(other)
+        def __iadd__(self, other: ArrayLike) -> AbstractExplicitArray: ...
 
-    def __imul__(self, other: ArrayLike) -> AbstractExplicitArray:
-        return super().__imul__(other)
+        def __isub__(self, other: ArrayLike) -> AbstractExplicitArray: ...
 
-    def __imatmul__(self, other: ArrayLike) -> AbstractExplicitArray:
-        return super().__imatmul__(other)
+        def __imul__(self, other: ArrayLike) -> AbstractExplicitArray: ...
 
-    def __itruediv__(self, other: ArrayLike) -> AbstractExplicitArray:
-        return super().__itruediv__(other)
+        def __imatmul__(self, other: ArrayLike) -> AbstractExplicitArray: ...
 
-    def __ifloordiv__(self, other: ArrayLike) -> AbstractExplicitArray:
-        return super().__ifloordiv__(other)
+        def __itruediv__(self, other: ArrayLike) -> AbstractExplicitArray: ...
 
-    def __imod__(self, other: ArrayLike) -> AbstractExplicitArray:
-        return super().__imod__(other)
+        def __ifloordiv__(self, other: ArrayLike) -> AbstractExplicitArray: ...
 
-    def __ipow__(self, other: ArrayLike) -> AbstractExplicitArray:
-        return super().__ipow__(other)
+        def __imod__(self, other: ArrayLike) -> AbstractExplicitArray: ...
 
-    def __ilshift__(self, other: ArrayLike) -> AbstractExplicitArray:
-        return super().__ilshift__(other)
+        def __ipow__(self, other: ArrayLike) -> AbstractExplicitArray: ...
 
-    def __irshift__(self, other: ArrayLike) -> AbstractExplicitArray:
-        return super().__irshift__(other)
+        def __ilshift__(self, other: ArrayLike) -> AbstractExplicitArray: ...
 
-    def __iand__(self, other: ArrayLike) -> AbstractExplicitArray:
-        return super().__iand__(other)
+        def __irshift__(self, other: ArrayLike) -> AbstractExplicitArray: ...
 
-    def __ixor__(self, other: ArrayLike) -> AbstractExplicitArray:
-        return super().__ixor__(other)
+        def __iand__(self, other: ArrayLike) -> AbstractExplicitArray: ...
 
-    def __ior__(self, other: ArrayLike) -> AbstractExplicitArray:
-        return super().__ior__(other)
+        def __ixor__(self, other: ArrayLike) -> AbstractExplicitArray: ...
 
-    def __lt__(self, other: ArrayLike) -> AbstractExplicitArray:
-        return super().__lt__(other)
+        def __ior__(self, other: ArrayLike) -> AbstractExplicitArray: ...
 
-    def __le__(self, other: ArrayLike) -> AbstractExplicitArray:
-        return super().__le__(other)
+        def __lt__(self, other: ArrayLike) -> AbstractExplicitArray: ...
 
-    def __gt__(self, other: ArrayLike) -> AbstractExplicitArray:
-        return super().__gt__(other)
+        def __le__(self, other: ArrayLike) -> AbstractExplicitArray: ...
 
-    def __ge__(self, other: ArrayLike) -> AbstractExplicitArray:
-        return super().__ge__(other)
+        def __gt__(self, other: ArrayLike) -> AbstractExplicitArray: ...
 
-    def __neg__(self) -> AbstractExplicitArray:
-        return super().__neg__()
+        def __ge__(self, other: ArrayLike) -> AbstractExplicitArray: ...
 
-    def __pos__(self) -> AbstractExplicitArray:
-        return super().__pos__()
+        def __neg__(self) -> AbstractExplicitArray: ...
 
-    def __abs__(self) -> AbstractExplicitArray:
-        return super().__abs__()
+        def __pos__(self) -> AbstractExplicitArray: ...
 
-    def __invert__(self) -> AbstractExplicitArray:
-        return super().__invert__()
+        def __abs__(self) -> AbstractExplicitArray: ...
 
-    def __divmod__(self, other: ArrayLike) -> tuple[AbstractExplicitArray, AbstractExplicitArray]:
-        return super().__divmod__(other)
+        def __invert__(self) -> AbstractExplicitArray: ...
 
-    def __rdivmod__(self, other: ArrayLike) -> tuple[AbstractExplicitArray, AbstractExplicitArray]:
-        return super().__rdivmod__(other)
+        def __divmod__(self, other: ArrayLike) -> tuple[AbstractExplicitArray, AbstractExplicitArray]: ...
+
+        def __rdivmod__(self, other: ArrayLike) -> tuple[AbstractExplicitArray, AbstractExplicitArray]: ...
 
     @abc.abstractmethod
     def __array_matmul__(
