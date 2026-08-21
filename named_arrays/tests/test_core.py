@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Sequence, Callable
+from typing import Mapping, Sequence, Callable
 import pytest
 import abc
 import pickle
@@ -641,7 +641,7 @@ class AbstractTestAbstractArray(
     def test__getitem__(
             self,
             array: na.AbstractArray,
-            item: dict[str, int | slice | na.AbstractArray] | na.AbstractArray
+            item: Mapping[str, int | slice | na.AbstractArray] | na.AbstractArray
     ):
         pass
 
@@ -2277,7 +2277,7 @@ class AbstractTestAbstractExplicitArray(
     def test__setitem__(
             self,
             array: na.AbstractArray,
-            item: dict[str, int | slice | na.AbstractArray] | na.AbstractArray,
+            item: Mapping[str, int | slice | na.AbstractArray] | na.AbstractArray,
             value: na.AbstractArray
     ):
         result = na.broadcast_to(array, array.shape).astype(float).copy()

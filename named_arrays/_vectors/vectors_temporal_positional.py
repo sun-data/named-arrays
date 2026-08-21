@@ -2,6 +2,7 @@ from __future__ import annotations
 from typing import Type, TypeVar
 import dataclasses
 import named_arrays as na
+from named_arrays._core import _required
 
 __all__ = [
     "AbstractTemporalPositionalVectorArray",
@@ -85,12 +86,12 @@ class ExplicitTemporalWcsPositionalVectorArray(
     AbstractImplicitTemporalPositionalVectorArray,
     na.AbstractWcsVector,
 ):
-    time: na.AbstractScalar = dataclasses.MISSING
-    crval: na.AbstractPositionalVectorArray = dataclasses.MISSING
-    crpix: na.AbstractCartesianNdVectorArray = dataclasses.MISSING
-    cdelt: na.AbstractPositionalVectorArray = dataclasses.MISSING
-    pc: na.AbstractPositionalMatrixArray = dataclasses.MISSING
-    shape_wcs: dict[str, int] = dataclasses.MISSING
+    time: na.AbstractScalar = _required()
+    crval: na.AbstractPositionalVectorArray = _required()
+    crpix: na.AbstractCartesianNdVectorArray = _required()
+    cdelt: na.AbstractPositionalVectorArray = _required()
+    pc: na.AbstractPositionalMatrixArray = _required()
+    shape_wcs: dict[str, int] = _required()
 
     @property
     def _components_explicit(self) -> dict[str, na.ArrayLike]:

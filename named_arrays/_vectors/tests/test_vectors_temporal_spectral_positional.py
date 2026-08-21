@@ -1,3 +1,4 @@
+from typing import Mapping
 import pytest
 import numpy as np
 import astropy.units as u
@@ -52,7 +53,7 @@ def _temporal_spectral_positional_arrays_2() -> (
 
 
 def _temporal_spectral_positional_items() -> (
-    list[na.AbstractArray | dict[str, int | slice | na.AbstractArray]]
+    list[na.AbstractArray | Mapping[str, int | slice | na.AbstractArray]]
 ):
     return [
         dict(y=0),
@@ -71,7 +72,7 @@ class AbstractTestAbstractTemporalSpectralPositionalVectorArray(
     def test__getitem__(
         self,
         array: na.AbstractSpectralVectorArray,
-        item: dict[str, int | slice | na.AbstractArray] | na.AbstractArray,
+        item: Mapping[str, int | slice | na.AbstractArray] | na.AbstractArray,
     ):
         super().test__getitem__(array=array, item=item)
 

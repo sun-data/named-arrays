@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, TypeVar, Generic, ClassVar, Type, Sequence, Callable, Collection, Any, Union, overload
+from typing import Mapping, TYPE_CHECKING, TypeVar, Generic, ClassVar, Type, Sequence, Callable, Collection, Any, Union, overload
 from typing_extensions import Self
 import abc
 import dataclasses
@@ -490,7 +490,7 @@ class AbstractScalarArray(
     def _getitem_reversed(
             self: Self,
             array: AbstractScalarArray,
-            item: dict[str, int | slice | na.AbstractArray] | na.AbstractArray,
+            item: Mapping[str, int | slice | na.AbstractArray] | na.AbstractArray,
     ):
         return NotImplemented
 

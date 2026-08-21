@@ -1,3 +1,4 @@
+from typing import Mapping
 import abc
 import dataclasses
 import math
@@ -65,7 +66,7 @@ class Indexable(
 
     def __getitem__(
         self: Self,
-        item: dict[str, int | slice | na.AbstractArray] | na.AbstractArray,
+        item: Mapping[str, int | slice | na.AbstractArray] | na.AbstractArray,
     ) -> Self:
         """
         Index every array-like field of this object by ``item``.

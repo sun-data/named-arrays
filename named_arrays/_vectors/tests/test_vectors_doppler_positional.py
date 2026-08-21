@@ -1,3 +1,4 @@
+from typing import Mapping
 import pytest
 import numpy as np
 import astropy.units as u
@@ -30,7 +31,7 @@ def _doppler_positional_arrays_2() -> list[na.DopplerPositionalVectorArray]:
     ]
 
 
-def _doppler_positional_items() -> list[na.AbstractArray | dict[str, int | slice | na.AbstractArray]]:
+def _doppler_positional_items() -> list[na.AbstractArray | Mapping[str, int | slice | na.AbstractArray]]:
     return [
         dict(y=0),
         dict(y=slice(0, 1)),
@@ -49,7 +50,7 @@ class AbstractTestAbstractDopplerPositionalVectorArray(
     def test__getitem__(
             self,
             array: na.AbstractDopplerVectorArray,
-            item: dict[str, int | slice | na.AbstractArray] | na.AbstractArray
+            item: Mapping[str, int | slice | na.AbstractArray] | na.AbstractArray
     ):
         super().test__getitem__(array=array, item=item)
 

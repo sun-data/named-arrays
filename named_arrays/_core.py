@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, TypeVar, Generic, Sequence, Iterator, Union, Type, Callable, Collection, Any
+from typing import Mapping, TYPE_CHECKING, TypeVar, Generic, Sequence, Iterator, Union, Type, Callable, Collection, Any
 from typing_extensions import Self
 import abc
 import dataclasses
@@ -51,6 +51,19 @@ __all__ = [
 ]
 
 QuantityLike = Union[int, float, complex, np.ndarray, u.Quantity]
+
+
+def _required() -> Any:
+    """
+    Clear a default value inherited from a base dataclass.
+
+    Returns :obj:`dataclasses.MISSING`, which the dataclass machinery reads as
+    "this field has no default". Writing ``dataclasses.MISSING`` directly is
+    equivalent at runtime but is rejected by a type checker, since the
+    sentinel is not a value of the field's declared type.
+    """
+    return dataclasses.MISSING
+
 
 AxisT = TypeVar("AxisT", bound="str | AbstractArray", covariant=True)
 NumT = TypeVar("NumT", bound="int | AbstractArray", covariant=True)
@@ -1037,7 +1050,7 @@ class AbstractArray(
     @abc.abstractmethod
     def _getitem(
             self: Self,
-            item: dict[str, int | slice | AbstractArray] | AbstractArray,
+            item: Mapping[str, int | slice | AbstractArray] | AbstractArray,
     ):
         pass
 
@@ -1045,13 +1058,13 @@ class AbstractArray(
     def _getitem_reversed(
             self: Self,
             array: AbstractArray,
-            item: dict[str, int | slice | AbstractArray] | AbstractArray
+            item: Mapping[str, int | slice | AbstractArray] | AbstractArray
     ):
         pass
 
     def __getitem__(
             self: Self,
-            item: dict[str, int | slice | AbstractArray] | AbstractArray,
+            item: Mapping[str, int | slice | AbstractArray] | AbstractArray,
     ) -> AbstractExplicitArray:
         result = self._getitem(item)
         if result is not NotImplemented:
@@ -1959,8 +1972,8 @@ class AbstractUniformRandomSample(
     AbstractRandomSample,
     Generic[StartT, StopT],
 ):
-    start: StartT = dataclasses.MISSING
-    stop: StopT = dataclasses.MISSING
+    start: StartT = _required()
+    stop: StopT = _required()
     shape_random: None | dict[str, int] = None
     seed: None | int = None
 
@@ -1984,8 +1997,8 @@ class AbstractNormalRandomSample(
     AbstractRandomSample,
     Generic[CenterT, WidthT],
 ):
-    center: CenterT = dataclasses.MISSING
-    width: WidthT = dataclasses.MISSING
+    center: CenterT = _required()
+    width: WidthT = _required()
     shape_random: None | dict[str, int] = None
     seed: None | int = None
 
@@ -2007,7 +2020,7 @@ class AbstractPoissonRandomSample(
     AbstractRandomSample,
     Generic[CenterT],
 ):
-    center: CenterT = dataclasses.MISSING
+    center: CenterT = _required()
     shape_random: None | dict[str, int] = None
     seed: None | int = None
 
@@ -2061,9 +2074,9 @@ class AbstractArrayRange(
     AbstractParameterizedArray,
     Generic[StartT, StopT]
 ):
-    start: StartT = dataclasses.MISSING
-    stop: StopT = dataclasses.MISSING
-    axis: str | na.AbstractArray= dataclasses.MISSING
+    start: StartT = _required()
+    stop: StopT = _required()
+    axis: str | na.AbstractArray= _required()
     step: int | float | na.AbstractArray = 1
 
     @property
@@ -2102,9 +2115,9 @@ class AbstractLinearSpace(
     AbstractSpace,
     Generic[StartT, StopT, AxisT, NumT],
 ):
-    start: StartT = dataclasses.MISSING
-    stop: StopT = dataclasses.MISSING
-    axis: AxisT = dataclasses.MISSING
+    start: StartT = _required()
+    stop: StopT = _required()
+    axis: AxisT = _required()
     num: NumT = 11
     endpoint: bool = True
     centers: bool = False
@@ -2223,10 +2236,10 @@ class AbstractLogarithmicSpace(
     AbstractSpace,
     Generic[StartExponentT, StopExponentT, BaseT, AxisT, NumT]
 ):
-    start_exponent: StartExponentT = dataclasses.MISSING
-    stop_exponent: StopExponentT = dataclasses.MISSING
-    base: BaseT = dataclasses.MISSING
-    axis: AxisT = dataclasses.MISSING
+    start_exponent: StartExponentT = _required()
+    stop_exponent: StopExponentT = _required()
+    base: BaseT = _required()
+    axis: AxisT = _required()
     num: NumT = 11
     endpoint: bool = True
 
@@ -2256,9 +2269,9 @@ class AbstractGeometricSpace(
     AbstractSpace,
     Generic[StartT, StopT, AxisT, NumT]
 ):
-    start: StartT = dataclasses.MISSING
-    stop: StopT = dataclasses.MISSING
-    axis: AxisT = dataclasses.MISSING
+    start: StartT = _required()
+    stop: StopT = _required()
+    axis: AxisT = _required()
     num: NumT = 11
     endpoint: bool = True
 
