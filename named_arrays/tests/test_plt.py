@@ -4,6 +4,7 @@ import matplotlib.axes
 import matplotlib.animation
 import matplotlib.text
 import matplotlib.pyplot as plt
+import mpl_toolkits.mplot3d.art3d
 import astropy.units as u
 import named_arrays as na
 
@@ -704,3 +705,82 @@ def test_invert_yaxis(
     ax: None | matplotlib.axes.Axes | na.AbstractScalar,
 ):
     na.plt.invert_yaxis(ax)
+
+
+def _square(y: float) -> na.Cartesian3dVectorArray:
+    """A unit square in the plane of constant `y`."""
+    return na.Cartesian3dVectorArray(
+        x=na.ScalarArray(np.array([-1.0, 1, 1, -1]), axes=("wire",)) * u.mm,
+        y=na.ScalarArray(np.array([y] * 4, dtype=float), axes=("wire",)) * u.mm,
+        z=na.ScalarArray(np.array([-1.0, -1, 1, 1]), axes=("wire",)) * u.mm,
+    )
+
+
+def test_fill_3d():
+    """
+    A polygon filled on a 3D axes is drawn as a 3D collection.
+
+    :meth:`matplotlib.axes.Axes.fill` has no 3D counterpart, and on a 3D axes
+    it reads the third coordinate as another polygon, giving flat patches in
+    the plane of the page.
+    """
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection="3d")
+
+    result = na.plt.fill(
+        _square(0),
+        ax=ax,
+        axis="wire",
+        components=("x", "y", "z"),
+    )
+
+    assert isinstance(
+        result[dict()].ndarray,
+        mpl_toolkits.mplot3d.art3d.Poly3DCollection,
+    )
+    assert not ax.patches
+    plt.close(fig)
+
+
+def test_fill_3d_occludes():
+    """
+    A polygon filled on a 3D axes hides what is behind it.
+
+    This is the point of drawing one as a collection: it takes part in the
+    depth sorting of the axes, where a flat patch would not.
+    """
+    fig = plt.figure(figsize=(3, 3))
+    ax = fig.add_subplot(111, projection="3d")
+    ax.set_axis_off()
+    ax.view_init(elev=0, azim=-90)
+
+    for y, color in ((1, "tab:red"), (-1, "tab:blue")):
+        na.plt.fill(
+            _square(y),
+            ax=ax,
+            axis="wire",
+            components=("x", "y", "z"),
+            color=color,
+        )
+
+    fig.canvas.draw()
+    image = np.asarray(fig.canvas.buffer_rgba())[..., :3] / 255
+    plt.close(fig)
+
+    red, _, blue = image[image.shape[0] // 2, image.shape[1] // 2]
+    assert blue > red
+
+
+def test_fill_2d():
+    """Filling on a 2D axes is unchanged."""
+    fig, ax = plt.subplots()
+
+    na.plt.fill(
+        _square(0),
+        ax=ax,
+        axis="wire",
+        components=("x", "z"),
+    )
+
+    assert len(ax.patches) == 1
+    plt.close(fig)

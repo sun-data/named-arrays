@@ -7,6 +7,8 @@ import matplotlib.axes
 import matplotlib.artist
 import matplotlib.pyplot as plt
 import matplotlib.animation
+import mpl_toolkits.mplot3d
+import mpl_toolkits.mplot3d.art3d
 import astropy.units as u
 import astroscrappy
 import ndfilters
@@ -915,14 +917,60 @@ def plt_plot_like(
 
     for index in na.ndindex(shape_orthogonal):
         if where[index]:
-            func_matplotlib = getattr(ax[index].ndarray, func.__name__)
+            axes = ax[index].ndarray
             args_index = tuple(arg[index].ndarray for arg in args)
             kwargs_index = {k: kwargs[k][index].ndarray for k in kwargs}
-            result[index] = func_matplotlib(
-                *args_index,
-                **kwargs_index,
-            )[0]
+            if _is_fill_3d(func, axes, args_index):
+                result[index] = _fill_3d(axes, args_index, kwargs_index)
+            else:
+                func_matplotlib = getattr(axes, func.__name__)
+                result[index] = func_matplotlib(
+                    *args_index,
+                    **kwargs_index,
+                )[0]
 
+    return result
+
+
+def _is_fill_3d(
+        func: Callable,
+        ax: matplotlib.axes.Axes,
+        args: tuple,
+) -> bool:
+    """Whether this is a filled polygon being drawn on a 3D axes."""
+    return (
+        func is na.plt.fill
+        and isinstance(ax, mpl_toolkits.mplot3d.Axes3D)
+        and len(args) == 3
+    )
+
+
+def _fill_3d(
+        ax: mpl_toolkits.mplot3d.Axes3D,
+        args: tuple,
+        kwargs: dict[str, Any],
+) -> mpl_toolkits.mplot3d.art3d.Poly3DCollection:
+    """
+    Fill a polygon on a 3D axes.
+
+    :meth:`matplotlib.axes.Axes.fill` has no 3D counterpart. Calling it on a 3D
+    axes reads the third coordinate as another polygon, giving flat patches
+    which lie in the plane of the page and never hide anything behind them.
+    :class:`mpl_toolkits.mplot3d.art3d.Poly3DCollection` is the 3D equivalent:
+    it is depth sorted along with everything else in the axes, so a surface
+    drawn this way occludes what is behind it.
+    """
+    aliases = {
+        "color": "facecolors",
+        "linewidth": "linewidths",
+        "linestyle": "linestyles",
+    }
+    kwargs = {aliases.get(k, k): kwargs[k] for k in kwargs}
+
+    vertices = np.stack([u.Quantity(a).value for a in args], axis=~0)
+
+    result = mpl_toolkits.mplot3d.art3d.Poly3DCollection([vertices], **kwargs)
+    ax.add_collection3d(result)
     return result
 
 
