@@ -10,7 +10,7 @@ __all__ = [
     "DopplerMatrixArray",
 ]
 
-WavelengthT = TypeVar('WavelengthT', bound=na.AbstractVectorArray)
+WavelengthT = TypeVar('WavelengthT', bound=na.AbstractVectorArray, covariant=True)
 
 
 @dataclasses.dataclass(eq=False, repr=False)

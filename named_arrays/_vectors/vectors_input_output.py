@@ -13,8 +13,8 @@ __all__ = [
     "InputOutputVectorLinearSpace",
 ]
 
-InputT = TypeVar("InputT", bound=na.ArrayLike)
-OutputT = TypeVar("OutputT", bound=na.ArrayLike)
+InputT = TypeVar("InputT", bound=na.ArrayLike, covariant=True)
+OutputT = TypeVar("OutputT", bound=na.ArrayLike, covariant=True)
 
 
 @dataclasses.dataclass(eq=False, repr=False)

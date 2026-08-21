@@ -22,8 +22,8 @@ __all__ = [
     "Cartesian2dVectorGeometricSpace",
 ]
 
-XT = TypeVar('XT', bound=na.ArrayLike)
-YT = TypeVar('YT', bound=na.ArrayLike)
+XT = TypeVar('XT', bound=na.ArrayLike, covariant=True)
+YT = TypeVar('YT', bound=na.ArrayLike, covariant=True)
 
 
 @dataclasses.dataclass(eq=False, repr=False)

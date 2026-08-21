@@ -14,8 +14,8 @@ __all__ = [
     "Cartesian2dRotationMatrixArray",
 ]
 
-XT = TypeVar('XT', bound=na.AbstractVectorArray)
-YT = TypeVar('YT', bound=na.AbstractVectorArray)
+XT = TypeVar('XT', bound=na.AbstractVectorArray, covariant=True)
+YT = TypeVar('YT', bound=na.AbstractVectorArray, covariant=True)
 
 
 @dataclasses.dataclass(eq=False, repr=False)

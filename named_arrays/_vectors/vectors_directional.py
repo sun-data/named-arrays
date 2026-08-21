@@ -13,7 +13,7 @@ __all__ = [
     "DirectionalVectorLinearSpace",
 ]
 
-DirectionT = TypeVar("DirectionT", bound=na.ArrayLike)
+DirectionT = TypeVar("DirectionT", bound=na.ArrayLike, covariant=True)
 
 
 @dataclasses.dataclass(eq=False, repr=False)

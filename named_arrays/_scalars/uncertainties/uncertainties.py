@@ -34,12 +34,14 @@ AnyT = TypeVar("AnyT")
 NominalArrayT = TypeVar(
     'NominalArrayT',
     bound=None | float | complex | np.ndarray | u.Quantity | na.AbstractScalarArray,
+    covariant=True,
 )
 DistributionArrayT = TypeVar(
     'DistributionArrayT',
     bound=None | float | complex | np.ndarray | u.Quantity | na.AbstractScalarArray,
+    covariant=True,
 )
-WidthT = TypeVar('WidthT', bound=int | float | np.ndarray | u.Quantity | na.AbstractScalarArray)
+WidthT = TypeVar('WidthT', bound=int | float | np.ndarray | u.Quantity | na.AbstractScalarArray, covariant=True)
 UncertainScalarStartT = TypeVar("UncertainScalarStartT", bound=float | u.Quantity | na.AbstractScalar)
 UncertainScalarStopT = TypeVar("UncertainScalarStopT", bound=float | u.Quantity | na.AbstractScalar)
 UncertainScalarCenterT = TypeVar("UncertainScalarCenterT", bound=float | u.Quantity | na.AbstractScalar)

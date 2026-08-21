@@ -16,9 +16,9 @@ __all__ = [
     "Cartesian3dZRotationMatrixArray",
 ]
 
-XT = TypeVar('XT', bound=na.AbstractVectorArray)
-YT = TypeVar('YT', bound=na.AbstractVectorArray)
-ZT = TypeVar('ZT', bound=na.AbstractVectorArray)
+XT = TypeVar('XT', bound=na.AbstractVectorArray, covariant=True)
+YT = TypeVar('YT', bound=na.AbstractVectorArray, covariant=True)
+ZT = TypeVar('ZT', bound=na.AbstractVectorArray, covariant=True)
 
 
 @dataclasses.dataclass(eq=False, repr=False)

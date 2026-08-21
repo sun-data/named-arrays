@@ -9,7 +9,7 @@ __all__ = [
     "PositionalMatrixArray",
 ]
 
-PositionT = TypeVar('PositionT', bound=na.AbstractVectorArray)
+PositionT = TypeVar('PositionT', bound=na.AbstractVectorArray, covariant=True)
 
 
 @dataclasses.dataclass(eq=False, repr=False)

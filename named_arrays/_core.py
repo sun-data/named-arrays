@@ -52,15 +52,15 @@ __all__ = [
 
 QuantityLike = Union[int, float, complex, np.ndarray, u.Quantity]
 
-AxisT = TypeVar("AxisT", bound="str | AbstractArray")
-NumT = TypeVar("NumT", bound="int | AbstractArray")
-StartT = TypeVar("StartT", bound="QuantityLike | AbstractArray")
-StopT = TypeVar("StopT", bound="QuantityLike | AbstractArray")
-CenterT = TypeVar("CenterT", bound="QuantityLike | AbstractArray")
-WidthT = TypeVar("WidthT", bound="QuantityLike | AbstractArray")
-StartExponentT = TypeVar("StartExponentT", bound="QuantityLike | AbstractArray")
-StopExponentT = TypeVar("StopExponentT", bound="QuantityLike | AbstractArray")
-BaseT = TypeVar("BaseT", bound="QuantityLike | AbstractArray")
+AxisT = TypeVar("AxisT", bound="str | AbstractArray", covariant=True)
+NumT = TypeVar("NumT", bound="int | AbstractArray", covariant=True)
+StartT = TypeVar("StartT", bound="QuantityLike | AbstractArray", covariant=True)
+StopT = TypeVar("StopT", bound="QuantityLike | AbstractArray", covariant=True)
+CenterT = TypeVar("CenterT", bound="QuantityLike | AbstractArray", covariant=True)
+WidthT = TypeVar("WidthT", bound="QuantityLike | AbstractArray", covariant=True)
+StartExponentT = TypeVar("StartExponentT", bound="QuantityLike | AbstractArray", covariant=True)
+StopExponentT = TypeVar("StopExponentT", bound="QuantityLike | AbstractArray", covariant=True)
+BaseT = TypeVar("BaseT", bound="QuantityLike | AbstractArray", covariant=True)
 PrototypeT = TypeVar("PrototypeT")
 
 

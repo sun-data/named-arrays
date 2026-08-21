@@ -13,7 +13,7 @@ __all__ = [
     "PositionalVectorLinearSpace",
 ]
 
-PositionT = TypeVar("PositionT", bound=na.ArrayLike)
+PositionT = TypeVar("PositionT", bound=na.ArrayLike, covariant=True)
 
 
 @dataclasses.dataclass(eq=False, repr=False)

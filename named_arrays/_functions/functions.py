@@ -18,8 +18,8 @@ __all__ = [
     "PolynomialFitFunctionArray",
 ]
 
-InputsT = TypeVar("InputsT", bound=na.AbstractArray)
-OutputsT = TypeVar("OutputsT", bound=na.AbstractArray)
+InputsT = TypeVar("InputsT", bound=na.AbstractArray, covariant=True)
+OutputsT = TypeVar("OutputsT", bound=na.AbstractArray, covariant=True)
 
 
 class InputValueError(ValueError):

@@ -13,7 +13,7 @@ __all__ = [
     "SpectralVectorLinearSpace",
 ]
 
-WavelengthT = TypeVar("WavelengthT", bound=na.ScalarLike)
+WavelengthT = TypeVar("WavelengthT", bound=na.ScalarLike, covariant=True)
 
 
 @dataclasses.dataclass(eq=False, repr=False)
