@@ -1,6 +1,6 @@
 from __future__ import annotations
 import functools
-from typing import TYPE_CHECKING, TypeVar, Generic, Type, ClassVar, Sequence, Callable, Collection, Any, Literal
+from typing import Mapping, TYPE_CHECKING, TypeVar, Generic, Type, ClassVar, Sequence, Callable, Collection, Any, Literal
 from typing_extensions import Self
 import abc
 import dataclasses
@@ -536,7 +536,7 @@ class AbstractFunctionArray(
 
     def _getitem(
             self,
-            item: dict[str, int | slice | na.AbstractArray] | na.AbstractArray | na.AbstractFunctionArray,
+            item: Mapping[str, int | slice | na.AbstractArray] | na.AbstractArray | na.AbstractFunctionArray,
     ) -> FunctionArray:
 
         array = self.explicit
@@ -612,7 +612,7 @@ class AbstractFunctionArray(
     def _getitem_reversed(
             self,
             array: na.AbstractArray,
-            item: dict[str, int | slice | na.AbstractArray] | na.AbstractFunctionArray
+            item: Mapping[str, int | slice | na.AbstractArray] | na.AbstractFunctionArray
     ):
         if isinstance(array, (na.AbstractScalar, na.AbstractVectorArray)):
             array = na.FunctionArray(array, array)

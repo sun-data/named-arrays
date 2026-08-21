@@ -1,4 +1,4 @@
-from typing import Sequence, Callable, Literal
+from typing import Mapping, Sequence, Callable, Literal
 import pytest
 import numpy as np
 import astropy.units as u
@@ -232,7 +232,7 @@ class AbstractTestAbstractFunctionArray(
     def test__getitem__(
             self,
             array: na.AbstractFunctionArray,
-            item: dict[str, int | slice | na.AbstractArray] | na.AbstractArray
+            item: Mapping[str, int | slice | na.AbstractArray] | na.AbstractArray
     ):
         super().test__getitem__(array=array, item=item)
 

@@ -2,6 +2,7 @@ from __future__ import annotations
 from typing import Type, TypeVar
 import dataclasses
 import named_arrays as na
+from named_arrays._core import _required
 
 __all__ = [
     "AbstractSpectralDirectionalVectorArray",
@@ -83,11 +84,11 @@ class WcsSpectralDirectionalVectorArray(
     AbstractImplicitSpectralDirectionalVectorArray,
     na.AbstractWcsVector,
 ):
-    crval: AbstractSpectralDirectionalVectorArray = dataclasses.MISSING
-    crpix: na.AbstractCartesianNdVectorArray = dataclasses.MISSING
-    cdelt: AbstractSpectralDirectionalVectorArray = dataclasses.MISSING
-    pc: na.AbstractSpectralDirectionalMatrixArray = dataclasses.MISSING
-    shape_wcs: dict[str, int] = dataclasses.MISSING
+    crval: AbstractSpectralDirectionalVectorArray = _required()
+    crpix: na.AbstractCartesianNdVectorArray = _required()
+    cdelt: AbstractSpectralDirectionalVectorArray = _required()
+    pc: na.AbstractSpectralDirectionalMatrixArray = _required()
+    shape_wcs: dict[str, int] = _required()
 
     @property
     def _components_explicit(self) -> dict[str, na.ArrayLike]:

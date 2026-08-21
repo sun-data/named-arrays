@@ -2,6 +2,7 @@ from __future__ import annotations
 from typing import Type, TypeVar
 import dataclasses
 import named_arrays as na
+from named_arrays._core import _required
 
 __all__ = [
     "AbstractTemporalSpectralPositionalVectorArray",
@@ -92,13 +93,13 @@ class ExplicitTemporalSpectralWcsPositionalVectorArray(
     AbstractImplicitTemporalSpectralPositionalVectorArray,
     na.AbstractWcsVector,
 ):
-    time: na.AbstractScalar = dataclasses.MISSING
-    wavelength: na.AbstractScalar = dataclasses.MISSING
-    crval: na.AbstractSpectralPositionalVectorArray = dataclasses.MISSING
-    crpix: na.AbstractCartesianNdVectorArray = dataclasses.MISSING
-    cdelt: na.AbstractSpectralPositionalVectorArray = dataclasses.MISSING
-    pc: na.AbstractSpectralPositionalMatrixArray = dataclasses.MISSING
-    shape_wcs: dict[str, int] = dataclasses.MISSING
+    time: na.AbstractScalar = _required()
+    wavelength: na.AbstractScalar = _required()
+    crval: na.AbstractSpectralPositionalVectorArray = _required()
+    crpix: na.AbstractCartesianNdVectorArray = _required()
+    cdelt: na.AbstractSpectralPositionalVectorArray = _required()
+    pc: na.AbstractSpectralPositionalMatrixArray = _required()
+    shape_wcs: dict[str, int] = _required()
 
     @property
     def _components_explicit(self) -> dict[str, na.ArrayLike]:
@@ -113,12 +114,12 @@ class ExplicitTemporalWcsSpectralPositionalVectorArray(
     AbstractImplicitTemporalSpectralPositionalVectorArray,
     na.AbstractWcsVector,
 ):
-    time: na.AbstractScalar = dataclasses.MISSING
-    crval: na.AbstractSpectralPositionalVectorArray = dataclasses.MISSING
-    crpix: na.AbstractCartesianNdVectorArray = dataclasses.MISSING
-    cdelt: na.AbstractSpectralPositionalVectorArray = dataclasses.MISSING
-    pc: na.AbstractSpectralPositionalMatrixArray = dataclasses.MISSING
-    shape_wcs: dict[str, int] = dataclasses.MISSING
+    time: na.AbstractScalar = _required()
+    crval: na.AbstractSpectralPositionalVectorArray = _required()
+    crpix: na.AbstractCartesianNdVectorArray = _required()
+    cdelt: na.AbstractSpectralPositionalVectorArray = _required()
+    pc: na.AbstractSpectralPositionalMatrixArray = _required()
+    shape_wcs: dict[str, int] = _required()
 
     @property
     def _components_explicit(self) -> dict[str, na.ArrayLike]:

@@ -1,3 +1,4 @@
+from typing import Mapping
 import pytest
 import numpy as np
 import astropy.units as u
@@ -181,7 +182,7 @@ class AbstractTestAbstractCartesian3dVectorArray(
     def test__getitem__(
             self,
             array: na.AbstractCartesian3dVectorArray,
-            item: dict[str, int | slice | na.AbstractArray] | na.AbstractArray
+            item: Mapping[str, int | slice | na.AbstractArray] | na.AbstractArray
     ):
         super().test__getitem__(array=array, item=item)
 

@@ -7,6 +7,7 @@ import dataclasses
 import numpy as np
 import astropy.units as u
 import named_arrays as na
+from named_arrays._core import _required
 
 __all__ = [
     "nominal",
@@ -975,8 +976,8 @@ class UniformUncertainScalarArray(
     na.AbstractRandomMixin,
     Generic[NominalArrayT, WidthT],
 ):
-    nominal: NominalArrayT = dataclasses.MISSING
-    width: WidthT = dataclasses.MISSING
+    nominal: NominalArrayT = _required()
+    width: WidthT = _required()
     num_distribution: int = _num_distribution_default
     seed: None | int = None
 
@@ -1003,8 +1004,8 @@ class NormalUncertainScalarArray(
     na.AbstractRandomMixin,
     Generic[NominalArrayT, WidthT],
 ):
-    nominal: NominalArrayT = dataclasses.MISSING
-    width: WidthT = dataclasses.MISSING
+    nominal: NominalArrayT = _required()
+    width: WidthT = _required()
     num_distribution: int = _num_distribution_default
     seed: None | int = None
 

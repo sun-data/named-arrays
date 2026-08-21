@@ -1,5 +1,5 @@
 import dataclasses
-from typing import Sequence, Callable
+from typing import Mapping, Sequence, Callable
 import numpy as np
 import pytest
 import astropy.units as u
@@ -183,7 +183,7 @@ class AbstractTestAbstractUncertainScalarArray(
     def test__getitem__(
             self,
             array: na.AbstractUncertainScalarArray,
-            item: dict[str, int | slice | na.AbstractArray] | na.AbstractArray
+            item: Mapping[str, int | slice | na.AbstractArray] | na.AbstractArray
     ):
         super().test__getitem__(array=array, item=item)
 

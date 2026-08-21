@@ -11,6 +11,7 @@ import abc
 import dataclasses
 import astropy.units as u
 import named_arrays as na
+from named_arrays._core import _required
 
 __all__ = [
     "compose",
@@ -314,7 +315,7 @@ class Translation(
             plt.legend();
     """
 
-    vector: VectorT = dataclasses.MISSING
+    vector: VectorT = _required()
     """A vector representing the translation."""
 
 @dataclasses.dataclass(eq=False)
@@ -451,7 +452,7 @@ class LinearTransformation(
             na.plt.plot(square_transformed_2, axis="vertex", label="rotated");
             plt.legend();
     """
-    matrix: MatrixT = dataclasses.MISSING
+    matrix: MatrixT = _required()
 
 
 @dataclasses.dataclass(eq=False)
@@ -594,10 +595,10 @@ class AffineTransformation(
     This is a composition of a linear transformation and a translation.
     """
 
-    transformation_linear: LinearTransformationT = dataclasses.MISSING
+    transformation_linear: LinearTransformationT = _required()
     """The linear component of this affine transformation."""
 
-    translation: TranslationT = dataclasses.MISSING
+    translation: TranslationT = _required()
     """The translation component of this affine transformation."""
 
 
@@ -666,7 +667,7 @@ class TransformationList(
 ):
     """An arbitrary sequence of transformations."""
 
-    transformations: list[AbstractTransformation] = dataclasses.MISSING
+    transformations: list[AbstractTransformation] = _required()
     """The underlying list of transformations to compose together."""
 
     intrinsic: bool = True
