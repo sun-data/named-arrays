@@ -9,7 +9,7 @@ __all__ = [
     "DirectionalMatrixArray",
 ]
 
-DirectionT = TypeVar('DirectionT', bound=na.AbstractVectorArray)
+DirectionT = TypeVar('DirectionT', bound=na.AbstractVectorArray, covariant=True)
 
 
 @dataclasses.dataclass(eq=False, repr=False)

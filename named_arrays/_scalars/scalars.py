@@ -33,7 +33,7 @@ __all__ = [
     "ScalarGeometricSpace",
 ]
 
-NDArrayT = TypeVar('NDArrayT', bound=npt.ArrayLike)
+NDArrayT = TypeVar('NDArrayT', bound=npt.ArrayLike, covariant=True)
 StartT = TypeVar('StartT', bound='ScalarLike')
 StopT = TypeVar('StopT', bound='ScalarLike')
 ScalarStartT = TypeVar('ScalarStartT', bound='ScalarLike')

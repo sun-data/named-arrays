@@ -31,11 +31,11 @@ __all__ = [
     "TransformationList",
 ]
 
-VectorT = TypeVar("VectorT", bound="na.AbstractVectorArray")
-MatrixT = TypeVar("MatrixT", bound="na.AbstractMatrixArray")
+VectorT = TypeVar("VectorT", bound="na.AbstractVectorArray", covariant=True)
+MatrixT = TypeVar("MatrixT", bound="na.AbstractMatrixArray", covariant=True)
 TransformationT = TypeVar("TransformationT", bound="AbstractTransformation")
-LinearTransformationT = TypeVar("LinearTransformationT", bound="AbstractLinearTransformation")
-TranslationT = TypeVar("TranslationT", bound="AbstractTranslation")
+LinearTransformationT = TypeVar("LinearTransformationT", bound="AbstractLinearTransformation", covariant=True)
+TranslationT = TypeVar("TranslationT", bound="AbstractTranslation", covariant=True)
 
 
 def compose(

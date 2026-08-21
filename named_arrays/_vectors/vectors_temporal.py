@@ -13,7 +13,7 @@ __all__ = [
     "TemporalVectorLinearSpace",
 ]
 
-TimeT = TypeVar("TimeT", bound=na.ArrayLike)
+TimeT = TypeVar("TimeT", bound=na.ArrayLike, covariant=True)
 
 
 @dataclasses.dataclass(eq=False, repr=False)
