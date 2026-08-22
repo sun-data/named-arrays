@@ -33,7 +33,7 @@ class AbstractSpectralVectorArray(
         return AbstractSpectralVectorArray
 
     @property
-    def type_explicit(self) -> Type[na.AbstractExplicitArray]:
+    def type_explicit(self) -> Type[SpectralVectorArray]:
         return SpectralVectorArray
 
     @property

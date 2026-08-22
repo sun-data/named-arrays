@@ -27,7 +27,7 @@ class AbstractTemporalDopplerPositionalVectorArray(
         return AbstractTemporalDopplerPositionalVectorArray
 
     @property
-    def type_explicit(self) -> Type[na.AbstractExplicitArray]:
+    def type_explicit(self) -> Type[TemporalDopplerPositionalVectorArray]:
         return TemporalDopplerPositionalVectorArray
 
     @property

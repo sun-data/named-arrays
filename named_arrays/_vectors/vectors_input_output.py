@@ -41,7 +41,7 @@ class AbstractInputOutputVectorArray(
         return AbstractInputOutputVectorArray
 
     @property
-    def type_explicit(self) -> Type[na.AbstractExplicitArray]:
+    def type_explicit(self) -> Type[InputOutputVectorArray]:
         return InputOutputVectorArray
 
     @property
