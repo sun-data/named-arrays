@@ -33,7 +33,7 @@ class AbstractDirectionalVectorArray(
         return AbstractDirectionalVectorArray
 
     @property
-    def type_explicit(self) -> Type[na.AbstractExplicitArray]:
+    def type_explicit(self) -> Type[DirectionalVectorArray]:
         return DirectionalVectorArray
 
     @property

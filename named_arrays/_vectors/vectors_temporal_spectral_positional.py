@@ -32,7 +32,7 @@ class AbstractTemporalSpectralPositionalVectorArray(
         return AbstractTemporalSpectralPositionalVectorArray
 
     @property
-    def type_explicit(self) -> Type[na.AbstractExplicitArray]:
+    def type_explicit(self) -> Type[TemporalSpectralPositionalVectorArray]:
         return TemporalSpectralPositionalVectorArray
 
     @property

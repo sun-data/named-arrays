@@ -29,7 +29,7 @@ class AbstractTemporalSpectralVectorArray(
         return AbstractTemporalSpectralVectorArray
 
     @property
-    def type_explicit(self) -> Type[na.AbstractExplicitArray]:
+    def type_explicit(self) -> Type[TemporalSpectralVectorArray]:
         return TemporalSpectralVectorArray
 
     @property

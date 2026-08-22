@@ -33,7 +33,7 @@ class AbstractPositionalVectorArray(
         return AbstractPositionalVectorArray
 
     @property
-    def type_explicit(self) -> Type[na.AbstractExplicitArray]:
+    def type_explicit(self) -> Type[PositionalVectorArray]:
         return PositionalVectorArray
 
     @property
