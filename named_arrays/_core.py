@@ -676,9 +676,13 @@ class AbstractArray(
 
     @property
     @abc.abstractmethod
-    def value(self: Self) -> Self:
+    def value(self: Self) -> AbstractExplicitArray:
         """
         Returns a new array with its units removed, if they exist.
+
+        The family is preserved, so a vector returns a vector and a function
+        array returns a function array, but the result is always explicit:
+        an implicit array materializes into its family's explicit type.
         """
 
     @property
@@ -1859,7 +1863,7 @@ class AbstractImplicitArray(
         return self.explicit.size
 
     @property
-    def value(self: Self) -> Self:
+    def value(self: Self) -> AbstractExplicitArray:
         return self.explicit.value
 
     @property
