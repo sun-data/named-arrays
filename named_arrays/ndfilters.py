@@ -21,7 +21,7 @@ def mean_filter(
     size: dict[str, int],
     where: WhereT = True,
     mode: Literal["mirror", "nearest", "wrap", "truncate"] = "mirror",
-) -> ArrayT | WhereT:
+) -> "na.AbstractExplicitArray":
     """
     A thin wrapper around :func:`ndfilters.mean_filter` for named arrays.
 
@@ -96,7 +96,7 @@ def trimmed_mean_filter(
     where: WhereT = True,
     mode: Literal["mirror", "nearest", "wrap", "truncate"] = "mirror",
     proportion: float = 0.25,
-) -> ArrayT | WhereT:
+) -> "na.AbstractExplicitArray":
     """
     A thin wrapper around :func:`ndfilters.trimmed_mean_filter` for named arrays.
 
@@ -176,7 +176,7 @@ def variance_filter(
     size: dict[str, int],
     where: WhereT = True,
     mode: Literal["mirror", "nearest", "wrap", "truncate"] = "mirror",
-) -> ArrayT | WhereT:
+) -> "na.AbstractExplicitArray":
     """
     A thin wrapper around :func:`ndfilters.variance_filter` for named arrays.
 

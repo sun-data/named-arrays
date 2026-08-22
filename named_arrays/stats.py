@@ -20,7 +20,7 @@ def pearsonr(
     y: YT,
     axis: None | str | Sequence[str] = None,
     where: bool | XT | YT = True,
-) -> XT | YT:
+) -> "na.AbstractExplicitArray":
     """
     Computes the Pearson correlation coefficient between two arrays.
 
@@ -61,7 +61,7 @@ def spearmanr(
     y: YT,
     axis: None | str | Sequence[str] = None,
     where: bool | XT | YT = True,
-) -> XT | YT:
+) -> "na.AbstractExplicitArray":
     """
     Computes the Spearman correlation coefficient between two arrays.
 

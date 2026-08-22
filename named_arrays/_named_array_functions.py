@@ -85,7 +85,7 @@ def _asarray_like(
         order: None | str = None,
         *,
         like: None | LikeT = None,
-) -> ArrayT | LikeT:
+) -> na.AbstractExplicitArray:
 
     if like is None:
         like = na.ScalarArray(None)
@@ -129,7 +129,7 @@ def asarray(
         order: None | str = None,
         *,
         like: None | LikeT = None,
-) -> ArrayT | LikeT:
+) -> na.AbstractExplicitArray:
     """
     Converts the input to use only instances of :class:`numpy.ndarray` as the underlying data.
 
@@ -221,7 +221,7 @@ def asanyarray(
         order: None | str = None,
         *,
         like: None | LikeT = None,
-) -> ArrayT | LikeT:
+) -> na.AbstractExplicitArray:
     """
     Converts the input to use only instances of :class:`numpy.ndarray` subclasses as the underlying data.
 
@@ -317,7 +317,7 @@ def step(
     num: NumT,
     endpoint: bool = True,
     centers: bool = False,
-) -> na.StartT | na.StopT | NumT:
+) -> na.QuantityLike | na.AbstractExplicitArray:
     """
     Helper function to compute the step size for :func:`linspace`.
 
@@ -351,7 +351,7 @@ def linspace(
         endpoint: bool = True,
         dtype: None | type | np.dtype = None,
         centers: bool = False,
-) -> na.StartT | na.StopT | AxisT | NumT:
+) -> na.AbstractExplicitArray:
     """
     Create an array of evenly-spaced numbers between `start` and `stop`.
 
@@ -436,7 +436,7 @@ def logspace(
         endpoint: bool = True,
         base: BaseT = 10,
         dtype: None | type | np.dtype = None,
-) -> na.StartT | na.StopT | AxisT | NumT:
+) -> na.AbstractExplicitArray:
     """
     Create an array of evenly-spaced numbers on a log scale between `start` and `stop`.
 
@@ -483,7 +483,7 @@ def geomspace(
         num: NumT = 50,
         endpoint: bool = True,
         dtype: None | type | np.dtype = None,
-) -> na.StartT | na.StopT | AxisT | NumT:
+) -> na.AbstractExplicitArray:
     """
     Create an array of a geometric progression of numbers between `start` and `stop`.
 
@@ -965,7 +965,7 @@ def vmr(
     keepdims: bool = False,
     *,
     where: bool | WhereT = True,
-) -> ArrayT | WhereT:
+) -> na.AbstractExplicitArray:
     """
     Compute the
     `variance-to-mean ratio <https://en.wikipedia.org/wiki/Index_of_dispersion>`_
@@ -1012,7 +1012,7 @@ def mean_trimmed(
     dtype: None | str | Type | np.dtype = None,
     out: None | na.AbstractExplicitArray = None,
     keepdims: bool = False,
-) -> ArrayT | QuantileT:
+) -> na.AbstractExplicitArray:
     """
     Compute the trimmed mean of the given array along the specified axes.
 
@@ -1417,7 +1417,7 @@ def convolve(
     axis: None | str | Sequence[str] = None,
     where: bool | na.AbstractArray = True,
     mode: str = "truncate",
-) -> ArrayT | KernelT | WhereT:
+) -> na.AbstractExplicitArray:
     """
     Convolve an array with a given :math:`n`-dimensional kernel.
 
