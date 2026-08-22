@@ -28,11 +28,7 @@ class AbstractMatrixArray(
         """
 
     @property
-    def components(self) -> dict[str, na.AbstractVectorArray]:
-        return super().components
-
-    @property
-    def entries(self) -> dict[tuple[str, ...], na.ScalarLike]:
+    def entries(self) -> dict[str | tuple[str, ...], na.ScalarLike]:
         rows = self.cartesian_nd.rows
         result = {}
         for r in rows:
@@ -345,11 +341,11 @@ class AbstractExplicitMatrixArray(
 ):
 
     @property
-    def components(self) -> dict[str, na.AbstractVectorArray]:
+    def components(self) -> dict[str, na.ArrayLike]:
         return self.__dict__
 
     @components.setter
-    def components(self, value: dict[str, na.AbstractVectorArray]):
+    def components(self, value: dict[str, na.ArrayLike]):
         self.__dict__ = value
 
     @classmethod

@@ -132,9 +132,12 @@ class AbstractVectorArray(
         return dict()
 
     @property
-    def entries(self) -> dict[str, na.ArrayLike]:
+    def entries(self) -> dict[str | tuple[str, ...], na.ScalarLike]:
         """
         The scalar entries that compose this object.
+
+        A vector keys its entries by component name and a matrix by a
+        ``(row, column)`` pair, so the key type admits both.
         """
         return self.cartesian_nd.components
 
