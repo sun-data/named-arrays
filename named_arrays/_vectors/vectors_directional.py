@@ -37,7 +37,7 @@ class AbstractDirectionalVectorArray(
         return DirectionalVectorArray
 
     @property
-    def type_matrix(self) -> Type[na.DirectionalMatrixArray]:
+    def type_matrix(self) -> Type[na.AbstractExplicitMatrixArray]:
         return na.DirectionalMatrixArray
 
 

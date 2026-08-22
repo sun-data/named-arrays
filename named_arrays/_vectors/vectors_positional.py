@@ -37,7 +37,7 @@ class AbstractPositionalVectorArray(
         return PositionalVectorArray
 
     @property
-    def type_matrix(self) -> Type[na.PositionalMatrixArray]:
+    def type_matrix(self) -> Type[na.AbstractExplicitMatrixArray]:
         return na.PositionalMatrixArray
 
 

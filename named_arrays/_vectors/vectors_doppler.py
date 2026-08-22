@@ -37,7 +37,7 @@ class AbstractDopplerVectorArray(
         return DopplerVectorArray
 
     @property
-    def type_matrix(self) -> Type[na.DopplerMatrixArray]:
+    def type_matrix(self) -> Type[na.AbstractExplicitMatrixArray]:
         return na.DopplerMatrixArray
 
     @property

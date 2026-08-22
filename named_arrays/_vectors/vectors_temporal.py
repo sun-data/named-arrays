@@ -37,7 +37,7 @@ class AbstractTemporalVectorArray(
         return TemporalVectorArray
 
     @property
-    def type_matrix(self) -> Type[na.TemporalMatrixArray]:
+    def type_matrix(self) -> Type[na.AbstractExplicitMatrixArray]:
         return na.TemporalMatrixArray
 
 

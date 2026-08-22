@@ -53,7 +53,7 @@ class AbstractCartesian2dVectorArray(
         return Cartesian2dVectorArray
 
     @property
-    def type_matrix(self) -> Type[na.Cartesian2dMatrixArray]:
+    def type_matrix(self) -> Type[na.AbstractExplicitMatrixArray]:
         return na.Cartesian2dMatrixArray
 
     def volume_cell(self, axis: None | tuple[str, str]) -> na.AbstractScalar:

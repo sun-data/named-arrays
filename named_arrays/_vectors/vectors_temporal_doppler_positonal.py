@@ -31,7 +31,7 @@ class AbstractTemporalDopplerPositionalVectorArray(
         return TemporalDopplerPositionalVectorArray
 
     @property
-    def type_matrix(self) -> Type[na.AbstractMatrixArray]:
+    def type_matrix(self) -> Type[na.TemporalDopplerPositionalMatrixArray]:
         return na.TemporalDopplerPositionalMatrixArray
 
 
