@@ -360,3 +360,57 @@ def test_weights_seed():
     result_unperturbed = na.regridding.regrid(perturb=False, seed=0, **kwargs)
     result_unperturbed_expected = na.regridding.regrid(perturb=False, seed=1, **kwargs)
     assert np.all(result_unperturbed == result_unperturbed_expected)
+
+
+class TestCoalesce:
+    """
+    The conservative methods emit several fragments per distinct
+    ``(input, output)`` pair.  Merging them is an optimization for weights
+    which get reused, not a change to what the weights mean.
+    """
+
+    coordinates_input = na.Cartesian2dVectorArray(
+        x=na.linspace(-1, 1, axis="x", num=9),
+        y=na.linspace(-1, 1, axis="y", num=8),
+    )
+    coordinates_output = na.Cartesian2dVectorArray(
+        x=na.linspace(-0.83, 0.79, axis="x_new", num=6),
+        y=na.linspace(-0.79, 0.83, axis="y_new", num=5),
+    )
+    values_input = na.random.uniform(
+        low=0,
+        high=1,
+        shape_random=dict(x=8, y=7),
+        seed=42,
+    )
+
+    def _weights(self, coalesce: bool):
+        return na.regridding.weights(
+            coordinates_input=self.coordinates_input,
+            coordinates_output=self.coordinates_output,
+            axis_input=("x", "y"),
+            axis_output=("x_new", "y_new"),
+            method="conservative",
+            coalesce=coalesce,
+        )
+
+    def test_fewer_weights(self):
+        """Merging shrinks the result."""
+        raw = self._weights(coalesce=False)[0].ndarray[()]
+        merged = self._weights(coalesce=True)[0].ndarray[()]
+        assert len(merged[2]) < len(raw[2])
+
+    def test_same_result_when_applied(self):
+        """Both forms resample a scene to the same answer."""
+        results = []
+        for coalesce in (False, True):
+            weights, shape_input, shape_output = self._weights(coalesce)
+            results.append(
+                na.regridding.regrid_from_weights(
+                    weights=weights,
+                    shape_input=shape_input,
+                    shape_output=shape_output,
+                    values_input=self.values_input,
+                )
+            )
+        assert np.allclose(results[0].ndarray, results[1].ndarray)

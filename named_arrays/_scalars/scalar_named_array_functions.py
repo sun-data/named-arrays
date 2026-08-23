@@ -1932,6 +1932,7 @@ def regridding_weights(
     method: Literal['multilinear', 'conservative'] = 'multilinear',
     perturb: None | bool = None,
     seed: "None | int | np.random.Generator" = na.regridding._seed_default,
+    coalesce: bool = True,
 ) -> tuple[na.AbstractScalar, dict[str, int], dict[str, int]]:
 
     if not isinstance(coordinates_output, na.AbstractVectorArray):
@@ -1949,6 +1950,7 @@ def regridding_weights(
         method=method,
         perturb=perturb,
         seed=seed,
+        coalesce=coalesce,
     )
 
 
