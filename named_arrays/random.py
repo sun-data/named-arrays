@@ -37,7 +37,7 @@ def uniform(
         high: RandomHighT,
         shape_random: None | dict[str, int] = None,
         seed: None | int = None
-) -> RandomLowT | RandomHighT:
+) -> "na.AbstractExplicitArray":
     """
     Draw samples from a uniform distribution
 
@@ -76,7 +76,7 @@ def normal(
         scale: RandomWidthT,
         shape_random: None | dict[str, int] = None,
         seed: None | int = None
-) -> RandomCenterT | RandomWidthT:
+) -> "na.AbstractExplicitArray":
     """
     Draw samples from a normal distribution
 
@@ -148,7 +148,7 @@ def binomial(
     p: ProbabilityT,
     shape_random: None | dict[str, int] = None,
     seed: None | int = None,
-) -> NumTrialsT | ProbabilityT:
+) -> "na.AbstractExplicitArray":
     """
     Draw samples from a binomial distribution.
 
@@ -182,7 +182,7 @@ def gamma(
     scale: ScaleT = 1,
     shape_random: None | dict[str, int] = None,
     seed: None | int = None,
-) -> ShapeT | ScaleT:
+) -> "na.AbstractExplicitArray":
     """
     Draw samples from a gamma distribution.
 
@@ -218,7 +218,7 @@ def choice(
     replace: bool = True,
     shape_random: None | dict[str, int] = None,
     seed: None | int = None,
-) -> ChoicesT | ProbabilityT:
+) -> "na.AbstractExplicitArray":
     """
     Draw random samples from a given array of choices.
 

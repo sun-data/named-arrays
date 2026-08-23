@@ -73,7 +73,7 @@ def _normalize(a: float | u.Quantity | na.AbstractScalar):
 
 def nominal(
     a: AnyT | na.UncertainScalarArray[NominalArrayT, DistributionArrayT],
-) -> AnyT | NominalArrayT:
+) -> na.AbstractExplicitArray:
     """
     Isolate the `nominal` attribute of an uncertain array.
     If `a` is a nested object, such as a vector, or an arbitrarily-nested

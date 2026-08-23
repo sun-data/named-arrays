@@ -14,7 +14,7 @@ def point_in_polygon(
     vertices_x: VertexT,
     vertices_y: VertexT,
     axis: str,
-) -> PointT | VertexT:
+) -> "na.AbstractExplicitArray":
     """
     Check if a given point is inside or on the boundary of a polygon.
 
