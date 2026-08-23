@@ -5,6 +5,7 @@ import abc
 import dataclasses
 import copy
 import secrets
+from types import NotImplementedType
 import numpy as np
 import numpy.typing as npt
 import astropy.units as u
@@ -1006,7 +1007,7 @@ class AbstractArray(
         format_value: str = "%.2f",
         format_unit: str = "latex_inline",
         pad_unit: str = r"$\,$",
-    ):
+    ) -> AbstractExplicitArray:
         """
         Convert to an array of strings where each string has an
         appropriately-formatted unit attached to the value.
@@ -1055,7 +1056,7 @@ class AbstractArray(
     def _getitem(
             self: Self,
             item: Mapping[str, int | slice | AbstractArray] | AbstractArray,
-    ):
+    ) -> AbstractExplicitArray | NotImplementedType:
         pass
 
     @abc.abstractmethod
@@ -1063,7 +1064,7 @@ class AbstractArray(
             self: Self,
             array: AbstractArray,
             item: Mapping[str, int | slice | AbstractArray] | AbstractArray
-    ):
+    ) -> AbstractExplicitArray | NotImplementedType:
         pass
 
     def __getitem__(

@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import ClassVar, Type, Sequence, Callable, Collection, Any, TypeVar
+from typing import Mapping, ClassVar, Type, Sequence, Callable, Collection, Any, TypeVar
 from typing_extensions import Self
 import abc
 import dataclasses
@@ -281,7 +281,7 @@ class AbstractVectorArray(
 
     def _getitem(
             self: Self,
-            item: dict[str, int | slice | AbstractScalarOrVectorArray] | AbstractScalarOrVectorArray,
+            item: Mapping[str, int | slice | na.AbstractArray] | na.AbstractArray,
     ) -> Self:
 
         array = self.explicit
@@ -352,7 +352,7 @@ class AbstractVectorArray(
     def _getitem_reversed(
             self: Self,
             array: na.ScalarArray,
-            item: dict[str, int | slice | AbstractVectorArray] | AbstractVectorArray,
+            item: Mapping[str, int | slice | na.AbstractArray] | na.AbstractArray,
     ):
         if array.type_abstract == self.type_abstract:
             pass
@@ -645,7 +645,7 @@ class AbstractExplicitVectorArray(
 
     def __setitem__(
             self,
-            item: dict[str, int | slice | AbstractScalarOrVectorArray] | AbstractScalarOrVectorArray,
+            item: Mapping[str, int | slice | na.AbstractArray] | na.AbstractArray,
             value: AbstractScalarOrVectorArray,
     ):
         components_self = self.components

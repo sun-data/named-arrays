@@ -1151,7 +1151,7 @@ class FunctionArray(
 
     def __setitem__(
             self,
-            item: dict[str, int | slice | na.AbstractScalar | na.AbstractFunctionArray] | na.AbstractFunctionArray,
+            item: Mapping[str, int | slice | na.AbstractArray] | na.AbstractArray,
             value: float | u.Quantity | na.FunctionArray,
     ):
 
