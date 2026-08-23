@@ -406,7 +406,7 @@ class AbstractScalarArray(
 
     def _getitem(
             self: Self,
-            item: dict[str, int | slice | AbstractScalarArray] | AbstractScalarArray,
+            item: Mapping[str, int | slice | na.AbstractArray] | na.AbstractArray,
     ):
 
         if isinstance(item, AbstractScalarArray):
@@ -1287,7 +1287,7 @@ class ScalarArray(
 
     def __setitem__(
             self: Self,
-            item: dict[str, int | slice | AbstractScalarArray] | AbstractScalarArray,
+            item: Mapping[str, int | slice | na.AbstractArray] | na.AbstractArray,
             value: int | float | u.Quantity | AbstractScalarArray,
     ) -> None:
 

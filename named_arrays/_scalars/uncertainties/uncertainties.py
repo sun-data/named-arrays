@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, TypeVar, Generic, ClassVar, Type, Sequence, Callable, Collection, Any, overload
+from typing import Mapping, TYPE_CHECKING, TypeVar, Generic, ClassVar, Type, Sequence, Callable, Collection, Any, overload
 from typing_extensions import Self
 
 import abc
@@ -294,7 +294,7 @@ class AbstractUncertainScalarArray(
 
     def _getitem(
             self,
-            item: dict[str, int | slice | na.AbstractScalar] | na.AbstractScalar,
+            item: Mapping[str, int | slice | na.AbstractArray] | na.AbstractArray,
     ):
         array = self.explicit
         shape_array_distribution = array.shape_distribution
@@ -369,7 +369,7 @@ class AbstractUncertainScalarArray(
     def _getitem_reversed(
             self,
             array: na.ScalarArray,
-            item: dict[str, int | slice | AbstractUncertainScalarArray] | AbstractUncertainScalarArray
+            item: Mapping[str, int | slice | na.AbstractArray] | na.AbstractArray
     ):
         if isinstance(array, AbstractUncertainScalarArray):
             pass
@@ -867,7 +867,7 @@ class UncertainScalarArray(
 
     def __setitem__(
             self,
-            item: dict[str, int | slice | na.AbstractScalar] | na.AbstractScalar,
+            item: Mapping[str, int | slice | na.AbstractArray] | na.AbstractArray,
             value: int | float | u.Quantity | na.AbstractScalar,
     ):
         shape_self = self.shape
