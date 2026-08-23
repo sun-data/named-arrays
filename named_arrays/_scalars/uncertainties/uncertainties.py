@@ -31,7 +31,6 @@ __all__ = [
     "UncertainScalarGeometricSpace",
 ]
 
-AnyT = TypeVar("AnyT")
 NominalArrayT = TypeVar(
     'NominalArrayT',
     bound=None | float | complex | np.ndarray | u.Quantity | na.AbstractScalarArray,
@@ -72,7 +71,7 @@ def _normalize(a: float | u.Quantity | na.AbstractScalar):
 
 
 def nominal(
-    a: AnyT | na.UncertainScalarArray[NominalArrayT, DistributionArrayT],
+    a: Any | na.UncertainScalarArray[NominalArrayT, DistributionArrayT],
 ) -> na.AbstractExplicitArray:
     """
     Isolate the `nominal` attribute of an uncertain array.

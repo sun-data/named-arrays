@@ -3,7 +3,7 @@ A thin wrapper around the :mod:`ndfilters` package for named arrays.
 """
 
 from __future__ import annotations
-from typing import TypeVar, Literal
+from typing import Literal
 import named_arrays as na
 
 __all__ = [
@@ -12,16 +12,14 @@ __all__ = [
     "variance_filter",
 ]
 
-ArrayT = TypeVar("ArrayT", bound="na.AbstractArray")
-WhereT = TypeVar("WhereT", bound="bool | na.AbstractArray")
 
 
 def mean_filter(
-    array: ArrayT,
+    array: na.AbstractArray,
     size: dict[str, int],
-    where: WhereT = True,
+    where: bool | na.AbstractArray = True,
     mode: Literal["mirror", "nearest", "wrap", "truncate"] = "mirror",
-) -> "na.AbstractExplicitArray":
+) -> na.AbstractExplicitArray:
     """
     A thin wrapper around :func:`ndfilters.mean_filter` for named arrays.
 
@@ -91,12 +89,12 @@ def mean_filter(
 
 
 def trimmed_mean_filter(
-    array: ArrayT,
+    array: na.AbstractArray,
     size: dict[str, int],
-    where: WhereT = True,
+    where: bool | na.AbstractArray = True,
     mode: Literal["mirror", "nearest", "wrap", "truncate"] = "mirror",
     proportion: float = 0.25,
-) -> "na.AbstractExplicitArray":
+) -> na.AbstractExplicitArray:
     """
     A thin wrapper around :func:`ndfilters.trimmed_mean_filter` for named arrays.
 
@@ -172,11 +170,11 @@ def trimmed_mean_filter(
 
 
 def variance_filter(
-    array: ArrayT,
+    array: na.AbstractArray,
     size: dict[str, int],
-    where: WhereT = True,
+    where: bool | na.AbstractArray = True,
     mode: Literal["mirror", "nearest", "wrap", "truncate"] = "mirror",
-) -> "na.AbstractExplicitArray":
+) -> na.AbstractExplicitArray:
     """
     A thin wrapper around :func:`ndfilters.variance_filter` for named arrays.
 
