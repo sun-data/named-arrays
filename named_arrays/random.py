@@ -24,20 +24,14 @@ __all__ = [
 RandomLowT = TypeVar("RandomLowT", bound="float | complex | u.Quantity | na.AbstractArray")
 RandomHighT = TypeVar("RandomHighT", bound="float | complex | u.Quantity | na.AbstractArray")
 RandomCenterT = TypeVar("RandomCenterT", bound="float | complex | u.Quantity | na.AbstractArray")
-RandomWidthT = TypeVar("RandomWidthT", bound="float | complex | u.Quantity | na.AbstractArray")
-NumTrialsT = TypeVar("NumTrialsT", bound="int | na.AbstractArray")
-ProbabilityT = TypeVar("ProbabilityT", bound="float | na.AbstractArray")
-ShapeT = TypeVar("ShapeT", bound="float | na.AbstractArray")
-ScaleT = TypeVar("ScaleT", bound="float | u.Quantity | na.AbstractArray")
-ChoicesT = TypeVar("ChoicesT", bound="int | na.AbstractArray")
 
 
 def uniform(
-        low: RandomLowT,
-        high: RandomHighT,
+        low: float | complex | u.Quantity | na.AbstractArray,
+        high: float | complex | u.Quantity | na.AbstractArray,
         shape_random: None | dict[str, int] = None,
         seed: None | int = None
-) -> "na.AbstractExplicitArray":
+) -> na.AbstractExplicitArray:
     """
     Draw samples from a uniform distribution
 
@@ -72,11 +66,11 @@ def uniform(
 
 
 def normal(
-        loc: RandomCenterT,
-        scale: RandomWidthT,
+        loc: float | complex | u.Quantity | na.AbstractArray,
+        scale: float | complex | u.Quantity | na.AbstractArray,
         shape_random: None | dict[str, int] = None,
         seed: None | int = None
-) -> "na.AbstractExplicitArray":
+) -> na.AbstractExplicitArray:
     """
     Draw samples from a normal distribution
 
@@ -144,11 +138,11 @@ def poisson(
 
 
 def binomial(
-    n: NumTrialsT,
-    p: ProbabilityT,
+    n: int | na.AbstractArray,
+    p: float | na.AbstractArray,
     shape_random: None | dict[str, int] = None,
     seed: None | int = None,
-) -> "na.AbstractExplicitArray":
+) -> na.AbstractExplicitArray:
     """
     Draw samples from a binomial distribution.
 
@@ -178,11 +172,11 @@ def binomial(
 
 
 def gamma(
-    shape: ShapeT,
-    scale: ScaleT = 1,
+    shape: float | na.AbstractArray,
+    scale: float | u.Quantity | na.AbstractArray = 1,
     shape_random: None | dict[str, int] = None,
     seed: None | int = None,
-) -> "na.AbstractExplicitArray":
+) -> na.AbstractExplicitArray:
     """
     Draw samples from a gamma distribution.
 
@@ -212,13 +206,13 @@ def gamma(
 
 
 def choice(
-    a: ChoicesT,
-    p: ProbabilityT = None,
+    a: int | na.AbstractArray,
+    p: float | na.AbstractArray = None,
     axis: None | str | Sequence[str] = None,
     replace: bool = True,
     shape_random: None | dict[str, int] = None,
     seed: None | int = None,
-) -> "na.AbstractExplicitArray":
+) -> na.AbstractExplicitArray:
     """
     Draw random samples from a given array of choices.
 

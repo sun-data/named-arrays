@@ -38,15 +38,9 @@ __all__ = [
 
 NDArrayT = TypeVar("NDArrayT", bound=np.ndarray)
 ArrayT = TypeVar("ArrayT")
-QuantileT = TypeVar("QuantileT", bound="float | na.AbstractArray")
 LikeT = TypeVar("LikeT", bound="None | na.AbstractArray")
-AxisT = TypeVar("AxisT", bound="str | na.AbstractArray")
-NumT = TypeVar("NumT", bound="int | na.AbstractArray")
-BaseT = TypeVar("BaseT", bound="int | na.AbstractArray")
 InputT = TypeVar("InputT", bound="float | u.Quantity | na.AbstractScalarArray")
 OutputT = TypeVar("OutputT", bound="float | u.Quantity | na.AbstractScalarArray")
-KernelT = TypeVar("KernelT", bound="na.AbstractArray")
-WhereT = TypeVar("WhereT", bound="bool | na.AbstractScalarArray")
 
 
 def _is_subclass(a: Any, b: Any):
@@ -80,11 +74,11 @@ def _named_array_function(func: Callable, *args, **kwargs):
 
 def _asarray_like(
         func: Callable,
-        a: ArrayT,
+        a: na.ArrayLike,
         dtype: None | type | np.dtype | str = None,
         order: None | str = None,
         *,
-        like: None | LikeT = None,
+        like: None | na.AbstractArray = None,
 ) -> na.AbstractExplicitArray:
 
     if like is None:
@@ -114,7 +108,7 @@ def asarray(
 
 @overload
 def asarray(
-        a: ArrayT,
+        a: na.ArrayLike,
         dtype: None | type | np.dtype | str = ...,
         order: None | str = ...,
         *,
@@ -124,11 +118,11 @@ def asarray(
 
 
 def asarray(
-        a: ArrayT,
+        a: na.ArrayLike,
         dtype: None | type | np.dtype | str = None,
         order: None | str = None,
         *,
-        like: None | LikeT = None,
+        like: None | na.AbstractArray = None,
 ) -> na.AbstractExplicitArray:
     """
     Converts the input to use only instances of :class:`numpy.ndarray` as the underlying data.
@@ -206,7 +200,7 @@ def asanyarray(
 
 @overload
 def asanyarray(
-        a: ArrayT,
+        a: na.ArrayLike,
         dtype: None | type | np.dtype | str = ...,
         order: None | str = ...,
         *,
@@ -216,11 +210,11 @@ def asanyarray(
 
 
 def asanyarray(
-        a: ArrayT,
+        a: na.ArrayLike,
         dtype: None | type | np.dtype | str = None,
         order: None | str = None,
         *,
-        like: None | LikeT = None,
+        like: None | na.AbstractArray = None,
 ) -> na.AbstractExplicitArray:
     """
     Converts the input to use only instances of :class:`numpy.ndarray` subclasses as the underlying data.
@@ -312,9 +306,9 @@ def arange(
 
 
 def step(
-    start: na.StartT,
-    stop: na.StopT,
-    num: NumT,
+    start: na.QuantityLike | na.AbstractArray,
+    stop: na.QuantityLike | na.AbstractArray,
+    num: int | na.AbstractArray,
     endpoint: bool = True,
     centers: bool = False,
 ) -> na.QuantityLike | na.AbstractExplicitArray:
@@ -344,10 +338,10 @@ def step(
 
 
 def linspace(
-        start: na.StartT,
-        stop: na.StopT,
-        axis: AxisT,
-        num: NumT = 50,
+        start: na.QuantityLike | na.AbstractArray,
+        stop: na.QuantityLike | na.AbstractArray,
+        axis: str | na.AbstractArray,
+        num: int | na.AbstractArray = 50,
         endpoint: bool = True,
         dtype: None | type | np.dtype = None,
         centers: bool = False,
@@ -429,12 +423,12 @@ def linspace(
 
 
 def logspace(
-        start: na.StartT,
-        stop: na.StopT,
-        axis: AxisT,
-        num: NumT = 50,
+        start: na.QuantityLike | na.AbstractArray,
+        stop: na.QuantityLike | na.AbstractArray,
+        axis: str | na.AbstractArray,
+        num: int | na.AbstractArray = 50,
         endpoint: bool = True,
-        base: BaseT = 10,
+        base: int | na.AbstractArray = 10,
         dtype: None | type | np.dtype = None,
 ) -> na.AbstractExplicitArray:
     """
@@ -477,10 +471,10 @@ def logspace(
 
 
 def geomspace(
-        start: na.StartT,
-        stop: na.StopT,
-        axis: AxisT,
-        num: NumT = 50,
+        start: na.QuantityLike | na.AbstractArray,
+        stop: na.QuantityLike | na.AbstractArray,
+        axis: str | na.AbstractArray,
+        num: int | na.AbstractArray = 50,
         endpoint: bool = True,
         dtype: None | type | np.dtype = None,
 ) -> na.AbstractExplicitArray:
@@ -958,13 +952,13 @@ def add_axes(array: na.ArrayLike, axes: str | Sequence[str]):
 
 
 def vmr(
-    a: ArrayT,
+    a: na.ArrayLike,
     axis: None | str | Sequence[str] = None,
     dtype: None | str | Type | np.dtype = None,
     out: None | na.AbstractExplicitArray = None,
     keepdims: bool = False,
     *,
-    where: bool | WhereT = True,
+    where: bool | na.AbstractScalarArray = True,
 ) -> na.AbstractExplicitArray:
     """
     Compute the
@@ -1006,8 +1000,8 @@ def vmr(
 
 
 def mean_trimmed(
-    a: ArrayT,
-    q: QuantileT = 0.25,
+    a: na.ArrayLike,
+    q: float | na.AbstractArray = 0.25,
     axis: None | str | Sequence[str] = None,
     dtype: None | str | Type | np.dtype = None,
     out: None | na.AbstractExplicitArray = None,
@@ -1412,8 +1406,8 @@ def histogramdd(
 
 
 def convolve(
-    array: ArrayT,
-    kernel: KernelT,
+    array: na.ArrayLike,
+    kernel: na.AbstractArray,
     axis: None | str | Sequence[str] = None,
     where: bool | na.AbstractArray = True,
     mode: str = "truncate",
