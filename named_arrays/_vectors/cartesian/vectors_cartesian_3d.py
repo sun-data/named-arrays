@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TypeVar, Type, Generic
+from typing import Sequence, TypeVar, Type, Generic
 from typing_extensions import Self
 import abc
 import dataclasses
@@ -67,7 +67,7 @@ class AbstractCartesian3dVectorArray(
 
     def volume_cell(
         self,
-        axis: None | tuple[str, str, str],
+        axis: None | str | Sequence[str],
     ) -> na.AbstractScalar:
 
         shape = self.shape

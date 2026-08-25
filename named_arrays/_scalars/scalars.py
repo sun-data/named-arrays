@@ -119,7 +119,7 @@ class AbstractScalar(
         else:
             raise ValueError('Can only compute length of numeric arrays')
 
-    def volume_cell(self, axis: None | str | tuple[str]) -> na.AbstractScalar:
+    def volume_cell(self, axis: None | str | Sequence[str]) -> na.AbstractScalar:
         if axis is None:
             if self.ndim != 1:
                 raise ValueError(
@@ -489,7 +489,7 @@ class AbstractScalarArray(
 
     def _getitem_reversed(
             self: Self,
-            array: AbstractScalarArray,
+            array: na.AbstractArray,
             item: Mapping[str, int | slice | na.AbstractArray] | na.AbstractArray,
     ):
         return NotImplemented
@@ -1414,7 +1414,7 @@ class ScalarUniformRandomSample(
     AbstractScalarRandomSample,
     na.AbstractUniformRandomSample[ScalarStartT, ScalarStopT],
 ):
-    def volume_cell(self, axis: None | str | tuple[str]) -> na.AbstractScalar:
+    def volume_cell(self, axis: None | str | Sequence[str]) -> na.AbstractScalar:
         axis = na.axis_normalized(self, axis)
         if len(axis) != 1:
             raise ValueError(
@@ -1524,7 +1524,7 @@ class ScalarLinearSpace(
         print(wavelength)
     """
 
-    def volume_cell(self, axis: None | str | tuple[str]) -> na.AbstractScalar:
+    def volume_cell(self, axis: None | str | Sequence[str]) -> na.AbstractScalar:
         axis = na.axis_normalized(self, axis)
         if len(axis) != 1:
             raise ValueError(

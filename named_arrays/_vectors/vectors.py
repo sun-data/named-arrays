@@ -237,8 +237,8 @@ class AbstractVectorArray(
 
     def combine_axes(
             self: Self,
-            axes: Sequence[str] = None,
-            axis_new: str = None,
+            axes: None | Sequence[str] = None,
+            axis_new: None | str = None,
     ) -> AbstractExplicitVectorArray:
 
         shape = self.shape
@@ -351,7 +351,7 @@ class AbstractVectorArray(
 
     def _getitem_reversed(
             self: Self,
-            array: na.ScalarArray,
+            array: na.AbstractArray,
             item: Mapping[str, int | slice | na.AbstractArray] | na.AbstractArray,
     ):
         if array.type_abstract == self.type_abstract:

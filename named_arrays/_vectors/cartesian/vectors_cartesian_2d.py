@@ -56,7 +56,7 @@ class AbstractCartesian2dVectorArray(
     def type_matrix(self) -> Type[na.AbstractExplicitMatrixArray]:
         return na.Cartesian2dMatrixArray
 
-    def volume_cell(self, axis: None | tuple[str, str]) -> na.AbstractScalar:
+    def volume_cell(self, axis: None | str | Sequence[str]) -> na.AbstractScalar:
 
         if axis is None:
             if self.ndim != 2:

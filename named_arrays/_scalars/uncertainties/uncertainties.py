@@ -367,7 +367,7 @@ class AbstractUncertainScalarArray(
 
     def _getitem_reversed(
             self,
-            array: na.ScalarArray,
+            array: na.AbstractArray,
             item: Mapping[str, int | slice | na.AbstractArray] | na.AbstractArray
     ):
         if isinstance(array, AbstractUncertainScalarArray):
@@ -1048,7 +1048,7 @@ class UncertainScalarUniformRandomSample(
     AbstractUncertainScalarRandomSample,
     na.AbstractUniformRandomSample[UncertainScalarStartT, UncertainScalarStopT],
 ):
-    def volume_cell(self, axis: None | str | tuple[str]) -> na.AbstractScalar:
+    def volume_cell(self, axis: None | str | Sequence[str]) -> na.AbstractScalar:
         axis = na.axis_normalized(self, axis)
         if len(axis) != 1:
             raise ValueError(
@@ -1112,7 +1112,7 @@ class UncertainScalarLinearSpace(
     AbstractUncertainScalarSpace,
     na.AbstractLinearSpace,
 ):
-    def volume_cell(self, axis: None | str | tuple[str]) -> na.AbstractScalar:
+    def volume_cell(self, axis: None | str | Sequence[str]) -> na.AbstractScalar:
         axis = na.axis_normalized(self, axis)
         if len(axis) != 1:
             raise ValueError(
