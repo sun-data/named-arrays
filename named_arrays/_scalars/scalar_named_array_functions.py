@@ -1726,6 +1726,153 @@ def optimize_root_secant(
     raise ValueError("Max iterations exceeded")
 
 
+@_implements(na.optimize.minimum_brent)
+def optimize_minimum_brent(
+        function: Callable[[na.ScalarLike], na.ScalarLike],
+        a: na.ScalarLike,
+        b: na.ScalarLike,
+        min_step_size: na.ScalarLike,
+        max_iterations: int = 100,
+        callback: None | Callable[[int, na.ScalarLike, na.ScalarLike, na.ScalarLike], None] = None,
+) -> na.ScalarArray:
+
+    # the bracket and the function value may be uncertain as well as plain
+    # scalars: the state of the search is promoted to uncertain arrays by
+    # the first comparison involving one, so a single body serves both
+    a = na.as_named_array(a)
+    b = na.as_named_array(b)
+    min_step_size = na.as_named_array(min_step_size)
+    for arg in (a, b, min_step_size):
+        if not isinstance(arg, na.AbstractScalar):
+            return NotImplemented
+
+    # the bracket, the step, and the tolerance are compared only with each
+    # other, and the function values only with each other, so the search
+    # runs on plain numbers and the units are reattached on the way out
+    unit_x = na.unit(a)
+    if unit_x is not None:
+        b = b.to(unit_x)
+        min_step_size = min_step_size.to(unit_x)
+    a = na.value(a)
+    b = na.value(b)
+    tolerance = na.value(min_step_size)
+
+    def attach(x: na.ScalarArray) -> na.ScalarArray:
+        return x if unit_x is None else x * unit_x
+
+    def evaluate(x: na.AbstractScalar) -> tuple[na.AbstractScalar, na.AbstractScalar]:
+        f = na.as_named_array(function(attach(x)))
+        return f, na.value(f)
+
+    ratio_golden = (3 - np.sqrt(5)) / 2
+    sqrt_eps = np.sqrt(np.finfo(float).eps)
+
+    a, b = np.minimum(a, b), np.maximum(a, b)
+
+    x = a + ratio_golden * (b - a)
+    f, fx = evaluate(x)
+
+    if not isinstance(f, na.AbstractScalar):
+        return NotImplemented
+
+    shape = na.shape_broadcasted(a, b, tolerance, fx)
+    a = na.broadcast_to(a, shape).astype(float)
+    b = na.broadcast_to(b, shape).astype(float)
+    tolerance = na.broadcast_to(tolerance, shape)
+    x = na.broadcast_to(x, shape).astype(float)
+    fx = fx.astype(float)
+
+    # the second- and third-best points, which seed the parabolic steps
+    x_1 = x.copy()
+    x_2 = x.copy()
+    f_1 = fx.copy()
+    f_2 = fx.copy()
+
+    step = 0 * x
+    step_prev = 0 * x
+
+    for i in range(max_iterations):
+
+        x_mid = (a + b) / 2
+        tol_1 = sqrt_eps * np.abs(x) + tolerance / 3
+        tol_2 = 2 * tol_1
+
+        converged = np.abs(x - x_mid) <= (tol_2 - (b - a) / 2)
+
+        result = attach(x)
+
+        if callback is not None:
+            callback(i, result, f, converged)
+
+        if np.all(converged):
+            return result
+
+        active = ~converged
+
+        # a parabola through the three best points, accepted only if the
+        # last-but-one step was significant, the parabolic step is less
+        # than half of it, and it lands inside the bracket
+        r = (x - x_1) * (fx - f_2)
+        q = (x - x_2) * (fx - f_1)
+        p = (x - x_2) * q - (x - x_1) * r
+        q = 2 * (q - r)
+        p = np.where(q > 0, -p, p)
+        q = np.abs(q)
+        q_safe = np.where(q == 0, 1, q)
+        parabolic = (
+            (np.abs(step_prev) > tol_1)
+            & (np.abs(p) < np.abs(q * step_prev / 2))
+            & (p > q * (a - x))
+            & (p < q * (b - x))
+        )
+        step_parabolic = np.where(parabolic, p / q_safe, 0)
+        x_parabolic = x + step_parabolic
+        near_bound = ((x_parabolic - a) < tol_2) | ((b - x_parabolic) < tol_2)
+        sign_mid = np.sign(x_mid - x) + ((x_mid - x) == 0)
+        step_parabolic = np.where(near_bound, tol_1 * sign_mid, step_parabolic)
+
+        # otherwise a golden-section step into the larger part of the bracket
+        step_golden_full = np.where(x >= x_mid, a - x, b - x)
+        step_golden = ratio_golden * step_golden_full
+
+        step_prev, step = (
+            np.where(parabolic, step, step_golden_full),
+            np.where(parabolic, step_parabolic, step_golden),
+        )
+
+        sign_step = np.sign(step) + (step == 0)
+        u = x + sign_step * np.maximum(np.abs(step), tol_1)
+        u = np.where(active, u, x)
+        f_u, fu = evaluate(u)
+
+        better = fu <= fx
+
+        # update the bracket and the three best points
+        a_new = np.where(better, np.where(u >= x, x, a), np.where(u < x, u, a))
+        b_new = np.where(better, np.where(u >= x, b, x), np.where(u < x, b, u))
+        second = ~better & ((fu <= f_1) | (x_1 == x))
+        third = ~better & ~second & ((fu <= f_2) | (x_2 == x) | (x_2 == x_1))
+        x_2_new = np.where(better | second, x_1, np.where(third, u, x_2))
+        f_2_new = np.where(better | second, f_1, np.where(third, fu, f_2))
+        x_1_new = np.where(better, x, np.where(second, u, x_1))
+        f_1_new = np.where(better, fx, np.where(second, fu, f_1))
+        x_new = np.where(better, u, x)
+        fx_new = np.where(better, fu, fx)
+        f_new = np.where(better, f_u, f)
+
+        a = np.where(active, a_new, a)
+        b = np.where(active, b_new, b)
+        x_2 = np.where(active, x_2_new, x_2)
+        f_2 = np.where(active, f_2_new, f_2)
+        x_1 = np.where(active, x_1_new, x_1)
+        f_1 = np.where(active, f_1_new, f_1)
+        x = np.where(active, x_new, x)
+        fx = np.where(active, fx_new, fx)
+        f = np.where(active, f_new, f)
+
+    raise ValueError("Max iterations exceeded")
+
+
 @_implements(na.colorsynth.rgb)
 def colorsynth_rgb(
     spd: na.AbstractScalarArray,

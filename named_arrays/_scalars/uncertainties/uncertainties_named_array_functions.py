@@ -895,6 +895,25 @@ def optimize_root_newton(
     )
 
 
+@_implements(na.optimize.minimum_brent)
+def optimize_minimum_brent(
+        function: Callable[[na.ScalarLike], na.ScalarLike],
+        a: na.ScalarLike,
+        b: na.ScalarLike,
+        min_step_size: na.ScalarLike,
+        max_iterations: int = 100,
+        callback: None | Callable[[int, na.ScalarLike, na.ScalarLike, na.ScalarLike], None] = None,
+) -> na.UncertainScalarArray:
+    return named_arrays._scalars.scalar_named_array_functions.optimize_minimum_brent(
+        function=function,
+        a=a,
+        b=b,
+        min_step_size=min_step_size,
+        max_iterations=max_iterations,
+        callback=callback,
+    )
+
+
 @_implements(na.optimize.root_secant)
 def optimize_root_secant(
         function: Callable[[na.ScalarLike], na.ScalarLike],

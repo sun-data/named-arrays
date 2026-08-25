@@ -2130,6 +2130,32 @@ class AbstractTestAbstractArray(
                 assert np.allclose(result, expected * na.unit_normalized(array))
                 assert out is result
 
+        class TestOptimizeMinimumBrent:
+            def test_optimize_minimum_brent(
+                self,
+                func: Callable,
+                array: na.AbstractArray,
+                function: Callable[[na.AbstractArray], na.AbstractArray],
+                expected: na.AbstractArray,
+            ):
+                def callback(i, x, f, c):
+                    global out
+                    out = x
+
+                unit = na.unit_normalized(array)
+                min_step_size = 1e-6 * unit
+
+                result = func(
+                    function=function,
+                    a=(expected - 10) * unit,
+                    b=(expected + 10) * unit,
+                    min_step_size=min_step_size,
+                    callback=callback,
+                )
+
+                assert np.allclose(result, expected * unit, atol=10 * min_step_size)
+                assert out is result
+
         @pytest.mark.parametrize(
             argnames="function",
             argvalues=[

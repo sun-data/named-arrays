@@ -137,6 +137,12 @@ class AbstractTestAbstractMatrixArray(
         ):
             pass
 
+        @pytest.mark.skip
+        class TestOptimizeMinimumBrent(
+            named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestOptimizeMinimumBrent,
+        ):
+            pass
+
 
 class AbstractTestAbstractExplicitMatrixArray(
     AbstractTestAbstractMatrixArray,
