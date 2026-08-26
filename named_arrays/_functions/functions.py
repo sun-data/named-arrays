@@ -197,8 +197,8 @@ class AbstractFunctionArray(
 
     def combine_axes(
             self,
-            axes: Sequence[str] = None,
-            axis_new: str = None,
+            axes: None | Sequence[str] = None,
+            axis_new: None | str = None,
     ) -> FunctionArray:
 
         self = self.explicit
