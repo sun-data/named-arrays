@@ -1421,16 +1421,20 @@ class AbstractTestAbstractScalarArray(
     argvalues=[None, "real", "complex"],
 )
 @pytest.mark.parametrize("unit", [None, u.mm])
+@pytest.mark.parametrize("density", [False, True])
 def test_histogramdd_matches_numpy(
     edges_x: na.AbstractScalarArray,
     weights: None | str,
     unit: None | u.UnitBase,
+    density: bool,
 ):
     """
     The histogram of every orthogonal index equals a separate
     :func:`numpy.histogramdd` of that index, including points on the edges,
     outside the edges, and not a number.
     """
+    if density and (weights == "complex" or unit is not None):
+        pytest.skip("a density is neither complex nor dimensioned here")
     rng = np.random.default_rng(1)
     shape = dict(p=3, n=400, q=2)
     x = na.ScalarArray(rng.normal(0, 1, tuple(shape.values())), axes=tuple(shape))
@@ -1452,7 +1456,14 @@ def test_histogramdd_matches_numpy(
         edges_x = edges_x * unit
         edges_y = (edges_y / 10) * (10 * unit)
 
-    hist, _ = na.histogramdd(x, y, bins=[edges_x, edges_y], axis=("n", "q"), weights=w)
+    hist, _ = na.histogramdd(
+        x,
+        y,
+        bins=[edges_x, edges_y],
+        axis=("n", "q"),
+        weights=w,
+        density=density,
+    )
 
     for i in range(shape["p"]):
         edges_x_i = edges_x[dict(p=i)] if "p" in edges_x.shape else edges_x
@@ -1463,6 +1474,7 @@ def test_histogramdd_matches_numpy(
             ],
             bins=[na.value(edges_x_i).ndarray, na.value(edges_y).ndarray],
             weights=None if w is None else np.real(w[dict(p=i)].ndarray).reshape(-1),
+            density=density,
         )
         if w is not None and weights == "complex":
             expected = expected * (1 + 0.5j)
