@@ -16,6 +16,7 @@ import named_arrays as na
 __all__ = [
     "subplots",
     "plot",
+    "line_collection",
     "fill",
     "scatter",
     "stairs",
@@ -238,6 +239,113 @@ def plot(
         args = tuple(transformation(arg) for arg in args)
     return na._named_array_function(
         plot,
+        *args,
+        ax=ax,
+        axis=axis,
+        where=where,
+        components=components,
+        **kwargs,
+    )
+
+
+def line_collection(
+        *args: na.AbstractArray,
+        ax: None | matplotlib.axes.Axes | na.ScalarArray[npt.NDArray] = None,
+        axis: None | str = None,
+        where: bool | na.AbstractScalar = True,
+        transformation: None | na.transformations.AbstractTransformation = None,
+        components: None | tuple[str, ...] = None,
+        **kwargs,
+) -> na.ScalarArray[npt.NDArray]:
+    """
+    Plot a line as a sequence of separate segments.
+
+    This is a thin wrapper around :class:`matplotlib.collections.LineCollection`,
+    and around :class:`mpl_toolkits.mplot3d.art3d.Line3DCollection` if ``ax`` is
+    a 3D axes.
+
+    The difference from :func:`plot` is what matplotlib is given to draw.
+    :func:`plot` makes one :class:`matplotlib.lines.Line2D` per line, and a 3D
+    axes leaves the zorder of such a line alone, which places the whole line
+    either in front of every filled surface or behind all of them. This function
+    makes a collection instead, and a 3D axes sorts a collection into the scene
+    by its depth, so a line is drawn among the surfaces rather than over or
+    under all of them.
+
+    Each pair of adjacent points along ``axis`` becomes its own collection, since
+    a collection is sorted by a single depth and a line spanning a scene needs
+    more than one. The returned array therefore has the broadcasted shape of
+    ``*args`` with ``axis`` one element shorter.
+
+    Parameters
+    ----------
+    args
+        The coordinates of the line, ``x, y`` on a 2D axes and ``x, y, z`` on a
+        3D one.
+    ax
+        The instances of :class:`matplotlib.axes.Axes` to use.
+        If :obj:`None`, calls :func:`matplotlib.pyplot.gca` to get the current axes.
+        If an instance of :class:`named_arrays.ScalarArray`, ``ax.shape`` should be a subset of the broadcasted shape of
+        ``*args``.
+    axis
+        The name of the axis that the line should be connected along.
+        If :obj:`None`, the broadcasted shape of ``args`` should have only one element,
+        otherwise a :class:`ValueError` is raised.
+    where
+        A boolean array that selects which elements to plot
+    transformation
+        A callable that is applied to args before plotting
+    components
+        The component names of ``*args`` to plot, helpful if ``*args`` are an instance of
+        :class:`named_arrays.AbstractVectorArray`.
+    kwargs
+        Additional keyword arguments passed to
+        :class:`matplotlib.collections.LineCollection`.
+        These can be instances of :class:`named_arrays.AbstractArray`.
+        The singular spellings ``color``, ``linewidth``, and ``linestyle`` are
+        accepted and passed on as the plural forms a collection expects.
+
+    Returns
+    -------
+        An array of the collections that were drawn.
+
+    Notes
+    -----
+    A collection is given plain numbers rather than
+    :class:`astropy.units.Quantity`, since matplotlib does not convert the units
+    of the segments of a collection as it does for the data of a line. Convert
+    the arguments to the unit you want before calling this function.
+
+    Examples
+    --------
+
+    A helix, drawn a segment at a time so that each turn is sorted into the
+    scene by its own depth.
+
+    .. jupyter-execute::
+
+        import numpy as np
+        import matplotlib.pyplot as plt
+        import named_arrays as na
+
+        angle = na.linspace(0, 6 * np.pi, axis="angle", num=201)
+
+        helix = na.Cartesian3dVectorArray(
+            x=np.cos(angle),
+            y=np.sin(angle),
+            z=angle / (6 * np.pi),
+        )
+
+        fig = plt.figure();
+        ax = fig.add_subplot(projection="3d");
+
+        na.plt.line_collection(helix, axis="angle", ax=ax);
+
+    """
+    if transformation is not None:
+        args = tuple(transformation(arg) for arg in args)
+    return na._named_array_function(
+        line_collection,
         *args,
         ax=ax,
         axis=axis,
