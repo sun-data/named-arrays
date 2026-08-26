@@ -711,6 +711,12 @@ class AbstractTestAbstractVectorArray(
         ):
             pass
 
+        @pytest.mark.skip
+        class TestOptimizeMinimumBrent(
+            named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestOptimizeMinimumBrent,
+        ):
+            pass
+
         class TestColorsynth(
             named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestColorsynth,
         ):

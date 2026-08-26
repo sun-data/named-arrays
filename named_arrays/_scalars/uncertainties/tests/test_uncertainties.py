@@ -896,6 +896,35 @@ class AbstractTestAbstractUncertainScalarArray(
         ):
             pass
 
+        @pytest.mark.parametrize(
+            argnames="func",
+            argvalues=[
+                na.optimize.minimum_brent,
+            ],
+        )
+        @pytest.mark.parametrize(
+            argnames="function,expected",
+            argvalues=[
+                (
+                    lambda x, p=profile, s=shift_horizontal: p(na.value(x) - s) + 1,
+                    shift_horizontal,
+                )
+                for profile in [
+                    np.square,
+                    np.abs,
+                ]
+                for shift_horizontal in [
+                    20,
+                    na.linspace(19, 20, axis="c", num=6),
+                    na.NormalUncertainScalarArray(20, width=1, num_distribution=_num_distribution),
+                ]
+            ]
+        )
+        class TestOptimizeMinimumBrent(
+            named_arrays._scalars.tests.test_scalars.AbstractTestAbstractScalar.TestNamedArrayFunctions.TestOptimizeMinimumBrent,
+        ):
+            pass
+
 
 @pytest.mark.parametrize('array', _uncertain_scalar_arrays())
 class TestUncertainScalarArray(
