@@ -1473,7 +1473,7 @@ def test_histogramdd_matches_numpy(
                 na.value(y[dict(p=i)]).ndarray.reshape(-1),
             ],
             bins=[na.value(edges_x_i).ndarray, na.value(edges_y).ndarray],
-            weights=None if w is None else np.real(w[dict(p=i)].ndarray).reshape(-1),
+            weights=None if w is None else np.real(na.value(w[dict(p=i)]).ndarray).reshape(-1),
             density=density,
         )
         if w is not None and weights == "complex":
