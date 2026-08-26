@@ -528,51 +528,23 @@ def histogramdd(
         for b in bins
     ]
 
-    shape_bins = na.shape_broadcasted(*bins)
-    shape_hist = {
-        ax: shape_bins[ax] - 1
-        for ax in shape_bins
-        if ax not in shape_orthogonal
-    }
-    shape_hist = na.broadcast_shapes(shape_orthogonal, shape_hist)
+    for b in bins:
+        if len(set(b.axes) - set(shape_orthogonal)) != 1:
+            raise ValueError(
+                f"the edges of every dimension must have exactly one axis besides "
+                f"the orthogonal axes {tuple(shape_orthogonal)}, got {b.axes}"
+            )
 
-    unit_weights = na.unit(weights)
-
-    # bin every sample point at once with a single `bincount` over a flat
-    # index that folds the orthogonal axes in, rather than one
-    # `np.histogramdd` per orthogonal index
-    vectorizable = not density and all(
-        len(set(b.axes) - set(shape_orthogonal)) == 1 for b in bins
+    return _histogramdd_vectorized(
+        sample=sample,
+        bins=bins,
+        bins_broadcasted=bins_broadcasted,
+        axis=tuple(axis),
+        shape=shape,
+        shape_orthogonal=shape_orthogonal,
+        weights=weights,
+        density=density,
     )
-    if vectorizable:
-        return _histogramdd_vectorized(
-            sample=sample,
-            bins=bins,
-            bins_broadcasted=bins_broadcasted,
-            axis=tuple(axis),
-            shape=shape,
-            shape_orthogonal=shape_orthogonal,
-            weights=weights,
-            unit_weights=unit_weights,
-        )
-
-    hist = na.ScalarArray.empty(shape_hist)
-    hist = hist if unit_weights is None else hist << unit_weights
-
-    for i in na.ndindex(shape_orthogonal):
-        hist_i, _ = np.histogramdd(
-            sample=[s[i].ndarray_aligned(axis).reshape(-1) for s in sample],
-            bins=[b[i].ndarray for b in bins_broadcasted],
-            density=density,
-            weights=weights[i].ndarray_aligned(axis).reshape(-1) if weights is not None else weights,
-        )
-
-        hist[i] = na.ScalarArray(
-            ndarray=hist_i,
-            axes=sum((b[i].axes for b in bins_broadcasted), ()),
-        )
-
-    return hist, tuple(bins)
 
 
 def _bin_index(edges: np.ndarray, values: np.ndarray) -> np.ndarray:
@@ -613,7 +585,7 @@ def _histogramdd_vectorized(
     shape: dict[str, int],
     shape_orthogonal: dict[str, int],
     weights: None | na.AbstractScalarArray,
-    unit_weights: None | u.UnitBase,
+    density: bool,
 ) -> tuple[na.ScalarArray, tuple[na.AbstractScalarArray, ...]]:
     """
     Histogram every orthogonal index of `sample` with one call to
@@ -622,8 +594,12 @@ def _histogramdd_vectorized(
     Reproduces the binning of :func:`numpy.histogramdd`: every bin is
     half-open on the right except the last, which also contains its right
     edge, and points outside the edges (or not a number) are dropped.
-    The edges may vary along the orthogonal axes.
+    The edges may vary along the orthogonal axes. A density is normalized
+    within every orthogonal index, by the total weight of the points inside
+    the edges and the volume of every bin, so its unit is the unit of the
+    weights divided by the units of the sample.
     """
+    unit_weights = na.unit(weights)
     axes_orthogonal = tuple(shape_orthogonal)
     axes_aligned = axes_orthogonal + axis
 
@@ -635,6 +611,8 @@ def _histogramdd_vectorized(
     inside = np.ones(shape_aligned, dtype=bool)
     num_bins = []
     axes_hist = []
+    widths = []
+    unit_volume = None
     for s, b in zip(sample, bins_broadcasted):
         unit_sample = na.unit(s)
         (axis_hist,) = set(b.axes) - set(axes_orthogonal)
@@ -657,6 +635,9 @@ def _histogramdd_vectorized(
         index = index * num + index_dimension
         num_bins.append(num)
         axes_hist.append(axis_hist)
+        widths.append(np.diff(edges, axis=~0))
+        if unit_sample is not None:
+            unit_volume = unit_sample if unit_volume is None else unit_volume * unit_sample
 
     size_hist = int(np.prod(num_bins, dtype=int))
     index = index + np.arange(num_orthogonal)[:, np.newaxis] * size_hist
@@ -677,12 +658,27 @@ def _histogramdd_vectorized(
         else:
             counts = np.bincount(index, weights=w, minlength=minlength)
 
+    counts = counts.reshape((num_orthogonal,) + tuple(num_bins))
+
+    if density:
+        # as numpy: divide by the total weight inside the edges and by the
+        # width of every bin along every dimension
+        total = counts.reshape(num_orthogonal, size_hist).sum(axis=~0)
+        counts = counts / total.reshape((num_orthogonal,) + len(num_bins) * (1,))
+        for d, width in enumerate(widths):
+            shape_width = [num_orthogonal] + len(num_bins) * [1]
+            shape_width[d + 1] = num_bins[d]
+            counts = counts / width.reshape(shape_width)
+
     shape_result = tuple(shape[a] for a in axes_orthogonal) + tuple(num_bins)
     hist = na.ScalarArray(
         ndarray=counts.reshape(shape_result),
         axes=axes_orthogonal + tuple(axes_hist),
     )
-    hist = hist if unit_weights is None else hist << unit_weights
+    if unit_weights is not None:
+        hist = hist << unit_weights
+    if density and unit_volume is not None:
+        hist = hist / unit_volume
 
     return hist, tuple(bins)
 

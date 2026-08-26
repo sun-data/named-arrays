@@ -1433,8 +1433,6 @@ def test_histogramdd_matches_numpy(
     :func:`numpy.histogramdd` of that index, including points on the edges,
     outside the edges, and not a number.
     """
-    if density and (weights == "complex" or unit is not None):
-        pytest.skip("a density is neither complex nor dimensioned here")
     rng = np.random.default_rng(1)
     shape = dict(p=3, n=400, q=2)
     x = na.ScalarArray(rng.normal(0, 1, tuple(shape.values())), axes=tuple(shape))
@@ -1455,6 +1453,8 @@ def test_histogramdd_matches_numpy(
         y = y * unit
         edges_x = edges_x * unit
         edges_y = (edges_y / 10) * (10 * unit)
+        if w is not None:
+            w = w * u.photon
 
     hist, _ = na.histogramdd(
         x,
@@ -1477,11 +1477,22 @@ def test_histogramdd_matches_numpy(
             density=density,
         )
         if w is not None and weights == "complex":
-            expected = expected * (1 + 0.5j)
+            expected = expected * (1 + 0.5j) if not density else expected
         result = na.value(hist[dict(p=i)]).ndarray_aligned(("bx", "by"))
-        assert np.array_equal(result, expected)
+        assert np.allclose(result, expected, rtol=1e-12, atol=0)
 
-    assert na.unit(hist) == na.unit(w)
+    unit_expected = na.unit_normalized(w)
+    if density and unit is not None:
+        unit_expected = unit_expected / (unit * unit)
+    assert na.unit_normalized(hist) == unit_expected
+
+
+def test_histogramdd_edges_with_two_axes():
+    """Edges with more than one axis besides the orthogonal axes are an error."""
+    x = na.ScalarArray(np.linspace(-1, 1, 11), axes="n")
+    edges = na.linspace(-1, 1, axis="bx", num=5) + na.linspace(0, 0.1, axis="c", num=2)
+    with pytest.raises(ValueError, match="exactly one axis"):
+        na.histogramdd(x, bins=[edges], axis="n")
 
 
 @pytest.mark.parametrize('array', _scalar_arrays())
