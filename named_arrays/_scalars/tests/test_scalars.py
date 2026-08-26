@@ -1408,8 +1408,13 @@ class AbstractTestAbstractScalarArray(
     argvalues=[
         na.linspace(-2, 2, axis="bx", num=17),
         na.ScalarArray(np.sort(np.random.default_rng(2).uniform(-2, 2, 13)), axes="bx"),
+        na.linspace(-2, 2, axis="bx", num=17) + na.linspace(0, 0.3, axis="p", num=3),
+        na.ScalarArray(
+            np.sort(np.random.default_rng(2).uniform(-2, 2, (3, 13)), axis=~0),
+            axes=("p", "bx"),
+        ),
     ],
-    ids=["uniform", "irregular"],
+    ids=["uniform", "irregular", "uniform-per-slice", "irregular-per-slice"],
 )
 @pytest.mark.parametrize(
     argnames="weights",
@@ -1430,8 +1435,8 @@ def test_histogramdd_matches_numpy(
     shape = dict(p=3, n=400, q=2)
     x = na.ScalarArray(rng.normal(0, 1, tuple(shape.values())), axes=tuple(shape))
     y = na.ScalarArray(rng.normal(0, 1, tuple(shape.values())), axes=tuple(shape))
-    x.ndarray[0, :4, 0] = edges_x.ndarray[-1]
-    x.ndarray[0, 4:8, 0] = edges_x.ndarray[3]
+    x.ndarray[0, :4, 0] = na.value(edges_x[dict(p=0)] if "p" in edges_x.shape else edges_x).ndarray[-1]
+    x.ndarray[0, 4:8, 0] = na.value(edges_x[dict(p=0)] if "p" in edges_x.shape else edges_x).ndarray[3]
     x.ndarray[1, :4, 0] = np.nan
     x.ndarray[1, 4:8, 0] = 50
     edges_y = na.linspace(-3, 3, axis="by", num=9)
@@ -1450,12 +1455,13 @@ def test_histogramdd_matches_numpy(
     hist, _ = na.histogramdd(x, y, bins=[edges_x, edges_y], axis=("n", "q"), weights=w)
 
     for i in range(shape["p"]):
+        edges_x_i = edges_x[dict(p=i)] if "p" in edges_x.shape else edges_x
         expected, _ = np.histogramdd(
             sample=[
                 na.value(x[dict(p=i)]).ndarray.reshape(-1),
                 na.value(y[dict(p=i)]).ndarray.reshape(-1),
             ],
-            bins=[na.value(edges_x).ndarray, na.value(edges_y).ndarray],
+            bins=[na.value(edges_x_i).ndarray, na.value(edges_y).ndarray],
             weights=None if w is None else np.real(w[dict(p=i)].ndarray).reshape(-1),
         )
         if w is not None and weights == "complex":

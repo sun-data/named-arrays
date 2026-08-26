@@ -538,18 +538,17 @@ def histogramdd(
 
     unit_weights = na.unit(weights)
 
-    # every histogram shares the same edges when the edges carry no
-    # orthogonal axis: bin every sample point at once with a single
-    # `bincount` over a flat index that folds the orthogonal axes in, rather
-    # than one `np.histogramdd` per orthogonal index
-    vectorizable = (
-        not density
-        and all(len(b.axes) == 1 and b.axes[0] not in shape_orthogonal for b in bins)
+    # bin every sample point at once with a single `bincount` over a flat
+    # index that folds the orthogonal axes in, rather than one
+    # `np.histogramdd` per orthogonal index
+    vectorizable = not density and all(
+        len(set(b.axes) - set(shape_orthogonal)) == 1 for b in bins
     )
     if vectorizable:
         return _histogramdd_vectorized(
             sample=sample,
             bins=bins,
+            bins_broadcasted=bins_broadcasted,
             axis=tuple(axis),
             shape=shape,
             shape_orthogonal=shape_orthogonal,
@@ -580,32 +579,36 @@ def _bin_index(edges: np.ndarray, values: np.ndarray) -> np.ndarray:
     """
     The bin of every value: the ``i`` with ``edges[i] <= value < edges[i + 1]``.
 
-    Equivalent to ``np.searchsorted(edges, values, side="right") - 1``, but
-    uniform edges are located arithmetically in one pass, with the same
-    rounding correction :func:`numpy.histogram` applies, instead of by a
-    binary search of every value.
+    `edges` holds one row of edges for every row of `values`. Equivalent to
+    ``np.searchsorted(edges[r], values[r], side="right") - 1`` for every row
+    ``r``, but uniform edges are located arithmetically in one pass, with
+    the same rounding correction :func:`numpy.histogram` applies, instead of
+    by a binary search of every value.
     """
-    num = len(edges) - 1
-    width = np.diff(edges)
-    uniform = num > 0 and np.allclose(width, width[0], rtol=1e-10, atol=0)
+    num = edges.shape[~0] - 1
+    width = np.diff(edges, axis=~0)
+    uniform = num > 0 and np.allclose(width, width[:, :1], rtol=1e-10, atol=0)
     if not uniform:
-        return np.searchsorted(edges, values, side="right") - 1
+        return np.stack(
+            [np.searchsorted(e, v, side="right") - 1 for e, v in zip(edges, values)]
+        )
 
     with np.errstate(invalid="ignore", divide="ignore", over="ignore"):
-        index = np.floor((values - edges[0]) / width[0])
+        index = np.floor((values - edges[:, :1]) / width[:, :1])
         index = np.nan_to_num(index, nan=-1, posinf=num, neginf=-1)
         index = np.clip(index, -1, num).astype(np.intp)
         # correct for rounding in the division above, exactly as numpy does
-        above = np.clip(index + 1, 0, num)
-        below = np.clip(index, 0, num)
-        index = np.where((values >= edges[above]) & (index < num), index + 1, index)
-        index = np.where((values < edges[below]) & (index >= 0), index - 1, index)
+        above = np.take_along_axis(edges, np.clip(index + 1, 0, num), axis=~0)
+        below = np.take_along_axis(edges, np.clip(index, 0, num), axis=~0)
+        index = np.where((values >= above) & (index < num), index + 1, index)
+        index = np.where((values < below) & (index >= 0), index - 1, index)
     return index
 
 
 def _histogramdd_vectorized(
     sample: list[na.AbstractScalarArray],
     bins: list[na.AbstractScalarArray],
+    bins_broadcasted: list[na.AbstractScalarArray],
     axis: tuple[str, ...],
     shape: dict[str, int],
     shape_orthogonal: dict[str, int],
@@ -619,6 +622,7 @@ def _histogramdd_vectorized(
     Reproduces the binning of :func:`numpy.histogramdd`: every bin is
     half-open on the right except the last, which also contains its right
     edge, and points outside the edges (or not a number) are dropped.
+    The edges may vary along the orthogonal axes.
     """
     axes_orthogonal = tuple(shape_orthogonal)
     axes_aligned = axes_orthogonal + axis
@@ -631,24 +635,28 @@ def _histogramdd_vectorized(
     inside = np.ones(shape_aligned, dtype=bool)
     num_bins = []
     axes_hist = []
-    for s, b in zip(sample, bins):
+    for s, b in zip(sample, bins_broadcasted):
         unit_sample = na.unit(s)
-        edges = b.ndarray
+        (axis_hist,) = set(b.axes) - set(axes_orthogonal)
+        num = b.shape[axis_hist] - 1
+        edges = b.ndarray_aligned(axes_orthogonal + (axis_hist,))
+        edges = edges.reshape(num_orthogonal, num + 1)
         values = s.ndarray_aligned(axes_aligned).reshape(shape_aligned)
         if isinstance(edges, u.Quantity):
             edges = edges.to_value(unit_sample if unit_sample is not None else u.dimensionless_unscaled)
         if isinstance(values, u.Quantity):
             values = values.value
         edges = np.asarray(edges)
-        num = len(edges) - 1
+        first = edges[:, :1]
+        last = edges[:, ~0:]
         with np.errstate(invalid="ignore"):
-            inside &= (values >= edges[0]) & (values <= edges[-1])
+            inside &= (values >= first) & (values <= last)
             index_dimension = _bin_index(edges, values)
-            index_dimension = np.where(values == edges[-1], num - 1, index_dimension)
+            index_dimension = np.where(values == last, num - 1, index_dimension)
         index_dimension = np.clip(index_dimension, 0, max(num - 1, 0))
         index = index * num + index_dimension
         num_bins.append(num)
-        axes_hist.append(b.axes[0])
+        axes_hist.append(axis_hist)
 
     size_hist = int(np.prod(num_bins, dtype=int))
     index = index + np.arange(num_orthogonal)[:, np.newaxis] * size_hist
