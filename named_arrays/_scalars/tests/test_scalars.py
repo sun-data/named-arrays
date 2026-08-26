@@ -1403,6 +1403,69 @@ class AbstractTestAbstractScalarArray(
             pass
 
 
+@pytest.mark.parametrize(
+    argnames="edges_x",
+    argvalues=[
+        na.linspace(-2, 2, axis="bx", num=17),
+        na.ScalarArray(np.sort(np.random.default_rng(2).uniform(-2, 2, 13)), axes="bx"),
+    ],
+    ids=["uniform", "irregular"],
+)
+@pytest.mark.parametrize(
+    argnames="weights",
+    argvalues=[None, "real", "complex"],
+)
+@pytest.mark.parametrize("unit", [None, u.mm])
+def test_histogramdd_matches_numpy(
+    edges_x: na.AbstractScalarArray,
+    weights: None | str,
+    unit: None | u.UnitBase,
+):
+    """
+    The histogram of every orthogonal index equals a separate
+    :func:`numpy.histogramdd` of that index, including points on the edges,
+    outside the edges, and not a number.
+    """
+    rng = np.random.default_rng(1)
+    shape = dict(p=3, n=400, q=2)
+    x = na.ScalarArray(rng.normal(0, 1, tuple(shape.values())), axes=tuple(shape))
+    y = na.ScalarArray(rng.normal(0, 1, tuple(shape.values())), axes=tuple(shape))
+    x.ndarray[0, :4, 0] = edges_x.ndarray[-1]
+    x.ndarray[0, 4:8, 0] = edges_x.ndarray[3]
+    x.ndarray[1, :4, 0] = np.nan
+    x.ndarray[1, 4:8, 0] = 50
+    edges_y = na.linspace(-3, 3, axis="by", num=9)
+    if weights is None:
+        w = None
+    else:
+        w = na.ScalarArray(rng.random(tuple(shape.values())), axes=tuple(shape))
+        if weights == "complex":
+            w = w + 0.5j * w
+    if unit is not None:
+        x = x * unit
+        y = y * unit
+        edges_x = edges_x * unit
+        edges_y = (edges_y / 10) * (10 * unit)
+
+    hist, _ = na.histogramdd(x, y, bins=[edges_x, edges_y], axis=("n", "q"), weights=w)
+
+    for i in range(shape["p"]):
+        expected, _ = np.histogramdd(
+            sample=[
+                na.value(x[dict(p=i)]).ndarray.reshape(-1),
+                na.value(y[dict(p=i)]).ndarray.reshape(-1),
+            ],
+            bins=[na.value(edges_x).ndarray, na.value(edges_y).ndarray],
+            weights=None if w is None else np.real(w[dict(p=i)].ndarray).reshape(-1),
+        )
+        if w is not None and weights == "complex":
+            expected = expected * (1 + 0.5j)
+        result = na.value(hist[dict(p=i)]).ndarray_aligned(("bx", "by"))
+        assert np.array_equal(result, expected)
+
+    assert na.unit(hist) == na.unit(w)
+
+
 @pytest.mark.parametrize('array', _scalar_arrays())
 class TestScalarArray(
     AbstractTestAbstractScalarArray,
