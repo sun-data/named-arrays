@@ -5,6 +5,7 @@ import numpy.typing as npt
 import numexpr
 import matplotlib.axes
 import matplotlib.artist
+import matplotlib.collections
 import matplotlib.pyplot as plt
 import matplotlib.animation
 import mpl_toolkits.mplot3d
@@ -42,6 +43,7 @@ RANDOM_FUNCTIONS = (
 )
 PLT_PLOT_LIKE_FUNCTIONS = (
     na.plt.plot,
+    na.plt.line_collection,
     na.plt.fill,
 )
 PLT_AXES_SETTERS = (
@@ -913,14 +915,29 @@ def plt_plot_like(
         kwargs_broadcasted[k] = na.broadcast_to(kwarg, shape_orthogonal)
     kwargs = kwargs_broadcasted
 
-    result = na.ScalarArray.empty(shape=shape_orthogonal, dtype=object)
+    # a line drawn as a collection is drawn a segment at a time, so it has one
+    # artist per gap between samples rather than one for the whole line
+    is_line_collection = func is na.plt.line_collection
+    if is_line_collection:
+        shape_result = shape_orthogonal | {axis: shape[axis] - 1}
+    else:
+        shape_result = shape_orthogonal
+
+    result = na.ScalarArray.empty(shape=shape_result, dtype=object)
 
     for index in na.ndindex(shape_orthogonal):
         if where[index]:
             axes = ax[index].ndarray
             args_index = tuple(arg[index].ndarray for arg in args)
             kwargs_index = {k: kwargs[k][index].ndarray for k in kwargs}
-            if _is_fill_3d(func, axes, args_index):
+            if is_line_collection:
+                result[index] = _line_collection(
+                    ax=axes,
+                    args=args_index,
+                    kwargs=kwargs_index,
+                    axis=axis,
+                )
+            elif _is_fill_3d(func, axes, args_index):
                 result[index] = _fill_3d(axes, args_index, kwargs_index)
             else:
                 func_matplotlib = getattr(axes, func.__name__)
@@ -928,6 +945,53 @@ def plt_plot_like(
                     *args_index,
                     **kwargs_index,
                 )[0]
+
+    return result
+
+
+def _line_collection(
+        ax: matplotlib.axes.Axes,
+        args: tuple,
+        kwargs: dict[str, Any],
+        axis: str,
+) -> na.ScalarArray:
+    """
+    Draw a line as one collection per segment.
+
+    A collection is sorted into a 3D scene by a single depth, the minimum over
+    its points, so a line which spans the scene is drawn a segment at a time.
+    Given one depth for its whole length it would be placed either in front of
+    every surface it crosses or behind all of them.
+    """
+    is_3d = isinstance(ax, mpl_toolkits.mplot3d.Axes3D)
+
+    aliases = {
+        "color": "colors",
+        "linewidth": "linewidths",
+        "linestyle": "linestyles",
+    }
+    kwargs = {aliases.get(k, k): kwargs[k] for k in kwargs}
+
+    vertices = np.stack([u.Quantity(a).value for a in args], axis=~0)
+
+    result = na.ScalarArray.empty(
+        shape={axis: len(vertices) - 1},
+        dtype=object,
+    )
+
+    for i in range(len(vertices) - 1):
+        segment = [vertices[i : i + 2]]
+        if is_3d:
+            collection = mpl_toolkits.mplot3d.art3d.Line3DCollection(
+                segment,
+                **kwargs,
+            )
+            ax.add_collection3d(collection)
+        else:
+            collection = matplotlib.collections.LineCollection(segment, **kwargs)
+            ax.add_collection(collection)
+            ax.autoscale_view()
+        result[{axis: i}] = collection
 
     return result
 

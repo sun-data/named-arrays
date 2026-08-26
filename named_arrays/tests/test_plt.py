@@ -784,3 +784,139 @@ def test_fill_2d():
 
     assert len(ax.patches) == 1
     plt.close(fig)
+
+
+def _diagonal() -> na.Cartesian3dVectorArray:
+    """A line crossing the origin, sampled at five points."""
+    t = na.linspace(-2, 2, axis="t", num=5)
+    return na.Cartesian3dVectorArray(x=t, y=t, z=0 * t) * u.mm
+
+
+def test_line_collection_3d():
+    """A line drawn on a 3D axes becomes one collection per segment."""
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection="3d")
+
+    result = na.plt.line_collection(
+        _diagonal(),
+        ax=ax,
+        axis="t",
+        components=("x", "y", "z"),
+    )
+
+    # one artist per gap between samples, rather than one for the whole line
+    assert na.shape(result) == dict(t=4)
+    assert len(ax.collections) == 4
+    assert not ax.lines
+
+    for artist in result.ndarray.flat:
+        assert isinstance(artist, mpl_toolkits.mplot3d.art3d.Line3DCollection)
+
+    plt.close(fig)
+
+
+def test_line_collection_2d():
+    """On a 2D axes it is an ordinary line collection, and it sets the limits."""
+    fig, ax = plt.subplots()
+
+    result = na.plt.line_collection(
+        _diagonal(),
+        ax=ax,
+        axis="t",
+        components=("x", "y"),
+    )
+
+    assert na.shape(result) == dict(t=4)
+    assert len(ax.collections) == 4
+    assert not ax.lines
+
+    # the axes has been told how big the line is
+    assert ax.get_xlim()[0] < -2
+    assert ax.get_xlim()[1] > 2
+
+    plt.close(fig)
+
+
+def test_line_collection_3d_is_depth_sorted():
+    """
+    A line drawn this way is sorted into a 3D scene by its depth.
+
+    This is the point of drawing one as a collection. A 3D axes sorts only its
+    collections and patches, so a line drawn by :func:`named_arrays.plt.plot`
+    keeps the zorder it was given and is placed either in front of every filled
+    surface or behind all of them.
+    """
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection="3d")
+
+    # looking along the y axis, so the line at negative y is the nearer one
+    ax.view_init(elev=0, azim=-90)
+
+    def line(y: float) -> na.Cartesian3dVectorArray:
+        t = na.linspace(-2, 2, axis="t", num=5)
+        return na.Cartesian3dVectorArray(x=t, y=0 * t + y, z=0 * t) * u.mm
+
+    near = na.plt.line_collection(
+        line(-4), ax=ax, axis="t", components=("x", "y", "z")
+    )
+    far = na.plt.line_collection(
+        line(4), ax=ax, axis="t", components=("x", "y", "z")
+    )
+    plotted = na.plt.plot(line(0), ax=ax, axis="t", components=("x", "y", "z"))
+
+    fig.canvas.draw()
+
+    zorder_near = [a.get_zorder() for a in near.ndarray.flat]
+    zorder_far = [a.get_zorder() for a in far.ndarray.flat]
+    zorder_plotted = [a.get_zorder() for a in np.atleast_1d(plotted.ndarray).flat]
+
+    plt.close(fig)
+
+    # every segment of the nearer line is drawn after every segment of the
+    # further one, which the axes worked out for itself
+    assert min(zorder_near) > max(zorder_far)
+
+    # while a plotted line is left where it started, underneath both of them
+    assert all(z < min(zorder_far) for z in zorder_plotted)
+
+
+def test_line_collection_kwargs_singular():
+    """The spellings a line takes are accepted for a collection."""
+    fig, ax = plt.subplots()
+
+    result = na.plt.line_collection(
+        _diagonal(),
+        ax=ax,
+        axis="t",
+        components=("x", "y"),
+        color="tab:red",
+        linewidth=2,
+        linestyle="--",
+    )
+
+    artist = result[dict(t=0)].ndarray
+    assert artist.get_linewidth()[0] == 2
+    assert tuple(artist.get_color()[0]) == matplotlib.colors.to_rgba("tab:red")
+
+    plt.close(fig)
+
+
+def test_line_collection_transformation():
+    """The line is moved before it is drawn, as with the other plotting functions."""
+    fig, ax = plt.subplots()
+
+    shift = 10 * u.mm
+    result = na.plt.line_collection(
+        _diagonal(),
+        ax=ax,
+        axis="t",
+        components=("x", "y"),
+        transformation=na.transformations.Cartesian3dTranslation(x=shift),
+    )
+
+    segment = result[dict(t=0)].ndarray.get_segments()[0]
+
+    # the line started at -2 mm and has been moved along by ten
+    assert segment[0][0] == pytest.approx(-2 + shift.to_value(u.mm))
+
+    plt.close(fig)
