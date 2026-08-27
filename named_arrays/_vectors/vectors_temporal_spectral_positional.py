@@ -93,8 +93,8 @@ class ExplicitTemporalSpectralWcsPositionalVectorArray(
     AbstractImplicitTemporalSpectralPositionalVectorArray,
     na.AbstractWcsVector,
 ):
-    time: na.AbstractScalar = _required()
-    wavelength: na.AbstractScalar = _required()
+    time: na.AbstractExplicitScalarArray = _required()
+    wavelength: na.AbstractExplicitScalarArray = _required()
     crval: na.AbstractSpectralPositionalVectorArray = _required()
     crpix: na.AbstractCartesianNdVectorArray = _required()
     cdelt: na.AbstractSpectralPositionalVectorArray = _required()
@@ -114,7 +114,7 @@ class ExplicitTemporalWcsSpectralPositionalVectorArray(
     AbstractImplicitTemporalSpectralPositionalVectorArray,
     na.AbstractWcsVector,
 ):
-    time: na.AbstractScalar = _required()
+    time: na.AbstractExplicitScalarArray = _required()
     crval: na.AbstractSpectralPositionalVectorArray = _required()
     crpix: na.AbstractCartesianNdVectorArray = _required()
     cdelt: na.AbstractSpectralPositionalVectorArray = _required()

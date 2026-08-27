@@ -605,7 +605,7 @@ class AbstractUncertainScalarArray(
 @dataclasses.dataclass(eq=False, repr=False)
 class UncertainScalarArray(
     AbstractUncertainScalarArray,
-    na.AbstractExplicitArray,
+    na.AbstractExplicitScalarArray,
     Generic[NominalArrayT, DistributionArrayT],
 ):
     nominal: NominalArrayT = 0
