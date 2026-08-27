@@ -329,13 +329,18 @@ def test_transpose_weights_conservative(
 
 def test_weights_seed():
     """
-    The output grid of a conservative build is perturbed to break degenerate
-    overlaps, so the result is only reproducible if that perturbation is seeded.
+    A swept conservative build perturbs the output grid to break degenerate
+    overlaps, so its result is only reproducible if that perturbation is seeded.
+
+    The grid is sheared so that it is not axis-aligned. `regridding` 3.4 resamples
+    a uniform, axis-aligned lattice with a clipping kernel that resolves
+    degeneracies geometrically and so is never perturbed; that case is covered by
+    :func:`test_weights_seed_unperturbed` below.
     """
     kwargs = dict(
         coordinates_input=na.Cartesian2dVectorArray(x, y),
         coordinates_output=na.Cartesian2dVectorArray(
-            x=1.1 * x + 0.01,
+            x=1.1 * x + 0.01 + 0.05 * y,
             y=1.2 * y + 0.01,
         ),
         values_input=na.random.normal(0, 1, shape_random=shape_centers),
@@ -360,3 +365,26 @@ def test_weights_seed():
     result_unperturbed = na.regridding.regrid(perturb=False, seed=0, **kwargs)
     result_unperturbed_expected = na.regridding.regrid(perturb=False, seed=1, **kwargs)
     assert np.all(result_unperturbed == result_unperturbed_expected)
+
+
+def test_weights_seed_unperturbed():
+    """
+    A uniform, axis-aligned output lattice is resampled by the clipping kernel
+    added in `regridding` 3.4, which resolves degenerate overlaps geometrically.
+    Nothing is perturbed, so the seed cannot change the result and every call
+    already reproduces.
+    """
+    kwargs = dict(
+        coordinates_input=na.Cartesian2dVectorArray(x, y),
+        coordinates_output=na.Cartesian2dVectorArray(
+            x=1.1 * x + 0.01,
+            y=1.2 * y + 0.01,
+        ),
+        values_input=na.random.normal(0, 1, shape_random=shape_centers),
+        method="conservative",
+    )
+
+    result = na.regridding.regrid(**kwargs)
+
+    assert np.all(na.regridding.regrid(seed=1, **kwargs) == result)
+    assert np.all(na.regridding.regrid(seed=None, **kwargs) == result)
