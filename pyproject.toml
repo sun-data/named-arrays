@@ -26,7 +26,7 @@ dependencies = [
     "astroscrappy",
     "ndfilters~=1.0",
     "colorsynth~=1.0",
-    "regridding~=3.3",
+    "regridding~=3.4",
     "xarray",
 ]
 dynamic = ["version"]
