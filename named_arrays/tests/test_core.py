@@ -173,6 +173,24 @@ class _GetitemContainer:
     size: int = dataclasses.field(init=False, default=-1)
 
 
+@dataclasses.dataclass
+class _MeasuredContainer:
+    """A dataclass carrying measurements which do not shape it."""
+    data: na.AbstractArray
+    measurement: None | na.AbstractArray = None
+    measurement_2: None | na.AbstractArray = None
+
+    @property
+    def shape(self) -> dict[str, int]:
+        return na.shape(self.data)
+
+
+@dataclasses.dataclass
+class _IndexableContainer(na.Indexable):
+    """A dataclass which inherits its shape rather than declaring one."""
+    data: na.AbstractArray
+
+
 class TestGetitem:
     """Tests for the standalone :func:`named_arrays.getitem` function."""
 
@@ -407,6 +425,38 @@ class TestShape:
         a = [na.arange(0, 5, axis="x"), na.arange(0, 3, axis="x")]
         with pytest.raises(ValueError, match="shapes .* are not compatible"):
             na.shape(a)
+
+    def test_shape_dataclass_declared(self):
+        """A dataclass which says what its shape is, is believed."""
+        container = _MeasuredContainer(
+            data=self._x(),
+            measurement=self._y(),
+        )
+        assert na.shape(container) == {"x": 5}
+
+    def test_shape_dataclass_declared_ignores_clashing_measurements(self):
+        """
+        Two measurements sampled differently sit alongside each other.
+
+        Their axes share a name and disagree on its length, which is only a
+        contradiction if the object is taken to be shaped by both of them.
+        """
+        container = _MeasuredContainer(
+            data=self._x(),
+            measurement=na.arange(0, 3, axis="wavelength"),
+            measurement_2=na.arange(0, 7, axis="wavelength"),
+        )
+        assert na.shape(container) == {"x": 5}
+
+    def test_shape_dataclass_inherited_is_not_declared(self):
+        """
+        Inheriting the shape from :class:`named_arrays.Indexable` is not
+        declaring one, since that property is this function; believing it
+        would recurse forever.
+        """
+        container = _IndexableContainer(data=self._x())
+        assert na.shape(container) == {"x": 5}
+        assert container.shape == {"x": 5}
 
 
 class AbstractTestAbstractArray(

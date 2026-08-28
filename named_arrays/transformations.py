@@ -233,7 +233,7 @@ class AbstractTranslation(
 
     @property
     def shape(self) -> dict[str, int]:
-        return self.vector.shape
+        return na.shape(self.vector)
 
     def __call__(self, a: na.AbstractVectorArray) -> na.AbstractVectorArray:
         return a + self.vector
@@ -357,7 +357,7 @@ class AbstractLinearTransformation(
 
     @property
     def shape(self) -> dict[str, int]:
-        return self.matrix.shape
+        return na.shape(self.matrix)
 
     def __call__(self, a: na.AbstractVectorArray) -> na.AbstractVectorArray:
         return self.matrix @ a
@@ -526,8 +526,8 @@ class AbstractAffineTransformation(
     @property
     def shape(self) -> dict[str, int]:
         return na.broadcast_shapes(
-            self.transformation_linear.shape,
-            self.translation.shape,
+            na.shape(self.transformation_linear),
+            na.shape(self.translation),
         )
 
     def __call__(self, a: na.AbstractVectorArray) -> na.AbstractVectorArray:
@@ -625,7 +625,7 @@ class AbstractTransformationList(
 
     @property
     def shape(self) -> dict[str, int]:
-        return na.broadcast_shapes(*[t.shape for t in self.transformations])
+        return na.broadcast_shapes(*[na.shape(t) for t in self.transformations])
 
     def __iter__(self) -> Iterator[AbstractTransformation]:
         if self.intrinsic:
