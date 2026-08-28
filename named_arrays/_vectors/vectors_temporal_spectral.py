@@ -86,7 +86,7 @@ class ExplicitTemporalWcsSpectralVectorArray(
     AbstractImplicitTemporalSpectralVectorArray,
     na.AbstractWcsVector,
 ):
-    time: na.AbstractScalar = _required()
+    time: na.AbstractExplicitScalarArray = _required()
     crval: AbstractTemporalSpectralVectorArray = _required()
     crpix: na.AbstractCartesianNdVectorArray = _required()
     cdelt: AbstractTemporalSpectralVectorArray = _required()

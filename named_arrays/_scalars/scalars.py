@@ -18,6 +18,7 @@ __all__ = [
     "AbstractScalar",
     "AbstractScalarArray",
     "ScalarLike",
+    "AbstractExplicitScalarArray",
     "ScalarArray",
     "AbstractImplicitScalarArray",
     "AbstractScalarRandomSample",
@@ -816,9 +817,17 @@ ScalarLike = Union[na.QuantityLike, AbstractScalar]
 
 
 @dataclasses.dataclass(eq=False, repr=False)
+class AbstractExplicitScalarArray(
+    AbstractScalar,
+    na.AbstractExplicitArray,
+):
+    """An interface describing an explicit physical scalar."""
+
+
+@dataclasses.dataclass(eq=False, repr=False)
 class ScalarArray(
     AbstractScalarArray,
-    na.AbstractExplicitArray,
+    AbstractExplicitScalarArray,
     Generic[NDArrayT],
 ):
     """

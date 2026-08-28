@@ -86,7 +86,7 @@ class ExplicitTemporalWcsPositionalVectorArray(
     AbstractImplicitTemporalPositionalVectorArray,
     na.AbstractWcsVector,
 ):
-    time: na.AbstractScalar = _required()
+    time: na.AbstractExplicitScalarArray = _required()
     crval: na.AbstractPositionalVectorArray = _required()
     crpix: na.AbstractCartesianNdVectorArray = _required()
     cdelt: na.AbstractPositionalVectorArray = _required()
