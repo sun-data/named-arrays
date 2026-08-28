@@ -60,9 +60,15 @@ class ExplicitTemporalWcsDopplerPositionalVectorArray(
 ):
     time: na.AbstractExplicitScalarArray = _required()
     wavelength_rest: na.AbstractExplicitScalarArray = _required()
-    crval: na.AbstractSpectralPositionalVectorArray = _required()
+    crval: na.SpectralPositionalVectorArray[
+        na.Cartesian2dVectorArray[na.AbstractExplicitScalarArray, na.AbstractExplicitScalarArray],
+        na.AbstractExplicitScalarArray,
+    ] = _required()
     crpix: na.AbstractCartesianNdVectorArray = _required()
-    cdelt: na.AbstractSpectralPositionalVectorArray = _required()
+    cdelt: na.SpectralPositionalVectorArray[
+        na.Cartesian2dVectorArray[na.AbstractExplicitScalarArray, na.AbstractExplicitScalarArray],
+        na.AbstractExplicitScalarArray,
+    ] = _required()
     pc: na.AbstractSpectralPositionalMatrixArray = _required()
     shape_wcs: dict[str, int] = _required()
 
