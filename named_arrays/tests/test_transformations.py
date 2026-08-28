@@ -271,3 +271,14 @@ def test_compose_none_none():
 
 
 
+
+
+def test_shape_of_a_transformation_by_a_plain_number():
+    """
+    A transformation can be by a plain number, which has no shape of its own.
+
+    Its shape is the shape of what it transforms by, and asking a number for
+    its shape directly would fail.
+    """
+    assert na.shape(na.transformations.Translation(vector=1)) == dict()
+    assert na.transformations.Translation(vector=1).shape == dict()
