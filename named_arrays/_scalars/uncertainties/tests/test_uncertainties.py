@@ -1246,3 +1246,42 @@ class TestUncertainScalarLinearSpace(
             return
 
         assert np.allclose(array.volume_cell(axis), array.explicit.volume_cell(axis))
+
+
+def test_interp_axis_uncertain_xp():
+    """
+    The axis to interpolate along survives an uncertain ``xp``.
+
+    Each of the nominal and the distribution is interpolated on its own, and
+    the axis has to be carried into both. Without it the table is taken to
+    have a single axis, and a table which has more than one raises.
+    """
+    axis = "wavelength"
+    xp = na.linspace(0, 10, axis=axis, num=11)
+    fp = 2 * xp
+    x = na.linspace(0, 10, axis=axis, num=5)
+
+    def uncertain(a):
+        return na.NormalUncertainScalarArray(a, width=0.01)
+
+    result = na.interp(x, uncertain(xp), uncertain(fp), axis=axis)
+
+    assert na.shape(result) == {axis: 5}
+
+    # the table is a line, so interpolating it gives the line back
+    assert np.allclose(result.nominal, na.interp(x, xp, fp, axis=axis))
+
+
+def test_interp_axis_uncertain_xp_extra_axis():
+    """An uncertain table carrying a second axis needs the axis to be named."""
+    axis = "wavelength"
+    xp = na.linspace(0, 10, axis=axis, num=11) + na.linspace(0, 1, axis="channel", num=3)
+    fp = 2 * xp
+    x = na.linspace(0, 10, axis=axis, num=5)
+
+    def uncertain(a):
+        return na.NormalUncertainScalarArray(a, width=0.01)
+
+    result = na.interp(x, uncertain(xp), uncertain(fp), axis=axis)
+
+    assert na.shape(result) == {axis: 5, "channel": 3}
