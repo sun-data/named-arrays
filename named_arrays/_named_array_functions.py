@@ -544,6 +544,15 @@ def shape(a: na.ArrayLike) -> dict[str, int]:
     :func:`broadcast_shapes` of the shapes of all the array-like leaves, so a
     container of compatible arrays reports their combined broadcasted shape.
 
+    A dataclass which defines its own :attr:`shape` is believed rather than
+    walked. This is for objects carrying arrays which they are not themselves
+    shaped by, a table of measurements they were fitted against being the usual
+    case: such a table is sampled along an axis of its own, which has nothing
+    to say about the shape of the object holding it and need not agree with the
+    axes of any other table alongside it. Inheriting :attr:`shape` from
+    :class:`named_arrays.mixins.Indexable` is not defining one, since that is
+    this function.
+
     Parameters
     ----------
     a
@@ -561,6 +570,29 @@ def shape(a: na.ArrayLike) -> dict[str, int]:
 
         # the broadcasted shape of every array-like leaf
         na.shape({"foo": x, "bar": y})
+
+    A dataclass which says what its shape is, is believed.
+
+    .. jupyter-execute::
+
+        import dataclasses
+
+        @dataclasses.dataclass
+        class Detector:
+            gain: na.AbstractScalar
+            measurement: na.AbstractScalar
+
+            @property
+            def shape(self) -> dict[str, int]:
+                # the measurement was fitted against, not sampled by, this
+                return na.shape(self.gain)
+
+        detector = Detector(
+            gain=na.arange(0, 4, axis="channel"),
+            measurement=na.arange(0, 100, axis="wavelength"),
+        )
+
+        na.shape(detector)
     """
     if isinstance(a, na.AbstractArray):
         return a.shape
@@ -569,12 +601,29 @@ def shape(a: na.ArrayLike) -> dict[str, int]:
     elif isinstance(a, (list, tuple)):
         return na.broadcast_shapes(*[shape(a_i) for a_i in a])
     elif dataclasses.is_dataclass(a) and not isinstance(a, type):
+        if _shape_is_declared(type(a)):
+            return a.shape
         return na.broadcast_shapes(*[
             shape(getattr(a, field.name))
             for field in dataclasses.fields(a)
         ])
     else:
         return np.shape(na.ScalarArray(a))
+
+
+def _shape_is_declared(cls: type) -> bool:
+    """
+    Whether a class says what its own shape is.
+
+    Inheriting :attr:`named_arrays.Indexable.shape` is not saying: that
+    property is :func:`shape` itself, so believing it would be circular.
+    """
+    from named_arrays._mixins import Indexable
+
+    for klass in cls.__mro__:
+        if "shape" in vars(klass):
+            return klass is not Indexable
+    return False
 
 
 def unit(
