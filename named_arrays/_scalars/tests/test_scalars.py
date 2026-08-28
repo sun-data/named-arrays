@@ -1403,6 +1403,98 @@ class AbstractTestAbstractScalarArray(
             pass
 
 
+@pytest.mark.parametrize(
+    argnames="edges_x",
+    argvalues=[
+        na.linspace(-2, 2, axis="bx", num=17),
+        na.ScalarArray(np.sort(np.random.default_rng(2).uniform(-2, 2, 13)), axes="bx"),
+        na.linspace(-2, 2, axis="bx", num=17) + na.linspace(0, 0.3, axis="p", num=3),
+        na.ScalarArray(
+            np.sort(np.random.default_rng(2).uniform(-2, 2, (3, 13)), axis=~0),
+            axes=("p", "bx"),
+        ),
+    ],
+    ids=["uniform", "irregular", "uniform-per-slice", "irregular-per-slice"],
+)
+@pytest.mark.parametrize(
+    argnames="weights",
+    argvalues=[None, "real", "complex"],
+)
+@pytest.mark.parametrize("unit", [None, u.mm])
+@pytest.mark.parametrize("density", [False, True])
+def test_histogramdd_matches_numpy(
+    edges_x: na.AbstractScalarArray,
+    weights: None | str,
+    unit: None | u.UnitBase,
+    density: bool,
+):
+    """
+    The histogram of every orthogonal index equals a separate
+    :func:`numpy.histogramdd` of that index, including points on the edges,
+    outside the edges, and not a number.
+    """
+    rng = np.random.default_rng(1)
+    shape = dict(p=3, n=400, q=2)
+    x = na.ScalarArray(rng.normal(0, 1, tuple(shape.values())), axes=tuple(shape))
+    y = na.ScalarArray(rng.normal(0, 1, tuple(shape.values())), axes=tuple(shape))
+    x.ndarray[0, :4, 0] = na.value(edges_x[dict(p=0)] if "p" in edges_x.shape else edges_x).ndarray[-1]
+    x.ndarray[0, 4:8, 0] = na.value(edges_x[dict(p=0)] if "p" in edges_x.shape else edges_x).ndarray[3]
+    x.ndarray[1, :4, 0] = np.nan
+    x.ndarray[1, 4:8, 0] = 50
+    edges_y = na.linspace(-3, 3, axis="by", num=9)
+    if weights is None:
+        w = None
+    else:
+        w = na.ScalarArray(rng.random(tuple(shape.values())), axes=tuple(shape))
+        if weights == "complex":
+            w = w + 0.5j * w
+    if unit is not None:
+        x = x * unit
+        y = y * unit
+        edges_x = edges_x * unit
+        edges_y = (edges_y / 10) * (10 * unit)
+        if w is not None:
+            w = w * u.photon
+
+    hist, _ = na.histogramdd(
+        x,
+        y,
+        bins=[edges_x, edges_y],
+        axis=("n", "q"),
+        weights=w,
+        density=density,
+    )
+
+    for i in range(shape["p"]):
+        edges_x_i = edges_x[dict(p=i)] if "p" in edges_x.shape else edges_x
+        expected, _ = np.histogramdd(
+            sample=[
+                na.value(x[dict(p=i)]).ndarray.reshape(-1),
+                na.value(y[dict(p=i)]).ndarray.reshape(-1),
+            ],
+            bins=[na.value(edges_x_i).ndarray, na.value(edges_y).ndarray],
+            weights=None if w is None else np.real(na.value(w[dict(p=i)]).ndarray).reshape(-1),
+            density=density,
+        )
+        if w is not None and weights == "complex":
+            expected = expected * (1 + 0.5j) if not density else expected
+        result = na.value(hist[dict(p=i)]).ndarray_aligned(("bx", "by"))
+        assert np.allclose(result, expected, rtol=1e-12, atol=0)
+
+    unit_expected = na.unit_normalized(w)
+    if density and unit is not None:
+        unit_expected = unit_expected / (unit * unit)
+    assert na.unit_normalized(hist) == unit_expected
+
+
+def test_histogramdd_edges_with_two_axes():
+    """Edges with more than one axis besides the orthogonal axes are an error."""
+    x = na.ScalarArray(np.linspace(-1, 1, 11), axes="n")
+    edges = na.linspace(-1, 1, axis="bx", num=5) + na.linspace(0, 0.1, axis="c", num=2)
+    with pytest.raises(ValueError, match="exactly one axis"):
+        na.histogramdd(x, bins=[edges], axis="n")
+
+
 @pytest.mark.parametrize('array', _scalar_arrays())
 class TestScalarArray(
     AbstractTestAbstractScalarArray,

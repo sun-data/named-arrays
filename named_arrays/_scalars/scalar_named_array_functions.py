@@ -528,31 +528,157 @@ def histogramdd(
         for b in bins
     ]
 
-    shape_bins = na.shape_broadcasted(*bins)
-    shape_hist = {
-        ax: shape_bins[ax] - 1
-        for ax in shape_bins
-        if ax not in shape_orthogonal
-    }
-    shape_hist = na.broadcast_shapes(shape_orthogonal, shape_hist)
+    for b in bins:
+        if len(set(b.axes) - set(shape_orthogonal)) != 1:
+            raise ValueError(
+                f"the edges of every dimension must have exactly one axis besides "
+                f"the orthogonal axes {tuple(shape_orthogonal)}, got {b.axes}"
+            )
 
-    hist = na.ScalarArray.empty(shape_hist)
+    return _histogramdd_vectorized(
+        sample=sample,
+        bins=bins,
+        bins_broadcasted=bins_broadcasted,
+        axis=tuple(axis),
+        shape=shape,
+        shape_orthogonal=shape_orthogonal,
+        weights=weights,
+        density=density,
+    )
 
+
+def _bin_index(edges: np.ndarray, values: np.ndarray) -> np.ndarray:
+    """
+    The bin of every value: the ``i`` with ``edges[i] <= value < edges[i + 1]``.
+
+    `edges` holds one row of edges for every row of `values`. Equivalent to
+    ``np.searchsorted(edges[r], values[r], side="right") - 1`` for every row
+    ``r``, but uniform edges are located arithmetically in one pass, with
+    the same rounding correction :func:`numpy.histogram` applies, instead of
+    by a binary search of every value.
+    """
+    num = edges.shape[~0] - 1
+    width = np.diff(edges, axis=~0)
+    uniform = num > 0 and np.allclose(width, width[:, :1], rtol=1e-10, atol=0)
+    if not uniform:
+        return np.stack(
+            [np.searchsorted(e, v, side="right") - 1 for e, v in zip(edges, values)]
+        )
+
+    with np.errstate(invalid="ignore", divide="ignore", over="ignore"):
+        index = np.floor((values - edges[:, :1]) / width[:, :1])
+        index = np.nan_to_num(index, nan=-1, posinf=num, neginf=-1)
+        index = np.clip(index, -1, num).astype(np.intp)
+        # correct for rounding in the division above, exactly as numpy does
+        above = np.take_along_axis(edges, np.clip(index + 1, 0, num), axis=~0)
+        below = np.take_along_axis(edges, np.clip(index, 0, num), axis=~0)
+        index = np.where((values >= above) & (index < num), index + 1, index)
+        index = np.where((values < below) & (index >= 0), index - 1, index)
+    return index
+
+
+def _histogramdd_vectorized(
+    sample: list[na.AbstractScalarArray],
+    bins: list[na.AbstractScalarArray],
+    bins_broadcasted: list[na.AbstractScalarArray],
+    axis: tuple[str, ...],
+    shape: dict[str, int],
+    shape_orthogonal: dict[str, int],
+    weights: None | na.AbstractScalarArray,
+    density: bool,
+) -> tuple[na.ScalarArray, tuple[na.AbstractScalarArray, ...]]:
+    """
+    Histogram every orthogonal index of `sample` with one call to
+    :func:`numpy.bincount`.
+
+    Reproduces the binning of :func:`numpy.histogramdd`: every bin is
+    half-open on the right except the last, which also contains its right
+    edge, and points outside the edges (or not a number) are dropped.
+    The edges may vary along the orthogonal axes. A density is normalized
+    within every orthogonal index, by the total weight of the points inside
+    the edges and the volume of every bin, so its unit is the unit of the
+    weights divided by the units of the sample.
+    """
     unit_weights = na.unit(weights)
-    hist = hist if unit_weights is None else hist << unit_weights
+    axes_orthogonal = tuple(shape_orthogonal)
+    axes_aligned = axes_orthogonal + axis
 
-    for i in na.ndindex(shape_orthogonal):
-        hist_i, _ = np.histogramdd(
-            sample=[s[i].ndarray_aligned(axis).reshape(-1) for s in sample],
-            bins=[b[i].ndarray for b in bins_broadcasted],
-            density=density,
-            weights=weights[i].ndarray_aligned(axis).reshape(-1) if weights is not None else weights,
-        )
+    num_orthogonal = int(np.prod([shape[a] for a in axes_orthogonal], dtype=int))
+    num_point = int(np.prod([shape[a] for a in axis], dtype=int))
+    shape_aligned = (num_orthogonal, num_point)
 
-        hist[i] = na.ScalarArray(
-            ndarray=hist_i,
-            axes=sum((b[i].axes for b in bins_broadcasted), ()),
-        )
+    index = np.zeros(shape_aligned, dtype=np.intp)
+    inside = np.ones(shape_aligned, dtype=bool)
+    num_bins = []
+    axes_hist = []
+    widths = []
+    unit_volume = None
+    for s, b in zip(sample, bins_broadcasted):
+        unit_sample = na.unit(s)
+        (axis_hist,) = set(b.axes) - set(axes_orthogonal)
+        num = b.shape[axis_hist] - 1
+        edges = b.ndarray_aligned(axes_orthogonal + (axis_hist,))
+        edges = edges.reshape(num_orthogonal, num + 1)
+        values = s.ndarray_aligned(axes_aligned).reshape(shape_aligned)
+        if isinstance(edges, u.Quantity):
+            edges = edges.to_value(unit_sample if unit_sample is not None else u.dimensionless_unscaled)
+        if isinstance(values, u.Quantity):
+            values = values.value
+        edges = np.asarray(edges)
+        first = edges[:, :1]
+        last = edges[:, ~0:]
+        with np.errstate(invalid="ignore"):
+            inside &= (values >= first) & (values <= last)
+            index_dimension = _bin_index(edges, values)
+            index_dimension = np.where(values == last, num - 1, index_dimension)
+        index_dimension = np.clip(index_dimension, 0, max(num - 1, 0))
+        index = index * num + index_dimension
+        num_bins.append(num)
+        axes_hist.append(axis_hist)
+        widths.append(np.diff(edges, axis=~0))
+        if unit_sample is not None:
+            unit_volume = unit_sample if unit_volume is None else unit_volume * unit_sample
+
+    size_hist = int(np.prod(num_bins, dtype=int))
+    index = index + np.arange(num_orthogonal)[:, np.newaxis] * size_hist
+    index = index[inside]
+    minlength = num_orthogonal * size_hist
+
+    if weights is None:
+        counts = np.bincount(index, minlength=minlength).astype(float)
+    else:
+        w = weights.ndarray_aligned(axes_aligned).reshape(shape_aligned)
+        if isinstance(w, u.Quantity):
+            w = w.value
+        w = np.asarray(w)[inside]
+        if np.iscomplexobj(w):
+            counts = np.bincount(index, weights=w.real, minlength=minlength) + 1j * np.bincount(
+                index, weights=w.imag, minlength=minlength
+            )
+        else:
+            counts = np.bincount(index, weights=w, minlength=minlength)
+
+    counts = counts.reshape((num_orthogonal,) + tuple(num_bins))
+
+    if density:
+        # as numpy: divide by the total weight inside the edges and by the
+        # width of every bin along every dimension
+        total = counts.reshape(num_orthogonal, size_hist).sum(axis=~0)
+        counts = counts / total.reshape((num_orthogonal,) + len(num_bins) * (1,))
+        for d, width in enumerate(widths):
+            shape_width = [num_orthogonal] + len(num_bins) * [1]
+            shape_width[d + 1] = num_bins[d]
+            counts = counts / width.reshape(shape_width)
+
+    shape_result = tuple(shape[a] for a in axes_orthogonal) + tuple(num_bins)
+    hist = na.ScalarArray(
+        ndarray=counts.reshape(shape_result),
+        axes=axes_orthogonal + tuple(axes_hist),
+    )
+    if unit_weights is not None:
+        hist = hist << unit_weights
+    if density and unit_volume is not None:
+        hist = hist / unit_volume
 
     return hist, tuple(bins)
 
