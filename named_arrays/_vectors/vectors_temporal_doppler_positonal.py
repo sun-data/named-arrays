@@ -64,12 +64,18 @@ class ExplicitTemporalWcsDopplerPositionalVectorArray(
         na.Cartesian2dVectorArray[na.AbstractExplicitScalarArray, na.AbstractExplicitScalarArray],
         na.AbstractExplicitScalarArray,
     ] = _required()
-    crpix: na.AbstractCartesianNdVectorArray = _required()
+    crpix: na.AbstractCartesianNdVectorArray[na.AbstractExplicitScalarArray] = _required()
     cdelt: na.SpectralPositionalVectorArray[
         na.Cartesian2dVectorArray[na.AbstractExplicitScalarArray, na.AbstractExplicitScalarArray],
         na.AbstractExplicitScalarArray,
     ] = _required()
-    pc: na.AbstractSpectralPositionalMatrixArray = _required()
+    pc: na.SpectralPositionalMatrixArray[
+        na.Cartesian2dMatrixArray[
+            na.CartesianNdVectorArray[na.AbstractExplicitScalarArray],
+            na.CartesianNdVectorArray[na.AbstractExplicitScalarArray],
+        ],
+        na.CartesianNdVectorArray[na.AbstractExplicitScalarArray],
+    ] = _required()
     shape_wcs: dict[str, int] = _required()
 
     @property

@@ -88,7 +88,7 @@ class ExplicitTemporalWcsSpectralVectorArray(
 ):
     time: na.AbstractExplicitScalarArray = _required()
     crval: AbstractTemporalSpectralVectorArray = _required()
-    crpix: na.AbstractCartesianNdVectorArray = _required()
+    crpix: na.AbstractCartesianNdVectorArray[na.AbstractExplicitScalarArray] = _required()
     cdelt: AbstractTemporalSpectralVectorArray = _required()
     pc: na.AbstractTemporalSpectralMatrixArray = _required()
     shape_wcs: dict[str, int] = _required()

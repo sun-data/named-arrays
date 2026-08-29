@@ -85,7 +85,7 @@ class WcsSpectralDirectionalVectorArray(
     na.AbstractWcsVector,
 ):
     crval: AbstractSpectralDirectionalVectorArray = _required()
-    crpix: na.AbstractCartesianNdVectorArray = _required()
+    crpix: na.AbstractCartesianNdVectorArray[na.AbstractExplicitScalarArray] = _required()
     cdelt: AbstractSpectralDirectionalVectorArray = _required()
     pc: na.AbstractSpectralDirectionalMatrixArray = _required()
     shape_wcs: dict[str, int] = _required()
