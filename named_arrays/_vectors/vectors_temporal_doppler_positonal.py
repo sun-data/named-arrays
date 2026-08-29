@@ -64,7 +64,7 @@ class ExplicitTemporalWcsDopplerPositionalVectorArray(
         na.Cartesian2dVectorArray[na.AbstractExplicitScalarArray, na.AbstractExplicitScalarArray],
         na.AbstractExplicitScalarArray,
     ] = _required()
-    crpix: na.AbstractCartesianNdVectorArray[na.AbstractExplicitScalarArray] = _required()
+    crpix: na.CartesianNdVectorArray[na.AbstractExplicitScalarArray] = _required()
     cdelt: na.SpectralPositionalVectorArray[
         na.Cartesian2dVectorArray[na.AbstractExplicitScalarArray, na.AbstractExplicitScalarArray],
         na.AbstractExplicitScalarArray,
