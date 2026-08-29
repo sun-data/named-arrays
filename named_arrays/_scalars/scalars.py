@@ -410,6 +410,9 @@ class AbstractScalarArray(
             item: Mapping[str, int | slice | na.AbstractArray] | na.AbstractArray,
     ):
 
+        if isinstance(item, bool):
+            item = na.as_named_array(item)
+
         if isinstance(item, AbstractScalarArray):
 
             if not set(item.shape).issubset(self.axes):
@@ -1313,6 +1316,9 @@ class ScalarArray(
         else:
             value = ScalarArray(value)
 
+        if isinstance(item, bool):
+            item = na.as_named_array(item)
+
         if isinstance(item, AbstractScalarArray):
 
             item = item.explicit
@@ -1376,6 +1382,12 @@ class ScalarArray(
                 value = value.ndarray
 
             self.ndarray_aligned(axes_self)[tuple(index)] = value
+
+        else:
+            raise TypeError(
+                f"`item` must be an instance of `bool`, `{na.AbstractArray.__name__}`, or {dict.__name__}, "
+                f"got `{type(item)}`"
+            )
 
 
 @dataclasses.dataclass(eq=False, repr=False)
