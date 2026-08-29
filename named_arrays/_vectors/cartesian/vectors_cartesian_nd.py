@@ -1,7 +1,9 @@
 from __future__ import annotations
-from typing import Type
+from typing import Type, TypeVar, Generic
 import dataclasses
 import named_arrays as na
+
+ComponentT = TypeVar("ComponentT", bound="na.ArrayLike")
 
 __all__ = [
     "AbstractCartesianNdVectorArray",
@@ -12,6 +14,7 @@ __all__ = [
 @dataclasses.dataclass(eq=False, repr=False)
 class AbstractCartesianNdVectorArray(
     na.AbstractCartesianVectorArray,
+    Generic[ComponentT],
 ):
     """
     An interface describing an :math:`n`-dimensional Cartesian vector array.
@@ -46,14 +49,15 @@ class AbstractCartesianNdVectorArray(
 
 @dataclasses.dataclass(eq=False, repr=False)
 class CartesianNdVectorArray(
-    AbstractCartesianNdVectorArray,
+    AbstractCartesianNdVectorArray[ComponentT],
     na.AbstractExplicitCartesianVectorArray,
+    Generic[ComponentT],
 ):
     """
     An :math:`n`-dimensional Cartesian vector array.
     """
 
-    components: dict[str, na.ArrayLike] = None
+    components: dict[str, ComponentT] = None
     """
     The vector components of this array.
     

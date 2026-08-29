@@ -88,7 +88,7 @@ class ExplicitTemporalWcsPositionalVectorArray(
 ):
     time: na.AbstractExplicitScalarArray = _required()
     crval: na.AbstractPositionalVectorArray = _required()
-    crpix: na.AbstractCartesianNdVectorArray = _required()
+    crpix: na.CartesianNdVectorArray[na.AbstractExplicitScalarArray] = _required()
     cdelt: na.AbstractPositionalVectorArray = _required()
     pc: na.AbstractPositionalMatrixArray = _required()
     shape_wcs: dict[str, int] = _required()

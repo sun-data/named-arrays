@@ -100,7 +100,7 @@ class AbstractCartesian2dMatrixArray(
 
 @dataclasses.dataclass(eq=False, repr=False)
 class Cartesian2dMatrixArray(
-    na.Cartesian2dVectorArray,
+    na.Cartesian2dVectorArray[XT, YT],
     AbstractCartesian2dMatrixArray,
     na.AbstractExplicitMatrixArray,
     Generic[XT, YT],
