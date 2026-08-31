@@ -424,11 +424,12 @@ class AbstractFunctionArray(
         self,
         axis: None | str | Sequence[str] = None,
         random: bool = False,
+        seed: None | int = None,
     ) -> na.AbstractExplicitArray:
         exp = self.explicit
         return exp.replace(
-            inputs=exp.inputs.cell_centers(axis, random=random),
-            outputs=exp.outputs.cell_centers(axis, random=random),
+            inputs=exp.inputs.cell_centers(axis, random=random, seed=seed),
+            outputs=exp.outputs.cell_centers(axis, random=random, seed=seed),
         )
 
     def integrate(
