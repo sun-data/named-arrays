@@ -630,6 +630,14 @@ class AbstractTestAbstractArray(
             if a in array.shape:
                 assert result.shape[a] == array.shape[a] - 1
 
+        # The same seed samples the same points. That a different seed
+        # samples different ones is checked below, on a type whose every
+        # component is free to differ.
+        if random:
+            a = array.cell_centers(axis, random=True, seed=42)
+            b = array.cell_centers(axis, random=True, seed=42)
+            assert np.all(a == b)
+
     @pytest.mark.parametrize(
         argnames="axis",
         argvalues=[
@@ -2602,3 +2610,37 @@ class AbstractTestAbstractGeometricSpace(
     AbstractTestAbstractSpace,
 ):
     pass
+
+
+def test_cell_centers_seed_changes_the_sample():
+    """A different seed draws different points."""
+    vertices = na.linspace(0, 1, axis="x", num=9)
+
+    a = vertices.cell_centers("x", random=True, seed=42)
+    b = vertices.cell_centers("x", random=True, seed=42)
+    c = vertices.cell_centers("x", random=True, seed=43)
+
+    assert np.all(a == b)
+    assert np.any(a != c)
+
+
+def test_cell_centers_axes_are_independent():
+    """
+    Each axis is sampled from its own stream.
+
+    Drawing the same numbers for two axes would offset every point by the same
+    amount along both of them, which would put it on the diagonal of its cell
+    rather than anywhere inside it.
+    """
+    vertices = na.Cartesian2dVectorArray(
+        x=na.linspace(0, 1, axis="x", num=9),
+        y=na.linspace(0, 1, axis="y", num=9),
+    )
+
+    centers = vertices.cell_centers(("x", "y"), random=True, seed=8)
+
+    # where each point sits inside its own cell, along each axis
+    offset_x = (centers.x - vertices.x[{"x": slice(None, -1)}]) * 8
+    offset_y = (centers.y - vertices.y[{"y": slice(None, -1)}]) * 8
+
+    assert np.any(offset_x.ndarray != offset_y.ndarray)

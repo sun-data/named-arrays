@@ -870,6 +870,7 @@ class AbstractArray(
         self,
         axis: None | str | Sequence[str] = None,
         random: bool = False,
+        seed: None | int = None,
     ) -> na.AbstractExplicitArray:
         """
         Convert an array from cell vertices to cell centers.
@@ -881,6 +882,11 @@ class AbstractArray(
         random
             If true, select a random point within each cell instead of the
             geometric center.
+        seed
+            The seed of the random sampling, which has an effect only where
+            ``random`` is true.
+            If :obj:`None` (the default), the sampling differs from one call
+            to the next, and anything computed from it cannot be reproduced.
         """
 
         if axis is None:
@@ -906,9 +912,18 @@ class AbstractArray(
                 for a in axis
             }
         else:
+            # Each axis is drawn from its own stream. Giving them all the same
+            # seed would give them all the same offsets, which would put every
+            # sample on the diagonal of its cell rather than inside it.
+            seeds = np.random.SeedSequence(seed).generate_state(len(axis))
             i = {
-                a: na.random.uniform(0, 1, shape_random=shape_centers)
-                for a in axis
+                a: na.random.uniform(
+                    0,
+                    1,
+                    shape_random=shape_centers,
+                    seed=int(s),
+                )
+                for a, s in zip(axis, seeds)
             }
 
         return self._nlerp(i)
