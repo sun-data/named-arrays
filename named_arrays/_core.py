@@ -887,18 +887,6 @@ class AbstractArray(
             ``random`` is true.
             If :obj:`None` (the default), the sampling differs from one call
             to the next, and anything computed from it cannot be reproduced.
-
-        Examples
-        --------
-        The same seed samples the same points.
-
-        .. jupyter-execute::
-
-            import named_arrays as na
-
-            vertices = na.linspace(0, 1, axis="x", num=5)
-
-            vertices.cell_centers("x", random=True, seed=42)
         """
 
         if axis is None:
