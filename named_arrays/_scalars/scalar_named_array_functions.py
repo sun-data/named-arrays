@@ -2269,6 +2269,7 @@ def regridding_weights(
     method: Literal['multilinear', 'conservative'] = 'multilinear',
     perturb: None | bool = None,
     seed: "None | int | np.random.Generator" = na.regridding._seed_default,
+    device: None | str = None,
 ) -> tuple[na.AbstractScalar, dict[str, int], dict[str, int]]:
 
     if not isinstance(coordinates_output, na.AbstractVectorArray):
@@ -2286,6 +2287,7 @@ def regridding_weights(
         method=method,
         perturb=perturb,
         seed=seed,
+        device=device,
     )
 
 
@@ -2324,11 +2326,20 @@ def regridding_regrid_from_weights(
     })
     values_input = values_input.broadcast_to(shape_input)
 
+    # a device resampling cannot carry a unit through the kernel, so strip
+    # it here and reapply it to the result, which serves the host path just
+    # as well
+    ndarray_values = values_input.ndarray
+    unit_values = None
+    if isinstance(ndarray_values, u.Quantity):
+        unit_values = ndarray_values.unit
+        ndarray_values = ndarray_values.value
+
     result = regridding.regrid_from_weights(
         weights=weights.ndarray,
         shape_input=tuple(shape_input.values()),
         shape_output=tuple(shape_output.values()),
-        values_input=values_input.ndarray,
+        values_input=ndarray_values,
         axis_input=tuple(tuple(shape_input).index(a) for a in axis_input),
         axis_output=tuple(tuple(shape_output).index(a) for a in axis_output),
     )
@@ -2337,6 +2348,8 @@ def regridding_regrid_from_weights(
         ndarray=result,
         axes=tuple(shape_output),
     )
+    if unit_values is not None:
+        result = result << unit_values
 
     return result
 

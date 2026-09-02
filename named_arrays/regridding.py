@@ -166,6 +166,7 @@ def weights(
     method: Literal['multilinear', 'conservative'] = 'multilinear',
     perturb: None | bool = None,
     seed: None | int | np.random.Generator = _seed_default,
+    device: None | str = None,
 ) -> tuple[na.AbstractScalar, dict[str, int], dict[str, int]]:
     """
     Save the results of a regridding operation as a sequence of weights,
@@ -234,6 +235,7 @@ def weights(
         method=method,
         perturb=perturb,
         seed=seed,
+        device=device,
     )
 
 
