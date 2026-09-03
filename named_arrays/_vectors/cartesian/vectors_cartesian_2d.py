@@ -4,12 +4,14 @@ import math
 from typing import Self
 import abc
 import dataclasses
+import numpy as np
 import named_arrays as na
 
 __all__ = [
     "AbstractCartesian2dVectorArray",
     "Cartesian2dVectorArray",
     "AbstractImplicitCartesian2dVectorArray",
+    "PolarVectorArray",
     "AbstractCartesian2dVectorRandomSample",
     "Cartesian2dVectorUniformRandomSample",
     "Cartesian2dVectorNormalRandomSample",
@@ -24,6 +26,8 @@ __all__ = [
 
 XT = TypeVar('XT', bound=na.ArrayLike, covariant=True)
 YT = TypeVar('YT', bound=na.ArrayLike, covariant=True)
+RadiusT = TypeVar('RadiusT', bound=na.ArrayLike, covariant=True)
+AzimuthT = TypeVar('AzimuthT', bound=na.ArrayLike, covariant=True)
 
 
 @dataclasses.dataclass(eq=False, repr=False)
@@ -132,6 +136,62 @@ class AbstractImplicitCartesian2dVectorArray(
     @property
     def y(self) -> na.ArrayLike:
         return self.explicit.y
+
+
+@dataclasses.dataclass(eq=False, repr=False)
+class PolarVectorArray(
+    AbstractImplicitCartesian2dVectorArray,
+    Generic[RadiusT, AzimuthT],
+):
+    r"""
+    An array of 2D Cartesian vectors given by their polar coordinates.
+
+    This is an implicit :class:`Cartesian2dVectorArray` whose components are
+    :math:`x = r \cos \phi` and :math:`y = r \sin \phi`, so it can be used
+    anywhere a 2D Cartesian vector is expected, while being sampled in
+    :attr:`radius` and :attr:`azimuth`.
+    Its purpose is to sample an annulus or a sector of one with a grid which
+    follows its edges, where a rectilinear grid would waste most of its
+    samples on the hole and the corners.
+
+    Examples
+    --------
+
+    Sample an annulus with a polar grid and plot the samples.
+
+    .. jupyter-execute::
+
+        import matplotlib.pyplot as plt
+        import astropy.units as u
+        import named_arrays as na
+
+        # Define a grid which is linear in radius and in azimuth.
+        # The azimuth omits its endpoint so that no sample is repeated.
+        a = na.PolarVectorArray(
+            radius=na.linspace(50, 100, axis="radius", num=6) * u.mm,
+            azimuth=na.linspace(0, 360, axis="azimuth", num=24, endpoint=False) * u.deg,
+        )
+
+        # The Cartesian components are computed from the polar ones.
+        fig, ax = plt.subplots()
+        ax.set_aspect("equal")
+        na.plt.scatter(a.x, a.y, ax=ax);
+    """
+
+    radius: RadiusT = 0
+    """The distance of this vector from the origin."""
+
+    azimuth: AzimuthT = 0
+    """The angle of this vector from the :math:`x` axis, toward the :math:`y` axis."""
+
+    @property
+    def explicit(self) -> Cartesian2dVectorArray:
+        radius = self.radius
+        azimuth = self.azimuth
+        return Cartesian2dVectorArray(
+            x=radius * np.cos(azimuth),
+            y=radius * np.sin(azimuth),
+        )
 
 
 @dataclasses.dataclass(eq=False, repr=False)

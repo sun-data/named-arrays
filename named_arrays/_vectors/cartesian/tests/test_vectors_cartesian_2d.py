@@ -12,6 +12,7 @@ __all__ = [
     'TestCartesian2dVectorArray',
     'TestCartesian2dVectorArrayCreation',
     'AbstractTestAbstractImplicitCartesian2dVectorArray',
+    'TestPolarVectorArray',
     'AbstractTestAbstractCartesian2dVectorRandomSample',
     'TestCartesian2dVectorUniformRandomSample',
     'TestCartesian2dVectorNormalRandomSample',
@@ -303,6 +304,59 @@ class AbstractTestAbstractImplicitCartesian2dVectorArray(
     test_vectors_cartesian.AbstractTestAbstractImplicitCartesianVectorArray,
 ):
     pass
+
+
+def _polar_arrays() -> list[na.PolarVectorArray]:
+    return [
+        na.PolarVectorArray(
+            radius=na.linspace(50, 100, axis="x", num=_num_x) * u.mm,
+            azimuth=na.linspace(0, 360, axis="y", num=_num_y, endpoint=False) * u.deg,
+        ),
+        na.PolarVectorArray(
+            radius=na.linspace(1, 2, axis="x", num=_num_x),
+            azimuth=na.linspace(0, 90, axis="y", num=_num_y) * u.deg,
+        ),
+        na.PolarVectorArray(
+            radius=na.ScalarUniformRandomSample(1, 2, shape_random=dict(x=_num_x, y=_num_y)) * u.mm,
+            azimuth=na.linspace(0, 2 * np.pi, axis="y", num=_num_y, endpoint=False),
+        ),
+    ]
+
+
+@pytest.mark.parametrize("array", _polar_arrays())
+class TestPolarVectorArray(
+    AbstractTestAbstractImplicitCartesian2dVectorArray,
+    named_arrays._vectors.tests.test_vectors.AbstractTestAbstractVectorArray,
+    named_arrays.tests.test_core.AbstractTestAbstractArray,
+):
+    def test_radius(self, array: na.PolarVectorArray):
+        assert np.allclose(array.length, array.radius)
+
+    def test_azimuth(self, array: na.PolarVectorArray):
+        azimuth = np.arctan2(array.y, array.x)
+        assert np.allclose(np.cos(azimuth), np.cos(array.azimuth))
+        assert np.allclose(np.sin(azimuth), np.sin(array.azimuth))
+
+    def test_explicit(self, array: na.PolarVectorArray):
+        result = array.explicit
+        assert isinstance(result, na.Cartesian2dVectorArray)
+        assert np.allclose(result.x, array.radius * np.cos(array.azimuth))
+        assert np.allclose(result.y, array.radius * np.sin(array.azimuth))
+
+
+def test_polar_volume_cell_of_annulus():
+    # the cells of a polar grid tile the annulus, so their areas must sum to
+    # the area of the annulus, up to the chords which cut the arcs
+    radius_inner = 50 * u.mm
+    radius_outer = 100 * u.mm
+    num_azimuth = 360
+    grid = na.PolarVectorArray(
+        radius=na.linspace(radius_inner, radius_outer, axis="r", num=11),
+        azimuth=na.linspace(0, 360, axis="phi", num=num_azimuth + 1) * u.deg,
+    )
+    area = grid.volume_cell(("r", "phi")).sum()
+    expected = np.pi * (radius_outer**2 - radius_inner**2)
+    assert np.isclose(np.abs(area.ndarray), expected, rtol=1e-3)
 
 
 class AbstractTestAbstractCartesian2dVectorRandomSample(
