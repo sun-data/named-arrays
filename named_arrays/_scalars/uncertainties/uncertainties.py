@@ -275,6 +275,38 @@ class AbstractUncertainScalarArray(
             distribution=distribution.combine_axes(axes=axes, axis_new=axis_new),
         )
 
+    def matrix_inverse(
+            self,
+            axis_rows: str,
+            axis_columns: str,
+    ) -> UncertainScalarArray:
+        """
+        Compute the inverse of this array, treating it as a matrix with the
+        given row and column axes.
+
+        The nominal value and every sample of the distribution are inverted
+        separately, since the distribution axis is independent of the axes of
+        the matrix.
+
+        Parameters
+        ----------
+        axis_rows
+            The axis representing the rows of the matrix.
+        axis_columns
+            The axis representing the columns of the matrix.
+        """
+
+        shape = self.shape
+        shape_base = {ax: shape[ax] for ax in (axis_rows, axis_columns)}
+
+        nominal = na.broadcast_to(self.nominal, na.shape(self.nominal) | shape_base)
+        distribution = na.broadcast_to(self.distribution, na.shape(self.distribution) | shape_base)
+
+        return UncertainScalarArray(
+            nominal=nominal.matrix_inverse(axis_rows=axis_rows, axis_columns=axis_columns),
+            distribution=distribution.matrix_inverse(axis_rows=axis_rows, axis_columns=axis_columns),
+        )
+
     def to_string_array(
         self,
         format_value: str = "%.2f",

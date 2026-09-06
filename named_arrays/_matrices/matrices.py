@@ -240,11 +240,14 @@ class AbstractMatrixArray(
                 for row in value.rows.values()
             ], axis="_row")
             inverse = value.matrix_inverse(axis_rows="_row", axis_columns="_column")
+            # `matrix_inverse` labels the rows of the inverse by the columns of
+            # the original and vice versa, so the element in row `i` and
+            # column `j` of the inverse lives at `_column=i`, `_row=j`.
             result = 1 / unit.matrix_transpose
             for i, r in enumerate(result.rows):
                 row = result.rows[r].components
                 for j, c in enumerate(row):
-                    row[c] = inverse[dict(_row=i, _column=j)] * row[c]
+                    row[c] = inverse[dict(_column=i, _row=j)] * row[c]
 
         result = explicit.from_cartesian_nd(result, like=explicit.matrix_transpose)
 
