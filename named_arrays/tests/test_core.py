@@ -459,6 +459,77 @@ class TestShape:
         assert container.shape == {"x": 5}
 
 
+class TestToStringTruncation:
+    """
+    Tests for how :meth:`named_arrays.AbstractArray.to_string` shortens an
+    array which is too large to show in full.
+    """
+
+    def _array(self, num: int) -> na.ScalarArray:
+        return na.ScalarArray(np.arange(num), axes=("x",))
+
+    def _values(self, result: str) -> list[str]:
+        """Recover the elements shown between the brackets of a 1D array."""
+        return [v.strip() for v in result.split("[")[1].split("]")[0].split(",")]
+
+    def test_array_at_threshold_shown_in_full(self):
+        num = na.threshold_print
+
+        result = repr(self._array(num))
+
+        assert "..." not in result
+        assert self._values(result) == [str(i) for i in range(num)]
+
+    def test_array_above_threshold_truncated(self):
+        num = na.threshold_print + 1
+
+        result = repr(self._array(num))
+
+        assert "..." in result
+        assert len(result.splitlines()) == 4
+
+    def test_number_of_edge_items(self):
+        num = na.threshold_print + 1
+        edgeitems = na.edgeitems_print
+
+        result = repr(self._array(num))
+
+        # both ends of the array are shown, with an ellipsis between them
+        assert self._values(result) == (
+            [str(i) for i in range(edgeitems)]
+            + ["..."]
+            + [str(num - edgeitems + i) for i in range(edgeitems)]
+        )
+
+    def test_nested_array_truncated(self):
+        array = self._array(na.threshold_print + 1)
+
+        result = repr(na.Cartesian2dVectorArray(array, array))
+
+        # every array is shortened, not only the outermost one
+        assert result.count("...") == 2
+        assert len(result.splitlines()) == 10
+
+    def test_threshold_print_is_configurable(self, monkeypatch):
+        num = na.threshold_print + 1
+        array = self._array(num)
+        assert "..." in repr(array)
+
+        monkeypatch.setattr(na, "threshold_print", num)
+
+        # raising the threshold above the size of the array shows it in full
+        assert self._values(repr(array)) == [str(i) for i in range(num)]
+
+    def test_edgeitems_print_is_configurable(self, monkeypatch):
+        array = self._array(na.threshold_print + 1)
+        edgeitems = na.edgeitems_print + 1
+
+        monkeypatch.setattr(na, "edgeitems_print", edgeitems)
+
+        values = self._values(repr(array))
+        assert len(values) == 2 * edgeitems + 1
+
+
 class TestIscloseDispatch:
     """
     Tests for how :func:`numpy.isclose` combines operands of different types.
