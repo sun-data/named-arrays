@@ -459,6 +459,47 @@ class TestShape:
         assert container.shape == {"x": 5}
 
 
+class TestToStringShape:
+    """
+    Tests that :meth:`named_arrays.AbstractArray.to_string` shows the shape of
+    an array rather than only the names of its axes.
+    """
+
+    def test_shape_instead_of_axes(self):
+        array = na.ScalarArray(np.array([[5, 6], [6, 7], [7, 8]]), axes=("x", "y"))
+
+        result = repr(array)
+
+        assert "shape={'x': 3, 'y': 2}" in result
+        assert "axes=" not in result
+
+    def test_shape_of_a_zero_dimensional_array(self):
+        result = repr(na.ScalarArray(np.array(5.0)))
+
+        assert "shape={}" in result
+
+    def test_implicit_array_keeps_its_arguments(self):
+        # an implicit array has no `axes` field, so its representation is still
+        # the arguments which define it
+        result = repr(na.ScalarLinearSpace(0, 1, axis="z", num=4))
+
+        assert "axis='z'" in result
+        assert "num=4" in result
+        assert "shape=" not in result
+
+    def test_shape_of_each_component_of_a_vector(self):
+        array = na.Cartesian2dVectorArray(
+            na.ScalarArray(np.array([1, 2, 3]), axes=("x",)),
+            na.ScalarArray(np.array([4, 5]), axes=("y",)),
+        )
+
+        result = repr(array)
+
+        # each component reports its own shape, not the broadcasted shape
+        assert "shape={'x': 3}" in result
+        assert "shape={'y': 2}" in result
+
+
 class TestToStringTruncation:
     """
     Tests for how :meth:`named_arrays.AbstractArray.to_string` shortens an
