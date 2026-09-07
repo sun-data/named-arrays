@@ -1285,8 +1285,12 @@ class AbstractTestAbstractArray(
             with pytest.raises(ValueError):
                 np.expand_dims(array, (axes[0], axes[0]))
 
-        def test_squeeze(self, array: na.AbstractArray):
-            axis = "_expanded"
+        @pytest.mark.parametrize("axis", ["_expanded", ("_expanded", "_expanded_2")])
+        def test_squeeze(
+            self,
+            array: na.AbstractArray,
+            axis: str | Sequence[str],
+        ):
             array_expanded = np.expand_dims(array, axis)
 
             result = np.squeeze(array_expanded, axis=axis)
@@ -1296,7 +1300,9 @@ class AbstractTestAbstractArray(
             assert np.all(result == array)
 
             # the default is to remove every axis of length one
-            assert axis not in np.squeeze(array_expanded).shape
+            axes = (axis,) if isinstance(axis, str) else tuple(axis)
+            shape_default = np.squeeze(array_expanded).shape
+            assert not any(ax in shape_default for ax in axes)
 
             # an axis which the array does not have is ignored
             assert np.squeeze(array, axis="_missing").shape == array.shape
@@ -1308,8 +1314,8 @@ class AbstractTestAbstractArray(
                         np.squeeze(array, axis=ax)
                     break
 
-        @pytest.mark.parametrize("axis", [None, "y", "_missing"])
-        def test_flip(self, array: na.AbstractArray, axis: None | str):
+        @pytest.mark.parametrize("axis", [None, "y", "_missing", ("x", "y")])
+        def test_flip(self, array: na.AbstractArray, axis: None | str | Sequence[str]):
             result = np.flip(array, axis=axis)
 
             assert result.type_abstract == array.type_abstract
