@@ -634,35 +634,20 @@ def isclose(
     equal_nan: bool = False,
 ) -> na.FunctionArray:
 
-    if isinstance(a, na.AbstractFunctionArray):
-        prototype = a
-        inputs_a = a.inputs
-        outputs_a = a.outputs
-    else:
-        inputs_a = None
-        outputs_a = a
+    operands = (a, b)
 
-    if isinstance(b, na.AbstractFunctionArray):
-        prototype = b
-        inputs_b = b.inputs
-        outputs_b = b.outputs
-    else:
-        inputs_b = None
-        outputs_b = b
+    functions = [x for x in operands if isinstance(x, na.AbstractFunctionArray)]
+    outputs = [x.outputs if isinstance(x, na.AbstractFunctionArray) else x for x in operands]
 
-    if inputs_a is not None and inputs_b is not None:
-        if np.any(inputs_a != inputs_b):
-            raise na.InputValueError(
-                "`a.inputs` must match `b.inputs`"
-            )
+    inputs = functions[0].inputs
+    for function in functions[1:]:
+        if np.any(function.inputs != inputs):
+            raise na.InputValueError("`a.inputs` must match `b.inputs`")
 
-    inputs = inputs_a if inputs_a is not None else inputs_b
-
-    return prototype.explicit.replace(
+    return functions[0].explicit.replace(
         inputs=inputs,
         outputs=np.isclose(
-            a=outputs_a,
-            b=outputs_b,
+            *outputs,
             rtol=rtol,
             atol=atol,
             equal_nan=equal_nan,
