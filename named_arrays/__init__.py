@@ -14,11 +14,13 @@ from ._named_array_functions import (
     unit,
     unit_normalized,
     broadcast_to,
+    debroadcast,
     stack,
     concatenate,
     add_axes,
     vmr,
     mean_trimmed,
+    take_along_axis,
     interp,
     histogram,
     histogram2d,
@@ -29,6 +31,7 @@ from ._named_array_functions import (
 )
 from . import random
 from . import plt
+from . import stats
 from . import optimize
 from . import regridding
 from . import transformations
@@ -36,6 +39,7 @@ from . import ndfilters
 from . import colorsynth
 from . import numexpr
 from . import geometry
+from . import pdf
 from ._core import (
     QuantityLike,
     StartT,
@@ -51,6 +55,9 @@ from ._core import (
     flatten_axes,
     axis_normalized,
     explicit,
+    getitem,
+    pack,
+    unpack,
     AbstractArray,
     ArrayLike,
     AbstractExplicitArray,
@@ -72,6 +79,9 @@ from ._core import (
     AbstractNormalRandomSample,
     AbstractPoissonRandomSample,
 )
+from ._mixins import (
+    Indexable,
+)
 from ._scalars.scalars import (
     ScalarStartT,
     ScalarStopT,
@@ -80,6 +90,7 @@ from ._scalars.scalars import (
     AbstractScalar,
     AbstractScalarArray,
     ScalarLike,
+    AbstractExplicitScalarArray,
     ScalarArray,
     AbstractImplicitScalarArray,
     AbstractScalarRandomSample,
@@ -199,6 +210,11 @@ from ._vectors.vectors_spectral import (
     AbstractSpectralVectorSpace,
     SpectralVectorLinearSpace,
 )
+from ._vectors.vectors_doppler import (
+    AbstractDopplerVectorArray,
+    DopplerVectorArray,
+    AbstractImplicitDopplerVectorArray,
+)
 from ._vectors.vectors_positional import (
     AbstractPositionalVectorArray,
     PositionalVectorArray,
@@ -231,6 +247,11 @@ from ._vectors.vectors_spectral_directional import (
     AbstractSpectralDirectionalVectorSpace,
     SpectralDirectionalVectorLinearSpace,
     WcsSpectralDirectionalVectorArray,
+)
+from ._vectors.vectors_doppler_positional import (
+    AbstractDopplerPositionalVectorArray,
+    DopplerPositionalVectorArray,
+    AbstractImplicitDopplerPositionalVectorArray,
 )
 from ._vectors.vectors_temporal_spectral import (
     AbstractTemporalSpectralVectorArray,
@@ -268,6 +289,12 @@ from ._vectors.vectors_temporal_spectral_directional import (
     AbstractTemporalSpectralDirectionalVectorSpace,
     TemporalSpectralDirectionalVectorLinearSpace,
     ExplicitTemporalWcsSpectralDirectionalVectorArray,
+)
+from ._vectors.vectors_temporal_doppler_positonal import (
+    AbstractTemporalDopplerPositionalVectorArray,
+    TemporalDopplerPositionalVectorArray,
+    AbstractImplicitTemporalDopplerPositionalVectorArray,
+    ExplicitTemporalWcsDopplerPositionalVectorArray,
 )
 from ._vectors.vectors_input_output import (
     AbstractInputOutputVectorArray,
@@ -325,6 +352,10 @@ from ._matrices.matrices_spectral import (
     AbstractSpectralMatrixArray,
     SpectralMatrixArray,
 )
+from ._matrices.matrices_doppler import (
+    AbstractDopplerMatrixArray,
+    DopplerMatrixArray,
+)
 from ._matrices.matrices_positional import (
     AbstractPositionalMatrixArray,
     PositionalMatrixArray,
@@ -341,6 +372,10 @@ from ._matrices.matrices_spectral_directional import (
     AbstractSpectralDirectionalMatrixArray,
     SpectralDirectionalMatrixArray,
 )
+from ._matrices.matrices_doppler_positional import (
+    AbstractDopplerPositionalMatrixArray,
+    DopplerPositionalMatrixArray,
+)
 from ._matrices.matrices_temporal_spectral import (
     AbstractTemporalSpectralMatrixArray,
     TemporalSpectralMatrixArray,
@@ -356,6 +391,10 @@ from ._matrices.matrices_temporal_spectral_positional import (
 from ._matrices.matrices_temporal_spectral_directional import (
     AbstractTemporalSpectralDirectionalMatrixArray,
     TemporalSpectralDirectionalMatrixArray,
+)
+from ._matrices.matrices_temporal_doppler_positional import (
+    AbstractTemporalDopplerPositionalMatrixArray,
+    TemporalDopplerPositionalMatrixArray,
 )
 from ._matrices.matrices_input_output import (
     AbstractInputOutputMatrixArray,
@@ -383,11 +422,13 @@ __all__ = [
     "unit",
     "unit_normalized",
     "broadcast_to",
+    "debroadcast",
     "stack",
     "concatenate",
     "add_axes",
     "vmr",
     "mean_trimmed",
+    "take_along_axis",
     "interp",
     "histogram",
     "histogram2d",
@@ -397,6 +438,7 @@ __all__ = [
     "despike",
     "random",
     "plt",
+    "stats",
     "optimize",
     "regridding",
     "transformations",
@@ -404,6 +446,7 @@ __all__ = [
     "colorsynth",
     "numexpr",
     "geometry",
+    "pdf",
     "QuantityLike",
     "StartT",
     "StopT",
@@ -418,6 +461,9 @@ __all__ = [
     "flatten_axes",
     "axis_normalized",
     "explicit",
+    "getitem",
+    "pack",
+    "unpack",
     "AbstractArray",
     "ArrayLike",
     "AbstractExplicitArray",
@@ -438,6 +484,7 @@ __all__ = [
     "AbstractUniformRandomSample",
     "AbstractNormalRandomSample",
     "AbstractPoissonRandomSample",
+    "Indexable",
     "ScalarStartT",
     "ScalarStopT",
     "ScalarTypeError",
@@ -445,6 +492,7 @@ __all__ = [
     "AbstractScalar",
     "AbstractScalarArray",
     "ScalarLike",
+    "AbstractExplicitScalarArray",
     "ScalarArray",
     "AbstractImplicitScalarArray",
     "AbstractScalarRandomSample",
@@ -547,6 +595,9 @@ __all__ = [
     "AbstractParameterizedSpectralVectorArray",
     "AbstractSpectralVectorSpace",
     "SpectralVectorLinearSpace",
+    "AbstractDopplerVectorArray",
+    "DopplerVectorArray",
+    "AbstractImplicitDopplerVectorArray",
     "AbstractPositionalVectorArray",
     "PositionalVectorArray",
     "AbstractImplicitPositionalVectorArray",
@@ -572,6 +623,9 @@ __all__ = [
     "AbstractSpectralDirectionalVectorSpace",
     "SpectralDirectionalVectorLinearSpace",
     "WcsSpectralDirectionalVectorArray",
+    "AbstractDopplerPositionalVectorArray",
+    "DopplerPositionalVectorArray",
+    "AbstractImplicitDopplerPositionalVectorArray",
     "AbstractTemporalSpectralVectorArray",
     "TemporalSpectralVectorArray",
     "AbstractImplicitTemporalSpectralVectorArray",
@@ -601,6 +655,10 @@ __all__ = [
     "AbstractTemporalSpectralDirectionalVectorSpace",
     "TemporalSpectralDirectionalVectorLinearSpace",
     "ExplicitTemporalWcsSpectralDirectionalVectorArray",
+    "AbstractTemporalDopplerPositionalVectorArray",
+    "TemporalDopplerPositionalVectorArray",
+    "AbstractImplicitTemporalDopplerPositionalVectorArray",
+    "ExplicitTemporalWcsDopplerPositionalVectorArray",
     "AbstractInputOutputVectorArray",
     "InputOutputVectorArray",
     "AbstractImplicitInputOutputVectorArray",
@@ -641,6 +699,8 @@ __all__ = [
     "TemporalMatrixArray",
     "AbstractSpectralMatrixArray",
     "SpectralMatrixArray",
+    "AbstractDopplerMatrixArray",
+    "DopplerMatrixArray",
     "AbstractPositionalMatrixArray",
     "PositionalMatrixArray",
     "AbstractDirectionalMatrixArray",
@@ -649,6 +709,8 @@ __all__ = [
     "SpectralPositionalMatrixArray",
     "AbstractSpectralDirectionalMatrixArray",
     "SpectralDirectionalMatrixArray",
+    "AbstractDopplerPositionalMatrixArray",
+    "DopplerPositionalMatrixArray",
     "AbstractTemporalSpectralMatrixArray",
     "TemporalSpectralMatrixArray",
     "AbstractTemporalPositionalMatrixArray",
@@ -657,6 +719,8 @@ __all__ = [
     "TemporalSpectralPositionalMatrixArray",
     "AbstractTemporalSpectralDirectionalMatrixArray",
     "TemporalSpectralDirectionalMatrixArray",
+    "AbstractTemporalDopplerPositionalMatrixArray",
+    "TemporalDopplerPositionalMatrixArray",
     "AbstractInputOutputMatrixArray",
     "InputOutputMatrixArray",
     "InputValueError",

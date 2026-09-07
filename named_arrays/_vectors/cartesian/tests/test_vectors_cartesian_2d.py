@@ -1,4 +1,4 @@
-from typing import Sequence
+from typing import Mapping, Sequence
 import pytest
 import numpy as np
 import astropy.units as u
@@ -84,6 +84,7 @@ def _cartesian2d_arrays_2():
 def _cartesian2d_items() -> list[na.AbstractArray | dict[str, int, slice, na.AbstractArray]]:
     return [
             dict(y=0),
+            dict(y=np.int64(0)),
             dict(y=slice(0, 1)),
             dict(y=na.ScalarArrayRange(0, 2, axis='y')),
             dict(
@@ -175,7 +176,7 @@ class AbstractTestAbstractCartesian2dVectorArray(
     def test__getitem__(
             self,
             array: na.AbstractCartesian2dVectorArray,
-            item: dict[str, int | slice | na.AbstractArray] | na.AbstractArray
+            item: Mapping[str, int | slice | na.AbstractArray] | na.AbstractArray
     ):
         super().test__getitem__(array=array, item=item)
 
@@ -194,6 +195,12 @@ class AbstractTestAbstractCartesian2dVectorArray(
     class TestArrayFunctions(
         test_vectors_cartesian.AbstractTestAbstractCartesianVectorArray.TestArrayFunctions
     ):
+
+        @pytest.mark.parametrize("array_2", _cartesian2d_arrays_2())
+        class TestStackLikeFunctions(
+            test_vectors_cartesian.AbstractTestAbstractCartesianVectorArray.TestArrayFunctions.TestStackLikeFunctions,
+        ):
+            pass
 
         @pytest.mark.parametrize("array_2", _cartesian2d_arrays_2())
         class TestAsArrayLikeFunctions(
@@ -453,6 +460,21 @@ def _cartesian_2d_vector_linear_spaces() -> tuple[na.Cartesian2dVectorLinearSpac
         for axis in axes
         for num in nums
     )
+
+
+def test_volume_cell_scalar_step():
+    # a linear space with scalar `start`, `stop`, and `num` has a scalar `step`;
+    # `volume_cell` must still return the correct cell area (regression: the
+    # fast path assumed `step` was a vector).
+    space = na.Cartesian2dVectorLinearSpace(
+        start=-10 * u.arcsec,
+        stop=+10 * u.arcsec,
+        axis=na.Cartesian2dVectorArray("x", "y"),
+        num=5,
+    )
+    assert not isinstance(space.step, na.AbstractVectorArray)
+    result = space.volume_cell(("x", "y"))
+    assert np.allclose(result, space.explicit.volume_cell(("x", "y")))
 
 
 @pytest.mark.parametrize("array", _cartesian_2d_vector_linear_spaces())

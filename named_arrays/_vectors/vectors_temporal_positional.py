@@ -1,8 +1,8 @@
 from __future__ import annotations
 from typing import Type, TypeVar
-from typing_extensions import Self
 import dataclasses
 import named_arrays as na
+from named_arrays._core import _required
 
 __all__ = [
     "AbstractTemporalPositionalVectorArray",
@@ -29,7 +29,7 @@ class AbstractTemporalPositionalVectorArray(
         return AbstractTemporalPositionalVectorArray
 
     @property
-    def type_explicit(self) -> Type[na.AbstractExplicitArray]:
+    def type_explicit(self) -> Type[TemporalPositionalVectorArray]:
         return TemporalPositionalVectorArray
 
     @property
@@ -43,14 +43,7 @@ class TemporalPositionalVectorArray(
     na.PositionalVectorArray[PositionT],
     na.TemporalVectorArray
 ):
-
-    @classmethod
-    def from_scalar(
-            cls: Type[Self],
-            scalar: na.AbstractScalar,
-            like: None | na.AbstractExplicitVectorArray = None,
-    ) -> TemporalPositionalVectorArray:
-        return cls(time=scalar, position=scalar)
+    pass
 
 
 @dataclasses.dataclass(eq=False, repr=False)
@@ -93,12 +86,12 @@ class ExplicitTemporalWcsPositionalVectorArray(
     AbstractImplicitTemporalPositionalVectorArray,
     na.AbstractWcsVector,
 ):
-    time: na.AbstractScalar = dataclasses.MISSING
-    crval: na.AbstractPositionalVectorArray = dataclasses.MISSING
-    crpix: na.AbstractCartesianNdVectorArray = dataclasses.MISSING
-    cdelt: na.AbstractPositionalVectorArray = dataclasses.MISSING
-    pc: na.AbstractPositionalMatrixArray = dataclasses.MISSING
-    shape_wcs: dict[str, int] = dataclasses.MISSING
+    time: na.AbstractExplicitScalarArray = _required()
+    crval: na.AbstractPositionalVectorArray = _required()
+    crpix: na.CartesianNdVectorArray[na.AbstractExplicitScalarArray] = _required()
+    cdelt: na.AbstractPositionalVectorArray = _required()
+    pc: na.AbstractPositionalMatrixArray = _required()
+    shape_wcs: dict[str, int] = _required()
 
     @property
     def _components_explicit(self) -> dict[str, na.ArrayLike]:

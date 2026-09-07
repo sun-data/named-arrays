@@ -239,4 +239,46 @@ class TestTransformationList(
     pass
 
 
+@pytest.mark.parametrize("a", transformations_basic)
+@pytest.mark.parametrize("b", transformations_basic)
+def test_compose(
+    a: na.transformations.AbstractTransformation,
+    b: na.transformations.AbstractTransformation,
+):
+    result = na.transformations.compose(a, b)
 
+    v = na.Cartesian3dVectorArray(1, 2, 3) * u.mm
+
+    # `compose` is a wrapper around the `@` operator
+    assert np.allclose(result(v), (a @ b)(v))
+
+    # composition is right-to-left: `b` is applied first, then `a`
+    assert np.allclose(result(v), a(b(v)))
+
+
+@pytest.mark.parametrize("a", transformations)
+def test_compose_none(
+    a: na.transformations.AbstractTransformation,
+):
+    # a `None` argument acts as the identity: it is dropped from the
+    # composition and the other argument is returned unchanged
+    assert na.transformations.compose(a, None) is a
+    assert na.transformations.compose(None, a) is a
+
+
+def test_compose_none_none():
+    assert na.transformations.compose(None, None) is None
+
+
+
+
+
+def test_shape_of_a_transformation_by_a_plain_number():
+    """
+    A transformation can be by a plain number, which has no shape of its own.
+
+    Its shape is the shape of what it transforms by, and asking a number for
+    its shape directly would fail.
+    """
+    assert na.shape(na.transformations.Translation(vector=1)) == dict()
+    assert na.transformations.Translation(vector=1).shape == dict()

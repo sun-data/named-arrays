@@ -1,8 +1,8 @@
 from __future__ import annotations
 from typing import Type, TypeVar
-from typing_extensions import Self
 import dataclasses
 import named_arrays as na
+from named_arrays._core import _required
 
 __all__ = [
     "AbstractTemporalSpectralDirectionalVectorArray",
@@ -31,7 +31,7 @@ class AbstractTemporalSpectralDirectionalVectorArray(
         return AbstractTemporalSpectralDirectionalVectorArray
 
     @property
-    def type_explicit(self) -> Type[na.AbstractExplicitArray]:
+    def type_explicit(self) -> Type[TemporalSpectralDirectionalVectorArray]:
         return TemporalSpectralDirectionalVectorArray
 
     @property
@@ -46,14 +46,7 @@ class TemporalSpectralDirectionalVectorArray(
     na.SpectralVectorArray[WavelengthT],
     na.TemporalVectorArray
 ):
-
-    @classmethod
-    def from_scalar(
-            cls: Type[Self],
-            scalar: na.AbstractScalar,
-            like: None | na.AbstractExplicitVectorArray = None,
-    ) -> TemporalSpectralDirectionalVectorArray:
-        return cls(time=scalar, wavelength=scalar, direction=scalar)
+    pass
 
 
 @dataclasses.dataclass(eq=False, repr=False)
@@ -99,12 +92,12 @@ class ExplicitTemporalWcsSpectralDirectionalVectorArray(
     AbstractImplicitTemporalSpectralDirectionalVectorArray,
     na.AbstractWcsVector,
 ):
-    time: na.AbstractScalar = dataclasses.MISSING
-    crval: AbstractTemporalSpectralDirectionalVectorArray = dataclasses.MISSING
-    crpix: na.AbstractCartesianNdVectorArray = dataclasses.MISSING
-    cdelt: AbstractTemporalSpectralDirectionalVectorArray = dataclasses.MISSING
-    pc: na.AbstractTemporalSpectralDirectionalMatrixArray = dataclasses.MISSING
-    shape_wcs: dict[str, int] = dataclasses.MISSING
+    time: na.AbstractExplicitScalarArray = _required()
+    crval: AbstractTemporalSpectralDirectionalVectorArray = _required()
+    crpix: na.CartesianNdVectorArray[na.AbstractExplicitScalarArray] = _required()
+    cdelt: AbstractTemporalSpectralDirectionalVectorArray = _required()
+    pc: na.AbstractTemporalSpectralDirectionalMatrixArray = _required()
+    shape_wcs: dict[str, int] = _required()
 
     @property
     def _components_explicit(self) -> dict[str, na.ArrayLike]:

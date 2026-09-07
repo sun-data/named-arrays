@@ -4,6 +4,7 @@ import abc
 import dataclasses
 import numpy as np
 import named_arrays as na
+from named_arrays._core import _required
 
 __all__ = [
     "AbstractCartesian2dMatrixArray",
@@ -14,8 +15,8 @@ __all__ = [
     "Cartesian2dRotationMatrixArray",
 ]
 
-XT = TypeVar('XT', bound=na.AbstractVectorArray)
-YT = TypeVar('YT', bound=na.AbstractVectorArray)
+XT = TypeVar('XT', bound=na.AbstractVectorArray, covariant=True)
+YT = TypeVar('YT', bound=na.AbstractVectorArray, covariant=True)
 
 
 @dataclasses.dataclass(eq=False, repr=False)
@@ -99,7 +100,7 @@ class AbstractCartesian2dMatrixArray(
 
 @dataclasses.dataclass(eq=False, repr=False)
 class Cartesian2dMatrixArray(
-    na.Cartesian2dVectorArray,
+    na.Cartesian2dVectorArray[XT, YT],
     AbstractCartesian2dMatrixArray,
     na.AbstractExplicitMatrixArray,
     Generic[XT, YT],
@@ -152,7 +153,7 @@ class AbstractCartesian2dRotationMatrixArray(
 class Cartesian2dRotationMatrixArray(
     AbstractCartesian2dRotationMatrixArray,
 ):
-    angle: na.ScalarLike = dataclasses.MISSING
+    angle: na.ScalarLike = _required()
 
     @property
     def explicit(self) -> na.Cartesian2dMatrixArray:

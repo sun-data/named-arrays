@@ -44,6 +44,7 @@ DEFAULT_FUNCTIONS = [
     np.ptp,
     np.count_nonzero,
 ]
+CUMULATIVE_REDUCE_FUNCTIONS = named_arrays._scalars.scalar_array_functions.CUMULATIVE_REDUCE_FUNCTIONS
 PERCENTILE_LIKE_FUNCTIONS = [
     np.percentile,
     np.nanpercentile,
@@ -201,6 +202,57 @@ def array_function_default(
             kwargs["where"] = where_c.broadcast_to(shape_c) if isinstance(where_c, na.AbstractArray) else where_c
         result.components[c] = func(
             component.broadcast_to(shape_c),
+            out=components_out[c],
+            **kwargs_base,
+            **kwargs,
+        )
+
+    if out is not None:
+        result = out
+
+    return result
+
+
+def array_function_cumulative_reduce(
+    func: Callable,
+    a: na.AbstractVectorArray,
+    axis: None | str | Sequence[str] = None,
+    dtype: None | type | np.dtype = np._NoValue,
+    out: None | na.AbstractExplicitVectorArray = None,
+    **kwargs,
+) -> na.AbstractExplicitVectorArray:
+
+    shape = a.shape
+
+    if axis is None:
+        _axis = tuple(shape)
+    elif isinstance(axis, str):
+        _axis = (axis, )
+    else:
+        _axis = axis
+
+    if len(_axis) != 1:
+        raise ValueError(f"only one axis is supported, got {_axis}.")
+
+    _axis = _axis[0]
+
+    shape_base = {_axis: shape[_axis]}
+
+    components = a.components
+    components_out = out.components if isinstance(out, na.AbstractVectorArray) else {c: out for c in components}
+
+    kwargs_base = dict(
+        axis=axis,
+    )
+
+    if dtype is not np._NoValue:
+        kwargs_base["dtype"] = dtype
+
+    result = a.prototype_vector
+    for c in components:
+        component = na.broadcast_to(components[c], shape_base, append=True)
+        result.components[c] = func(
+            component,
             out=components_out[c],
             **kwargs_base,
             **kwargs,
@@ -514,6 +566,11 @@ def array_function_stack_like(
             vector_prototype = array
             break
 
+    for array in arrays:
+        if isinstance(array, na.AbstractVectorArray):
+            if array.type_abstract != vector_prototype.type_abstract:
+                return NotImplemented
+
     arrays = [
         vector_prototype.type_explicit.from_scalar(
             scalar=a,
@@ -639,6 +696,41 @@ def argsort(
             result[ax].components[c] = result_c[ax] if ax in result_c else None
 
     return result
+
+
+@implements(np.take_along_axis)
+def take_along_axis(
+        arr: na.AbstractVectorArray,
+        indices: na.AbstractScalar | na.AbstractVectorArray,
+        axis: str,
+) -> na.AbstractExplicitVectorArray:
+    if not isinstance(arr, na.AbstractVectorArray):  # pragma: nocover
+        return NotImplemented
+
+    try:
+        indices = vectors._normalize(indices, prototype=arr)
+    except na.VectorTypeError:  # pragma: nocover
+        return NotImplemented
+
+    shape = arr.shape
+    if axis not in shape:
+        raise ValueError(
+            f"`axis`, {axis!r}, must be one of the axes in `arr`, {tuple(shape)}"
+        )
+
+    # Broadcast only `axis` so that components which do not vary along `axis`
+    # are still taken correctly.
+    arr = na.broadcast_to(arr, shape={axis: shape[axis]}, append=True)
+
+    components_arr = arr.components
+    components_indices = indices.components
+
+    components_result = {
+        c: np.take_along_axis(components_arr[c], components_indices[c], axis=axis)
+        for c in components_arr
+    }
+
+    return arr.type_explicit.from_components(components_result)
 
 
 @implements(np.unravel_index)
@@ -815,6 +907,106 @@ def nan_to_num(
         return x.type_explicit.from_components(components_result)
     else:
         return x
+
+
+@implements(np.round)
+@implements(np.around)
+def round(
+    a: na.AbstractVectorArray,
+    decimals: int = 0,
+    out: None | na.AbstractExplicitVectorArray = None,
+) -> na.AbstractExplicitVectorArray:
+    try:
+        _out = vectors._normalize(out, a)
+    except vectors.VectorTypeError:  # pragma: nocover
+        return NotImplemented
+
+    components = a.components
+    components_out = _out.components
+    components_result = dict()
+
+    for c in components:
+        components_result[c] = np.round(
+            a=components[c],
+            decimals=decimals,
+            out=components_out[c],
+        )
+
+    if out is None:
+        result = a.type_explicit.from_components(components_result)
+    else:
+        result = out
+
+    return result
+
+
+@implements(np.isclose)
+def isclose(
+    a: na.ArrayLike,
+    b: na.ArrayLike,
+    rtol: float = 1e-05,
+    atol: float = 1e-08,
+    equal_nan: bool = False,
+) -> na.AbstractExplicitVectorArray:
+    try:
+        prototype = vectors._prototype(a, b)
+        a = vectors._normalize(a, prototype)
+        b = vectors._normalize(b, prototype)
+    except vectors.VectorTypeError:
+        return NotImplemented
+
+    components_a = a.components
+    components_b = b.components
+    components_result = dict()
+
+    for c in components_a:
+        components_result[c] = np.isclose(
+            a=components_a[c],
+            b=components_b[c],
+            rtol=rtol,
+            atol=atol,
+            equal_nan=equal_nan,
+        )
+
+    return prototype.type_explicit.from_components(components_result)
+
+
+@implements(np.clip)
+def clip(
+    a: float | na.AbstractScalar | na.AbstractVectorArray,
+    a_min: None | float | na.AbstractScalar | na.AbstractVectorArray,
+    a_max: None | float | na.AbstractScalar | na.AbstractVectorArray,
+    out: None | na.AbstractExplicitVectorArray = None,
+) -> na.AbstractExplicitVectorArray:
+    try:
+        prototype = vectors._prototype(a, a_min, a_max)
+        a = vectors._normalize(a, prototype)
+        a_min = vectors._normalize(a_min, prototype)
+        a_max = vectors._normalize(a_max, prototype)
+        _out = vectors._normalize(out, prototype)
+    except vectors.VectorTypeError:  # pragma: nocover
+        return NotImplemented
+
+    components = a.components
+    components_min = a_min.components
+    components_max = a_max.components
+    components_out = _out.components
+    components_result = dict()
+
+    for c in components:
+        components_result[c] = np.clip(
+            a=components[c],
+            a_min=components_min[c],
+            a_max=components_max[c],
+            out=components_out[c],
+        )
+
+    if out is None:
+        result = a.type_explicit.from_components(components_result)
+    else:
+        result = out
+
+    return result
 
 
 @implements(np.repeat)

@@ -1,7 +1,9 @@
 from __future__ import annotations
-from typing import Type
+from typing import Type, TypeVar, Generic
 import dataclasses
 import named_arrays as na
+
+ComponentT = TypeVar("ComponentT", bound="na.ArrayLike")
 
 __all__ = [
     "AbstractCartesianNdVectorArray",
@@ -12,6 +14,7 @@ __all__ = [
 @dataclasses.dataclass(eq=False, repr=False)
 class AbstractCartesianNdVectorArray(
     na.AbstractCartesianVectorArray,
+    Generic[ComponentT],
 ):
     """
     An interface describing an :math:`n`-dimensional Cartesian vector array.
@@ -30,24 +33,31 @@ class AbstractCartesianNdVectorArray(
         return na.CartesianNdMatrixArray
 
     def __getattr__(self, name: str):
+        # ``pickle`` probes attributes on a bare instance before any state has
+        # been restored, and relies on receiving ``AttributeError`` (and nothing
+        # else) for missing attributes.
+        components = self.__dict__.get("components")
+        if components is None:
+            raise AttributeError(name)
         try:
-            return self.components[name]
+            return components[name]
         except KeyError:
             raise AttributeError(
-                f"component {name} is not a member of {self.components.values()=}"
+                f"component {name} is not a member of {components.values()=}"
             )
 
 
 @dataclasses.dataclass(eq=False, repr=False)
 class CartesianNdVectorArray(
-    AbstractCartesianNdVectorArray,
+    AbstractCartesianNdVectorArray[ComponentT],
     na.AbstractExplicitCartesianVectorArray,
+    Generic[ComponentT],
 ):
     """
     An :math:`n`-dimensional Cartesian vector array.
     """
 
-    components: dict[str, na.ArrayLike] = None
+    components: dict[str, ComponentT] = None
     """
     The vector components of this array.
     
@@ -70,12 +80,7 @@ class CartesianNdVectorArray(
         if like is None:
             raise ValueError("like argument must be specified for CartesianNdArrays")
 
-        result = super().from_scalar(scalar, like=like)
-        if result is not NotImplemented:
-            return result
-        else:
-            raise ValueError("all implementations of from_scalar return NotImplemented")
-
+        return super().from_scalar(scalar, like=like)
 
 
     @classmethod

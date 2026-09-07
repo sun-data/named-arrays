@@ -23,6 +23,7 @@ SINGLE_ARG_FUNCTIONS = named_arrays._scalars.scalar_array_functions.SINGLE_ARG_F
 ARRAY_CREATION_LIKE_FUNCTIONS = named_arrays._scalars.scalar_array_functions.ARRAY_CREATION_LIKE_FUNCTIONS
 SEQUENCE_FUNCTIONS = named_arrays._scalars.scalar_array_functions.SEQUENCE_FUNCTIONS
 DEFAULT_FUNCTIONS = named_arrays._scalars.scalar_array_functions.DEFAULT_FUNCTIONS
+CUMULATIVE_REDUCE_FUNCTIONS = named_arrays._scalars.scalar_array_functions.CUMULATIVE_REDUCE_FUNCTIONS
 PERCENTILE_LIKE_FUNCTIONS = named_arrays._scalars.scalar_array_functions.PERCENTILE_LIKE_FUNCTIONS
 ARG_REDUCE_FUNCTIONS = named_arrays._scalars.scalar_array_functions.ARG_REDUCE_FUNCTIONS
 FFT_LIKE_FUNCTIONS = named_arrays._scalars.scalar_array_functions.FFT_LIKE_FUNCTIONS
@@ -165,6 +166,66 @@ def array_function_default(
 
     result_nominal = func(na.as_named_array(a.nominal), **kwargs_nominal)
     result_distribution = func(a.distribution, **kwargs_distribution)
+
+    if out is None:
+        result = na.UncertainScalarArray(
+            nominal=result_nominal,
+            distribution=result_distribution,
+        )
+    else:
+        out.nominal = result_nominal
+        out.distribution = result_distribution
+        result = out
+    return result
+
+
+def array_function_cumulative_reduce(
+    func: Callable,
+    a: na.AbstractUncertainScalarArray,
+    axis: None | str | Sequence[str] = None,
+    dtype: type | np.dtype = np._NoValue,
+    out: None | na.UncertainScalarArray = None,
+    **kwargs,
+) -> na.UncertainScalarArray:
+
+    shape = a.shape
+
+    kwargs_nominal = dict()
+    kwargs_distribution = dict()
+
+    if axis is None:
+        _axis = tuple(shape)
+    elif isinstance(axis, str):
+        _axis = (axis, )
+    else:
+        _axis = axis
+
+    if len(_axis) != 1:
+        raise ValueError(f"only one axis is supported, got {_axis}.")
+
+    _axis = _axis[0]
+    kwargs["axis"] = _axis
+
+    if dtype is not np._NoValue:
+        kwargs["dtype"] = dtype
+
+    if out is not None:
+        if not isinstance(out, na.UncertainScalarArray):
+            raise ValueError(f"`out` must be `None or an instance of `{a.type_explicit}`, got `{type(out)}`")
+        kwargs_nominal["out"] = out.nominal
+        kwargs_distribution["out"] = out.distribution
+    else:
+        kwargs["out"] = out
+
+    kwargs_nominal = kwargs | kwargs_nominal
+    kwargs_distribution = kwargs | kwargs_distribution
+
+    shape_axis = {_axis: shape[_axis]}
+    a_nominal = na.broadcast_to(a.nominal, shape_axis, append=True)
+    a_distribution = na.broadcast_to(a.distribution, shape_axis, append=True)
+
+    result_nominal = func(a_nominal, **kwargs_nominal)
+    result_distribution = func(a_distribution, **kwargs_distribution)
 
     if out is None:
         result = na.UncertainScalarArray(
@@ -562,8 +623,8 @@ def array_function_stack_like(
     arrays_distribution = []
 
     for array in arrays:
-        array = array.broadcasted
         if isinstance(array, na.AbstractArray):
+            array = array.broadcasted
             if isinstance(array, na.AbstractScalar):
                 if isinstance(array, na.AbstractUncertainScalarArray):
                     array_nominal = na.as_named_array(array.nominal)
@@ -641,6 +702,34 @@ def argsort(
         axis=axis,
         kind=kind,
         order=order,
+    )
+
+
+@implements(np.take_along_axis)
+def take_along_axis(
+        arr: na.AbstractUncertainScalarArray,
+        indices: na.AbstractScalar,
+        axis: str,
+) -> na.UncertainScalarArray:
+    try:
+        arr = uncertainties._normalize(arr)
+        indices = uncertainties._normalize(indices)
+    except na.UncertainScalarTypeError:  # pragma: nocover
+        return NotImplemented
+
+    shape = arr.shape
+    if axis not in shape:
+        raise ValueError(
+            f"`axis`, {axis!r}, must be one of the axes in `arr`, {tuple(shape)}"
+        )
+
+    # Broadcast only `axis` so that a constant `nominal` (which does not vary
+    # along `axis`) is still taken correctly.
+    arr = na.broadcast_to(arr, shape={axis: shape[axis]}, append=True)
+
+    return na.UncertainScalarArray(
+        nominal=np.take_along_axis(arr.nominal, indices.nominal, axis=axis),
+        distribution=np.take_along_axis(arr.distribution, indices.distribution, axis=axis),
     )
 
 
@@ -861,6 +950,116 @@ def convolve(
         mode: str = 'full',
 ) -> na.UncertainScalarArray:
     raise ValueError("`numpy.convolve` is not supported for instances of `named_arrays.AbstractUncertainScalarArray`")
+
+
+@implements(np.clip)
+def clip(
+    a: na.AbstractScalar,
+    a_min: None | float | na.AbstractScalar,
+    a_max: None | float | na.AbstractScalar,
+    out: None | na.UncertainScalarArray = None,
+):
+    try:
+        a = uncertainties._normalize(a)
+        a_min = uncertainties._normalize(a_min)
+        a_max = uncertainties._normalize(a_max)
+        _out = uncertainties._normalize(out)
+    except uncertainties.UncertainScalarTypeError:  # pragma: nocover
+        return NotImplemented
+
+    a = a.explicit
+
+    result_nominal = np.clip(
+        a=a.nominal,
+        a_min=a_min.nominal,
+        a_max=a_max.nominal,
+        out=_out.nominal,
+    )
+    result_distribution = np.clip(
+        a=a.distribution,
+        a_min=a_min.distribution,
+        a_max=a_max.distribution,
+        out=_out.distribution
+    )
+
+    if out is None:
+        result = a.replace(
+            nominal=result_nominal,
+            distribution=result_distribution,
+        )
+    else:
+        result = out
+
+    return result
+
+
+@implements(np.round)
+@implements(np.around)
+def round(
+    a: na.AbstractScalar,
+    decimals: int = 0,
+    out: None | na.UncertainScalarArray = None,
+) -> na.UncertainScalarArray:
+    try:
+        a = uncertainties._normalize(a)
+        _out = uncertainties._normalize(out)
+    except uncertainties.UncertainScalarTypeError:  # pragma: nocover
+        return NotImplemented
+
+    a = a.explicit
+
+    result_nominal = np.round(
+        a=a.nominal,
+        decimals=decimals,
+        out=_out.nominal,
+    )
+    result_distribution = np.round(
+        a=a.distribution,
+        decimals=decimals,
+        out=_out.distribution,
+    )
+
+    if out is None:
+        result = a.replace(
+            nominal=result_nominal,
+            distribution=result_distribution,
+        )
+    else:
+        result = out
+
+    return result
+
+
+@implements(np.isclose)
+def isclose(
+    a: na.ScalarLike,
+    b: na.ScalarLike,
+    rtol: float = 1e-05,
+    atol: float = 1e-08,
+    equal_nan: bool = False,
+) -> na.UncertainScalarArray:
+    try:
+        a = uncertainties._normalize(a)
+        b = uncertainties._normalize(b)
+    except uncertainties.UncertainScalarTypeError:
+        return NotImplemented
+
+    return na.UncertainScalarArray(
+        nominal=np.isclose(
+            a=a.nominal,
+            b=b.nominal,
+            rtol=rtol,
+            atol=atol,
+            equal_nan=equal_nan,
+        ),
+        distribution=np.isclose(
+            a=a.distribution,
+            b=b.distribution,
+            rtol=rtol,
+            atol=atol,
+            equal_nan=equal_nan,
+        ),
+    )
 
 
 @implements(np.repeat)

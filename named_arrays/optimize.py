@@ -13,6 +13,7 @@ __all__ = [
     "root_secant",
     "root_newton",
     "minimum_gradient_descent",
+    "minimum_brent",
 ]
 
 InputT = TypeVar("InputT", bound="float | u.Quantity | na.AbstractScalarArray")
@@ -248,6 +249,94 @@ def minimum_gradient_descent(
         momentum=momentum,
         gradient=gradient,
         min_gradient=min_gradient,
+        max_iterations=max_iterations,
+        callback=callback,
+    )
+
+
+def minimum_brent(
+    function: Callable[[InputT], OutputT],
+    a: InputT,
+    b: InputT,
+    min_step_size: None | InputT = None,
+    max_iterations: int = 100,
+    callback: None | Callable[[int, InputT, OutputT, na.AbstractArray], None] = None,
+) -> InputT:
+    r"""
+    Find the minimum of a function of one variable inside a bracket using
+    `Brent's method <https://en.wikipedia.org/wiki/Brent%27s_method>`_.
+
+    This is the bounded form of the algorithm (golden-section search with
+    parabolic interpolation, as in :func:`scipy.optimize.fminbound`),
+    which needs neither a derivative nor an initial guess, only a bracket
+    :math:`[a, b]` containing the minimum.
+
+    The bracket, the tolerance, and the value of `function` are broadcast
+    against each other, and every element of the result converges
+    independently: `function` is evaluated exactly once per iteration on the
+    whole array of trial points, so a function that is expensive but
+    vectorized (a ray trace, for example) costs the same for one minimum as
+    for a thousand.
+
+    Parameters
+    ----------
+    function
+        The function to minimize.
+        It must accept an array with the broadcast shape of `a` and `b`
+        and return an array of the same shape (or one which broadcasts
+        with it).
+    a
+        The lower bound of the bracket.
+    b
+        The upper bound of the bracket.
+    min_step_size
+        The absolute tolerance on the location of the minimum, in the same
+        units as `a` and `b`.
+        If :obj:`None` (the default), this takes the value
+        ``1e-5 * na.unit(a)``.
+    max_iterations
+        The maximum number of iterations to carry out before a
+        :class:`ValueError` is raised.
+    callback
+        Optional callback function that is called on every iteration as
+        ``callback(i, x, f, converged)``, where ``i`` is the current
+        iteration, ``x`` is the current best estimate of the minimum,
+        ``f`` is the function value there, and ``converged`` is an array
+        storing the convergence state of every minimum being computed.
+
+    Examples
+    --------
+    Find the minimum of a family of V-shaped functions, one per element of
+    the array of offsets, in a single vectorized call.
+
+    .. jupyter-execute::
+
+        import numpy as np
+        import named_arrays as na
+
+        offset = na.linspace(-1, 1, axis="offset", num=5)
+
+        def function(x):
+            return np.abs(x - offset) + 1
+
+        na.optimize.minimum_brent(
+            function=function,
+            a=-2,
+            b=2,
+        )
+    """
+    if min_step_size is None:
+        min_step_size = 1e-5
+        if na.unit(a) is not None:
+            min_step_size = min_step_size * na.unit(a)
+    min_step_size = na.asanyarray(min_step_size, like=a)
+
+    return na._named_array_function(
+        func=minimum_brent,
+        function=function,
+        a=a,
+        b=b,
+        min_step_size=min_step_size,
         max_iterations=max_iterations,
         callback=callback,
     )

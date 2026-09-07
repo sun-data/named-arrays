@@ -1,6 +1,5 @@
 from __future__ import annotations
 from typing import Type, Generic, TypeVar
-from typing_extensions import Self
 import abc
 import dataclasses
 import named_arrays as na
@@ -14,7 +13,7 @@ __all__ = [
     "TemporalVectorLinearSpace",
 ]
 
-TimeT = TypeVar("TimeT", bound=na.ArrayLike)
+TimeT = TypeVar("TimeT", bound=na.ArrayLike, covariant=True)
 
 
 @dataclasses.dataclass(eq=False, repr=False)
@@ -34,11 +33,11 @@ class AbstractTemporalVectorArray(
         return AbstractTemporalVectorArray
 
     @property
-    def type_explicit(self) -> Type[na.AbstractExplicitArray]:
+    def type_explicit(self) -> Type[TemporalVectorArray]:
         return TemporalVectorArray
 
     @property
-    def type_matrix(self) -> Type[na.TemporalMatrixArray]:
+    def type_matrix(self) -> Type[na.AbstractExplicitMatrixArray]:
         return na.TemporalMatrixArray
 
 
@@ -49,17 +48,6 @@ class TemporalVectorArray(
     Generic[TimeT],
 ):
     time: TimeT = 0
-
-    @classmethod
-    def from_scalar(
-            cls: Type[Self],
-            scalar: na.AbstractScalar,
-            like: None | na.AbstractExplicitVectorArray = None,
-    ) -> TemporalVectorArray:
-        result = super().from_scalar(scalar, like=like)
-        if result is not NotImplemented:
-            return result
-        return cls(time=scalar)
 
 
 @dataclasses.dataclass(eq=False, repr=False)

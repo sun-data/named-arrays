@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TypeVar, Type, Generic
+from typing import Sequence, TypeVar, Type, Generic
 from typing_extensions import Self
 import abc
 import dataclasses
@@ -23,9 +23,9 @@ __all__ = [
     "Cartesian3dVectorGeometricSpace",
 ]
 
-XT = TypeVar('XT', bound=na.ArrayLike)
-YT = TypeVar('YT', bound=na.ArrayLike)
-ZT = TypeVar('ZT', bound=na.ArrayLike)
+XT = TypeVar('XT', bound=na.ArrayLike, covariant=True)
+YT = TypeVar('YT', bound=na.ArrayLike, covariant=True)
+ZT = TypeVar('ZT', bound=na.ArrayLike, covariant=True)
 
 
 @dataclasses.dataclass(eq=False, repr=False)
@@ -67,7 +67,7 @@ class AbstractCartesian3dVectorArray(
 
     def volume_cell(
         self,
-        axis: None | tuple[str, str, str],
+        axis: None | str | Sequence[str],
     ) -> na.AbstractScalar:
 
         shape = self.shape
@@ -249,16 +249,6 @@ class Cartesian3dVectorArray(
 
     z: ZT = 0
     """The :math:`z` component of this vector."""
-
-    @classmethod
-    def from_scalar(
-            cls: Type[Self],
-            scalar: na.AbstractScalar,
-            like: None | na.AbstractExplicitVectorArray = None,
-    ) -> Cartesian3dVectorArray:
-        result = super().from_scalar(scalar, like=like)
-        result.z = scalar
-        return result
 
 
 @dataclasses.dataclass(eq=False, repr=False)

@@ -6,6 +6,7 @@ A wrapper around the :mod:`regridding` module for named arrays.
 
 from __future__ import annotations
 from typing import Sequence, Literal
+import numpy as np
 import named_arrays as na
 
 __all__ = [
@@ -13,7 +14,15 @@ __all__ = [
     "weights",
     "regrid_from_weights",
     "transpose_weights",
+    "transpose_weights_conservative",
 ]
+
+_seed_default = 42
+"""
+The default seed used to perturb the output coordinates.
+
+Fixed so that repeated calls on the same grids return identical results.
+"""
 
 
 def regrid(
@@ -23,6 +32,8 @@ def regrid(
     axis_input: None | Sequence[str] = None,
     axis_output: None | Sequence[str] = None,
     method: Literal['multilinear', 'conservative'] = 'multilinear',
+    perturb: None | bool = None,
+    seed: None | int | np.random.Generator = _seed_default,
 ) -> na.AbstractScalarArray:
     """
     Regrid an array of values defined on a logically-rectangular curvilinear
@@ -51,6 +62,22 @@ def regrid(
         coordinates in the output grid.
     method
         The type of regridding to use.
+    perturb
+        Whether to perturb `coordinates_output` by a small value to avoid degenerate
+        grids. This is helpful for some methods, like ``conservative``, which
+        sometimes cannot handle degenerate grids.
+        If :obj:`None` (the default), no perturbation is applied unless `method`
+        is ``conservative`` and the dimensions of the grid are 2D or higher.
+        If :obj:`True`, each point is perturbed using a normal distribution
+        with standard deviation equal to ``1e-9`` of the grid width.
+    seed
+        The seed used by the pseudo-random number generator which perturbs
+        `coordinates_output`.
+        May be an integer or an instance of :class:`numpy.random.Generator`.
+        The default is a fixed integer, so that repeated calls using the same
+        grids return identical results.
+        If :obj:`None`, the generator is seeded from fresh entropy,
+        and each call draws an independent perturbation.
 
     Examples
     --------
@@ -115,7 +142,9 @@ def regrid(
         coordinates_output=coordinates_output,
         axis_input=axis_input,
         axis_output=axis_output,
-        method=method
+        method=method,
+        perturb=perturb,
+        seed=seed,
     )
 
     result = regrid_from_weights(
@@ -133,7 +162,10 @@ def weights(
     coordinates_output: na.AbstractScalar | na.AbstractVectorArray,
     axis_input: None | str | Sequence[str] = None,
     axis_output: None | str | Sequence[str] = None,
+    weights_input: None | na.AbstractScalar = None,
     method: Literal['multilinear', 'conservative'] = 'multilinear',
+    perturb: None | bool = None,
+    seed: None | int | np.random.Generator = _seed_default,
 ) -> tuple[na.AbstractScalar, dict[str, int], dict[str, int]]:
     """
     Save the results of a regridding operation as a sequence of weights,
@@ -164,8 +196,26 @@ def weights(
         axes in the input grid.
         The number of axes should be equal to the number of
         coordinates in the output grid.
+    weights_input
+        Weights applied to the values of the input grid before resampling.
     method
         The type of regridding to use.
+    perturb
+        Whether to perturb `coordinates_output` by a small value to avoid degenerate
+        grids. This is helpful for some methods, like ``conservative``, which
+        sometimes cannot handle degenerate grids.
+        If :obj:`None` (the default), no perturbation is applied unless `method`
+        is ``conservative`` and the dimensions of the grid are 2D or higher.
+        If :obj:`True`, each point is perturbed using a normal distribution
+        with standard deviation equal to ``1e-9`` of the grid width.
+    seed
+        The seed used by the pseudo-random number generator which perturbs
+        `coordinates_output`.
+        May be an integer or an instance of :class:`numpy.random.Generator`.
+        The default is a fixed integer, so that repeated calls using the same
+        grids return identical results.
+        If :obj:`None`, the generator is seeded from fresh entropy,
+        and each call draws an independent perturbation.
 
     See Also
     --------
@@ -180,7 +230,10 @@ def weights(
         coordinates_output=coordinates_output,
         axis_input=axis_input,
         axis_output=axis_output,
+        weights_input=weights_input,
         method=method,
+        perturb=perturb,
+        seed=seed,
     )
 
 
@@ -224,6 +277,58 @@ def transpose_weights(
     ----------
     weights
         Ragged array of weights computed by :func:`weights`.
+    """
+
+    weights, shape_input, shape_output = weights
+
+    return na._named_array_function(
+        func=transpose_weights,
+        weights=weights,
+        shape_input=shape_input,
+        shape_output=shape_output,
+    )
+
+
+def transpose_weights_conservative(
+    weights: tuple[na.AbstractScalar, dict[str, int], dict[str, int]],
+    coordinates_input: na.AbstractScalar | na.AbstractVectorArray,
+    coordinates_output: na.AbstractScalar | na.AbstractVectorArray,
+    axis_input: None | str | Sequence[str] = None,
+    axis_output: None | str | Sequence[str] = None,
+    weights_input: None | na.AbstractScalar = None,
+) -> tuple[na.AbstractScalar, dict[str, int], dict[str, int]]:
+    """
+    Transpose weight matrix and normalize to be conservative.
+
+    This is a thin wrapper around :func:`regridding.transpose_weights_conservative`.
+
+    Parameters
+    ----------
+    weights
+        Ragged array of weights computed by :func:`weights`.
+    coordinates_input
+        Coordinates of the input grid.
+    coordinates_output
+        Coordinates of the output grid.
+        Should have the same number of coordinates as the input grid.
+    axis_input
+        Logical axes of the input grid to resample.
+        If :obj:`None`, resample all the axes of the input grid.
+        The number of axes should be equal to the number of
+        coordinates in the input grid.
+    axis_output
+        Logical axes of the output grid corresponding to the resampled axes
+        of the input grid.
+        If :obj:`None`, all the axes of the output grid correspond to resampled
+        axes in the input grid.
+        The number of axes should be equal to the number of
+        coordinates in the output grid.
+    weights_input
+        The weights that were applied to the input values by
+        :func:`weights`. The transpose inverts this weighting (retaining a
+        factor of ``1 / weights_input``) so that regridding a
+        forward-transformed array with the transposed weights recovers the
+        original input values.
 
     Examples
     --------
@@ -267,7 +372,11 @@ def transpose_weights(
         )
 
         # Transpose weights
-        weights_transposed = na.regridding.transpose_weights(weights)
+        weights_transposed = na.regridding.transpose_weights_conservative(
+            weights=weights,
+            coordinates_input=coordinates_input,
+            coordinates_output=coordinates_output,
+        )
 
         # Regrid the regridded values back onto original grid using transposed weights.
         values_transposed = na.regridding.regrid_from_weights(
@@ -283,9 +392,9 @@ def transpose_weights(
             figsize=(8, 4),
             constrained_layout=True,
         );
-        na.plt.pcolormesh(coordinates_input, C=values_input, ax=ax[0])
-        na.plt.pcolormesh(coordinates_output, C=values_output, ax=ax[1])
-        na.plt.pcolormesh(coordinates_input, C=values_transposed, ax=ax[2])
+        na.plt.pcolormesh(coordinates_input, C=values_input, ax=ax[0], vmin=0, vmax=1)
+        na.plt.pcolormesh(coordinates_output, C=values_output, ax=ax[1], vmin=0, vmax=1)
+        na.plt.pcolormesh(coordinates_input, C=values_transposed, ax=ax[2], vmin=0, vmax=1)
         ax[0].set_title("original");
         ax[1].set_title("rotated");
         ax[2].set_title("rotated and transposed");
@@ -294,8 +403,13 @@ def transpose_weights(
     weights, shape_input, shape_output = weights
 
     return na._named_array_function(
-        func=transpose_weights,
+        func=transpose_weights_conservative,
         weights=weights,
         shape_input=shape_input,
         shape_output=shape_output,
+        coordinates_input=coordinates_input,
+        coordinates_output=coordinates_output,
+        axis_input=axis_input,
+        axis_output=axis_output,
+        weights_input=weights_input,
     )

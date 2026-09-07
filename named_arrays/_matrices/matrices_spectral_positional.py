@@ -1,7 +1,10 @@
 from __future__ import annotations
-from typing import Type
+from typing import Type, TypeVar, Generic
 import dataclasses
 import named_arrays as na
+
+PositionT = TypeVar("PositionT", bound="na.AbstractVectorArray", covariant=True)
+WavelengthT = TypeVar("WavelengthT", bound="na.AbstractVectorArray", covariant=True)
 
 __all__ = [
     "AbstractSpectralPositionalMatrixArray",
@@ -28,13 +31,14 @@ class AbstractSpectralPositionalMatrixArray(
 
     @property
     def determinant(self) -> na.ScalarLike:
-        return NotImplementedError
+        raise NotImplementedError
 
 
 @dataclasses.dataclass(eq=False, repr=False)
 class SpectralPositionalMatrixArray(
-    na.SpectralPositionalVectorArray,
+    na.SpectralPositionalVectorArray[PositionT, WavelengthT],
     AbstractSpectralPositionalMatrixArray,
     na.AbstractExplicitMatrixArray,
+    Generic[PositionT, WavelengthT],
 ):
     pass

@@ -1,4 +1,4 @@
-from typing import Sequence, Literal, Callable
+from typing import Mapping, Sequence, Literal, Callable
 import pytest
 import numpy as np
 import astropy.units as u
@@ -139,6 +139,7 @@ class AbstractTestAbstractFunctionArrayVertices(
         argnames='item',
         argvalues=[
             dict(y=0),
+            dict(y=np.int64(0)),
             dict(y=slice(0, 1)),
         ]
 
@@ -146,7 +147,7 @@ class AbstractTestAbstractFunctionArrayVertices(
     def test__getitem__(
             self,
             array: na.AbstractFunctionArray,
-            item: dict[str, int | slice | na.AbstractArray] | na.AbstractArray
+            item: Mapping[str, int | slice | na.AbstractArray] | na.AbstractArray
     ):
 
         super().test__getitem__(array=array, item=item)
@@ -183,6 +184,15 @@ class AbstractTestAbstractFunctionArrayVertices(
                     np.concatenate(arrays, axis=axis)
                 return
             super().test_concatenate(array, axis)
+
+        @pytest.mark.parametrize('axis', ['x', 'y'])
+        def test_take_along_axis(self, array: na.AbstractArray, axis: str):
+            if axis in array.axes_vertex:
+                indices = na.ScalarArray(np.array([0]), axes=axis)
+                with pytest.raises(ValueError, match="describes input vertices"):
+                    np.take_along_axis(array, indices, axis=axis)
+                return
+            super().test_take_along_axis(array=array, axis=axis)
 
         def test_nonzero(self, array: na.AbstractArray):
             if len(array.axes_vertex) != 0:

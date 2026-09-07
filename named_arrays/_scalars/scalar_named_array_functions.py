@@ -5,8 +5,11 @@ import numpy.typing as npt
 import numexpr
 import matplotlib.axes
 import matplotlib.artist
+import matplotlib.collections
 import matplotlib.pyplot as plt
 import matplotlib.animation
+import mpl_toolkits.mplot3d
+import mpl_toolkits.mplot3d.art3d
 import astropy.units as u
 import astroscrappy
 import ndfilters
@@ -40,6 +43,7 @@ RANDOM_FUNCTIONS = (
 )
 PLT_PLOT_LIKE_FUNCTIONS = (
     na.plt.plot,
+    na.plt.line_collection,
     na.plt.fill,
 )
 PLT_AXES_SETTERS = (
@@ -206,6 +210,14 @@ def broadcast_to(
         ),
         axes=tuple(shape.keys()),
     )
+
+
+@_implements(na.debroadcast)
+def debroadcast(
+    array: na.AbstractScalarArray,
+    axes: None | str | Sequence[str] = None,
+) -> na.AbstractExplicitArray:
+    return na._named_array_functions._debroadcast(array, axes)
 
 
 @_implements(na.interp)
@@ -516,31 +528,157 @@ def histogramdd(
         for b in bins
     ]
 
-    shape_bins = na.shape_broadcasted(*bins)
-    shape_hist = {
-        ax: shape_bins[ax] - 1
-        for ax in shape_bins
-        if ax not in shape_orthogonal
-    }
-    shape_hist = na.broadcast_shapes(shape_orthogonal, shape_hist)
+    for b in bins:
+        if len(set(b.axes) - set(shape_orthogonal)) != 1:
+            raise ValueError(
+                f"the edges of every dimension must have exactly one axis besides "
+                f"the orthogonal axes {tuple(shape_orthogonal)}, got {b.axes}"
+            )
 
-    hist = na.ScalarArray.empty(shape_hist)
+    return _histogramdd_vectorized(
+        sample=sample,
+        bins=bins,
+        bins_broadcasted=bins_broadcasted,
+        axis=tuple(axis),
+        shape=shape,
+        shape_orthogonal=shape_orthogonal,
+        weights=weights,
+        density=density,
+    )
 
+
+def _bin_index(edges: np.ndarray, values: np.ndarray) -> np.ndarray:
+    """
+    The bin of every value: the ``i`` with ``edges[i] <= value < edges[i + 1]``.
+
+    `edges` holds one row of edges for every row of `values`. Equivalent to
+    ``np.searchsorted(edges[r], values[r], side="right") - 1`` for every row
+    ``r``, but uniform edges are located arithmetically in one pass, with
+    the same rounding correction :func:`numpy.histogram` applies, instead of
+    by a binary search of every value.
+    """
+    num = edges.shape[~0] - 1
+    width = np.diff(edges, axis=~0)
+    uniform = num > 0 and np.allclose(width, width[:, :1], rtol=1e-10, atol=0)
+    if not uniform:
+        return np.stack(
+            [np.searchsorted(e, v, side="right") - 1 for e, v in zip(edges, values)]
+        )
+
+    with np.errstate(invalid="ignore", divide="ignore", over="ignore"):
+        index = np.floor((values - edges[:, :1]) / width[:, :1])
+        index = np.nan_to_num(index, nan=-1, posinf=num, neginf=-1)
+        index = np.clip(index, -1, num).astype(np.intp)
+        # correct for rounding in the division above, exactly as numpy does
+        above = np.take_along_axis(edges, np.clip(index + 1, 0, num), axis=~0)
+        below = np.take_along_axis(edges, np.clip(index, 0, num), axis=~0)
+        index = np.where((values >= above) & (index < num), index + 1, index)
+        index = np.where((values < below) & (index >= 0), index - 1, index)
+    return index
+
+
+def _histogramdd_vectorized(
+    sample: list[na.AbstractScalarArray],
+    bins: list[na.AbstractScalarArray],
+    bins_broadcasted: list[na.AbstractScalarArray],
+    axis: tuple[str, ...],
+    shape: dict[str, int],
+    shape_orthogonal: dict[str, int],
+    weights: None | na.AbstractScalarArray,
+    density: bool,
+) -> tuple[na.ScalarArray, tuple[na.AbstractScalarArray, ...]]:
+    """
+    Histogram every orthogonal index of `sample` with one call to
+    :func:`numpy.bincount`.
+
+    Reproduces the binning of :func:`numpy.histogramdd`: every bin is
+    half-open on the right except the last, which also contains its right
+    edge, and points outside the edges (or not a number) are dropped.
+    The edges may vary along the orthogonal axes. A density is normalized
+    within every orthogonal index, by the total weight of the points inside
+    the edges and the volume of every bin, so its unit is the unit of the
+    weights divided by the units of the sample.
+    """
     unit_weights = na.unit(weights)
-    hist = hist if unit_weights is None else hist << unit_weights
+    axes_orthogonal = tuple(shape_orthogonal)
+    axes_aligned = axes_orthogonal + axis
 
-    for i in na.ndindex(shape_orthogonal):
-        hist_i, _ = np.histogramdd(
-            sample=[s[i].ndarray_aligned(axis).reshape(-1) for s in sample],
-            bins=[b[i].ndarray for b in bins_broadcasted],
-            density=density,
-            weights=weights[i].ndarray_aligned(axis).reshape(-1) if weights is not None else weights,
-        )
+    num_orthogonal = int(np.prod([shape[a] for a in axes_orthogonal], dtype=int))
+    num_point = int(np.prod([shape[a] for a in axis], dtype=int))
+    shape_aligned = (num_orthogonal, num_point)
 
-        hist[i] = na.ScalarArray(
-            ndarray=hist_i,
-            axes=sum((b[i].axes for b in bins_broadcasted), ()),
-        )
+    index = np.zeros(shape_aligned, dtype=np.intp)
+    inside = np.ones(shape_aligned, dtype=bool)
+    num_bins = []
+    axes_hist = []
+    widths = []
+    unit_volume = None
+    for s, b in zip(sample, bins_broadcasted):
+        unit_sample = na.unit(s)
+        (axis_hist,) = set(b.axes) - set(axes_orthogonal)
+        num = b.shape[axis_hist] - 1
+        edges = b.ndarray_aligned(axes_orthogonal + (axis_hist,))
+        edges = edges.reshape(num_orthogonal, num + 1)
+        values = s.ndarray_aligned(axes_aligned).reshape(shape_aligned)
+        if isinstance(edges, u.Quantity):
+            edges = edges.to_value(unit_sample if unit_sample is not None else u.dimensionless_unscaled)
+        if isinstance(values, u.Quantity):
+            values = values.value
+        edges = np.asarray(edges)
+        first = edges[:, :1]
+        last = edges[:, ~0:]
+        with np.errstate(invalid="ignore"):
+            inside &= (values >= first) & (values <= last)
+            index_dimension = _bin_index(edges, values)
+            index_dimension = np.where(values == last, num - 1, index_dimension)
+        index_dimension = np.clip(index_dimension, 0, max(num - 1, 0))
+        index = index * num + index_dimension
+        num_bins.append(num)
+        axes_hist.append(axis_hist)
+        widths.append(np.diff(edges, axis=~0))
+        if unit_sample is not None:
+            unit_volume = unit_sample if unit_volume is None else unit_volume * unit_sample
+
+    size_hist = int(np.prod(num_bins, dtype=int))
+    index = index + np.arange(num_orthogonal)[:, np.newaxis] * size_hist
+    index = index[inside]
+    minlength = num_orthogonal * size_hist
+
+    if weights is None:
+        counts = np.bincount(index, minlength=minlength).astype(float)
+    else:
+        w = weights.ndarray_aligned(axes_aligned).reshape(shape_aligned)
+        if isinstance(w, u.Quantity):
+            w = w.value
+        w = np.asarray(w)[inside]
+        if np.iscomplexobj(w):
+            counts = np.bincount(index, weights=w.real, minlength=minlength) + 1j * np.bincount(
+                index, weights=w.imag, minlength=minlength
+            )
+        else:
+            counts = np.bincount(index, weights=w, minlength=minlength)
+
+    counts = counts.reshape((num_orthogonal,) + tuple(num_bins))
+
+    if density:
+        # as numpy: divide by the total weight inside the edges and by the
+        # width of every bin along every dimension
+        total = counts.reshape(num_orthogonal, size_hist).sum(axis=~0)
+        counts = counts / total.reshape((num_orthogonal,) + len(num_bins) * (1,))
+        for d, width in enumerate(widths):
+            shape_width = [num_orthogonal] + len(num_bins) * [1]
+            shape_width[d + 1] = num_bins[d]
+            counts = counts / width.reshape(shape_width)
+
+    shape_result = tuple(shape[a] for a in axes_orthogonal) + tuple(num_bins)
+    hist = na.ScalarArray(
+        ndarray=counts.reshape(shape_result),
+        axes=axes_orthogonal + tuple(axes_hist),
+    )
+    if unit_weights is not None:
+        hist = hist << unit_weights
+    if density and unit_volume is not None:
+        hist = hist / unit_volume
 
     return hist, tuple(bins)
 
@@ -903,18 +1041,126 @@ def plt_plot_like(
         kwargs_broadcasted[k] = na.broadcast_to(kwarg, shape_orthogonal)
     kwargs = kwargs_broadcasted
 
-    result = na.ScalarArray.empty(shape=shape_orthogonal, dtype=object)
+    # a line drawn as a collection is drawn a segment at a time, so it has one
+    # artist per gap between samples rather than one for the whole line
+    is_line_collection = func is na.plt.line_collection
+    if is_line_collection:
+        shape_result = shape_orthogonal | {axis: shape[axis] - 1}
+    else:
+        shape_result = shape_orthogonal
+
+    result = na.ScalarArray.empty(shape=shape_result, dtype=object)
 
     for index in na.ndindex(shape_orthogonal):
         if where[index]:
-            func_matplotlib = getattr(ax[index].ndarray, func.__name__)
+            axes = ax[index].ndarray
             args_index = tuple(arg[index].ndarray for arg in args)
             kwargs_index = {k: kwargs[k][index].ndarray for k in kwargs}
-            result[index] = func_matplotlib(
-                *args_index,
-                **kwargs_index,
-            )[0]
+            if is_line_collection:
+                result[index] = _line_collection(
+                    ax=axes,
+                    args=args_index,
+                    kwargs=kwargs_index,
+                    axis=axis,
+                )
+            elif _is_fill_3d(func, axes, args_index):
+                result[index] = _fill_3d(axes, args_index, kwargs_index)
+            else:
+                func_matplotlib = getattr(axes, func.__name__)
+                result[index] = func_matplotlib(
+                    *args_index,
+                    **kwargs_index,
+                )[0]
 
+    return result
+
+
+def _line_collection(
+        ax: matplotlib.axes.Axes,
+        args: tuple,
+        kwargs: dict[str, Any],
+        axis: str,
+) -> na.ScalarArray:
+    """
+    Draw a line as one collection per segment.
+
+    A collection is sorted into a 3D scene by a single depth, the minimum over
+    its points, so a line which spans the scene is drawn a segment at a time.
+    Given one depth for its whole length it would be placed either in front of
+    every surface it crosses or behind all of them.
+    """
+    is_3d = isinstance(ax, mpl_toolkits.mplot3d.Axes3D)
+
+    aliases = {
+        "color": "colors",
+        "linewidth": "linewidths",
+        "linestyle": "linestyles",
+    }
+    kwargs = {aliases.get(k, k): kwargs[k] for k in kwargs}
+
+    vertices = np.stack([u.Quantity(a).value for a in args], axis=~0)
+
+    result = na.ScalarArray.empty(
+        shape={axis: len(vertices) - 1},
+        dtype=object,
+    )
+
+    for i in range(len(vertices) - 1):
+        segment = [vertices[i : i + 2]]
+        if is_3d:
+            collection = mpl_toolkits.mplot3d.art3d.Line3DCollection(
+                segment,
+                **kwargs,
+            )
+            ax.add_collection3d(collection)
+        else:
+            collection = matplotlib.collections.LineCollection(segment, **kwargs)
+            ax.add_collection(collection)
+            ax.autoscale_view()
+        result[{axis: i}] = collection
+
+    return result
+
+
+def _is_fill_3d(
+        func: Callable,
+        ax: matplotlib.axes.Axes,
+        args: tuple,
+) -> bool:
+    """Whether this is a filled polygon being drawn on a 3D axes."""
+    return (
+        func is na.plt.fill
+        and isinstance(ax, mpl_toolkits.mplot3d.Axes3D)
+        and len(args) == 3
+    )
+
+
+def _fill_3d(
+        ax: mpl_toolkits.mplot3d.Axes3D,
+        args: tuple,
+        kwargs: dict[str, Any],
+) -> mpl_toolkits.mplot3d.art3d.Poly3DCollection:
+    """
+    Fill a polygon on a 3D axes.
+
+    :meth:`matplotlib.axes.Axes.fill` has no 3D counterpart. Calling it on a 3D
+    axes reads the third coordinate as another polygon, giving flat patches
+    which lie in the plane of the page and never hide anything behind them.
+    :class:`mpl_toolkits.mplot3d.art3d.Poly3DCollection` is the 3D equivalent:
+    it is depth sorted along with everything else in the axes, so a surface
+    drawn this way occludes what is behind it.
+    """
+    aliases = {
+        "color": "facecolors",
+        "linewidth": "linewidths",
+        "linestyle": "linestyles",
+    }
+    kwargs = {aliases.get(k, k): kwargs[k] for k in kwargs}
+
+    vertices = np.stack([u.Quantity(a).value for a in args], axis=~0)
+
+    result = mpl_toolkits.mplot3d.art3d.Poly3DCollection([vertices], **kwargs)
+    ax.add_collection3d(result)
     return result
 
 
@@ -1670,6 +1916,153 @@ def optimize_root_secant(
     raise ValueError("Max iterations exceeded")
 
 
+@_implements(na.optimize.minimum_brent)
+def optimize_minimum_brent(
+        function: Callable[[na.ScalarLike], na.ScalarLike],
+        a: na.ScalarLike,
+        b: na.ScalarLike,
+        min_step_size: na.ScalarLike,
+        max_iterations: int = 100,
+        callback: None | Callable[[int, na.ScalarLike, na.ScalarLike, na.ScalarLike], None] = None,
+) -> na.ScalarArray:
+
+    # the bracket and the function value may be uncertain as well as plain
+    # scalars: the state of the search is promoted to uncertain arrays by
+    # the first comparison involving one, so a single body serves both
+    a = na.as_named_array(a)
+    b = na.as_named_array(b)
+    min_step_size = na.as_named_array(min_step_size)
+    for arg in (a, b, min_step_size):
+        if not isinstance(arg, na.AbstractScalar):
+            return NotImplemented
+
+    # the bracket, the step, and the tolerance are compared only with each
+    # other, and the function values only with each other, so the search
+    # runs on plain numbers and the units are reattached on the way out
+    unit_x = na.unit(a)
+    if unit_x is not None:
+        b = b.to(unit_x)
+        min_step_size = min_step_size.to(unit_x)
+    a = na.value(a)
+    b = na.value(b)
+    tolerance = na.value(min_step_size)
+
+    def attach(x: na.ScalarArray) -> na.ScalarArray:
+        return x if unit_x is None else x * unit_x
+
+    def evaluate(x: na.AbstractScalar) -> tuple[na.AbstractScalar, na.AbstractScalar]:
+        f = na.as_named_array(function(attach(x)))
+        return f, na.value(f)
+
+    ratio_golden = (3 - np.sqrt(5)) / 2
+    sqrt_eps = np.sqrt(np.finfo(float).eps)
+
+    a, b = np.minimum(a, b), np.maximum(a, b)
+
+    x = a + ratio_golden * (b - a)
+    f, fx = evaluate(x)
+
+    if not isinstance(f, na.AbstractScalar):
+        return NotImplemented
+
+    shape = na.shape_broadcasted(a, b, tolerance, fx)
+    a = na.broadcast_to(a, shape).astype(float)
+    b = na.broadcast_to(b, shape).astype(float)
+    tolerance = na.broadcast_to(tolerance, shape)
+    x = na.broadcast_to(x, shape).astype(float)
+    fx = fx.astype(float)
+
+    # the second- and third-best points, which seed the parabolic steps
+    x_1 = x.copy()
+    x_2 = x.copy()
+    f_1 = fx.copy()
+    f_2 = fx.copy()
+
+    step = 0 * x
+    step_prev = 0 * x
+
+    for i in range(max_iterations):
+
+        x_mid = (a + b) / 2
+        tol_1 = sqrt_eps * np.abs(x) + tolerance / 3
+        tol_2 = 2 * tol_1
+
+        converged = np.abs(x - x_mid) <= (tol_2 - (b - a) / 2)
+
+        result = attach(x)
+
+        if callback is not None:
+            callback(i, result, f, converged)
+
+        if np.all(converged):
+            return result
+
+        active = ~converged
+
+        # a parabola through the three best points, accepted only if the
+        # last-but-one step was significant, the parabolic step is less
+        # than half of it, and it lands inside the bracket
+        r = (x - x_1) * (fx - f_2)
+        q = (x - x_2) * (fx - f_1)
+        p = (x - x_2) * q - (x - x_1) * r
+        q = 2 * (q - r)
+        p = np.where(q > 0, -p, p)
+        q = np.abs(q)
+        q_safe = np.where(q == 0, 1, q)
+        parabolic = (
+            (np.abs(step_prev) > tol_1)
+            & (np.abs(p) < np.abs(q * step_prev / 2))
+            & (p > q * (a - x))
+            & (p < q * (b - x))
+        )
+        step_parabolic = np.where(parabolic, p / q_safe, 0)
+        x_parabolic = x + step_parabolic
+        near_bound = ((x_parabolic - a) < tol_2) | ((b - x_parabolic) < tol_2)
+        sign_mid = np.sign(x_mid - x) + ((x_mid - x) == 0)
+        step_parabolic = np.where(near_bound, tol_1 * sign_mid, step_parabolic)
+
+        # otherwise a golden-section step into the larger part of the bracket
+        step_golden_full = np.where(x >= x_mid, a - x, b - x)
+        step_golden = ratio_golden * step_golden_full
+
+        step_prev, step = (
+            np.where(parabolic, step, step_golden_full),
+            np.where(parabolic, step_parabolic, step_golden),
+        )
+
+        sign_step = np.sign(step) + (step == 0)
+        u = x + sign_step * np.maximum(np.abs(step), tol_1)
+        u = np.where(active, u, x)
+        f_u, fu = evaluate(u)
+
+        better = fu <= fx
+
+        # update the bracket and the three best points
+        a_new = np.where(better, np.where(u >= x, x, a), np.where(u < x, u, a))
+        b_new = np.where(better, np.where(u >= x, b, x), np.where(u < x, b, u))
+        second = ~better & ((fu <= f_1) | (x_1 == x))
+        third = ~better & ~second & ((fu <= f_2) | (x_2 == x) | (x_2 == x_1))
+        x_2_new = np.where(better | second, x_1, np.where(third, u, x_2))
+        f_2_new = np.where(better | second, f_1, np.where(third, fu, f_2))
+        x_1_new = np.where(better, x, np.where(second, u, x_1))
+        f_1_new = np.where(better, fx, np.where(second, fu, f_1))
+        x_new = np.where(better, u, x)
+        fx_new = np.where(better, fu, fx)
+        f_new = np.where(better, f_u, f)
+
+        a = np.where(active, a_new, a)
+        b = np.where(active, b_new, b)
+        x_2 = np.where(active, x_2_new, x_2)
+        f_2 = np.where(active, f_2_new, f_2)
+        x_1 = np.where(active, x_1_new, x_1)
+        f_1 = np.where(active, f_1_new, f_1)
+        x = np.where(active, x_new, x)
+        fx = np.where(active, fx_new, fx)
+        f = np.where(active, f_new, f)
+
+    raise ValueError("Max iterations exceeded")
+
+
 @_implements(na.colorsynth.rgb)
 def colorsynth_rgb(
     spd: na.AbstractScalarArray,
@@ -1805,7 +2198,7 @@ def colorsynth_colorbar(
         squeeze=False,
     )
 
-    axes_new = (axis_wavelength, axis_intensity) + axes
+    axes_new = (axis_intensity, axis_wavelength) + axes
 
     intensity = na.ScalarArray(intensity, axes_new)
     wavelength = na.ScalarArray(wavelength, axes_new)
@@ -1872,7 +2265,10 @@ def regridding_weights(
     coordinates_output: na.AbstractScalarArray | na.AbstractVectorArray,
     axis_input: None | str | Sequence[str] = None,
     axis_output: None | str | Sequence[str] = None,
+    weights_input: None | na.AbstractScalar = None,
     method: Literal['multilinear', 'conservative'] = 'multilinear',
+    perturb: None | bool = None,
+    seed: "None | int | np.random.Generator" = na.regridding._seed_default,
 ) -> tuple[na.AbstractScalar, dict[str, int], dict[str, int]]:
 
     if not isinstance(coordinates_output, na.AbstractVectorArray):
@@ -1886,7 +2282,10 @@ def regridding_weights(
         coordinates_output=coordinates_output,
         axis_input=axis_input,
         axis_output=axis_output,
+        weights_input=weights_input,
         method=method,
+        perturb=perturb,
+        seed=seed,
     )
 
 
@@ -1951,6 +2350,38 @@ def regridding_transpose_weights(
     new_weights, _, _, = regridding.transpose_weights((weights.ndarray, tuple(), tuple()))
 
     return (na.ScalarArray(new_weights, axes=weights.axes), shape_output, shape_input)
+
+
+@_implements(na.regridding.transpose_weights_conservative)
+def regridding_transpose_weights_conservative(
+    weights: na.AbstractScalar,
+    shape_input: dict[str, int],
+    shape_output: dict[str, int],
+    coordinates_input: na.AbstractScalarArray,
+    coordinates_output: na.AbstractScalarArray,
+    axis_input: None | str | Sequence[str] = None,
+    axis_output: None | str | Sequence[str] = None,
+    weights_input: None | na.AbstractScalar = None,
+) -> tuple[na.AbstractScalar, dict[str, int], dict[str, int]]:
+
+    if not isinstance(coordinates_output, na.AbstractVectorArray):
+        coordinates_output = na.CartesianNdVectorArray(dict(x=coordinates_output))
+    else:
+        return NotImplemented
+
+    if not isinstance(coordinates_input, na.AbstractVectorArray):
+        coordinates_input = na.CartesianNdVectorArray(dict(x=coordinates_input))
+    else:
+        return NotImplemented
+
+    return na.regridding.transpose_weights_conservative(
+        weights=(weights, shape_input, shape_output),
+        coordinates_input=coordinates_input,
+        coordinates_output=coordinates_output,
+        axis_input=axis_input,
+        axis_output=axis_output,
+        weights_input=weights_input,
+    )
 
 @_implements(na.despike)
 def despike(

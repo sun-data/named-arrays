@@ -28,11 +28,7 @@ class AbstractMatrixArray(
         """
 
     @property
-    def components(self) -> dict[str, na.AbstractVectorArray]:
-        return super().components
-
-    @property
-    def entries(self) -> dict[tuple[str, ...], na.ScalarLike]:
+    def entries(self) -> dict[str | tuple[str, ...], na.ScalarLike]:
         rows = self.cartesian_nd.rows
         result = {}
         for r in rows:
@@ -244,11 +240,14 @@ class AbstractMatrixArray(
                 for row in value.rows.values()
             ], axis="_row")
             inverse = value.matrix_inverse(axis_rows="_row", axis_columns="_column")
+            # `matrix_inverse` labels the rows of the inverse by the columns of
+            # the original and vice versa, so the element in row `i` and
+            # column `j` of the inverse lives at `_column=i`, `_row=j`.
             result = 1 / unit.matrix_transpose
             for i, r in enumerate(result.rows):
                 row = result.rows[r].components
                 for j, c in enumerate(row):
-                    row[c] = inverse[dict(_row=i, _column=j)] * row[c]
+                    row[c] = inverse[dict(_column=i, _row=j)] * row[c]
 
         result = explicit.from_cartesian_nd(result, like=explicit.matrix_transpose)
 
@@ -345,11 +344,11 @@ class AbstractExplicitMatrixArray(
 ):
 
     @property
-    def components(self) -> dict[str, na.AbstractVectorArray]:
+    def components(self) -> dict[str, na.ArrayLike]:
         return self.__dict__
 
     @components.setter
-    def components(self, value: dict[str, na.AbstractVectorArray]):
+    def components(self, value: dict[str, na.ArrayLike]):
         self.__dict__ = value
 
     @classmethod

@@ -1,3 +1,4 @@
+from typing import Mapping
 import pytest
 import numpy as np
 import astropy.units as u
@@ -194,7 +195,7 @@ class AbstractTestAbstractCartesian2dMatrixArray(
     def test__getitem__(
             self,
             array: na.AbstractCartesian2dVectorArray,
-            item: dict[str, int | slice | na.AbstractArray] | na.AbstractArray
+            item: Mapping[str, int | slice | na.AbstractArray] | na.AbstractArray
     ):
         super().test__getitem__(array=array, item=item)
 
@@ -203,6 +204,16 @@ class AbstractTestAbstractCartesian2dMatrixArray(
         test_matrices_cartesian.AbstractTestAbstractCartesianMatrixArray.TestUfuncBinary
     ):
         pass
+
+    class TestArrayFunctions(
+        named_arrays._vectors.cartesian.tests.test_vectors_cartesian_2d
+        .AbstractTestAbstractCartesian2dVectorArray.TestArrayFunctions,
+    ):
+        @pytest.mark.parametrize('array_2', _cartesian_2d_matrices_2())
+        class TestStackLikeFunctions(
+            named_arrays.tests.test_core.AbstractTestAbstractArray.TestArrayFunctions.TestStackLikeFunctions,
+        ):
+            pass
 
     @pytest.mark.parametrize(
         argnames='array_2',

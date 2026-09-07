@@ -1,6 +1,6 @@
 from __future__ import annotations
 import functools
-from typing import TypeVar, Generic, Type, ClassVar, Sequence, Callable, Collection, Any, Literal
+from typing import Mapping, TYPE_CHECKING, TypeVar, Generic, Type, ClassVar, Sequence, Callable, Collection, Any, Literal
 from typing_extensions import Self
 import abc
 import dataclasses
@@ -18,8 +18,8 @@ __all__ = [
     "PolynomialFitFunctionArray",
 ]
 
-InputsT = TypeVar("InputsT", bound=na.AbstractArray)
-OutputsT = TypeVar("OutputsT", bound=na.AbstractArray)
+InputsT = TypeVar("InputsT", bound=na.AbstractArray, covariant=True)
+OutputsT = TypeVar("OutputsT", bound=na.AbstractArray, covariant=True)
 
 
 class InputValueError(ValueError):
@@ -64,12 +64,18 @@ class AbstractFunctionArray(
                     if input_shape[axis] == output_shape[axis]:
                         axes_center += (axis,)
                     else:
-                        if input_shape[axis] == 1 or output_shape[axis] == 1:
+                        if input_shape[axis] == output_shape[axis] + 1:
+                            pass
+                        elif output_shape[axis] == 1 or input_shape[axis] == 1:
                             axes_center += (axis,)
-                        elif input_shape[axis] != output_shape[axis] + 1: # pragma: no cover
+                        else:
                             raise ValueError(
-                                f"Output {axis=} dimension, {output_shape[axis]=}, must either match input axis dimension  {input_shape[axis]=}, (representing"
-                                " bin centers) or exceed by one (representing bin vertices)."
+                                f"output dimension, "
+                                f"self.outputs.shape[{axis}]={output_shape[axis]},"
+                                f"must either match input dimension,"
+                                f"self.inputs.shape[{axis}]={input_shape[axis]},"
+                                f"(representing bin centers) "
+                                "or exceed by one (representing bin vertices)."
                             )
                 else:
                     axes_center += (axis,)
@@ -191,8 +197,8 @@ class AbstractFunctionArray(
 
     def combine_axes(
             self,
-            axes: Sequence[str] = None,
-            axis_new: str = None,
+            axes: None | Sequence[str] = None,
+            axis_new: None | str = None,
     ) -> FunctionArray:
 
         self = self.explicit
@@ -418,11 +424,98 @@ class AbstractFunctionArray(
         self,
         axis: None | str | Sequence[str] = None,
         random: bool = False,
+        seed: None | int = None,
     ) -> na.AbstractExplicitArray:
         exp = self.explicit
         return exp.replace(
-            inputs=exp.inputs.cell_centers(axis, random=random),
-            outputs=exp.outputs.cell_centers(axis, random=random),
+            inputs=exp.inputs.cell_centers(axis, random=random, seed=seed),
+            outputs=exp.outputs.cell_centers(axis, random=random, seed=seed),
+        )
+
+    def integrate(
+        self,
+        axis: str | Sequence[str],
+        component: None | str = None,
+    ) -> FunctionArray:
+        """
+        Integrate the outputs over the given input ``axis`` or axes.
+
+        The differential measure is computed from the inputs via
+        :meth:`AbstractArray.volume_cell`:
+
+        * If ``component`` is :obj:`None`, the whole input is used as the
+          integration variable and ``len(axis)`` must match the dimensionality
+          of the inputs (one for a scalar, two for a
+          :class:`Cartesian2dVectorArray`, etc.).
+        * If ``component`` is a :class:`str`, that named sub-element of the
+          inputs (a scalar or a sub-vector) supplies the measure, and
+          ``len(axis)`` must match its dimensionality.
+
+        A vertex axis (where the inputs represent bin edges) is integrated with
+        a Riemann sum, while a center axis (where the inputs represent samples)
+        is integrated with the trapezoidal rule; mixing the two in a single
+        call is supported. The integrated axes are removed from the outputs and
+        collapsed in the inputs by averaging.
+
+        Parameters
+        ----------
+        axis
+            The logical axis or axes to integrate over.
+        component
+            The named input sub-element supplying the integration variable.
+            If :obj:`None`, the whole input is used.
+
+        Examples
+        --------
+
+        Integrate a constant function over a 1D domain.
+
+        .. jupyter-execute::
+
+            import numpy as np
+            import astropy.units as u
+            import named_arrays as na
+
+            f = na.FunctionArray(
+                inputs=na.ScalarLinearSpace(0, 2, axis="x", num=101) * u.nm,
+                outputs=na.ScalarArray(np.full(101, 3.0), axes=("x",)) * u.ph,
+            )
+
+            f.integrate("x")
+        """
+
+        self = self.explicit
+
+        if isinstance(axis, str):
+            axis = (axis,)
+        axis = tuple(axis)
+
+        if not set(axis).issubset(self.axes):
+            raise ValueError(f"axes {set(axis) - set(self.axes)} not in {self.axes}")
+
+        axes_vertex = self.axes_vertex
+        inputs = self.inputs
+        outputs = self.outputs
+
+        # convert outputs to cell centers along the center axes
+        # (corner-averaging across all center axes is the multi-D trapezoidal rule);
+        # vertex axes are already at cell centers relative to their input edges.
+        axes_center = tuple(ax for ax in axis if ax not in axes_vertex)
+        if axes_center:
+            outputs = outputs.cell_centers(axes_center)
+
+        # compute the joint cell measure from the selected component.
+        if component is None:
+            measure = inputs.volume_cell(axis)
+        else:
+            measure = inputs.components[component].volume_cell(axis)
+
+        outputs = (outputs * measure).sum(axis)
+        inputs = inputs.mean(axis)
+
+        return self.replace(
+            inputs=inputs,
+            outputs=outputs,
         )
 
     def to_string_array(
@@ -444,7 +537,7 @@ class AbstractFunctionArray(
 
     def _getitem(
             self,
-            item: dict[str, int | slice | na.AbstractArray] | na.AbstractArray | na.AbstractFunctionArray,
+            item: Mapping[str, int | slice | na.AbstractArray] | na.AbstractArray | na.AbstractFunctionArray,
     ) -> FunctionArray:
 
         array = self.explicit
@@ -471,8 +564,11 @@ class AbstractFunctionArray(
 
         elif isinstance(item, dict):
 
-            if not set(item).issubset(array.axes): # pragma: no cover
-                raise ValueError(f"item contains axes {set(item) - set(array.axes)} that does not exist in {set(array.axes)}")
+            # ignore axes that are not present in this function array, so that
+            # indexing is consistent with ``ScalarArray`` and composes with
+            # ``na.getitem`` over heterogeneous structures (e.g. a function
+            # array that lacks the axis being selected is left untouched)
+            item = {ax: item[ax] for ax in item if ax in array.axes}
 
             item_inputs = dict()
             item_outputs = dict()
@@ -491,7 +587,7 @@ class AbstractFunctionArray(
                             item_outputs[ax] = item_ax
                     axes_vertex = array.axes_vertex
                     if ax in axes_vertex:
-                        if isinstance(item_ax, int):
+                        if np.issubdtype(type(item_ax), np.integer):
                             item_outputs[ax] = slice(item_ax, item_ax + 1)
                             item_inputs[ax] = slice(item_ax, item_ax + 2)
                         elif isinstance(item_ax, slice):
@@ -517,7 +613,7 @@ class AbstractFunctionArray(
     def _getitem_reversed(
             self,
             array: na.AbstractArray,
-            item: dict[str, int | slice | na.AbstractArray] | na.AbstractFunctionArray
+            item: Mapping[str, int | slice | na.AbstractArray] | na.AbstractFunctionArray
     ):
         if isinstance(array, (na.AbstractScalar, na.AbstractVectorArray)):
             array = na.FunctionArray(array, array)
@@ -528,6 +624,7 @@ class AbstractFunctionArray(
     def __bool__(self) -> bool:
         result = super().__bool__()
         return result and bool(self.outputs)
+
 
     def __mul__(self, other: na.ArrayLike | u.UnitBase) -> FunctionArray:
         if isinstance(other, u.UnitBase):
@@ -722,6 +819,9 @@ class AbstractFunctionArray(
 
         if func in function_array_functions.DEFAULT_FUNCTIONS:
             return function_array_functions.array_function_default(func, *args, **kwargs)
+
+        if func in function_array_functions.CUMULATIVE_REDUCE_FUNCTIONS:
+            return function_array_functions.array_function_cumulative_reduce(func, *args, **kwargs)
 
         if func in function_array_functions.PERCENTILE_LIKE_FUNCTIONS:
             return function_array_functions.array_function_percentile_like(func, *args, **kwargs)
@@ -930,6 +1030,58 @@ class FunctionArray(
     inputs: InputsT = 0
     """The inputs of the function."""
 
+    # The operators declared on `AbstractArray` can only promise the widest
+    # array type. The result of an operation is the explicit array of the
+    # highest family involved, so on an explicit array of this family the
+    # result is `Self` unless a higher family absorbs it. Declarations only;
+    # the implementation is inherited.
+    if TYPE_CHECKING:  # pragma: nocover
+
+        def __add__(self, other: na.ArrayLike) -> Self: ...
+
+        def __sub__(self, other: na.ArrayLike) -> Self: ...
+
+        def __floordiv__(self, other: na.ArrayLike) -> Self: ...
+
+        def __mod__(self, other: na.ArrayLike) -> Self: ...
+
+        def __pow__(self, other: na.ArrayLike) -> Self: ...
+
+        def __radd__(self, other: na.ArrayLike) -> Self: ...
+
+        def __rsub__(self, other: na.ArrayLike) -> Self: ...
+
+        def __rmul__(self, other: na.ArrayLike) -> Self: ...
+
+        def __rtruediv__(self, other: na.ArrayLike) -> Self: ...
+
+        def __rfloordiv__(self, other: na.ArrayLike) -> Self: ...
+
+        def __rmod__(self, other: na.ArrayLike) -> Self: ...
+
+        def __rpow__(self, other: na.ArrayLike) -> Self: ...
+
+        def __lt__(self, other: na.ArrayLike) -> Self: ...
+
+        def __le__(self, other: na.ArrayLike) -> Self: ...
+
+        def __gt__(self, other: na.ArrayLike) -> Self: ...
+
+        def __ge__(self, other: na.ArrayLike) -> Self: ...
+
+        def __mul__(self, other: na.ArrayLike | u.UnitBase) -> Self: ...
+
+        def __truediv__(self, other: na.ArrayLike | u.UnitBase) -> Self: ...
+
+        def __lshift__(self, other: na.ArrayLike | u.UnitBase) -> Self: ...
+
+        def __neg__(self) -> Self: ...
+
+        def __pos__(self) -> Self: ...
+
+        def __abs__(self) -> Self: ...
+
+
     outputs: OutputsT = 0
     """The outputs of the function."""
 
@@ -1000,7 +1152,7 @@ class FunctionArray(
 
     def __setitem__(
             self,
-            item: dict[str, int | slice | na.AbstractScalar | na.AbstractFunctionArray] | na.AbstractFunctionArray,
+            item: Mapping[str, int | slice | na.AbstractArray] | na.AbstractArray,
             value: float | u.Quantity | na.FunctionArray,
     ):
 
@@ -1076,18 +1228,21 @@ class AbstractPolynomialFunctionArray(
 
     @property
     @abc.abstractmethod
-    def degree(self) -> int:
-        """degree of the polynomial"""
-
-    @property
-    @abc.abstractmethod
-    def components_polynomial(self) -> None | str | Sequence[str]:
-        """The components of the input that this polynomial depends on."""
+    def coefficient_names(self) -> Sequence[str]:
+        """The names of the polynomial terms to fit (the design-matrix component keys)."""
 
     @property
     @abc.abstractmethod
     def axis_polynomial(self) -> None | str | Sequence[str]:
-        """the logical axes along which this polynomial is distributed"""
+        """The logical axes along which this polynomial is distributed."""
+
+    @property
+    @abc.abstractmethod
+    def center(self) -> None | InputsT:
+        """
+        The reference point which is subtracted from the inputs before fitting
+        the polynomial.
+        """
 
     @abc.abstractmethod
     def design_matrix(
@@ -1112,9 +1267,10 @@ class AbstractPolynomialFunctionArray(
         self,
         inputs: float | u.Quantity | na.ScalarArray | na.AbstractVectorArray,
     ) -> na.AbstractFunctionArray:
-        return na.FunctionArray(
-            inputs, self.design_matrix(inputs) @ self.coefficients
-        )
+
+        outputs = self.design_matrix(inputs) @ self.coefficients
+
+        return na.FunctionArray(inputs, outputs)
 
     @property
     def predictions(self) -> OutputsT:
@@ -1127,25 +1283,30 @@ class AbstractPolynomialFunctionArray(
 
 @dataclasses.dataclass(eq=False, repr=False)
 class PolynomialFitFunctionArray(
-    FunctionArray,
+    FunctionArray[InputsT, OutputsT],
     AbstractPolynomialFunctionArray,
 ):
     """
     A :class:`named_arrays.PolynomialFitFunctionArray` carries the independent variables, inputs, and dependent variables, outputs,
-    of a discrete function, and a linear least squares polynomial fit of specified degree to that function.
+    of a discrete function, and a linear least squares polynomial fit to that function.
+
+    The set of polynomial terms to fit is given explicitly by :attr:`coefficient_names`.
+    Use the :meth:`from_degree` classmethod to generate the standard term set for a
+    given polynomial degree (a scalar total-degree cap, or a per-component vector of
+    maximum exponents for a mixed-order fit).
 
     Parameters
     ----------
     inputs
-        the set of independent variables
+        The set of independent variables.
     outputs
-        the set of dependent variables
-    degree
-        the degree of the polynomial
-    components_polynomial
-        the components used in the polynomial fit
+        The set of dependent variables.
+    coefficient_names
+        The names of the polynomial terms to fit (the design-matrix component keys).
     axis_polynomial
-        the logical axis of the polynomial fit
+        The logical axes along which this polynomial is distributed.
+    where_polynomial
+        A boolean mask controlling which elements to use for fitting.
 
     Examples
     --------
@@ -1157,15 +1318,32 @@ class PolynomialFitFunctionArray(
         ../tutorials/PolynomialFunctionArray
     """
 
-    degree: int = None
-    components_polynomial: None | str | Sequence[str] = None
+    center: None | InputsT = None
+    """The reference point which is subtracted from the inputs before fitting."""
+
+    coefficient_names: None | Sequence[str] = None
+    """
+    The names of the polynomial terms to fit (the design-matrix component keys).
+
+    Each name is a ``*``-joined product of input component names (dotted for nested
+    vectors, e.g. ``"position.x*wavelength"``); the empty string ``""`` is the
+    constant term. Use :meth:`from_degree` to generate the standard set for a given
+    degree, optionally pruning terms before constructing the fit.
+    """
+
     axis_polynomial: None | str | Sequence[str] = None
+    """The logical axes along which this polynomial is distributed."""
+
+    where_polynomial: bool | na.ScalarArray = True
+    """A boolean mask controlling which elements to use for fitting."""
 
     @functools.cached_property
     def coefficients(self) -> na.AbstractVectorArray | na.AbstractMatrixArray:
         d = self.design_matrix(self.inputs)
-        dTd = self._outer(d, d, self.axis_polynomial)
-        dTo = self._outer(d, self.outputs, self.axis_polynomial)
+        axis = self.axis_polynomial
+        where = self.where_polynomial
+        dTd = self._outer(d, d, axis=axis, where=where)
+        dTo = self._outer(d, self.outputs, axis=axis, where=where)
 
         return dTd.inverse @ dTo
 
@@ -1174,37 +1352,103 @@ class PolynomialFitFunctionArray(
         inputs: float | u.Quantity | na.AbstractScalar | na.AbstractVectorArray,
     ) -> na.AbstractVectorArray:
 
-        design_matrix = {}
+        if self.coefficient_names is None:
+            raise ValueError(
+                "`coefficient_names` is required; use "
+                "`PolynomialFitFunctionArray.from_degree` to generate it."
+            )
 
+        if self.center is not None:
+            inputs = inputs - self.center
+
+        inputs = na.as_named_array(inputs)
         if isinstance(inputs, na.AbstractScalar):
             inputs = na.CartesianNdVectorArray({"dummy": inputs})
         inputs = inputs.cartesian_nd.broadcasted.components
 
-        components = self.components_polynomial
-
-        if components is None:
-            components = tuple(inputs)
-        elif isinstance(components, str):
-            components = (components,)
-
-        inputs = {c: inputs[c] for c in components}
-
-        for i in range(self.degree + 1):
-            combinations = itertools.combinations_with_replacement(
-                inputs, i
-            )
-            for combination in combinations:
-                key = "*".join(combination)
-                design_matrix[key] = 1
-                for k in combination:
-                    design_matrix[key] = design_matrix[key] * inputs[k]
+        design_matrix = {}
+        for name in self.coefficient_names:
+            term = 1
+            if name:  # the empty string is the constant term
+                for k in name.split("*"):
+                    if k not in inputs:
+                        raise ValueError(
+                            f"coefficient name {name!r} references input component "
+                            f"{k!r}, which is not one of the available components "
+                            f"{tuple(inputs)}."
+                        )
+                    term = term * inputs[k]
+            design_matrix[name] = term
 
         design_matrix = na.CartesianNdVectorArray(design_matrix)
 
         return design_matrix
 
     @classmethod
-    def _outer(cls, v1, v2, axis):
+    def from_degree(
+        cls,
+        inputs: InputsT,
+        outputs: OutputsT,
+        degree: int,
+        components: None | str | Sequence[str] = None,
+        center: None | InputsT = None,
+        axis_polynomial: None | str | Sequence[str] = None,
+        where_polynomial: bool | na.ScalarArray = True,
+    ) -> Self:
+        """
+        Construct a :class:`PolynomialFitFunctionArray` whose :attr:`coefficient_names`
+        are the standard monomial terms for a given polynomial degree.
+
+        Parameters
+        ----------
+        inputs
+            The set of independent variables.
+        outputs
+            The set of dependent variables.
+        degree
+            The degree of the polynomial. Every monomial with total degree up to
+            ``degree`` (over `components`) is included.
+        components
+            The components of the input that the polynomial depends on.
+            Defaults to all components of `inputs`.
+        center
+            The reference point subtracted from the inputs before fitting.
+        axis_polynomial
+            The logical axes along which the polynomial is distributed.
+        where_polynomial
+            A boolean mask controlling which elements to use for fitting.
+        """
+        if components is None:
+            inputs_nd = na.as_named_array(inputs)
+            if isinstance(inputs_nd, na.AbstractScalar):
+                # mirror `design_matrix`'s wrapping of scalar inputs
+                inputs_nd = na.CartesianNdVectorArray({"dummy": inputs_nd})
+            components = tuple(inputs_nd.cartesian_nd.broadcasted.components)
+        elif isinstance(components, str):
+            components = (components,)
+
+        coefficient_names = []
+        for i in range(degree + 1):
+            for combination in itertools.combinations_with_replacement(components, i):
+                coefficient_names.append("*".join(combination))
+
+        return cls(
+            inputs=inputs,
+            outputs=outputs,
+            coefficient_names=coefficient_names,
+            center=center,
+            axis_polynomial=axis_polynomial,
+            where_polynomial=where_polynomial,
+        )
+
+    @classmethod
+    def _outer(
+        cls,
+        v1: na.AbstractVectorArray,
+        v2: float | u.Quantity | na.AbstractScalar | na.AbstractVectorArray,
+        axis: None | str | Sequence[str] = None,
+        where: bool | na.AbstractScalar = True,
+    ):
         v1_T_v2_components = {}
 
         if isinstance(v1, na.AbstractVectorArray):
@@ -1216,17 +1460,17 @@ class PolynomialFitFunctionArray(
                     for c2 in v2_broadcasted:
                         row_components[c2] = (
                                 v1_broadcasted[c1] * v2_broadcasted[c2]
-                        ).sum(axis=axis)
+                        ).sum(axis=axis, where=where)
                     v1_T_v2_components[c1] = v2.type_explicit.from_components(row_components)
                 v1_T_v2 = v1.type_matrix.from_components(v1_T_v2_components)
 
             else:
                 for c1 in v1_broadcasted:
-                        row_components = (v1_broadcasted[c1] * v2).sum(axis=axis)
-                        v1_T_v2_components[c1] = row_components
+                    row_components = (v1_broadcasted[c1] * v2).sum(axis=axis, where=where)
+                    v1_T_v2_components[c1] = row_components
                 v1_T_v2 = v1.type_explicit.from_components(v1_T_v2_components)
 
+        else:
+            raise NotImplementedError
+
         return v1_T_v2
-
-
-

@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import ClassVar, Type, Sequence, Callable, Collection, Any, TypeVar
+from typing import Mapping, ClassVar, Type, Sequence, Callable, Collection, Any, TypeVar
 from typing_extensions import Self
 import abc
 import dataclasses
@@ -101,7 +101,6 @@ class AbstractVectorArray(
             else:
                 raise NotImplementedError
 
-
         return self.type_matrix.from_components(new_dict)
 
     @property
@@ -127,14 +126,18 @@ class AbstractVectorArray(
     @abc.abstractmethod
     def components(self: Self) -> dict[str, na.ArrayLike]:
         """
-        The vector components of this array expressed as a :class:`dict` where the keys are the names of the component.
+        The vector components of this array expressed as a :class:`dict`,
+        where the keys are the names of the component.
         """
         return dict()
 
     @property
-    def entries(self) -> dict[str, na.ArrayLike]:
+    def entries(self) -> dict[str | tuple[str, ...], na.ScalarLike]:
         """
         The scalar entries that compose this object.
+
+        A vector keys its entries by component name and a matrix by a
+        ``(row, column)`` pair, so the key type admits both.
         """
         return self.cartesian_nd.components
 
@@ -234,8 +237,8 @@ class AbstractVectorArray(
 
     def combine_axes(
             self: Self,
-            axes: Sequence[str] = None,
-            axis_new: str = None,
+            axes: None | Sequence[str] = None,
+            axis_new: None | str = None,
     ) -> AbstractExplicitVectorArray:
 
         shape = self.shape
@@ -278,7 +281,7 @@ class AbstractVectorArray(
 
     def _getitem(
             self: Self,
-            item: dict[str, int | slice | AbstractScalarOrVectorArray] | AbstractScalarOrVectorArray,
+            item: Mapping[str, int | slice | na.AbstractArray] | na.AbstractArray,
     ) -> Self:
 
         array = self.explicit
@@ -316,7 +319,9 @@ class AbstractVectorArray(
                         item[ax] = self.type_explicit.from_scalar(item[ax], like=self)
                     else:
                         return NotImplemented
-                elif isinstance(item[ax], (int, slice)):
+                elif isinstance(item[ax], slice):
+                    item[ax] = self.type_explicit.from_scalar(item[ax], like=self)
+                elif np.issubdtype(type(item[ax]), np.integer):
                     item[ax] = self.type_explicit.from_scalar(item[ax], like=self)
                 elif item[ax] is None:
                     item[ax] = self.type_explicit.from_scalar(item[ax], like=self)
@@ -328,8 +333,17 @@ class AbstractVectorArray(
 
         components_result = dict()
         for c in components:
+            component = components[c]
             if isinstance(item, dict):
-                components_result[c] = na.as_named_array(components[c])[{ax: item[ax].components[c] for ax in item}]
+                if na.named_array_like(component):
+                    components_result[c] = na.as_named_array(components[c])[{ax: item[ax].components[c] for ax in item}]
+                elif not na.shape(component):
+                    components_result[c] = component
+                else:
+                    raise ValueError(
+                        f"If component {c=} is not an instance of AbstractArray,"
+                        f"it must be a logical scalar, instead got {na.shape(component)=}."
+                    )
             else:
                 components_result[c] = components[c][na.as_named_array(item.components[c])]
 
@@ -337,8 +351,8 @@ class AbstractVectorArray(
 
     def _getitem_reversed(
             self: Self,
-            array: na.ScalarArray,
-            item: dict[str, int | slice | AbstractVectorArray] | AbstractVectorArray,
+            array: na.AbstractArray,
+            item: Mapping[str, int | slice | na.AbstractArray] | na.AbstractArray,
     ):
         if array.type_abstract == self.type_abstract:
             pass
@@ -431,6 +445,9 @@ class AbstractVectorArray(
 
         if func in vector_array_functions.DEFAULT_FUNCTIONS:
             return vector_array_functions.array_function_default(func, *args, **kwargs)
+
+        if func in vector_array_functions.CUMULATIVE_REDUCE_FUNCTIONS:
+            return vector_array_functions.array_function_cumulative_reduce(func, *args, **kwargs)
 
         if func in vector_array_functions.PERCENTILE_LIKE_FUNCTIONS:
             return vector_array_functions.array_function_percentile_like(func, *args, **kwargs)
@@ -534,7 +551,6 @@ class AbstractExplicitVectorArray(
         return cls(**components)
 
     @classmethod
-    @abc.abstractmethod
     def from_scalar(
             cls: Type[Self],
             scalar: na.ScalarLike,
@@ -547,7 +563,8 @@ class AbstractExplicitVectorArray(
         if like is not None:
             return like.type_explicit.from_components({c: scalar for c in like.components})
         else:
-            return NotImplemented
+            kwargs = {field.name: scalar for field in dataclasses.fields(cls)}
+            return cls(**kwargs)
 
     @classmethod
     def from_cartesian_nd(
@@ -628,7 +645,7 @@ class AbstractExplicitVectorArray(
 
     def __setitem__(
             self,
-            item: dict[str, int | slice | AbstractScalarOrVectorArray] | AbstractScalarOrVectorArray,
+            item: Mapping[str, int | slice | na.AbstractArray] | na.AbstractArray,
             value: AbstractScalarOrVectorArray,
     ):
         components_self = self.components
@@ -894,4 +911,3 @@ class AbstractWcsVector(
     def explicit(self) -> na.AbstractExplicitArray:
         components = self._components_explicit | self._components_wcs
         return self.type_explicit.from_components(components)
-

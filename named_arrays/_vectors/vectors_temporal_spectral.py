@@ -1,8 +1,8 @@
 from __future__ import annotations
 from typing import Type, TypeVar
-from typing_extensions import Self
 import dataclasses
 import named_arrays as na
+from named_arrays._core import _required
 
 __all__ = [
     "AbstractTemporalSpectralVectorArray",
@@ -29,7 +29,7 @@ class AbstractTemporalSpectralVectorArray(
         return AbstractTemporalSpectralVectorArray
 
     @property
-    def type_explicit(self) -> Type[na.AbstractExplicitArray]:
+    def type_explicit(self) -> Type[TemporalSpectralVectorArray]:
         return TemporalSpectralVectorArray
 
     @property
@@ -43,14 +43,7 @@ class TemporalSpectralVectorArray(
     na.SpectralVectorArray[WavelengthT],
     na.TemporalVectorArray
 ):
-
-    @classmethod
-    def from_scalar(
-            cls: Type[Self],
-            scalar: na.AbstractScalar,
-            like: None | na.AbstractExplicitVectorArray = None,
-    ) -> TemporalSpectralVectorArray:
-        return cls(time=scalar, wavelength=scalar)
+    pass
 
 
 @dataclasses.dataclass(eq=False, repr=False)
@@ -93,12 +86,12 @@ class ExplicitTemporalWcsSpectralVectorArray(
     AbstractImplicitTemporalSpectralVectorArray,
     na.AbstractWcsVector,
 ):
-    time: na.AbstractScalar = dataclasses.MISSING
-    crval: AbstractTemporalSpectralVectorArray = dataclasses.MISSING
-    crpix: na.AbstractCartesianNdVectorArray = dataclasses.MISSING
-    cdelt: AbstractTemporalSpectralVectorArray = dataclasses.MISSING
-    pc: na.AbstractTemporalSpectralMatrixArray = dataclasses.MISSING
-    shape_wcs: dict[str, int] = dataclasses.MISSING
+    time: na.AbstractExplicitScalarArray = _required()
+    crval: AbstractTemporalSpectralVectorArray = _required()
+    crpix: na.CartesianNdVectorArray[na.AbstractExplicitScalarArray] = _required()
+    cdelt: AbstractTemporalSpectralVectorArray = _required()
+    pc: na.AbstractTemporalSpectralMatrixArray = _required()
+    shape_wcs: dict[str, int] = _required()
 
     @property
     def _components_explicit(self) -> dict[str, na.ArrayLike]:

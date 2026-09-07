@@ -11,8 +11,10 @@ import abc
 import dataclasses
 import astropy.units as u
 import named_arrays as na
+from named_arrays._core import _required
 
 __all__ = [
+    "compose",
     "AbstractTransformation",
     "IdentityTransformation",
     "AbstractTranslation",
@@ -30,11 +32,78 @@ __all__ = [
     "TransformationList",
 ]
 
-VectorT = TypeVar("VectorT", bound="na.AbstractVectorArray")
-MatrixT = TypeVar("MatrixT", bound="na.AbstractMatrixArray")
+VectorT = TypeVar("VectorT", bound="na.AbstractVectorArray", covariant=True)
+MatrixT = TypeVar("MatrixT", bound="na.AbstractMatrixArray", covariant=True)
 TransformationT = TypeVar("TransformationT", bound="AbstractTransformation")
-LinearTransformationT = TypeVar("LinearTransformationT", bound="AbstractLinearTransformation")
-TranslationT = TypeVar("TranslationT", bound="AbstractTranslation")
+LinearTransformationT = TypeVar("LinearTransformationT", bound="AbstractLinearTransformation", covariant=True)
+TranslationT = TypeVar("TranslationT", bound="AbstractTranslation", covariant=True)
+
+
+def compose(
+    a: None | AbstractTransformation,
+    b: None | AbstractTransformation,
+) -> None | AbstractTransformation:
+    r"""
+    Compose two transformations, treating :obj:`None` as the identity.
+
+    This is a convenience wrapper around the ``@`` operator that accepts
+    :obj:`None` for either argument, which is useful when composing optional
+    transformations without having to guard each one. Composition follows the
+    same right-to-left convention as :meth:`AbstractTransformation.__matmul__`:
+    the result applied to a vector :math:`\vec{v}` is :math:`a(b(\vec{v}))`, so
+    `b` is applied first and `a` second.
+
+    Parameters
+    ----------
+    a
+        The outer transformation, applied second.
+        If :obj:`None`, it is treated as the identity and `b` is returned
+        unchanged.
+    b
+        The inner transformation, applied first.
+        If :obj:`None`, it is treated as the identity and `a` is returned
+        unchanged.
+
+    Returns
+    -------
+        The composition ``a @ b``, or :obj:`None` if both `a` and `b` are
+        :obj:`None`.
+
+    Examples
+    --------
+    Compose a rotation with a translation and apply the result to a vector.
+
+    .. jupyter-execute::
+
+        import astropy.units as u
+        import named_arrays as na
+
+        a = na.transformations.Cartesian3dTranslation(x=5 * u.mm)
+        b = na.transformations.Cartesian3dRotationZ(90 * u.deg)
+
+        transformation = na.transformations.compose(a, b)
+
+        v = na.Cartesian3dVectorArray(1, 2, 3) * u.mm
+        transformation(v)
+
+    This is equivalent to applying each transformation in turn.
+
+    .. jupyter-execute::
+
+        a(b(v))
+
+    A :obj:`None` argument acts as the identity, so it is dropped from the
+    composition and the other transformation is returned unchanged.
+
+    .. jupyter-execute::
+
+        na.transformations.compose(a, None) is a
+    """
+    if a is None:
+        return b
+    if b is None:
+        return a
+    return a @ b
 
 
 @dataclasses.dataclass(eq=False)
@@ -164,7 +233,7 @@ class AbstractTranslation(
 
     @property
     def shape(self) -> dict[str, int]:
-        return self.vector.shape
+        return na.shape(self.vector)
 
     def __call__(self, a: na.AbstractVectorArray) -> na.AbstractVectorArray:
         return a + self.vector
@@ -246,7 +315,7 @@ class Translation(
             plt.legend();
     """
 
-    vector: VectorT = dataclasses.MISSING
+    vector: VectorT = _required()
     """A vector representing the translation."""
 
 @dataclasses.dataclass(eq=False)
@@ -288,7 +357,7 @@ class AbstractLinearTransformation(
 
     @property
     def shape(self) -> dict[str, int]:
-        return self.matrix.shape
+        return na.shape(self.matrix)
 
     def __call__(self, a: na.AbstractVectorArray) -> na.AbstractVectorArray:
         return self.matrix @ a
@@ -383,7 +452,7 @@ class LinearTransformation(
             na.plt.plot(square_transformed_2, axis="vertex", label="rotated");
             plt.legend();
     """
-    matrix: MatrixT = dataclasses.MISSING
+    matrix: MatrixT = _required()
 
 
 @dataclasses.dataclass(eq=False)
@@ -457,8 +526,8 @@ class AbstractAffineTransformation(
     @property
     def shape(self) -> dict[str, int]:
         return na.broadcast_shapes(
-            self.transformation_linear.shape,
-            self.translation.shape,
+            na.shape(self.transformation_linear),
+            na.shape(self.translation),
         )
 
     def __call__(self, a: na.AbstractVectorArray) -> na.AbstractVectorArray:
@@ -526,10 +595,10 @@ class AffineTransformation(
     This is a composition of a linear transformation and a translation.
     """
 
-    transformation_linear: LinearTransformationT = dataclasses.MISSING
+    transformation_linear: LinearTransformationT = _required()
     """The linear component of this affine transformation."""
 
-    translation: TranslationT = dataclasses.MISSING
+    translation: TranslationT = _required()
     """The translation component of this affine transformation."""
 
 
@@ -556,7 +625,7 @@ class AbstractTransformationList(
 
     @property
     def shape(self) -> dict[str, int]:
-        return na.broadcast_shapes(*[t.shape for t in self.transformations])
+        return na.broadcast_shapes(*[na.shape(t) for t in self.transformations])
 
     def __iter__(self) -> Iterator[AbstractTransformation]:
         if self.intrinsic:
@@ -598,7 +667,7 @@ class TransformationList(
 ):
     """An arbitrary sequence of transformations."""
 
-    transformations: list[AbstractTransformation] = dataclasses.MISSING
+    transformations: list[AbstractTransformation] = _required()
     """The underlying list of transformations to compose together."""
 
     intrinsic: bool = True

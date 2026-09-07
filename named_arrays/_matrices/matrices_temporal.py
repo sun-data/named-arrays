@@ -9,7 +9,7 @@ __all__ = [
     "TemporalMatrixArray",
 ]
 
-TimeT = TypeVar('TimeT', bound=na.AbstractVectorArray)
+TimeT = TypeVar('TimeT', bound=na.AbstractVectorArray, covariant=True)
 
 
 @dataclasses.dataclass(eq=False, repr=False)

@@ -1,7 +1,8 @@
 from __future__ import annotations
-from typing import Sequence, Callable
+from typing import Mapping, Sequence, Callable
 import pytest
 import abc
+import pickle
 import warnings
 import dataclasses
 import numpy as np
@@ -20,6 +21,37 @@ num_distribution = 3
 
 def _normalize_shape(shape: dict[str, None | int]) -> dict[str, int]:
     return {axis: shape[axis] for axis in shape if shape[axis] is not None}
+
+
+def test_linspace_num_scalar_array():
+    # `num` given as a 0-d integer scalar array must be accepted, both directly
+    # and as the per-component values produced when `linspace` decomposes a
+    # vector `num`.
+
+    # scalar `num` as a 0-d `ScalarArray`
+    result = na.linspace(0, 10, axis="x", num=na.ScalarArray(np.array(4)))
+    assert np.all(result == na.linspace(0, 10, axis="x", num=4))
+
+    # vector `num` whose components are `ScalarArray` instances
+    result = na.linspace(
+        start=na.Cartesian2dVectorArray(
+            x=na.ScalarArray(np.array(0.0)),
+            y=na.ScalarArray(np.array(0.0)),
+        ),
+        stop=na.Cartesian2dVectorArray(
+            x=na.ScalarArray(np.array(10.0)),
+            y=na.ScalarArray(np.array(8.0)),
+        ),
+        axis=na.Cartesian2dVectorArray("x", "y"),
+        num=na.Cartesian2dVectorArray(
+            x=na.ScalarArray(np.array(5)),
+            y=na.ScalarArray(np.array(4)),
+        ),
+    )
+    assert isinstance(result, na.Cartesian2dVectorArray)
+    assert na.shape(result) == {"x": 5, "y": 4}
+    assert np.all(result.x == na.linspace(0, 10, axis="x", num=5))
+    assert np.all(result.y == na.linspace(0, 8, axis="y", num=4))
 
 
 @pytest.mark.parametrize(argnames='shape_1_x', argvalues=[num_x], )
@@ -133,6 +165,371 @@ class TestIndexingFunctions:
             assert indices[axis][{axis: ~0}] == shape[axis] - 1
 
 
+@dataclasses.dataclass
+class _GetitemContainer:
+    """A simple dataclass used to exercise ``na.getitem`` recursion."""
+    data: na.AbstractArray
+    label: str = "label"
+    size: int = dataclasses.field(init=False, default=-1)
+
+
+@dataclasses.dataclass
+class _MeasuredContainer:
+    """A dataclass carrying measurements which do not shape it."""
+    data: na.AbstractArray
+    measurement: None | na.AbstractArray = None
+    measurement_2: None | na.AbstractArray = None
+
+    @property
+    def shape(self) -> dict[str, int]:
+        return na.shape(self.data)
+
+
+@dataclasses.dataclass
+class _IndexableContainer(na.Indexable):
+    """A dataclass which inherits its shape rather than declaring one."""
+    data: na.AbstractArray
+
+
+class TestGetitem:
+    """Tests for the standalone :func:`named_arrays.getitem` function."""
+
+    def _array(self) -> na.ScalarArray:
+        return na.arange(0, 5, axis="x")
+
+    def _index(self) -> dict[str, na.ScalarArray]:
+        return {"x": na.ScalarArray(np.array([1, 3]), axes="x")}
+
+    def _expected(self) -> na.ScalarArray:
+        return na.ScalarArray(np.array([1, 3]), axes="x")
+
+    def test_getitem_array(self):
+        result = na.getitem(self._array(), self._index())
+        assert isinstance(result, na.AbstractArray)
+        assert np.all(result == self._expected())
+
+    def test_getitem_dict(self):
+        result = na.getitem({"foo": self._array(), "bar": 7}, self._index())
+        assert isinstance(result, dict)
+        assert np.all(result["foo"] == self._expected())
+        assert result["bar"] == 7
+
+    def test_getitem_list(self):
+        result = na.getitem([self._array(), 7], self._index())
+        assert isinstance(result, list)
+        assert np.all(result[0] == self._expected())
+        assert result[1] == 7
+
+    def test_getitem_tuple(self):
+        result = na.getitem((self._array(), 7), self._index())
+        assert isinstance(result, tuple)
+        assert np.all(result[0] == self._expected())
+        assert result[1] == 7
+
+    def test_getitem_nested(self):
+        result = na.getitem({"a": [self._array()]}, self._index())
+        assert np.all(result["a"][0] == self._expected())
+
+    def test_getitem_dataclass(self):
+        container = _GetitemContainer(data=self._array())
+        result = na.getitem(container, self._index())
+        assert isinstance(result, _GetitemContainer)
+        assert np.all(result.data == self._expected())
+        # non-array fields are passed through unchanged
+        assert result.label == "label"
+        # ``init=False`` fields are skipped by ``dataclasses.replace``
+        assert result.size == -1
+
+    def test_getitem_passthrough(self):
+        # values that are neither array-like nor a known container are returned as-is
+        assert na.getitem(7, self._index()) == 7
+
+
+@dataclasses.dataclass
+class _PackContainer:
+    """A simple dataclass used to exercise ``na.pack``/``na.unpack`` recursion."""
+    data: na.AbstractArray
+    label: str = "label"
+
+
+class TestPack:
+    """Tests for :func:`named_arrays.pack` and :func:`named_arrays.unpack`."""
+
+    def _scalar(self) -> na.ScalarArray:
+        return na.ScalarArray(np.arange(6.0).reshape(2, 3), axes=("x", "y")) * u.mm
+
+    def _params(self) -> na.CartesianNdVectorArray:
+        # a parameter set with mixed units and a multi-element component
+        return na.CartesianNdVectorArray(
+            {
+                "yaw": na.ScalarArray(np.array([1.0, 2.0, 3.0]), axes="channel") * u.deg,
+                "roll": 4.0 * u.deg,
+                "defocus": -5.0 * u.mm,
+            }
+        )
+
+    def test_pack_array(self):
+        result = na.pack(self._scalar())
+        assert isinstance(result, na.ScalarArray)
+        assert result.axes == ("pack",)
+        assert na.unit_normalized(result) == u.dimensionless_unscaled
+        assert np.all(result.ndarray == np.arange(6.0))
+
+    def test_pack_axis(self):
+        assert na.pack(self._scalar(), axis="p").axes == ("p",)
+
+    def test_pack_length_matches_shape(self):
+        params = self._params()
+        size = sum(
+            int(np.prod([s for s in na.shape(c).values()], dtype=int))
+            for c in params.components.values()
+        )
+        assert na.pack(params).ndarray.size == size
+
+    def test_roundtrip_scalar(self):
+        a = self._scalar()
+        result = na.unpack(na.pack(a), a)
+        assert isinstance(result, na.ScalarArray)
+        assert result.axes == a.axes
+        assert na.unit(result) == na.unit(a)
+        assert np.all(result == a)
+
+    def test_roundtrip_vector_mixed_units(self):
+        params = self._params()
+        result = na.unpack(na.pack(params), params)
+        assert isinstance(result, na.CartesianNdVectorArray)
+        for name, component in params.components.items():
+            assert np.all(result.components[name] == component)
+            assert na.unit(result.components[name]) == na.unit(component)
+
+    def test_roundtrip_dict_nested(self):
+        a = {"a": 1.0 * u.deg, "b": {"c": self._scalar()}}
+        result = na.unpack(na.pack(a), a)
+        assert result["a"] == 1.0 * u.deg
+        assert np.all(result["b"]["c"] == a["b"]["c"])
+        assert na.unit(result["b"]["c"]) == u.mm
+
+    def test_roundtrip_dataclass(self):
+        a = _PackContainer(data=self._scalar())
+        result = na.unpack(na.pack(a), a)
+        assert isinstance(result, _PackContainer)
+        assert np.all(result.data == a.data)
+        # non-numeric fields are restored from the prototype, not the flat array
+        assert result.label == "label"
+
+    def test_unpack_from_plain_ndarray(self):
+        # a flat ``numpy`` array (e.g. a ``scipy.optimize`` result) is accepted
+        params = self._params()
+        x = na.pack(params).ndarray.copy()
+        x[0] += 10
+        result = na.unpack(x, params)
+        assert result.yaw.ndarray[0].value == params.yaw.ndarray[0].value + 10
+        assert na.unit(result.yaw) == u.deg
+        # untouched leaves are unchanged
+        assert result.defocus == params.defocus
+
+    def test_unpack_size_mismatch(self):
+        params = self._params()
+        with pytest.raises(ValueError):
+            na.unpack(np.array([1.0, 2.0]), params)
+
+    def test_roundtrip_list(self):
+        # exercises the list branch and the plain-number / ndarray leaf branches
+        a = [self._scalar(), 2.5, np.array([7.0, 8.0, 9.0])]
+        result = na.unpack(na.pack(a), a)
+        assert isinstance(result, list)
+        assert np.all(result[0] == a[0])
+        assert result[1] == 2.5 and isinstance(result[1], float)
+        assert np.all(result[2] == a[2])
+
+    def test_roundtrip_tuple(self):
+        a = (self._scalar(), 2.5)
+        result = na.unpack(na.pack(a), a)
+        assert isinstance(result, tuple)
+        assert np.all(result[0] == a[0])
+        assert result[1] == 2.5
+
+    def _uncertain(self) -> na.UncertainScalarArray:
+        return na.UncertainScalarArray(
+            nominal=1.0 * u.deg,
+            distribution=na.ScalarArray(
+                np.array([0.9, 1.1]) * u.deg, axes="_distribution"
+            ),
+        )
+
+    def _function(self) -> na.FunctionArray:
+        return na.FunctionArray(
+            inputs=na.ScalarArray(np.array([1.0, 2.0]), axes="k") * u.nm,
+            outputs=na.ScalarArray(np.array([3.0, 4.0]), axes="k"),
+        )
+
+    @pytest.mark.parametrize("kind", ["uncertain", "function"])
+    def test_pack_unsupported_raises(self, kind: str):
+        a = self._uncertain() if kind == "uncertain" else self._function()
+        with pytest.raises(NotImplementedError):
+            na.pack(a)
+
+    @pytest.mark.parametrize("kind", ["uncertain", "function"])
+    def test_unpack_unsupported_raises(self, kind: str):
+        a = self._uncertain() if kind == "uncertain" else self._function()
+        with pytest.raises(NotImplementedError):
+            na.unpack(np.zeros(10), a)
+
+
+class TestShape:
+    """Tests for the recursive behavior of :func:`named_arrays.shape`."""
+
+    def _x(self) -> na.ScalarArray:
+        return na.arange(0, 5, axis="x")
+
+    def _y(self) -> na.ScalarArray:
+        return na.arange(0, 3, axis="y")
+
+    def test_shape_array(self):
+        assert na.shape(self._x()) == {"x": 5}
+
+    @pytest.mark.parametrize("a", [7, None, "label"])
+    def test_shape_scalar_unchanged(self, a):
+        # non-array leaves remain zero-dimensional, as before
+        assert na.shape(a) == {}
+
+    def test_shape_dict(self):
+        # the broadcasted shape of all array-like leaves
+        assert na.shape({"a": self._x(), "b": self._y()}) == {"x": 5, "y": 3}
+
+    def test_shape_dict_scalar_leaf(self):
+        # scalar leaves contribute an empty shape, not an error
+        assert na.shape({"a": self._x(), "b": 7}) == {"x": 5}
+
+    def test_shape_list(self):
+        assert na.shape([self._x(), self._x()]) == {"x": 5}
+
+    def test_shape_tuple(self):
+        assert na.shape((self._x(), self._y())) == {"x": 5, "y": 3}
+
+    def test_shape_nested(self):
+        assert na.shape({"a": [self._x()], "b": (self._y(),)}) == {"x": 5, "y": 3}
+
+    def test_shape_dataclass(self):
+        # array fields contribute their shape; non-array fields contribute {}
+        container = _GetitemContainer(data=self._x())
+        assert na.shape(container) == {"x": 5}
+
+    def test_shape_empty_container(self):
+        assert na.shape({}) == {}
+        assert na.shape([]) == {}
+
+    def test_shape_incompatible(self):
+        # leaves whose axes cannot broadcast together raise, rather than
+        # silently returning an empty shape
+        a = [na.arange(0, 5, axis="x"), na.arange(0, 3, axis="x")]
+        with pytest.raises(ValueError, match="shapes .* are not compatible"):
+            na.shape(a)
+
+    def test_shape_dataclass_declared(self):
+        """A dataclass which says what its shape is, is believed."""
+        container = _MeasuredContainer(
+            data=self._x(),
+            measurement=self._y(),
+        )
+        assert na.shape(container) == {"x": 5}
+
+    def test_shape_dataclass_declared_ignores_clashing_measurements(self):
+        """
+        Two measurements sampled differently sit alongside each other.
+
+        Their axes share a name and disagree on its length, which is only a
+        contradiction if the object is taken to be shaped by both of them.
+        """
+        container = _MeasuredContainer(
+            data=self._x(),
+            measurement=na.arange(0, 3, axis="wavelength"),
+            measurement_2=na.arange(0, 7, axis="wavelength"),
+        )
+        assert na.shape(container) == {"x": 5}
+
+    def test_shape_dataclass_inherited_is_not_declared(self):
+        """
+        Inheriting the shape from :class:`named_arrays.Indexable` is not
+        declaring one, since that property is this function; believing it
+        would recurse forever.
+        """
+        container = _IndexableContainer(data=self._x())
+        assert na.shape(container) == {"x": 5}
+        assert container.shape == {"x": 5}
+
+
+class TestIscloseDispatch:
+    """
+    Tests for how :func:`numpy.isclose` combines operands of different types.
+
+    A family declines an operand it does not understand by returning
+    :obj:`NotImplemented`, which lets :mod:`numpy` offer the call to the next
+    family, so the more specific of the two operands decides the result.
+    """
+
+    def _scalar(self) -> na.ScalarArray:
+        return na.ScalarArray(np.array([1.0, 2.0]), axes=("x",))
+
+    def _vector(self) -> na.Cartesian2dVectorArray:
+        scalar = self._scalar()
+        return na.Cartesian2dVectorArray(scalar, 2 * scalar)
+
+    def test_scalar_and_vector(self):
+        result = np.isclose(self._scalar(), self._vector())
+
+        assert isinstance(result, na.AbstractVectorArray)
+        assert np.all(result.x)
+        assert not np.any(result.y)
+
+    def test_uncertain_and_vector(self):
+        uncertain = na.NormalUncertainScalarArray(
+            nominal=self._scalar(),
+            width=1e-15,
+            num_distribution=num_distribution,
+        )
+
+        result = np.isclose(uncertain, self._vector())
+
+        assert isinstance(result, na.AbstractVectorArray)
+        assert np.all(result.x)
+        assert not np.any(result.y)
+
+    def test_vectors_of_different_types(self):
+        scalar = self._scalar()
+
+        with pytest.raises(TypeError):
+            np.isclose(
+                na.Cartesian2dVectorArray(scalar, scalar),
+                na.Cartesian3dVectorArray(scalar, scalar, scalar),
+            )
+
+    def _function(self) -> na.FunctionArray:
+        return na.FunctionArray(
+            inputs=na.linspace(0, 1, axis="x", num=2),
+            outputs=self._scalar(),
+        )
+
+    @pytest.mark.parametrize("reverse", [False, True])
+    def test_function_and_scalar(self, reverse: bool):
+        function = self._function()
+
+        operands = (1.0, function) if reverse else (function, 1.0)
+
+        result = np.isclose(*operands)
+
+        assert isinstance(result, na.AbstractFunctionArray)
+        assert np.all(result.inputs == function.inputs)
+        assert np.all(result.outputs == na.ScalarArray(np.array([True, False]), axes=("x",)))
+
+    def test_functions_with_different_inputs(self):
+        function = self._function()
+        other = function.replace(inputs=function.inputs + 1)
+
+        with pytest.raises(na.InputValueError):
+            np.isclose(function, other)
+
+
 class AbstractTestAbstractArray(
     abc.ABC,
 ):
@@ -173,6 +570,9 @@ class AbstractTestAbstractArray(
         for axis in shape:
             assert isinstance(axis, str)
             assert isinstance(shape[axis], int)
+        # the top-level ``na.shape`` must agree with the ``.shape`` property
+        # for every array family (guards the ``np.shape`` -> ``.shape`` swap)
+        assert na.shape(array) == shape
 
     def test_ndim(self, array: na.AbstractArray):
         assert isinstance(array.ndim, int)
@@ -301,6 +701,14 @@ class AbstractTestAbstractArray(
             if a in array.shape:
                 assert result.shape[a] == array.shape[a] - 1
 
+        # The same seed samples the same points. That a different seed
+        # samples different ones is checked below, on a type whose every
+        # component is free to differ.
+        if random:
+            a = array.cell_centers(axis, random=True, seed=42)
+            b = array.cell_centers(axis, random=True, seed=42)
+            assert np.all(a == b)
+
     @pytest.mark.parametrize(
         argnames="axis",
         argvalues=[
@@ -346,13 +754,34 @@ class AbstractTestAbstractArray(
             else:
                 assert np.all(attr == attr_copy)
 
+    def test_pickle(self, array: na.AbstractArray):
+        array_pickled = pickle.loads(pickle.dumps(array))
+        assert isinstance(array_pickled, type(array))
+        for field in dataclasses.fields(array):
+            attr = getattr(array, field.name)
+            attr_pickled = getattr(array_pickled, field.name)
+            if isinstance(attr, dict):
+                for key in attr:
+                    assert np.all(attr[key] == attr_pickled[key])
+            else:
+                assert np.all(attr == attr_pickled)
+
     @abc.abstractmethod
     def test__getitem__(
             self,
             array: na.AbstractArray,
-            item: dict[str, int | slice | na.AbstractArray] | na.AbstractArray
+            item: Mapping[str, int | slice | na.AbstractArray] | na.AbstractArray
     ):
         pass
+
+    def test_isel(self, array: na.AbstractArray):
+        shape = array.shape
+        if not shape:
+            return
+        # ``isel`` is keyword sugar for dict-indexing along named axes
+        axis = next(iter(shape))
+        item = {axis: 0}
+        assert np.all(array.isel(**item) == array[item])
 
     @abc.abstractmethod
     def test__bool__(self, array: na.AbstractArray):
@@ -653,6 +1082,31 @@ class AbstractTestAbstractArray(
                 pass
 
         @pytest.mark.parametrize(
+            argnames="func",
+            argvalues=[
+                np.cumsum,
+                np.cumulative_sum,
+                np.nancumsum,
+                np.cumprod,
+                np.cumulative_prod,
+                np.nancumprod,
+            ],
+        )
+        @pytest.mark.parametrize("dtype", [np._NoValue, float])
+        @pytest.mark.parametrize("axis", [None, "y", ("y",)])
+        class TestCumulativeReductionFunctions(abc.ABC):
+
+            @abc.abstractmethod
+            def test_cumulative_reduction_functions(
+                self,
+                func: Callable,
+                array: na.AbstractArray,
+                axis: None | str | Sequence[str],
+                dtype: None | type | np.dtype,
+            ):
+                pass
+
+        @pytest.mark.parametrize(
             argnames='func',
             argvalues=[
                 np.percentile,
@@ -879,33 +1333,113 @@ class AbstractTestAbstractArray(
             assert result.size == array.size
             assert result.axes == tuple(shape.keys())
 
-        @pytest.mark.parametrize('axis', ['y', 'z'])
-        @pytest.mark.parametrize('use_out', [False, True])
-        def test_stack(
-                self,
-                array: na.AbstractArray,
-                axis: str,
-                use_out: bool,
+        @pytest.mark.parametrize("axis", ["_expanded", ("_expanded", "_expanded_2")])
+        def test_expand_dims(
+            self,
+            array: na.AbstractArray,
+            axis: str | Sequence[str],
         ):
-            arrays = [array, array]
+            result = np.expand_dims(array, axis)
 
-            if axis in array.axes:
-                with pytest.raises(ValueError, match=r"axis .* already in array"):
-                    np.stack(arrays, axis=axis)
-                return
+            axes = (axis,) if isinstance(axis, str) else tuple(axis)
 
-            if use_out:
-                out = 0 * np.stack(arrays=arrays, axis=axis)
-            else:
-                out = None
+            assert result.type_abstract == array.type_abstract
+            for ax in axes:
+                assert result.shape[ax] == 1
+            assert np.all(result == array)
 
-            result = np.stack(arrays=arrays, axis=axis, out=out)
+            # an axis which the array already has is an error
+            with pytest.raises(ValueError):
+                np.expand_dims(result, axes[0])
 
-            assert np.all(result[{axis: 0}] == array)
-            assert np.all(result[{axis: 1}] == array)
+            # a repeated axis is an error
+            with pytest.raises(ValueError):
+                np.expand_dims(array, (axes[0], axes[0]))
 
-            if use_out:
-                assert result is out
+        @pytest.mark.parametrize("axis", ["_expanded", ("_expanded", "_expanded_2")])
+        def test_squeeze(
+            self,
+            array: na.AbstractArray,
+            axis: str | Sequence[str],
+        ):
+            array_expanded = np.expand_dims(array, axis)
+
+            result = np.squeeze(array_expanded, axis=axis)
+
+            assert result.type_abstract == array.type_abstract
+            assert result.shape == array.shape
+            assert np.all(result == array)
+
+            # the default is to remove every axis of length one
+            axes = (axis,) if isinstance(axis, str) else tuple(axis)
+            shape_default = np.squeeze(array_expanded).shape
+            assert not any(ax in shape_default for ax in axes)
+
+            # an axis which the array does not have is ignored
+            assert np.squeeze(array, axis="_missing").shape == array.shape
+
+            # an axis whose length is not one is an error
+            for ax in array.shape:
+                if array.shape[ax] != 1:
+                    with pytest.raises(ValueError):
+                        np.squeeze(array, axis=ax)
+                    break
+
+        @pytest.mark.parametrize("axis", [None, "y", "_missing", ("x", "y")])
+        def test_flip(self, array: na.AbstractArray, axis: None | str | Sequence[str]):
+            result = np.flip(array, axis=axis)
+
+            assert result.type_abstract == array.type_abstract
+            assert result.shape == array.shape
+
+            # reversing an axis twice restores the original array
+            assert np.all(np.flip(result, axis=axis) == array)
+
+            if axis == "_missing":
+                assert np.all(result == array)
+
+        @pytest.mark.parametrize('axis', ['y', 'z'])
+        class TestStackLikeFunctions(abc.ABC):
+
+            def test_stack(
+                    self,
+                    array: na.AbstractArray,
+                    array_2: None | bool | int | float | complex | u.Quantity | na.AbstractArray,
+                    axis: str,
+            ):
+                if array_2 is None:
+                    array_2 = array
+
+                arrays = [array, array_2]
+
+                # if the binary ufunc dispatch rejects this combination of
+                # operands, stacking them must be rejected as well
+                try:
+                    np.equal(array, array_2)
+                except (ValueError, TypeError) as e:
+                    # expect the base class of the exception since the
+                    # implementation is free to order its checks differently
+                    error = ValueError if isinstance(e, ValueError) else TypeError
+                    with pytest.raises(error):
+                        np.stack(arrays, axis=axis)
+                    return
+
+                shape = na.shape_broadcasted(array, array_2)
+                if axis in shape:
+                    with pytest.raises(ValueError, match=r"axis .* already in array"):
+                        np.stack(arrays, axis=axis)
+                    return
+
+                result = np.stack(arrays=arrays, axis=axis)
+
+                assert np.all(result[{axis: 0}] == array)
+                assert np.all(result[{axis: 1}] == array_2)
+
+                out = 0 * result
+                result_out = np.stack(arrays=arrays, axis=axis, out=out)
+
+                assert result_out is out
+                assert np.all(result_out == result)
 
         @pytest.mark.parametrize('axis', ['x', 'y'])
         def test_concatenate(
@@ -958,6 +1492,30 @@ class AbstractTestAbstractArray(
             sorted_expected = np.sort(a=array, axis=axis)
             assert np.all(sorted == sorted_expected)
 
+        @pytest.mark.parametrize('axis', ['x', 'y'])
+        def test_take_along_axis(self, array: na.AbstractArray, axis: str):
+
+            if axis not in array.shape:
+                indices = na.ScalarArray(np.array([0]), axes=axis)
+                with pytest.raises(ValueError, match="`axis`, .* must be one of the axes in `arr`, .*"):
+                    np.take_along_axis(array, indices, axis=axis)
+                return
+
+            num = array.shape[axis]
+
+            # Reverse the array along `axis` by taking values in reverse order.
+            indices = na.ScalarArray(np.arange(num)[::-1], axes=axis)
+
+            result = np.take_along_axis(array, indices, axis=axis)
+            expected = array[{axis: slice(None, None, -1)}]
+
+            assert result.shape[axis] == num
+            assert np.all(result == expected)
+
+            # The functional and method versions should agree with `np.take_along_axis`.
+            assert np.all(na.take_along_axis(array, indices, axis=axis) == result)
+            assert np.all(array.take_along_axis(indices, axis=axis) == result)
+
         def test_unravel_index(self, array: na.AbstractArray):
             indices_raveled = na.ScalarArrayRange(0, array.size, axis='raveled').reshape(array.shape)
             indices_raveled = indices_raveled * np.ones_like(array.value, shape=dict(), dtype=int)
@@ -1007,9 +1565,27 @@ class AbstractTestAbstractArray(
             else:
                 raise NotImplementedError
 
+        @pytest.mark.parametrize("array_2", ["copy", "zeros"])
+        def test_isclose(self, array: na.AbstractArray, array_2: str):
+            if array_2 == "copy":
+                array_2 = array + array.mean() * na.ScalarUniformRandomSample(-1e-10, 1e-10)
+                result = np.isclose(array, array_2)
+                assert np.all(result)
+
+            elif array_2 == "zeros":
+                array_2 = 0 * array
+                result = np.isclose(array, array_2)
+                assert not np.all(result)
+
+            else:
+                raise NotImplementedError
+
+            assert result.type_abstract == array.type_abstract
+            assert result.shape == na.shape_broadcasted(array, array_2)
+
         def test_nonzero(self, array: na.AbstractArray):
 
-            #not quite working
+            # not quite working
             # if isinstance(array, na.AbstractFunctionArray):
             #     test_array = array.outputs
             # else:
@@ -1046,6 +1622,75 @@ class AbstractTestAbstractArray(
         @abc.abstractmethod
         def test_convolve(self, array: na.AbstractArray, v: na.AbstractArray, mode: str):
             pass
+
+        @pytest.mark.parametrize(
+            argnames="a_min",
+            argvalues=[
+                0,
+            ],
+        )
+        @pytest.mark.parametrize(
+            argnames="a_max",
+            argvalues=[
+                None,
+                1,
+            ],
+        )
+        def test_clip(
+            self,
+            array: na.AbstractArray,
+            a_min: None | float | na.AbstractArray,
+            a_max: None | float | na.AbstractArray,
+        ):
+
+            unit = na.unit(array)
+            if unit is not None:
+                if a_min is not None:
+                    a_min = a_min * unit
+                if a_max is not None:
+                    a_max = a_max * unit
+
+            result = np.clip(array, a_min, a_max)
+
+            result_expected = array
+            if a_min is not None:
+                result_expected = np.maximum(result_expected, a_min)
+            if a_max is not None:
+                result_expected = np.minimum(result_expected, a_max)
+
+            assert np.all(result == result_expected)
+
+            out = na.asanyarray(0 * result)
+
+            result_out = np.clip(array, a_min, a_max, out=out)
+
+            assert result_out is out
+            assert np.all(result == result_out)
+
+        @pytest.mark.parametrize("func", [np.round, np.around])
+        @pytest.mark.parametrize("decimals", [0, 1])
+        def test_round(
+            self,
+            array: na.AbstractArray,
+            func: Callable,
+            decimals: int,
+        ):
+            array = array.astype(float)
+
+            result = func(array, decimals=decimals)
+
+            scale = 10.0 ** decimals
+            result_expected = np.rint(array * scale) / scale
+
+            assert result.type_abstract == array.type_abstract
+            assert np.all(result == result_expected)
+
+            out = na.asanyarray(0 * result)
+
+            result_out = func(array, decimals=decimals, out=out)
+
+            assert result_out is out
+            assert np.all(result == result_out)
 
         @pytest.mark.parametrize(
             argnames="repeats",
@@ -1173,6 +1818,31 @@ class AbstractTestAbstractArray(
         result = array.broadcast_to(**kwargs)
         result_expected = na.broadcast_to(array, **kwargs)
         assert np.array_equal(result, result_expected)
+
+    def test_debroadcast(
+            self,
+            array: na.AbstractArray,
+    ):
+        axis = "_debroadcast"
+        broadcast = array.broadcast_to({axis: 3}, append=True)
+
+        result = na.debroadcast(broadcast)
+
+        # the method and the function agree
+        assert np.array_equal(result, broadcast.debroadcast())
+
+        # the newly-broadcasted axis is always removed
+        assert axis not in na.shape(result)
+
+        # re-broadcasting recovers the broadcasted values, so debroadcast is a
+        # left-inverse of broadcast_to
+        assert bool(np.all(result.broadcast_to(broadcast.shape) == broadcast))
+
+        # considering only an absent axis removes nothing
+        assert na.shape(na.debroadcast(broadcast, axes="_absent")) == broadcast.shape
+
+        # considering only the broadcasted axis removes exactly that axis
+        assert axis not in na.shape(na.debroadcast(broadcast, axes=axis))
 
     @pytest.mark.parametrize('shape', [dict(r=-1)])
     def test_reshape(
@@ -1697,6 +2367,32 @@ class AbstractTestAbstractArray(
                 assert np.allclose(result, expected * na.unit_normalized(array))
                 assert out is result
 
+        class TestOptimizeMinimumBrent:
+            def test_optimize_minimum_brent(
+                self,
+                func: Callable,
+                array: na.AbstractArray,
+                function: Callable[[na.AbstractArray], na.AbstractArray],
+                expected: na.AbstractArray,
+            ):
+                def callback(i, x, f, c):
+                    global out
+                    out = x
+
+                unit = na.unit_normalized(array)
+                min_step_size = 1e-6 * unit
+
+                result = func(
+                    function=function,
+                    a=(expected - 10) * unit,
+                    b=(expected + 10) * unit,
+                    min_step_size=min_step_size,
+                    callback=callback,
+                )
+
+                assert np.allclose(result, expected * unit, atol=10 * min_step_size)
+                assert out is result
+
         @pytest.mark.parametrize(
             argnames="function",
             argvalues=[
@@ -1779,6 +2475,35 @@ class AbstractTestAbstractArray(
                     assert isinstance(result.inputs, na.Cartesian2dVectorArray)
                     assert isinstance(result.outputs, na.AbstractArray)
 
+                    # Each of the two new axes should carry the quantity that
+                    # its name advertises: the intensity coordinate varies only
+                    # along the intensity axis, and the wavelength coordinate
+                    # varies only along the wavelength axis.
+                    coordinates = (
+                        (result.inputs.x, "_intensity", "_wavelength"),
+                        (result.inputs.y, "_wavelength", "_intensity"),
+                    )
+                    for coordinate, axis_along, axis_across in coordinates:
+                        shape_coordinate = na.shape(coordinate)
+                        if axis_across in shape_coordinate:
+                            assert np.allclose(
+                                np.ptp(coordinate, axis=axis_across),
+                                0,
+                                equal_nan=True,
+                            )
+                        if axis_along in shape_coordinate:
+                            varies = not np.allclose(
+                                np.ptp(coordinate, axis=tuple(shape_coordinate)),
+                                0,
+                                equal_nan=True,
+                            )
+                            if varies:
+                                assert not np.allclose(
+                                    np.ptp(coordinate, axis=axis_along),
+                                    0,
+                                    equal_nan=True,
+                                )
+
             def test_rgb_and_colorbar(
                 self,
                 array: na.AbstractArray,
@@ -1815,7 +2540,7 @@ class AbstractTestAbstractExplicitArray(
     def test__setitem__(
             self,
             array: na.AbstractArray,
-            item: dict[str, int | slice | na.AbstractArray] | na.AbstractArray,
+            item: Mapping[str, int | slice | na.AbstractArray] | na.AbstractArray,
             value: na.AbstractArray
     ):
         result = na.broadcast_to(array, array.shape).astype(float).copy()
@@ -2064,3 +2789,37 @@ class AbstractTestAbstractGeometricSpace(
     AbstractTestAbstractSpace,
 ):
     pass
+
+
+def test_cell_centers_seed_changes_the_sample():
+    """A different seed draws different points."""
+    vertices = na.linspace(0, 1, axis="x", num=9)
+
+    a = vertices.cell_centers("x", random=True, seed=42)
+    b = vertices.cell_centers("x", random=True, seed=42)
+    c = vertices.cell_centers("x", random=True, seed=43)
+
+    assert np.all(a == b)
+    assert np.any(a != c)
+
+
+def test_cell_centers_axes_are_independent():
+    """
+    Each axis is sampled from its own stream.
+
+    Drawing the same numbers for two axes would offset every point by the same
+    amount along both of them, which would put it on the diagonal of its cell
+    rather than anywhere inside it.
+    """
+    vertices = na.Cartesian2dVectorArray(
+        x=na.linspace(0, 1, axis="x", num=9),
+        y=na.linspace(0, 1, axis="y", num=9),
+    )
+
+    centers = vertices.cell_centers(("x", "y"), random=True, seed=8)
+
+    # where each point sits inside its own cell, along each axis
+    offset_x = (centers.x - vertices.x[{"x": slice(None, -1)}]) * 8
+    offset_y = (centers.y - vertices.y[{"y": slice(None, -1)}]) * 8
+
+    assert np.any(offset_x.ndarray != offset_y.ndarray)

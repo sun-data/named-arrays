@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TypeVar, Generic, ClassVar, Type, Sequence, Callable, Collection, Any, Union
+from typing import Mapping, TYPE_CHECKING, TypeVar, Generic, ClassVar, Type, Sequence, Callable, Collection, Any, Union, overload
 from typing_extensions import Self
 import abc
 import dataclasses
@@ -18,6 +18,7 @@ __all__ = [
     "AbstractScalar",
     "AbstractScalarArray",
     "ScalarLike",
+    "AbstractExplicitScalarArray",
     "ScalarArray",
     "AbstractImplicitScalarArray",
     "AbstractScalarRandomSample",
@@ -33,7 +34,7 @@ __all__ = [
     "ScalarGeometricSpace",
 ]
 
-NDArrayT = TypeVar('NDArrayT', bound=npt.ArrayLike)
+NDArrayT = TypeVar('NDArrayT', bound=npt.ArrayLike, covariant=True)
 StartT = TypeVar('StartT', bound='ScalarLike')
 StopT = TypeVar('StopT', bound='ScalarLike')
 ScalarStartT = TypeVar('ScalarStartT', bound='ScalarLike')
@@ -119,7 +120,7 @@ class AbstractScalar(
         else:
             raise ValueError('Can only compute length of numeric arrays')
 
-    def volume_cell(self, axis: None | str | tuple[str]) -> na.AbstractScalar:
+    def volume_cell(self, axis: None | str | Sequence[str]) -> na.AbstractScalar:
         if axis is None:
             if self.ndim != 1:
                 raise ValueError(
@@ -406,7 +407,7 @@ class AbstractScalarArray(
 
     def _getitem(
             self: Self,
-            item: dict[str, int | slice | AbstractScalarArray] | AbstractScalarArray,
+            item: Mapping[str, int | slice | na.AbstractArray] | na.AbstractArray,
     ):
 
         if isinstance(item, AbstractScalarArray):
@@ -455,7 +456,7 @@ class AbstractScalarArray(
                         item_advanced[axis] = item_axis
                     else:
                         return NotImplemented
-                elif isinstance(item_axis, int):
+                elif np.issubdtype(type(item_axis), np.integer):
                     item_advanced[axis] = item_axis
 
             shape_advanced = na.shape_broadcasted(*item_advanced.values())
@@ -489,8 +490,8 @@ class AbstractScalarArray(
 
     def _getitem_reversed(
             self: Self,
-            array: AbstractScalarArray,
-            item: dict[str, int | slice | na.AbstractArray] | na.AbstractArray,
+            array: na.AbstractArray,
+            item: Mapping[str, int | slice | na.AbstractArray] | na.AbstractArray,
     ):
         return NotImplemented
 
@@ -634,6 +635,9 @@ class AbstractScalarArray(
 
         if func in scalar_array_functions.DEFAULT_FUNCTIONS:
             return scalar_array_functions.array_function_default(func, *args, **kwargs)
+
+        if func in scalar_array_functions.CUMULATIVE_REDUCE_FUNCTIONS:
+            return scalar_array_functions.array_function_cumulative_reduce(func, *args, **kwargs)
 
         if func in scalar_array_functions.PERCENTILE_LIKE_FUNCTIONS:
             return scalar_array_functions.array_function_percentile_like(func, *args, **kwargs)
@@ -813,9 +817,17 @@ ScalarLike = Union[na.QuantityLike, AbstractScalar]
 
 
 @dataclasses.dataclass(eq=False, repr=False)
+class AbstractExplicitScalarArray(
+    AbstractScalar,
+    na.AbstractExplicitArray,
+):
+    """An interface describing an explicit physical scalar."""
+
+
+@dataclasses.dataclass(eq=False, repr=False)
 class ScalarArray(
     AbstractScalarArray,
-    na.AbstractExplicitArray,
+    AbstractExplicitScalarArray,
     Generic[NDArrayT],
 ):
     """
@@ -867,6 +879,247 @@ class ScalarArray(
         print(radius.mean())
         print(radius.mean(axis='position_x'))
     """
+
+    # The operators declared on `AbstractArray` can only promise the widest
+    # array type. The result of an operation is the explicit array of the
+    # highest family involved, so the result is `Self` unless a higher family
+    # absorbs it. Declarations only; the implementation is inherited.
+    if TYPE_CHECKING:  # pragma: nocover
+
+        @overload
+        def __add__(self, other: na.AbstractFunctionArray) -> na.AbstractFunctionArray: ...
+
+        @overload
+        def __add__(self, other: na.AbstractVectorArray) -> na.AbstractVectorArray: ...
+
+        @overload
+        def __add__(self, other: na.AbstractUncertainScalarArray) -> na.AbstractUncertainScalarArray: ...
+
+        @overload
+        def __add__(self, other: na.ArrayLike) -> Self: ...
+
+        @overload
+        def __sub__(self, other: na.AbstractFunctionArray) -> na.AbstractFunctionArray: ...
+
+        @overload
+        def __sub__(self, other: na.AbstractVectorArray) -> na.AbstractVectorArray: ...
+
+        @overload
+        def __sub__(self, other: na.AbstractUncertainScalarArray) -> na.AbstractUncertainScalarArray: ...
+
+        @overload
+        def __sub__(self, other: na.ArrayLike) -> Self: ...
+
+        @overload
+        def __floordiv__(self, other: na.AbstractFunctionArray) -> na.AbstractFunctionArray: ...
+
+        @overload
+        def __floordiv__(self, other: na.AbstractVectorArray) -> na.AbstractVectorArray: ...
+
+        @overload
+        def __floordiv__(self, other: na.AbstractUncertainScalarArray) -> na.AbstractUncertainScalarArray: ...
+
+        @overload
+        def __floordiv__(self, other: na.ArrayLike) -> Self: ...
+
+        @overload
+        def __mod__(self, other: na.AbstractFunctionArray) -> na.AbstractFunctionArray: ...
+
+        @overload
+        def __mod__(self, other: na.AbstractVectorArray) -> na.AbstractVectorArray: ...
+
+        @overload
+        def __mod__(self, other: na.AbstractUncertainScalarArray) -> na.AbstractUncertainScalarArray: ...
+
+        @overload
+        def __mod__(self, other: na.ArrayLike) -> Self: ...
+
+        @overload
+        def __pow__(self, other: na.AbstractFunctionArray) -> na.AbstractFunctionArray: ...
+
+        @overload
+        def __pow__(self, other: na.AbstractVectorArray) -> na.AbstractVectorArray: ...
+
+        @overload
+        def __pow__(self, other: na.AbstractUncertainScalarArray) -> na.AbstractUncertainScalarArray: ...
+
+        @overload
+        def __pow__(self, other: na.ArrayLike) -> Self: ...
+
+        @overload
+        def __radd__(self, other: na.AbstractFunctionArray) -> na.AbstractFunctionArray: ...
+
+        @overload
+        def __radd__(self, other: na.AbstractVectorArray) -> na.AbstractVectorArray: ...
+
+        @overload
+        def __radd__(self, other: na.AbstractUncertainScalarArray) -> na.AbstractUncertainScalarArray: ...
+
+        @overload
+        def __radd__(self, other: na.ArrayLike) -> Self: ...
+
+        @overload
+        def __rsub__(self, other: na.AbstractFunctionArray) -> na.AbstractFunctionArray: ...
+
+        @overload
+        def __rsub__(self, other: na.AbstractVectorArray) -> na.AbstractVectorArray: ...
+
+        @overload
+        def __rsub__(self, other: na.AbstractUncertainScalarArray) -> na.AbstractUncertainScalarArray: ...
+
+        @overload
+        def __rsub__(self, other: na.ArrayLike) -> Self: ...
+
+        @overload
+        def __rmul__(self, other: na.AbstractFunctionArray) -> na.AbstractFunctionArray: ...
+
+        @overload
+        def __rmul__(self, other: na.AbstractVectorArray) -> na.AbstractVectorArray: ...
+
+        @overload
+        def __rmul__(self, other: na.AbstractUncertainScalarArray) -> na.AbstractUncertainScalarArray: ...
+
+        @overload
+        def __rmul__(self, other: na.ArrayLike) -> Self: ...
+
+        @overload
+        def __rtruediv__(self, other: na.AbstractFunctionArray) -> na.AbstractFunctionArray: ...
+
+        @overload
+        def __rtruediv__(self, other: na.AbstractVectorArray) -> na.AbstractVectorArray: ...
+
+        @overload
+        def __rtruediv__(self, other: na.AbstractUncertainScalarArray) -> na.AbstractUncertainScalarArray: ...
+
+        @overload
+        def __rtruediv__(self, other: na.ArrayLike) -> Self: ...
+
+        @overload
+        def __rfloordiv__(self, other: na.AbstractFunctionArray) -> na.AbstractFunctionArray: ...
+
+        @overload
+        def __rfloordiv__(self, other: na.AbstractVectorArray) -> na.AbstractVectorArray: ...
+
+        @overload
+        def __rfloordiv__(self, other: na.AbstractUncertainScalarArray) -> na.AbstractUncertainScalarArray: ...
+
+        @overload
+        def __rfloordiv__(self, other: na.ArrayLike) -> Self: ...
+
+        @overload
+        def __rmod__(self, other: na.AbstractFunctionArray) -> na.AbstractFunctionArray: ...
+
+        @overload
+        def __rmod__(self, other: na.AbstractVectorArray) -> na.AbstractVectorArray: ...
+
+        @overload
+        def __rmod__(self, other: na.AbstractUncertainScalarArray) -> na.AbstractUncertainScalarArray: ...
+
+        @overload
+        def __rmod__(self, other: na.ArrayLike) -> Self: ...
+
+        @overload
+        def __rpow__(self, other: na.AbstractFunctionArray) -> na.AbstractFunctionArray: ...
+
+        @overload
+        def __rpow__(self, other: na.AbstractVectorArray) -> na.AbstractVectorArray: ...
+
+        @overload
+        def __rpow__(self, other: na.AbstractUncertainScalarArray) -> na.AbstractUncertainScalarArray: ...
+
+        @overload
+        def __rpow__(self, other: na.ArrayLike) -> Self: ...
+
+        @overload
+        def __lt__(self, other: na.AbstractFunctionArray) -> na.AbstractFunctionArray: ...
+
+        @overload
+        def __lt__(self, other: na.AbstractVectorArray) -> na.AbstractVectorArray: ...
+
+        @overload
+        def __lt__(self, other: na.AbstractUncertainScalarArray) -> na.AbstractUncertainScalarArray: ...
+
+        @overload
+        def __lt__(self, other: na.ArrayLike) -> Self: ...
+
+        @overload
+        def __le__(self, other: na.AbstractFunctionArray) -> na.AbstractFunctionArray: ...
+
+        @overload
+        def __le__(self, other: na.AbstractVectorArray) -> na.AbstractVectorArray: ...
+
+        @overload
+        def __le__(self, other: na.AbstractUncertainScalarArray) -> na.AbstractUncertainScalarArray: ...
+
+        @overload
+        def __le__(self, other: na.ArrayLike) -> Self: ...
+
+        @overload
+        def __gt__(self, other: na.AbstractFunctionArray) -> na.AbstractFunctionArray: ...
+
+        @overload
+        def __gt__(self, other: na.AbstractVectorArray) -> na.AbstractVectorArray: ...
+
+        @overload
+        def __gt__(self, other: na.AbstractUncertainScalarArray) -> na.AbstractUncertainScalarArray: ...
+
+        @overload
+        def __gt__(self, other: na.ArrayLike) -> Self: ...
+
+        @overload
+        def __ge__(self, other: na.AbstractFunctionArray) -> na.AbstractFunctionArray: ...
+
+        @overload
+        def __ge__(self, other: na.AbstractVectorArray) -> na.AbstractVectorArray: ...
+
+        @overload
+        def __ge__(self, other: na.AbstractUncertainScalarArray) -> na.AbstractUncertainScalarArray: ...
+
+        @overload
+        def __ge__(self, other: na.ArrayLike) -> Self: ...
+
+        @overload
+        def __mul__(self, other: na.AbstractFunctionArray) -> na.AbstractFunctionArray: ...
+
+        @overload
+        def __mul__(self, other: na.AbstractVectorArray) -> na.AbstractVectorArray: ...
+
+        @overload
+        def __mul__(self, other: na.AbstractUncertainScalarArray) -> na.AbstractUncertainScalarArray: ...
+
+        @overload
+        def __mul__(self, other: na.ArrayLike | u.UnitBase) -> Self: ...
+
+        @overload
+        def __truediv__(self, other: na.AbstractFunctionArray) -> na.AbstractFunctionArray: ...
+
+        @overload
+        def __truediv__(self, other: na.AbstractVectorArray) -> na.AbstractVectorArray: ...
+
+        @overload
+        def __truediv__(self, other: na.AbstractUncertainScalarArray) -> na.AbstractUncertainScalarArray: ...
+
+        @overload
+        def __truediv__(self, other: na.ArrayLike | u.UnitBase) -> Self: ...
+
+        @overload
+        def __lshift__(self, other: na.AbstractFunctionArray) -> na.AbstractFunctionArray: ...
+
+        @overload
+        def __lshift__(self, other: na.AbstractVectorArray) -> na.AbstractVectorArray: ...
+
+        @overload
+        def __lshift__(self, other: na.AbstractUncertainScalarArray) -> na.AbstractUncertainScalarArray: ...
+
+        @overload
+        def __lshift__(self, other: na.ArrayLike | u.UnitBase) -> Self: ...
+
+        def __neg__(self) -> Self: ...
+
+        def __pos__(self) -> Self: ...
+
+        def __abs__(self) -> Self: ...
+
 
     ndarray: None | NDArrayT = 0
     """
@@ -990,6 +1243,34 @@ class ScalarArray(
             axes=tuple(shape.keys()),
         )
 
+    @classmethod
+    def full(
+        cls: Type[Self],
+        shape: dict[str, int],
+        fill_value: float | u.Quantity,
+        dtype: None | Type | np.dtype = None,
+    ) -> Self:
+        """
+        Create a new array filled with `fill_value`.
+
+        Parameters
+        ----------
+        shape
+            shape of the new array
+        fill_value
+            value with which to fill the new array
+        dtype
+            data type of the new array
+
+        Returns
+        -------
+            A new array of the specified shape filled with `fill_value`
+        """
+        return cls(
+            ndarray=np.full(shape=tuple(shape.values()), fill_value=fill_value, dtype=dtype),
+            axes=tuple(shape.keys()),
+        )
+
     @property
     def shape(self: Self) -> dict[str, int]:
         try:
@@ -1015,7 +1296,7 @@ class ScalarArray(
 
     def __setitem__(
             self: Self,
-            item: dict[str, int | slice | AbstractScalarArray] | AbstractScalarArray,
+            item: Mapping[str, int | slice | na.AbstractArray] | na.AbstractArray,
             value: int | float | u.Quantity | AbstractScalarArray,
     ) -> None:
 
@@ -1142,7 +1423,7 @@ class ScalarUniformRandomSample(
     AbstractScalarRandomSample,
     na.AbstractUniformRandomSample[ScalarStartT, ScalarStopT],
 ):
-    def volume_cell(self, axis: None | str | tuple[str]) -> na.AbstractScalar:
+    def volume_cell(self, axis: None | str | Sequence[str]) -> na.AbstractScalar:
         axis = na.axis_normalized(self, axis)
         if len(axis) != 1:
             raise ValueError(
@@ -1252,7 +1533,7 @@ class ScalarLinearSpace(
         print(wavelength)
     """
 
-    def volume_cell(self, axis: None | str | tuple[str]) -> na.AbstractScalar:
+    def volume_cell(self, axis: None | str | Sequence[str]) -> na.AbstractScalar:
         axis = na.axis_normalized(self, axis)
         if len(axis) != 1:
             raise ValueError(

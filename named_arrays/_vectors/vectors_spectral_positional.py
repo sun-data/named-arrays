@@ -1,6 +1,5 @@
 from __future__ import annotations
-from typing import Type, TypeVar
-from typing_extensions import Self
+from typing import Type, TypeVar, Sequence
 import dataclasses
 import named_arrays as na
 
@@ -28,12 +27,69 @@ class AbstractSpectralPositionalVectorArray(
         return AbstractSpectralPositionalVectorArray
 
     @property
-    def type_explicit(self) -> Type[na.AbstractExplicitArray]:
+    def type_explicit(self) -> Type[SpectralPositionalVectorArray]:
         return SpectralPositionalVectorArray
 
     @property
     def type_matrix(self) -> Type[na.SpectralPositionalMatrixArray]:
         return na.SpectralPositionalMatrixArray
+
+    @property
+    def spectral_positional(self) -> "SpectralPositionalVectorArray":
+        """
+        This vector as a plain :class:`SpectralPositionalVectorArray`,
+        exposing only its wavelength and position.
+
+        The same property on other wavelength-and-position vectors, such as
+        :class:`~named_arrays.AbstractDopplerPositionalVectorArray`, projects
+        onto this representation, so a caller can accept either type and
+        normalize it with a single property access.
+        """
+        return SpectralPositionalVectorArray(
+            wavelength=self.wavelength,
+            position=self.position,
+        )
+
+    def volume_cell(self, axis: None | str | Sequence[str]) -> na.AbstractScalar:
+        """
+        The volume of each voxel of the logically-rectangular grid formed by
+        this array: the wavelength bin width times the area of each position
+        cell.
+
+        The wavelength and position axes are determined from `axis` by which
+        component of this array they belong to, so their order does not matter.
+
+        Parameters
+        ----------
+        axis
+            The grid axes: the axis of changing wavelength together with the two
+            axes of changing position.
+            If :obj:`None`, all the axes of this array are used.
+        """
+        axis = na.axis_normalized(self, axis)
+
+        shape_wavelength = na.shape(self.wavelength)
+        shape_position = na.shape(self.position)
+
+        # split `axis` by which component each axis belongs to, ordering each
+        # group by the component's own axes so the result does not depend on the
+        # order in which the axes were given.
+        axis_wavelength = tuple(a for a in shape_wavelength if a in axis)
+        axis_position = tuple(
+            a for a in shape_position if a in axis and a not in shape_wavelength
+        )
+
+        volume_wavelength = self.wavelength.volume_cell(axis_wavelength)
+        volume_position = na.as_named_array(self.position.volume_cell(axis_position))
+
+        # if the position varies with wavelength, its cell area spans the
+        # wavelength edges; collapse it onto the wavelength cell centers so it
+        # aligns with the wavelength bin widths.
+        for a in axis_wavelength:
+            if a in na.shape(volume_position):
+                volume_position = volume_position.cell_centers(a)
+
+        return volume_wavelength * volume_position
 
 
 @dataclasses.dataclass(eq=False, repr=False)
@@ -42,14 +98,7 @@ class SpectralPositionalVectorArray(
     na.PositionalVectorArray[PositionT],
     na.SpectralVectorArray[WavelengthT],
 ):
-
-    @classmethod
-    def from_scalar(
-            cls: Type[Self],
-            scalar: na.AbstractScalar,
-            like: None | na.AbstractExplicitVectorArray = None,
-    ) -> SpectralPositionalVectorArray:
-        return cls(wavelength=scalar, position=scalar)
+    pass
 
 
 @dataclasses.dataclass(eq=False, repr=False)

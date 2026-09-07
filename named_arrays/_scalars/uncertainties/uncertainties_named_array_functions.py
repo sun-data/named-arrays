@@ -144,6 +144,14 @@ def broadcast_to(
     )
 
 
+@_implements(na.debroadcast)
+def debroadcast(
+    array: na.AbstractUncertainScalarArray,
+    axes: None | str | Sequence[str] = None,
+) -> na.AbstractExplicitArray:
+    return na._named_array_functions._debroadcast(array, axes)
+
+
 @_implements(na.interp)
 def interp(
         x: float | u.Quantity | na.AbstractScalar,
@@ -169,6 +177,7 @@ def interp(
             x=x.nominal,
             xp=xp.nominal,
             fp=fp.nominal,
+            axis=axis,
             left=left.nominal,
             right=right.nominal,
             period=period.nominal,
@@ -177,6 +186,7 @@ def interp(
             x=x.distribution,
             xp=xp.distribution,
             fp=fp.distribution,
+            axis=axis,
             left=left.distribution,
             right=right.distribution,
             period=period.distribution,
@@ -882,6 +892,25 @@ def optimize_root_newton(
         guess=guess,
         jacobian=jacobian,
         max_abs_error=max_abs_error,
+        max_iterations=max_iterations,
+        callback=callback,
+    )
+
+
+@_implements(na.optimize.minimum_brent)
+def optimize_minimum_brent(
+        function: Callable[[na.ScalarLike], na.ScalarLike],
+        a: na.ScalarLike,
+        b: na.ScalarLike,
+        min_step_size: na.ScalarLike,
+        max_iterations: int = 100,
+        callback: None | Callable[[int, na.ScalarLike, na.ScalarLike, na.ScalarLike], None] = None,
+) -> na.UncertainScalarArray:
+    return named_arrays._scalars.scalar_named_array_functions.optimize_minimum_brent(
+        function=function,
+        a=a,
+        b=b,
+        min_step_size=min_step_size,
         max_iterations=max_iterations,
         callback=callback,
     )

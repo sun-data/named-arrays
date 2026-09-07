@@ -1,3 +1,4 @@
+from typing import Mapping
 import pytest
 import numpy as np
 import astropy.units as u
@@ -46,7 +47,7 @@ class AbstractTestAbstractTemporalVectorArray(
     def test__getitem__(
             self,
             array: na.AbstractTemporalVectorArray,
-            item: dict[str, int | slice | na.AbstractArray] | na.AbstractArray
+            item: Mapping[str, int | slice | na.AbstractArray] | na.AbstractArray
     ):
         super().test__getitem__(array=array, item=item)
 
@@ -65,6 +66,12 @@ class AbstractTestAbstractTemporalVectorArray(
     class TestArrayFunctions(
         test_vectors_cartesian.AbstractTestAbstractCartesianVectorArray.TestArrayFunctions
     ):
+
+        @pytest.mark.parametrize("array_2", _temporal_arrays_2())
+        class TestStackLikeFunctions(
+            test_vectors_cartesian.AbstractTestAbstractCartesianVectorArray.TestArrayFunctions.TestStackLikeFunctions,
+        ):
+            pass
 
         @pytest.mark.parametrize("array_2", _temporal_arrays_2())
         class TestAsArrayLikeFunctions(

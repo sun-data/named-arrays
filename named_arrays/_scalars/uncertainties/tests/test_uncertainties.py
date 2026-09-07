@@ -1,4 +1,5 @@
-from typing import Sequence, Callable
+import dataclasses
+from typing import Mapping, Sequence, Callable
 import numpy as np
 import pytest
 import astropy.units as u
@@ -7,6 +8,7 @@ import named_arrays.tests.test_core
 import named_arrays._scalars.tests.test_scalars
 
 __all__ = [
+    'TestNominalRecursive',
     'AbstractTestAbstractUncertainScalarArray',
     'TestUncertainScalarArray',
     'TestUncertainScalarArrayCreation',
@@ -69,6 +71,58 @@ def _uncertain_scalar_arrays_2():
     return arrays
 
 
+@dataclasses.dataclass(eq=False)
+class _NominalContainer:
+    """A composite dataclass used to exercise the recursion of ``na.nominal``."""
+    data: na.AbstractScalar
+    label: str = "data"
+    size: int = dataclasses.field(init=False, default=-1)
+
+
+class TestNominalRecursive:
+    """Tests for the recursion of :func:`named_arrays.nominal` into nested structures."""
+
+    def _uncertain(self) -> na.UncertainScalarArray:
+        return na.UniformUncertainScalarArray(5, 4, num_distribution=_num_distribution).explicit
+
+    def _expected(self):
+        # the nominal value is deterministic (only the distribution is random)
+        return self._uncertain().nominal
+
+    def test_nominal_scalar_passthrough(self):
+        assert na.nominal(7) == 7
+
+    def test_nominal_dict(self):
+        result = na.nominal({"a": self._uncertain(), "b": 2})
+        assert isinstance(result, dict)
+        assert np.all(result["a"] == self._expected())
+        assert result["b"] == 2
+
+    def test_nominal_list(self):
+        result = na.nominal([self._uncertain()])
+        assert isinstance(result, list)
+        assert np.all(result[0] == self._expected())
+
+    def test_nominal_tuple(self):
+        result = na.nominal((self._uncertain(), 7))
+        assert isinstance(result, tuple)
+        assert np.all(result[0] == self._expected())
+        assert result[1] == 7
+
+    def test_nominal_nested(self):
+        result = na.nominal({"a": [self._uncertain()]})
+        assert np.all(result["a"][0] == self._expected())
+
+    def test_nominal_dataclass(self):
+        result = na.nominal(_NominalContainer(data=self._uncertain()))
+        assert isinstance(result, _NominalContainer)
+        assert np.all(result.data == self._expected())
+        # non-array fields are passed through unchanged
+        assert result.label == "data"
+        # ``init=False`` fields are skipped by ``dataclasses.replace``
+        assert result.size == -1
+
+
 class AbstractTestAbstractUncertainScalarArray(
     named_arrays._scalars.tests.test_scalars.AbstractTestAbstractScalar,
 ):
@@ -96,6 +150,7 @@ class AbstractTestAbstractUncertainScalarArray(
         argnames='item',
         argvalues=[
             dict(y=0),
+            dict(y=np.int64(0)),
             dict(y=slice(0, 1)),
             dict(y=na.ScalarArray(np.array([0, 1]), axes=('y', ))),
             dict(
@@ -128,7 +183,7 @@ class AbstractTestAbstractUncertainScalarArray(
     def test__getitem__(
             self,
             array: na.AbstractUncertainScalarArray,
-            item: dict[str, int | slice | na.AbstractArray] | na.AbstractArray
+            item: Mapping[str, int | slice | na.AbstractArray] | na.AbstractArray
     ):
         super().test__getitem__(array=array, item=item)
 
@@ -342,6 +397,13 @@ class AbstractTestAbstractUncertainScalarArray(
     ):
 
         @pytest.mark.parametrize("array_2", _uncertain_scalar_arrays_2())
+        class TestStackLikeFunctions(
+            named_arrays._scalars.tests.test_scalars.AbstractTestAbstractScalar.TestArrayFunctions
+            .TestStackLikeFunctions
+        ):
+            pass
+
+        @pytest.mark.parametrize("array_2", _uncertain_scalar_arrays_2())
         class TestAsArrayLikeFunctions(
             named_arrays._scalars.tests.test_scalars.AbstractTestAbstractScalar.TestArrayFunctions
             .TestAsArrayLikeFunctions
@@ -465,6 +527,60 @@ class AbstractTestAbstractUncertainScalarArray(
                 assert np.all(result.distribution == result_distribution)
                 assert np.allclose(result, result_out)
                 assert result_out is out
+
+        class TestCumlativeReductionFunctions(
+            named_arrays._scalars.tests.test_scalars.AbstractTestAbstractScalar.TestArrayFunctions.
+            TestCumulativeReductionFunctions,
+        ):
+
+            def test_cumulative_reduction_functions(
+                    self,
+                    func: Callable,
+                    array: na.AbstractUncertainScalarArray,
+                    axis: None | str | Sequence[str],
+                    dtype: None | type | np.dtype,
+            ):
+                super().test_cumulative_reduction_functions(
+                    func=func,
+                    array=array,
+                    axis=axis,
+                    dtype=dtype,
+                )
+
+                if not array.shape:
+                    return
+
+                kwargs = dict(
+                    axis=axis,
+                    dtype=dtype,
+                )
+
+                kwargs_nominal = kwargs.copy()
+                kwargs_distribution = kwargs.copy()
+
+                if axis is None:
+                    axis_normalized = na.axis_normalized(array, axis)
+                    kwargs_nominal["axis"] = axis_normalized
+                    kwargs_distribution["axis"] = axis_normalized
+
+                try:
+                    result_nominal = func(array.broadcasted.nominal, **kwargs_nominal)
+                    result_distribution = func(array.broadcasted.distribution, **kwargs_distribution)
+                except (ValueError, TypeError, u.UnitsError) as e:
+                    with pytest.raises(type(e)):
+                        func(array, **kwargs)
+                    return
+
+                result = func(array, **kwargs)
+
+                out = 0 * result
+                result_out = func(array, out=out, **kwargs)
+
+                assert np.all(result.nominal == result_nominal)
+                assert np.all(result.distribution == result_distribution)
+                assert np.allclose(result, result_out)
+                assert result_out is out
+
 
         @pytest.mark.parametrize(
             argnames='q',
@@ -777,6 +893,35 @@ class AbstractTestAbstractUncertainScalarArray(
         @pytest.mark.skip
         class TestOptimizeMinimum(
             named_arrays._scalars.tests.test_scalars.AbstractTestAbstractScalar.TestNamedArrayFunctions.TestOptimizeMinimum,
+        ):
+            pass
+
+        @pytest.mark.parametrize(
+            argnames="func",
+            argvalues=[
+                na.optimize.minimum_brent,
+            ],
+        )
+        @pytest.mark.parametrize(
+            argnames="function,expected",
+            argvalues=[
+                (
+                    lambda x, p=profile, s=shift_horizontal: p(na.value(x) - s) + 1,
+                    shift_horizontal,
+                )
+                for profile in [
+                    np.square,
+                    np.abs,
+                ]
+                for shift_horizontal in [
+                    20,
+                    na.linspace(19, 20, axis="c", num=6),
+                    na.NormalUncertainScalarArray(20, width=1, num_distribution=_num_distribution),
+                ]
+            ]
+        )
+        class TestOptimizeMinimumBrent(
+            named_arrays._scalars.tests.test_scalars.AbstractTestAbstractScalar.TestNamedArrayFunctions.TestOptimizeMinimumBrent,
         ):
             pass
 
@@ -1101,3 +1246,42 @@ class TestUncertainScalarLinearSpace(
             return
 
         assert np.allclose(array.volume_cell(axis), array.explicit.volume_cell(axis))
+
+
+def test_interp_axis_uncertain_xp():
+    """
+    The axis to interpolate along survives an uncertain ``xp``.
+
+    Each of the nominal and the distribution is interpolated on its own, and
+    the axis has to be carried into both. Without it the table is taken to
+    have a single axis, and a table which has more than one raises.
+    """
+    axis = "wavelength"
+    xp = na.linspace(0, 10, axis=axis, num=11)
+    fp = 2 * xp
+    x = na.linspace(0, 10, axis=axis, num=5)
+
+    def uncertain(a):
+        return na.NormalUncertainScalarArray(a, width=0.01)
+
+    result = na.interp(x, uncertain(xp), uncertain(fp), axis=axis)
+
+    assert na.shape(result) == {axis: 5}
+
+    # the table is a line, so interpolating it gives the line back
+    assert np.allclose(result.nominal, na.interp(x, xp, fp, axis=axis))
+
+
+def test_interp_axis_uncertain_xp_extra_axis():
+    """An uncertain table carrying a second axis needs the axis to be named."""
+    axis = "wavelength"
+    xp = na.linspace(0, 10, axis=axis, num=11) + na.linspace(0, 1, axis="channel", num=3)
+    fp = 2 * xp
+    x = na.linspace(0, 10, axis=axis, num=5)
+
+    def uncertain(a):
+        return na.NormalUncertainScalarArray(a, width=0.01)
+
+    result = na.interp(x, uncertain(xp), uncertain(fp), axis=axis)
+
+    assert na.shape(result) == {axis: 5, "channel": 3}

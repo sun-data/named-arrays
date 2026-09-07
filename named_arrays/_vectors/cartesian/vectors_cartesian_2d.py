@@ -22,8 +22,8 @@ __all__ = [
     "Cartesian2dVectorGeometricSpace",
 ]
 
-XT = TypeVar('XT', bound=na.ArrayLike)
-YT = TypeVar('YT', bound=na.ArrayLike)
+XT = TypeVar('XT', bound=na.ArrayLike, covariant=True)
+YT = TypeVar('YT', bound=na.ArrayLike, covariant=True)
 
 
 @dataclasses.dataclass(eq=False, repr=False)
@@ -53,10 +53,10 @@ class AbstractCartesian2dVectorArray(
         return Cartesian2dVectorArray
 
     @property
-    def type_matrix(self) -> Type[na.Cartesian2dMatrixArray]:
+    def type_matrix(self) -> Type[na.AbstractExplicitMatrixArray]:
         return na.Cartesian2dMatrixArray
 
-    def volume_cell(self, axis: None | tuple[str, str]) -> na.AbstractScalar:
+    def volume_cell(self, axis: None | str | Sequence[str]) -> na.AbstractScalar:
 
         if axis is None:
             if self.ndim != 2:
@@ -117,18 +117,6 @@ class Cartesian2dVectorArray(
 
     y: YT = 0
     """The :math:`y` component of this vector."""
-
-    @classmethod
-    def from_scalar(
-            cls: Type[Self],
-            scalar: na.AbstractScalar,
-            like: None | na.AbstractExplicitVectorArray = None,
-    ) -> Cartesian2dVectorArray:
-        result = super().from_scalar(scalar, like=like)
-        if result is not NotImplemented:
-            return result
-
-        return cls(x=scalar, y=scalar)
 
 
 @dataclasses.dataclass(eq=False, repr=False)
@@ -229,9 +217,17 @@ class Cartesian2dVectorLinearSpace(
                 f"{axis=} must have exactly two elements"
             )
 
+        step = self.step
         if set(axis).issubset(self.axis.components.values()):
-            result = self.step
-            result = math.prod(result.components.values())
+            if isinstance(step, na.AbstractVectorArray):
+                # fast path for a rectilinear grid: the cell area is the product
+                # of the per-component steps.
+                result = math.prod(step.components.values())
+            else:
+                # a scalar step describes a uniform grid with the same spacing
+                # along every component, so the cell volume is the step raised
+                # to the number of components.
+                result = step ** len(components)
         else:
             result = super().volume_cell(axis)
 
