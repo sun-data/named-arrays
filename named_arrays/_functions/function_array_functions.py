@@ -596,6 +596,80 @@ def clip(
     return result
 
 
+@_implements(np.round)
+@_implements(np.around)
+def round(
+    a: na.AbstractFunctionArray,
+    decimals: int = 0,
+    out: None | na.FunctionArray = None,
+) -> na.FunctionArray:
+
+    a = a.explicit
+
+    if out is not None:
+        _out = out.outputs
+    else:
+        _out = None
+
+    result = np.round(
+        a=a.outputs,
+        decimals=decimals,
+        out=_out,
+    )
+
+    if out is None:
+        result = a.replace(outputs=result)
+    else:
+        result = out
+
+    return result
+
+
+@_implements(np.isclose)
+def isclose(
+    a: na.ArrayLike,
+    b: na.ArrayLike,
+    rtol: float = 1e-05,
+    atol: float = 1e-08,
+    equal_nan: bool = False,
+) -> na.FunctionArray:
+
+    if isinstance(a, na.AbstractFunctionArray):
+        prototype = a
+        inputs_a = a.inputs
+        outputs_a = a.outputs
+    else:
+        inputs_a = None
+        outputs_a = a
+
+    if isinstance(b, na.AbstractFunctionArray):
+        prototype = b
+        inputs_b = b.inputs
+        outputs_b = b.outputs
+    else:
+        inputs_b = None
+        outputs_b = b
+
+    if inputs_a is not None and inputs_b is not None:
+        if np.any(inputs_a != inputs_b):
+            raise na.InputValueError(
+                "`a.inputs` must match `b.inputs`"
+            )
+
+    inputs = inputs_a if inputs_a is not None else inputs_b
+
+    return prototype.explicit.replace(
+        inputs=inputs,
+        outputs=np.isclose(
+            a=outputs_a,
+            b=outputs_b,
+            rtol=rtol,
+            atol=atol,
+            equal_nan=equal_nan,
+        ),
+    )
+
+
 @_implements(np.repeat)
 def repeat(
     a: na.AbstractFunctionArray,

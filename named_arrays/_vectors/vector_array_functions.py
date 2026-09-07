@@ -909,6 +909,68 @@ def nan_to_num(
         return x
 
 
+@implements(np.round)
+@implements(np.around)
+def round(
+    a: na.AbstractVectorArray,
+    decimals: int = 0,
+    out: None | na.AbstractExplicitVectorArray = None,
+) -> na.AbstractExplicitVectorArray:
+    try:
+        _out = vectors._normalize(out, a)
+    except vectors.VectorTypeError:  # pragma: nocover
+        return NotImplemented
+
+    components = a.components
+    components_out = _out.components
+    components_result = dict()
+
+    for c in components:
+        components_result[c] = np.round(
+            a=components[c],
+            decimals=decimals,
+            out=components_out[c],
+        )
+
+    if out is None:
+        result = a.type_explicit.from_components(components_result)
+    else:
+        result = out
+
+    return result
+
+
+@implements(np.isclose)
+def isclose(
+    a: na.ArrayLike,
+    b: na.ArrayLike,
+    rtol: float = 1e-05,
+    atol: float = 1e-08,
+    equal_nan: bool = False,
+) -> na.AbstractExplicitVectorArray:
+    try:
+        prototype = vectors._prototype(a, b)
+        a = vectors._normalize(a, prototype)
+        b = vectors._normalize(b, prototype)
+    except vectors.VectorTypeError:
+        return NotImplemented
+
+    components_a = a.components
+    components_b = b.components
+    components_result = dict()
+
+    for c in components_a:
+        components_result[c] = np.isclose(
+            a=components_a[c],
+            b=components_b[c],
+            rtol=rtol,
+            atol=atol,
+            equal_nan=equal_nan,
+        )
+
+    return prototype.type_explicit.from_components(components_result)
+
+
 @implements(np.clip)
 def clip(
     a: float | na.AbstractScalar | na.AbstractVectorArray,

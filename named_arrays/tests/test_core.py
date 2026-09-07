@@ -1429,6 +1429,24 @@ class AbstractTestAbstractArray(
             else:
                 raise NotImplementedError
 
+        @pytest.mark.parametrize("array_2", ["copy", "zeros"])
+        def test_isclose(self, array: na.AbstractArray, array_2: str):
+            if array_2 == "copy":
+                array_2 = array + array.mean() * na.ScalarUniformRandomSample(-1e-10, 1e-10)
+                result = np.isclose(array, array_2)
+                assert np.all(result)
+
+            elif array_2 == "zeros":
+                array_2 = 0 * array
+                result = np.isclose(array, array_2)
+                assert not np.all(result)
+
+            else:
+                raise NotImplementedError
+
+            assert result.type_abstract == array.type_abstract
+            assert result.shape == na.shape_broadcasted(array, array_2)
+
         def test_nonzero(self, array: na.AbstractArray):
 
             # not quite working
@@ -1509,6 +1527,31 @@ class AbstractTestAbstractArray(
             out = na.asanyarray(0 * result)
 
             result_out = np.clip(array, a_min, a_max, out=out)
+
+            assert result_out is out
+            assert np.all(result == result_out)
+
+        @pytest.mark.parametrize("func", [np.round, np.around])
+        @pytest.mark.parametrize("decimals", [0, 1])
+        def test_round(
+            self,
+            array: na.AbstractArray,
+            func: Callable,
+            decimals: int,
+        ):
+            array = array.astype(float)
+
+            result = func(array, decimals=decimals)
+
+            scale = 10.0 ** decimals
+            result_expected = np.rint(array * scale) / scale
+
+            assert result.type_abstract == array.type_abstract
+            assert np.all(result == result_expected)
+
+            out = na.asanyarray(0 * result)
+
+            result_out = func(array, decimals=decimals, out=out)
 
             assert result_out is out
             assert np.all(result == result_out)

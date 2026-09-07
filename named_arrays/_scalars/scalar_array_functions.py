@@ -1049,6 +1049,72 @@ def clip(
     return result
 
 
+@implements(np.round)
+@implements(np.around)
+def round(
+    a: na.AbstractScalarArray,
+    decimals: int = 0,
+    out: None | na.ScalarArray = None,
+) -> na.ScalarArray:
+    try:
+        a = scalars._normalize(a)
+    except scalars.ScalarTypeError:  # pragma: nocover
+        return NotImplemented
+
+    if out is not None:
+        shape = out.shape
+        out_ndarray = out.ndarray
+    else:
+        shape = a.shape
+        out_ndarray = None
+
+    a = a.broadcast_to(shape)
+
+    result = np.round(
+        a=a.ndarray,
+        decimals=decimals,
+        out=out_ndarray,
+    )
+
+    if out is None:
+        result = a.replace(
+            ndarray=result,
+            axes=tuple(shape),
+        )
+    else:
+        result = out
+
+    return result
+
+
+@implements(np.isclose)
+def isclose(
+    a: na.ScalarLike,
+    b: na.ScalarLike,
+    rtol: float = 1e-05,
+    atol: float = 1e-08,
+    equal_nan: bool = False,
+) -> na.ScalarArray:
+    try:
+        a = scalars._normalize(a)
+        b = scalars._normalize(b)
+    except scalars.ScalarTypeError:
+        return NotImplemented
+
+    shape = na.shape_broadcasted(a, b)
+
+    return a.type_explicit(
+        ndarray=np.isclose(
+            a=a.ndarray_aligned(shape),
+            b=b.ndarray_aligned(shape),
+            rtol=rtol,
+            atol=atol,
+            equal_nan=equal_nan,
+        ),
+        axes=tuple(shape),
+    )
+
+
 @implements(np.repeat)
 def repeat(
     a: na.AbstractScalarArray,
