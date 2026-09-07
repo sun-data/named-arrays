@@ -1262,6 +1262,65 @@ class AbstractTestAbstractArray(
             assert result.size == array.size
             assert result.axes == tuple(shape.keys())
 
+        @pytest.mark.parametrize("axis", ["_expanded", ("_expanded", "_expanded_2")])
+        def test_expand_dims(
+            self,
+            array: na.AbstractArray,
+            axis: str | Sequence[str],
+        ):
+            result = np.expand_dims(array, axis)
+
+            axes = (axis,) if isinstance(axis, str) else tuple(axis)
+
+            assert result.type_abstract == array.type_abstract
+            for ax in axes:
+                assert result.shape[ax] == 1
+            assert np.all(result == array)
+
+            # an axis which the array already has is an error
+            with pytest.raises(ValueError):
+                np.expand_dims(result, axes[0])
+
+            # a repeated axis is an error
+            with pytest.raises(ValueError):
+                np.expand_dims(array, (axes[0], axes[0]))
+
+        def test_squeeze(self, array: na.AbstractArray):
+            axis = "_expanded"
+            array_expanded = np.expand_dims(array, axis)
+
+            result = np.squeeze(array_expanded, axis=axis)
+
+            assert result.type_abstract == array.type_abstract
+            assert result.shape == array.shape
+            assert np.all(result == array)
+
+            # the default is to remove every axis of length one
+            assert axis not in np.squeeze(array_expanded).shape
+
+            # an axis which the array does not have is ignored
+            assert np.squeeze(array, axis="_missing").shape == array.shape
+
+            # an axis whose length is not one is an error
+            for ax in array.shape:
+                if array.shape[ax] != 1:
+                    with pytest.raises(ValueError):
+                        np.squeeze(array, axis=ax)
+                    break
+
+        @pytest.mark.parametrize("axis", [None, "y", "_missing"])
+        def test_flip(self, array: na.AbstractArray, axis: None | str):
+            result = np.flip(array, axis=axis)
+
+            assert result.type_abstract == array.type_abstract
+            assert result.shape == array.shape
+
+            # reversing an axis twice restores the original array
+            assert np.all(np.flip(result, axis=axis) == array)
+
+            if axis == "_missing":
+                assert np.all(result == array)
+
         @pytest.mark.parametrize('axis', ['y', 'z'])
         class TestStackLikeFunctions(abc.ABC):
 
