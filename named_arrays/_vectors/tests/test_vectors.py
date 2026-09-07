@@ -121,6 +121,9 @@ class AbstractTestAbstractVectorArray(
                 for c in components:
                     components_item[c][ax] = components_item_ax[c]
 
+        elif isinstance(item, bool):
+            components_item = array.type_explicit.from_scalar(item, like=array).components
+
         else:
             if not array.shape:
                 with pytest.raises(ValueError):
