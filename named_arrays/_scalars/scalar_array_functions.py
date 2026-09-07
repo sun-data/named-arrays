@@ -318,10 +318,10 @@ def array_function_percentile_like(
 ) -> na.ScalarArray:
 
     try:
-         a = scalars._normalize(a)
-         q = scalars._normalize(q)
-         if weights is not np._NoValue:
-             weights = scalars._normalize(weights)
+        a = scalars._normalize(a)
+        q = scalars._normalize(q)
+        if weights is not np._NoValue:
+            weights = scalars._normalize(weights)
     except scalars.ScalarTypeError:
         return NotImplemented
 
@@ -330,18 +330,21 @@ def array_function_percentile_like(
     if weights is not np._NoValue:
         weights = weights.explicit
 
+    # the weights may have axes which `a` does not, so every axis of the
+    # result is an axis of the shape the two broadcast to
     shape = na.shape_broadcasted(a, weights)
+    a = a.broadcast_to(shape)
 
-    axes_a = tuple(shape)
+    axes_a = a.axes
 
     axis_normalized = na.axis_normalized(a, axis=axis)
 
     if axis is not None:
         if not set(axis_normalized).issubset(axes_a):
             raise ValueError(
-                f"the `axis` argument must be `None` or a subset of"
-                f"{na.shape_broadcasted(a, weights)=}, "
-                f"got {axis=}."
+                f"the `axis` argument must be `None` or a subset of the "
+                f"broadcasted shape of `a` and `weights`, {shape}, "
+                f"got {axis} for `axis`."
             )
 
     axes_q = q.axes
@@ -367,14 +370,12 @@ def array_function_percentile_like(
     if method is not np._NoValue:
         kwargs['method'] = method
     if weights is not np._NoValue:
+        # `numpy` requires the weights to have the same shape as `a`, not
+        # merely a shape which broadcasts against it
         kwargs['weights'] = weights.broadcast_to(shape).ndarray
     kwargs['keepdims'] = keepdims
 
-    result_ndarray = func(
-        a.broadcast_to(shape).ndarray,
-        q.ndarray,
-        **kwargs,
-    )
+    result_ndarray = func(a.ndarray, q.ndarray, **kwargs)
 
     result = na.ScalarArray(
         ndarray=result_ndarray,
