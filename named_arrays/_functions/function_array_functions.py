@@ -596,6 +596,65 @@ def clip(
     return result
 
 
+@_implements(np.round)
+@_implements(np.around)
+def round(
+    a: na.AbstractFunctionArray,
+    decimals: int = 0,
+    out: None | na.FunctionArray = None,
+) -> na.FunctionArray:
+
+    a = a.explicit
+
+    if out is not None:
+        _out = out.outputs
+    else:
+        _out = None
+
+    result = np.round(
+        a=a.outputs,
+        decimals=decimals,
+        out=_out,
+    )
+
+    if out is None:
+        result = a.replace(outputs=result)
+    else:
+        result = out
+
+    return result
+
+
+@_implements(np.isclose)
+def isclose(
+    a: na.ArrayLike,
+    b: na.ArrayLike,
+    rtol: float = 1e-05,
+    atol: float = 1e-08,
+    equal_nan: bool = False,
+) -> na.FunctionArray:
+
+    operands = (a, b)
+
+    functions = [x for x in operands if isinstance(x, na.AbstractFunctionArray)]
+    outputs = [x.outputs if isinstance(x, na.AbstractFunctionArray) else x for x in operands]
+
+    inputs = functions[0].inputs
+    for function in functions[1:]:
+        if np.any(function.inputs != inputs):
+            raise na.InputValueError("`a.inputs` must match `b.inputs`")
+
+    return functions[0].explicit.replace(
+        inputs=inputs,
+        outputs=np.isclose(
+            *outputs,
+            rtol=rtol,
+            atol=atol,
+            equal_nan=equal_nan,
+        ),
+    )
+
+
 @_implements(np.repeat)
 def repeat(
     a: na.AbstractFunctionArray,

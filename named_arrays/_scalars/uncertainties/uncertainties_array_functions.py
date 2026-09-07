@@ -993,6 +993,75 @@ def clip(
     return result
 
 
+@implements(np.round)
+@implements(np.around)
+def round(
+    a: na.AbstractScalar,
+    decimals: int = 0,
+    out: None | na.UncertainScalarArray = None,
+) -> na.UncertainScalarArray:
+    try:
+        a = uncertainties._normalize(a)
+        _out = uncertainties._normalize(out)
+    except uncertainties.UncertainScalarTypeError:  # pragma: nocover
+        return NotImplemented
+
+    a = a.explicit
+
+    result_nominal = np.round(
+        a=a.nominal,
+        decimals=decimals,
+        out=_out.nominal,
+    )
+    result_distribution = np.round(
+        a=a.distribution,
+        decimals=decimals,
+        out=_out.distribution,
+    )
+
+    if out is None:
+        result = a.replace(
+            nominal=result_nominal,
+            distribution=result_distribution,
+        )
+    else:
+        result = out
+
+    return result
+
+
+@implements(np.isclose)
+def isclose(
+    a: na.ScalarLike,
+    b: na.ScalarLike,
+    rtol: float = 1e-05,
+    atol: float = 1e-08,
+    equal_nan: bool = False,
+) -> na.UncertainScalarArray:
+    try:
+        a = uncertainties._normalize(a)
+        b = uncertainties._normalize(b)
+    except uncertainties.UncertainScalarTypeError:
+        return NotImplemented
+
+    return na.UncertainScalarArray(
+        nominal=np.isclose(
+            a=a.nominal,
+            b=b.nominal,
+            rtol=rtol,
+            atol=atol,
+            equal_nan=equal_nan,
+        ),
+        distribution=np.isclose(
+            a=a.distribution,
+            b=b.distribution,
+            rtol=rtol,
+            atol=atol,
+            equal_nan=equal_nan,
+        ),
+    )
+
+
 @implements(np.repeat)
 def repeat(
     a: na.AbstractUncertainScalarArray,

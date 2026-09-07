@@ -459,6 +459,77 @@ class TestShape:
         assert container.shape == {"x": 5}
 
 
+class TestIscloseDispatch:
+    """
+    Tests for how :func:`numpy.isclose` combines operands of different types.
+
+    A family declines an operand it does not understand by returning
+    :obj:`NotImplemented`, which lets :mod:`numpy` offer the call to the next
+    family, so the more specific of the two operands decides the result.
+    """
+
+    def _scalar(self) -> na.ScalarArray:
+        return na.ScalarArray(np.array([1.0, 2.0]), axes=("x",))
+
+    def _vector(self) -> na.Cartesian2dVectorArray:
+        scalar = self._scalar()
+        return na.Cartesian2dVectorArray(scalar, 2 * scalar)
+
+    def test_scalar_and_vector(self):
+        result = np.isclose(self._scalar(), self._vector())
+
+        assert isinstance(result, na.AbstractVectorArray)
+        assert np.all(result.x)
+        assert not np.any(result.y)
+
+    def test_uncertain_and_vector(self):
+        uncertain = na.NormalUncertainScalarArray(
+            nominal=self._scalar(),
+            width=1e-15,
+            num_distribution=num_distribution,
+        )
+
+        result = np.isclose(uncertain, self._vector())
+
+        assert isinstance(result, na.AbstractVectorArray)
+        assert np.all(result.x)
+        assert not np.any(result.y)
+
+    def test_vectors_of_different_types(self):
+        scalar = self._scalar()
+
+        with pytest.raises(TypeError):
+            np.isclose(
+                na.Cartesian2dVectorArray(scalar, scalar),
+                na.Cartesian3dVectorArray(scalar, scalar, scalar),
+            )
+
+    def _function(self) -> na.FunctionArray:
+        return na.FunctionArray(
+            inputs=na.linspace(0, 1, axis="x", num=2),
+            outputs=self._scalar(),
+        )
+
+    @pytest.mark.parametrize("reverse", [False, True])
+    def test_function_and_scalar(self, reverse: bool):
+        function = self._function()
+
+        operands = (1.0, function) if reverse else (function, 1.0)
+
+        result = np.isclose(*operands)
+
+        assert isinstance(result, na.AbstractFunctionArray)
+        assert np.all(result.inputs == function.inputs)
+        assert np.all(result.outputs == na.ScalarArray(np.array([True, False]), axes=("x",)))
+
+    def test_functions_with_different_inputs(self):
+        function = self._function()
+        other = function.replace(inputs=function.inputs + 1)
+
+        with pytest.raises(na.InputValueError):
+            np.isclose(function, other)
+
+
 class AbstractTestAbstractArray(
     abc.ABC,
 ):
@@ -1429,6 +1500,24 @@ class AbstractTestAbstractArray(
             else:
                 raise NotImplementedError
 
+        @pytest.mark.parametrize("array_2", ["copy", "zeros"])
+        def test_isclose(self, array: na.AbstractArray, array_2: str):
+            if array_2 == "copy":
+                array_2 = array + array.mean() * na.ScalarUniformRandomSample(-1e-10, 1e-10)
+                result = np.isclose(array, array_2)
+                assert np.all(result)
+
+            elif array_2 == "zeros":
+                array_2 = 0 * array
+                result = np.isclose(array, array_2)
+                assert not np.all(result)
+
+            else:
+                raise NotImplementedError
+
+            assert result.type_abstract == array.type_abstract
+            assert result.shape == na.shape_broadcasted(array, array_2)
+
         def test_nonzero(self, array: na.AbstractArray):
 
             # not quite working
@@ -1509,6 +1598,31 @@ class AbstractTestAbstractArray(
             out = na.asanyarray(0 * result)
 
             result_out = np.clip(array, a_min, a_max, out=out)
+
+            assert result_out is out
+            assert np.all(result == result_out)
+
+        @pytest.mark.parametrize("func", [np.round, np.around])
+        @pytest.mark.parametrize("decimals", [0, 1])
+        def test_round(
+            self,
+            array: na.AbstractArray,
+            func: Callable,
+            decimals: int,
+        ):
+            array = array.astype(float)
+
+            result = func(array, decimals=decimals)
+
+            scale = 10.0 ** decimals
+            result_expected = np.rint(array * scale) / scale
+
+            assert result.type_abstract == array.type_abstract
+            assert np.all(result == result_expected)
+
+            out = na.asanyarray(0 * result)
+
+            result_out = func(array, decimals=decimals, out=out)
 
             assert result_out is out
             assert np.all(result == result_out)
