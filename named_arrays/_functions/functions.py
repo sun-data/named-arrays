@@ -714,17 +714,17 @@ class AbstractFunctionArray(
 
     def __array_ufunc__(
             self,
-            function: np.ufunc,
+            ufunc: np.ufunc,
             method: str,
             *inputs,
             **kwargs,
     ) -> None | na.AbstractArray | tuple[na.AbstractArray, ...]:
 
-        result = super().__array_ufunc__(function, method, *inputs, **kwargs)
+        result = super().__array_ufunc__(ufunc, method, *inputs, **kwargs)
         if result is not NotImplemented:
             return result
 
-        nout = function.nout
+        nout = ufunc.nout
 
         inputs_inputs = []
         inputs_outputs = []
@@ -740,7 +740,7 @@ class AbstractFunctionArray(
 
         for inputs_input in inputs_inputs[1:]:
             if np.any(inputs_input != inputs_inputs[0]):
-                raise InputValueError(f"all inputs to {function} must have the same coordinates")
+                raise InputValueError(f"all inputs to {ufunc} must have the same coordinates")
 
         if "out" in kwargs:
             out = kwargs.pop("out")
@@ -778,7 +778,7 @@ class AbstractFunctionArray(
                 kwargs["where"] = where
 
         inputs_result = inputs_inputs[0]
-        outputs_result = getattr(function, method)(*inputs_outputs, **kwargs)
+        outputs_result = getattr(ufunc, method)(*inputs_outputs, **kwargs)
 
         if nout == 1:
             outputs_result = (outputs_result,)

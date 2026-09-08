@@ -1261,7 +1261,7 @@ class AbstractArray(
     @abc.abstractmethod
     def __array_ufunc__(
             self,
-            function: np.ufunc,
+            ufunc: np.ufunc,
             method: str,
             *inputs,
             **kwargs,
@@ -1269,7 +1269,7 @@ class AbstractArray(
         """
         Method to override the behavior of numpy's ufuncs.
         """
-        if function is np.matmul:
+        if ufunc is np.matmul:
             return self.__array_matmul__(*inputs, **kwargs)
         else:
             return NotImplemented
