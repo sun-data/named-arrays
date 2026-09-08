@@ -196,15 +196,18 @@ def array_function_percentile_like(
         overwrite_input: bool = False,
         method: str = "linear",
         keepdims: bool = False,
+        *,
+        weights: float | u.Quantity | na.AbstractArray = np._NoValue,
 ) -> na.FunctionArray:
 
     a = a.explicit
     inputs = a.inputs
     outputs = a.outputs
 
-    shape = a.shape
+    # the weights apply to the outputs, and may have axes which they do not
+    shape_outputs = na.shape_broadcasted(outputs, weights)
+    shape = na.broadcast_shapes(a.shape, shape_outputs)
     shape_inputs = a.inputs.shape
-    shape_outputs = a.outputs.shape
 
     axis_normalized = na.axis_normalized(a, axis)
 
@@ -239,6 +242,9 @@ def array_function_percentile_like(
             out=inputs_out,
             keepdims=keepdims,
         )
+
+    if weights is not np._NoValue:
+        kwargs["weights"] = weights
 
     outputs_result = func(
         a=na.broadcast_to(outputs, shape_outputs),

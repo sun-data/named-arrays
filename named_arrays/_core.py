@@ -1,6 +1,6 @@
 from __future__ import annotations
 from typing import Mapping, TYPE_CHECKING, TypeVar, Generic, Sequence, Iterator, Union, Type, Callable, Collection, Any
-from typing_extensions import Self
+from typing import Self
 import abc
 import dataclasses
 import copy
@@ -1313,7 +1313,7 @@ class AbstractArray(
     @abc.abstractmethod
     def __array_ufunc__(
             self,
-            function: np.ufunc,
+            ufunc: np.ufunc,
             method: str,
             *inputs,
             **kwargs,
@@ -1321,7 +1321,7 @@ class AbstractArray(
         """
         Method to override the behavior of numpy's ufuncs.
         """
-        if function is np.matmul:
+        if ufunc is np.matmul:
             return self.__array_matmul__(*inputs, **kwargs)
         else:
             return NotImplemented

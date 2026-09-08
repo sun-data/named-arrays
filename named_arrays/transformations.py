@@ -6,7 +6,7 @@ Designed to be composed together into arbitrary transformations.
 
 from __future__ import annotations
 from typing import TypeVar, Generic, Iterator
-from typing_extensions import Self
+from typing import Self
 import abc
 import dataclasses
 import astropy.units as u

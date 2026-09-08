@@ -10,14 +10,15 @@ authors = [
 ]
 description = "Numpy arrays with labeled axes, similar to xarray but with support for uncertainties"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 license = "BSD-3-Clause"
 license-files = ["LICENSE"]
 classifiers = [
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
 ]
 dependencies = [
-    "typing_extensions",
     "numpy>2",
     "numexpr",
     "matplotlib",
@@ -66,7 +67,9 @@ named_arrays = ["py.typed"]
 filterwarnings = [
     "error",
     "ignore: numpy.ndarray size changed, may indicate binary incompatibility. *:RuntimeWarning",
-    "ignore: 'where' used without 'out', expect unitialized memory in output. If this is intentional, use out=None.",
+    # `numpy` 2.5.3 corrected the spelling of "uninitialized" in this warning,
+    # so the optional `n` matches the message before and after that release
+    "ignore: 'where' used without 'out', expect uni(ni)?tialized memory in output. If this is intentional, use out=None.",
     "ignore: function 'mod' is not known to astropy's Quantity. *",
     "ignore: invalid value encountered in divide",
     "ignore: 'mode' parameter is deprecated and will be removed",

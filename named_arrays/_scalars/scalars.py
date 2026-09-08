@@ -1,6 +1,6 @@
 from __future__ import annotations
 from typing import Mapping, TYPE_CHECKING, TypeVar, Generic, ClassVar, Type, Sequence, Callable, Collection, Any, Union, overload
-from typing_extensions import Self
+from typing import Self
 import abc
 import dataclasses
 import numpy as np
@@ -527,14 +527,14 @@ class AbstractScalarArray(
 
     def __array_ufunc__(
             self,
-            function: np.ufunc,
+            ufunc: np.ufunc,
             method: str,
             *inputs,
             **kwargs,
     ) -> None | ScalarArray | tuple[ScalarArray, ...]:
 
         result = super().__array_ufunc__(
-            function,
+            ufunc,
             method,
             *inputs,
             **kwargs,
@@ -542,10 +542,10 @@ class AbstractScalarArray(
         if result is not NotImplemented:
             return result
 
-        if function is np.matmul:
+        if ufunc is np.matmul:
             return NotImplemented
 
-        nout = function.nout
+        nout = ufunc.nout
 
         kwargs_ndarray = kwargs.copy()
 
@@ -594,7 +594,7 @@ class AbstractScalarArray(
                 return None
             inputs_ndarray.append(inp)
 
-        result_ndarray = getattr(function, method)(*inputs_ndarray, **kwargs_ndarray)
+        result_ndarray = getattr(ufunc, method)(*inputs_ndarray, **kwargs_ndarray)
         if nout == 1:
             result_ndarray = (result_ndarray, )
         result = list(ScalarArray(result_ndarray[i], axes=tuple(shape.keys())) for i in range(nout))

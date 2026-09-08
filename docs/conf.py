@@ -15,6 +15,7 @@ import sys
 
 package_path = os.path.abspath('../')
 sys.path.insert(0, package_path)
+sys.path.insert(0, os.path.abspath('_ext'))
 os.environ['PYTHONPATH'] = ';'.join((package_path, os.environ.get('PYTHONPATH', '')))
 
 # -- Project information -----------------------------------------------------
@@ -40,7 +41,8 @@ extensions = [
     'jupyter_sphinx',
     'nbsphinx',
     'sphinx_codeautolink',
-    'sphinx_favicon'
+    'sphinx_favicon',
+    'support_table',
 ]
 autosummary_generate = True  # Turn on sphinx.ext.autosummary
 autosummary_imported_members = True

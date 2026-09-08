@@ -459,6 +459,141 @@ class TestShape:
         assert container.shape == {"x": 5}
 
 
+class TestPercentileWeights:
+    """
+    Tests for the ``weights`` argument of :func:`numpy.percentile` and friends.
+
+    :mod:`numpy` accepts weights for only one method, ``inverted_cdf``, and
+    requires them to have the same shape as the array rather than merely a
+    shape which broadcasts against it.
+    """
+
+    method = "inverted_cdf"
+
+    def _a(self) -> na.ScalarArray:
+        return na.ScalarArray(np.array([1.0, 2.0, 3.0, 4.0]), axes=("x",))
+
+    def _weights(self) -> na.ScalarArray:
+        # a weight of five on the largest value pulls the median up to it
+        return na.ScalarArray(np.array([1.0, 1.0, 1.0, 5.0]), axes=("x",))
+
+    def _weights_reversed(self) -> na.ScalarArray:
+        return na.ScalarArray(np.array([5.0, 1.0, 1.0, 1.0]), axes=("x",))
+
+    def _uncertain(self) -> na.NormalUncertainScalarArray:
+        # a width of zero makes every sample of the distribution the nominal
+        # value, so the result of the reduction is exact
+        return na.NormalUncertainScalarArray(
+            nominal=self._a(),
+            width=0,
+            num_distribution=num_distribution,
+        )
+
+    @pytest.mark.parametrize(
+        argnames="func,q",
+        argvalues=[
+            (np.percentile, 50),
+            (np.nanpercentile, 50),
+            (np.quantile, 0.5),
+            (np.nanquantile, 0.5),
+        ],
+    )
+    def test_scalar(self, func: Callable, q: float):
+        a = self._a()
+
+        result = func(a, q, axis="x", weights=self._weights(), method=self.method)
+
+        assert result.ndarray == 4
+        # without the weights the median is the midpoint
+        assert func(a, q, axis="x").ndarray == 2.5
+
+    def test_uncertain(self):
+        result = np.percentile(
+            self._uncertain(), 50, axis="x", weights=self._weights(), method=self.method
+        )
+
+        assert np.all(result.nominal == 4)
+        assert np.all(result.distribution == 4)
+
+    def test_uncertain_weights_uniform(self):
+        # a plain number weights every value equally, which is the same as
+        # not weighting them at all
+        a = self._uncertain()
+
+        result = np.percentile(a, 50, axis="x", weights=2.0, method=self.method)
+        expected = np.percentile(a, 50, axis="x", method=self.method)
+
+        assert np.all(result.nominal == expected.nominal)
+        assert np.all(result.distribution == expected.distribution)
+
+    def test_uncertain_weights(self):
+        # the nominal value and the distribution may be weighted differently
+        weights = na.UncertainScalarArray(
+            nominal=self._weights(),
+            distribution=self._weights_reversed()
+            + na.ScalarArray(np.zeros(num_distribution), axes=("_distribution",)),
+        )
+
+        result = np.percentile(
+            self._uncertain(), 50, axis="x", weights=weights, method=self.method
+        )
+
+        assert np.all(result.nominal == 4)
+        assert np.all(result.distribution == 1)
+
+    def test_vector(self):
+        a = na.Cartesian2dVectorArray(self._a(), 2 * self._a())
+
+        result = np.percentile(a, 50, axis="x", weights=self._weights(), method=self.method)
+
+        assert result.x.ndarray == 4
+        assert result.y.ndarray == 8
+
+    def test_vector_weights(self):
+        # each component may be weighted differently
+        a = na.Cartesian2dVectorArray(self._a(), self._a())
+        weights = na.Cartesian2dVectorArray(self._weights(), self._weights_reversed())
+
+        result = np.percentile(a, 50, axis="x", weights=weights, method=self.method)
+
+        assert result.x.ndarray == 4
+        assert result.y.ndarray == 1
+
+    def test_function(self):
+        a = na.FunctionArray(
+            inputs=na.linspace(0, 1, axis="x", num=4),
+            outputs=self._a(),
+        )
+
+        result = np.percentile(a, 50, axis="x", weights=self._weights(), method=self.method)
+
+        assert result.outputs.ndarray == 4
+
+    def test_weights_may_add_an_axis(self):
+        weights = self._weights() + na.ScalarArray(np.zeros(num_z), axes=("z",))
+
+        # an axis which only the weights have is still reduced by `axis=None`
+        result = np.percentile(self._a(), 50, weights=weights, method=self.method)
+        assert result.shape == {}
+        assert result.ndarray == 4
+
+        # naming the axis explicitly leaves the axis of the weights in place
+        result = np.percentile(self._a(), 50, axis="x", weights=weights, method=self.method)
+        assert result.shape == {"z": num_z}
+        assert np.all(result == 4)
+
+    def test_axis_must_be_in_the_broadcasted_shape(self):
+        with pytest.raises(ValueError, match="the `axis` argument must be `None` or a subset"):
+            np.percentile(
+                self._a(), 50, axis="q", weights=self._weights(), method=self.method
+            )
+
+    def test_method_must_support_weights(self):
+        # `numpy` accepts weights for only one method, and says so itself
+        with pytest.raises(ValueError, match="Only method 'inverted_cdf' supports weights"):
+            np.percentile(self._a(), 50, axis="x", weights=self._weights())
+
+
 class TestToStringShape:
     """
     Tests that :meth:`named_arrays.AbstractArray.to_string` shows the shape of
@@ -1803,6 +1938,48 @@ class AbstractTestAbstractArray(
 
             assert result_out is out
             assert np.all(result == result_out)
+
+        @pytest.mark.parametrize("shift", [0, 1, -2, num_y, num_y + 1])
+        def test_roll(self, array: na.AbstractArray, shift: int):
+            axis = "y"
+
+            # the shift is expressed as indexing by an array of indices, so an
+            # array which cannot be indexed that way cannot be shifted either.
+            # the vertex axis of a function array is the case in point: it has
+            # one more input than it has outputs, so there is no one index
+            # which applies to both
+            if axis in array.shape:
+                try:
+                    array[{axis: na.arange(0, array.shape[axis], axis=axis)}]
+                except ValueError:
+                    with pytest.raises(ValueError):
+                        np.roll(array, shift, axis)
+                    return
+
+            result = np.roll(array, shift, axis)
+
+            assert result.type_abstract == array.type_abstract
+            assert result.shape == array.shape
+
+            # shifting back by the same amount restores the original array
+            assert np.all(np.roll(result, -shift, axis) == array)
+
+            if axis in array.shape:
+                # a shift of a whole turn, or of nothing, changes nothing
+                if shift % array.shape[axis] == 0:
+                    assert np.all(result == array)
+            else:
+                # an axis the array does not have is ignored
+                assert np.all(result == array)
+
+        def test_roll_requires_an_axis(self, array: na.AbstractArray):
+            # unlike `numpy`, there is no positional order to flatten along
+            with pytest.raises(ValueError, match="`axis` is required"):
+                np.roll(array, 1)
+
+        def test_roll_shift_matches_axis(self, array: na.AbstractArray):
+            with pytest.raises(ValueError, match="must have the same length"):
+                np.roll(array, (1, 2), "y")
 
         @pytest.mark.parametrize(
             argnames="repeats",

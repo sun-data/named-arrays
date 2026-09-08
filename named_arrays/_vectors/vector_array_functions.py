@@ -273,9 +273,15 @@ def array_function_percentile_like(
         overwrite_input: bool = False,
         method: str = 'linear',
         keepdims: bool = False,
+        *,
+        weights: float | u.Quantity | na.AbstractScalar | na.AbstractVectorArray = np._NoValue,
 ) -> na.AbstractExplicitVectorArray:
 
     a = a.explicit
+
+    # the weights may have axes which `a` does not, so every axis of the
+    # result is an axis of the shape the two broadcast to
+    a = a.broadcast_to(na.shape_broadcasted(a, weights))
     shape = a.shape
 
     axis_normalized = na.axis_normalized(a, axis)
@@ -291,6 +297,11 @@ def array_function_percentile_like(
     components = a.components
     components_q = q.components if isinstance(q, na.AbstractVectorArray) else {c: q for c in components}
     components_out = out.components if isinstance(out, na.AbstractVectorArray) else {c: out for c in components}
+    components_weights = (
+        weights.components
+        if isinstance(weights, na.AbstractVectorArray)
+        else {c: weights for c in components}
+    )
 
     kwargs_base = dict(
         axis=axis,
@@ -303,11 +314,15 @@ def array_function_percentile_like(
     for c in components:
         component = na.as_named_array(components[c])
         shape_c = na.broadcast_shapes(component.shape, shape_base)
+        kwargs_c = dict()
+        if weights is not np._NoValue:
+            kwargs_c["weights"] = components_weights[c]
         result.components[c] = func(
             component.broadcast_to(shape_c),
             q=components_q[c],
             out=components_out[c],
             **kwargs_base,
+            **kwargs_c,
         )
 
     if out is not None:
@@ -836,6 +851,41 @@ def allclose(
         )
 
     return result
+
+
+@implements(np.cross)
+def cross(
+    a: na.AbstractVectorArray,
+    b: na.AbstractVectorArray,
+    axisa: int = -1,
+    axisb: int = -1,
+    axisc: int = -1,
+    axis: None | int = None,
+) -> na.AbstractExplicitVectorArray:
+    """
+    Compute the vector product of two three-dimensional Cartesian vectors.
+
+    Forwards to :meth:`named_arrays.AbstractCartesian3dVectorArray.cross`.
+    The axis arguments of :func:`numpy.cross` select which axis of the operands
+    holds their components, which a vector in this package names instead, so
+    they may only take their default values.
+    """
+    for name, value in dict(axisa=axisa, axisb=axisb, axisc=axisc).items():
+        if value != -1:
+            raise ValueError(
+                f"the components of a vector are named rather than held along "
+                f"an axis, so `{name}` does not apply, got {value}"
+            )
+    if axis is not None:
+        raise ValueError(
+            f"the components of a vector are named rather than held along an "
+            f"axis, so `axis` does not apply, got {axis}"
+        )
+
+    if not isinstance(a, na.AbstractCartesian3dVectorArray):
+        return NotImplemented
+
+    return a.cross(b)
 
 
 @implements(np.nonzero)

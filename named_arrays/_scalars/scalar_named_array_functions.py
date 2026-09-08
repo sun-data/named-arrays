@@ -2316,26 +2316,30 @@ def regridding_regrid_from_weights(
     }
     shape_orthogonal = na.broadcast_shapes(shape_orthogonal, shape_weights)
 
-    shape_input = na.broadcast_shapes(shape_orthogonal, shape_input)
-    shape_output = na.broadcast_shapes(shape_orthogonal, shape_output)
+    # the shape of the values on either side of the regridding: the axes which
+    # the regridding leaves alone, followed by the axes of the grid itself
+    shape_values_input = na.broadcast_shapes(shape_orthogonal, shape_input)
+    shape_values_output = na.broadcast_shapes(shape_orthogonal, shape_output)
 
     weights = weights.broadcast_to({
-        a: shape_input[a] for a in shape_input if a not in axis_input
+        a: shape_values_input[a]
+        for a in shape_values_input
+        if a not in axis_input
     })
-    values_input = values_input.broadcast_to(shape_input)
+    values_input = values_input.broadcast_to(shape_values_input)
 
     result = regridding.regrid_from_weights(
         weights=weights.ndarray,
-        shape_input=tuple(shape_input.values()),
-        shape_output=tuple(shape_output.values()),
+        shape_input=tuple(shape_values_input.values()),
+        shape_output=tuple(shape_values_output.values()),
         values_input=values_input.ndarray,
-        axis_input=tuple(tuple(shape_input).index(a) for a in axis_input),
-        axis_output=tuple(tuple(shape_output).index(a) for a in axis_output),
+        axis_input=tuple(tuple(shape_values_input).index(a) for a in axis_input),
+        axis_output=tuple(tuple(shape_values_output).index(a) for a in axis_output),
     )
 
     result = na.ScalarArray(
         ndarray=result,
-        axes=tuple(shape_output),
+        axes=tuple(shape_values_output),
     )
 
     return result

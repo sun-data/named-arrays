@@ -1,6 +1,6 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING, TypeVar, Type, overload
-from typing_extensions import Self
+from typing import Self
 import abc
 import dataclasses
 import numpy as np
@@ -88,17 +88,17 @@ class AbstractCartesianVectorArray(
 
     def __array_ufunc__(
             self: Self,
-            function: np.ufunc,
+            ufunc: np.ufunc,
             method: str,
             *inputs,
             **kwargs,
     ) -> None | AbstractExplicitCartesianVectorArray | tuple[AbstractExplicitCartesianVectorArray, ...]:
 
-        result = super().__array_ufunc__(function, method, *inputs, **kwargs)
+        result = super().__array_ufunc__(ufunc, method, *inputs, **kwargs)
         if result is not NotImplemented:
             return result
 
-        if function is np.matmul:
+        if ufunc is np.matmul:
             return NotImplemented
 
         components = self.components
@@ -119,10 +119,10 @@ class AbstractCartesianVectorArray(
         if "out" in kwargs:
             out = kwargs["out"]
         else:
-            out = (None, ) * function.nout
+            out = (None, ) * ufunc.nout
 
-        components_result = tuple(dict() for _ in range(function.nout))
-        func = getattr(function, method)
+        components_result = tuple(dict() for _ in range(ufunc.nout))
+        func = getattr(ufunc, method)
         for c in components:
 
             kwargs_c = kwargs.copy()
@@ -152,18 +152,18 @@ class AbstractCartesianVectorArray(
                 *[inp[c] for inp in components_inputs],
                 **kwargs_c,
             )
-            if function.nout == 1:
+            if ufunc.nout == 1:
                 component_result = (component_result, )
-            for i in range(function.nout):
+            for i in range(ufunc.nout):
                 components_result[i][c] = component_result[i]
-        result = list(self.type_explicit.from_components(components_result[i]) for i in range(function.nout))
+        result = list(self.type_explicit.from_components(components_result[i]) for i in range(ufunc.nout))
 
-        for i in range(function.nout):
+        for i in range(ufunc.nout):
             if out[i] is not None:
                 out[i].components = result[i].components
                 result[i] = out[i]
 
-        if function.nout == 1:
+        if ufunc.nout == 1:
             result = result[0]
         else:
             result = tuple(result)

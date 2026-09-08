@@ -187,6 +187,18 @@ of a calculation needs no separate bookkeeping.
 |
 
 
+Supported functions
+===================
+
+Which functions of the :mod:`numpy` and :mod:`named_arrays` namespaces each
+array type supports.
+
+.. toctree::
+    :maxdepth: 1
+
+    functions
+
+
 API Reference
 =============
 
