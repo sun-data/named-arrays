@@ -2,7 +2,7 @@ from typing import Mapping
 import abc
 import dataclasses
 import math
-from typing_extensions import Self
+from typing import Self
 import named_arrays as na
 
 __all__ = [

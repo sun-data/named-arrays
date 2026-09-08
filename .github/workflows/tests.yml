@@ -17,13 +17,26 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.11", ]
+        python-version: ["3.12", "3.13", ]
         os: [
           ubuntu-latest,
           windows-latest,
           macOS-latest,
         ]
         group: [1, 2, 3, 4, 5]
+        # one version of Python per operating system, so that both supported
+        # versions are exercised while the job count stays at the 15 it was:
+        # GitHub runs at most 20 jobs at once, and the other workflows need
+        # runners too. The older version is the compatibility floor, so it
+        # gets two operating systems, and the newer one goes to Windows,
+        # where the failures which are specific to one platform have shown up
+        exclude:
+          - python-version: "3.13"
+            os: ubuntu-latest
+          - python-version: "3.13"
+            os: macOS-latest
+          - python-version: "3.12"
+            os: windows-latest
     name: Python ${{ matrix.python-version }}, ${{ matrix.os }}, Group ${{matrix.group}} test
     steps:
       - uses: actions/checkout@v2
