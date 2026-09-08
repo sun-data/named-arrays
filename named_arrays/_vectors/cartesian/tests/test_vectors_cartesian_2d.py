@@ -344,19 +344,67 @@ class TestPolarVectorArray(
         assert np.allclose(result.y, array.radius * np.sin(array.azimuth))
 
 
-def test_polar_volume_cell_of_annulus():
-    # the cells of a polar grid tile the annulus, so their areas must sum to
-    # the area of the annulus, up to the chords which cut the arcs
+@pytest.mark.parametrize("num_azimuth", [6, 24, 360])
+def test_polar_volume_cell_of_annulus(num_azimuth: int):
+    # the cells of a polar grid tile the annulus exactly, however coarse the
+    # grid, since each is an annular sector rather than the polygon through
+    # its corners. six cells of azimuth is where the difference shows: the
+    # polygon area is 17% low there
     radius_inner = 50 * u.mm
     radius_outer = 100 * u.mm
-    num_azimuth = 360
     grid = na.PolarVectorArray(
         radius=na.linspace(radius_inner, radius_outer, axis="r", num=11),
         azimuth=na.linspace(0, 360, axis="phi", num=num_azimuth + 1) * u.deg,
     )
-    area = grid.volume_cell(("r", "phi")).sum()
+
+    area = grid.volume_cell(("r", "phi"))
+
+    # every cell is positive, so a reversal of the vertices would be caught
+    assert np.all(area > 0)
+    assert area.shape == dict(r=10, phi=num_azimuth)
+
     expected = np.pi * (radius_outer**2 - radius_inner**2)
-    assert np.isclose(np.abs(area.ndarray), expected, rtol=1e-3)
+    assert np.allclose(area.sum(), expected)
+
+
+def test_polar_volume_cell_of_a_sector():
+    # a quarter annulus, whose area is known in closed form
+    grid = na.PolarVectorArray(
+        radius=na.linspace(1, 2, axis="r", num=2) * u.m,
+        azimuth=na.linspace(0, 90, axis="phi", num=2) * u.deg,
+    )
+
+    area = grid.volume_cell(("r", "phi"))
+
+    assert np.allclose(area, np.pi * (2**2 - 1**2) / 4 * u.m**2)
+
+
+def test_polar_volume_cell_dimensionless_azimuth():
+    # an azimuth without a unit is taken to be in radians
+    grid = na.PolarVectorArray(
+        radius=na.linspace(1, 2, axis="r", num=2),
+        azimuth=na.linspace(0, np.pi / 2, axis="phi", num=2),
+    )
+
+    assert np.allclose(grid.volume_cell(("r", "phi")), np.pi * 3 / 4)
+
+
+def test_polar_volume_cell_of_a_grid_which_is_not_polar():
+    # when one axis does not parameterize the radius alone and the other the
+    # azimuth alone, the cells are not annular sectors, and the area of the
+    # polygon through their corners is used instead
+    grid = na.PolarVectorArray(
+        radius=na.ScalarUniformRandomSample(1, 2, shape_random=dict(x=4, y=5), seed=7) * u.mm,
+        azimuth=na.linspace(0, 2 * np.pi, axis="y", num=5, endpoint=False),
+    )
+
+    result = grid.volume_cell(("x", "y"))
+    expected = na.Cartesian2dVectorArray(
+        x=grid.explicit.x,
+        y=grid.explicit.y,
+    ).volume_cell(("x", "y"))
+
+    assert np.all(result == expected)
 
 
 class AbstractTestAbstractCartesian2dVectorRandomSample(

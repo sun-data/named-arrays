@@ -5,6 +5,7 @@ from typing import Self
 import abc
 import dataclasses
 import numpy as np
+import astropy.units as u
 import named_arrays as na
 
 __all__ = [
@@ -166,7 +167,8 @@ class PolarVectorArray(
         import named_arrays as na
 
         # Define a grid which is linear in radius and in azimuth.
-        # The azimuth omits its endpoint so that no sample is repeated.
+        # The azimuth omits its endpoint so that no sample is repeated,
+        # since 360 degrees is the same direction as zero.
         a = na.PolarVectorArray(
             radius=na.linspace(50, 100, axis="radius", num=6) * u.mm,
             azimuth=na.linspace(0, 360, axis="azimuth", num=24, endpoint=False) * u.deg,
@@ -176,6 +178,23 @@ class PolarVectorArray(
         fig, ax = plt.subplots()
         ax.set_aspect("equal")
         na.plt.scatter(a.x, a.y, ax=ax);
+
+    A grid of samples is not a grid of cells.
+    :meth:`volume_cell` reads its arguments as the vertices of the cells
+    between them, so `n` vertices describe `n - 1` cells, and a grid built
+    with ``endpoint=False`` describes one cell fewer than it appears to:
+    the one which wraps past the last sample back to the first is missing.
+    Keep the endpoint when the areas matter, which closes the turn.
+
+    .. jupyter-execute::
+
+        b = na.PolarVectorArray(
+            radius=na.linspace(50, 100, axis="radius", num=6) * u.mm,
+            azimuth=na.linspace(0, 360, axis="azimuth", num=25) * u.deg,
+        )
+
+        # the areas of the 5 by 24 cells sum to the area of the annulus
+        b.volume_cell(("radius", "azimuth")).sum()
     """
 
     radius: RadiusT = 0
@@ -192,6 +211,70 @@ class PolarVectorArray(
             x=radius * np.cos(azimuth),
             y=radius * np.sin(azimuth),
         )
+
+    def volume_cell(self, axis: None | str | Sequence[str]) -> na.AbstractScalar:
+        r"""
+        The exact area of each cell of a polar grid,
+        :math:`(r_2^2 - r_1^2)(\phi_2 - \phi_1) / 2`.
+
+        The inherited implementation would take the area of the polygon through
+        the four corners of the cell, which replaces each arc with the chord
+        joining its ends and so always falls short.
+        On an annulus sampled with six cells of azimuth that is an error of
+        17%, which only reaches a tenth of a percent at ninety.
+
+        Parameters
+        ----------
+        axis
+            The two axes which parameterize the grid.
+            The exact area is used when one of them parameterizes only
+            :attr:`radius` and the other only :attr:`azimuth`, and the
+            inherited polygon area otherwise, since the cells are then not
+            annular sectors.
+        """
+        radius = na.as_named_array(self.radius)
+        azimuth = na.as_named_array(self.azimuth)
+
+        if axis is None:
+            if self.ndim != 2:
+                raise ValueError(
+                    f"If {axis=}, then {self.ndim=} must be two-dimensional"
+                )
+            axis = self.axes
+
+        if not set(axis).issubset(self.shape):
+            raise ValueError(
+                f"{axis=} should be a subset of {self.shape=}."
+            )
+
+        a1, a2 = axis
+        shape_radius = radius.shape
+        shape_azimuth = azimuth.shape
+
+        def _separates(ax_r: str, ax_a: str) -> bool:
+            return (
+                ax_r in shape_radius and ax_r not in shape_azimuth
+                and ax_a in shape_azimuth and ax_a not in shape_radius
+            )
+
+        if _separates(a1, a2):
+            axis_radius, axis_azimuth = a1, a2
+        elif _separates(a2, a1):
+            axis_radius, axis_azimuth = a2, a1
+        else:
+            return super().volume_cell(axis)
+
+        lower = {axis_radius: slice(None, ~0)}
+        upper = {axis_radius: slice(+1, None)}
+        radius_squared = np.square(radius[upper]) - np.square(radius[lower])
+
+        lower = {axis_azimuth: slice(None, ~0)}
+        upper = {axis_azimuth: slice(+1, None)}
+        angle = azimuth[upper] - azimuth[lower]
+        if na.unit(angle) is not None:
+            angle = angle.to_value(u.rad)
+
+        return radius_squared * angle / 2
 
 
 @dataclasses.dataclass(eq=False, repr=False)
