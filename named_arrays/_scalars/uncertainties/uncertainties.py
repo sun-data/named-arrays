@@ -457,17 +457,17 @@ class AbstractUncertainScalarArray(
 
     def __array_ufunc__(
             self,
-            function: np.ufunc,
+            ufunc: np.ufunc,
             method: str,
             *inputs,
             **kwargs,
     ) -> None | UncertainScalarArray | tuple[UncertainScalarArray, ...]:
 
-        result = super().__array_ufunc__(function, method, *inputs, **kwargs)
+        result = super().__array_ufunc__(ufunc, method, *inputs, **kwargs)
         if result is not NotImplemented:
             return result
 
-        nout = function.nout
+        nout = ufunc.nout
 
         inputs_nominal = []
         inputs_distribution = []
@@ -534,8 +534,8 @@ class AbstractUncertainScalarArray(
         else:
             out = (None, ) * nout
 
-        result_nominal = getattr(function, method)(*inputs_nominal, **kwargs_nominal, **kwargs)
-        result_distribution = getattr(function, method)(*inputs_distribution, **kwargs_distribution, **kwargs)
+        result_nominal = getattr(ufunc, method)(*inputs_nominal, **kwargs_nominal, **kwargs)
+        result_distribution = getattr(ufunc, method)(*inputs_distribution, **kwargs_distribution, **kwargs)
 
         if nout == 1:
             result_nominal = (result_nominal, )

@@ -1216,3 +1216,32 @@ class TestPolynomialFitFunctionArray(
         AbstractTestAbstractFunctionArray.TestMatmul
     ):
         pass
+
+
+def test_ufunc_coordinate_mismatch():
+    """
+    A ufunc refuses two functions which are not of the same coordinates.
+
+    Adding them would put a value sampled at one place together with a value
+    sampled at another, and the result would be labelled with one of the two
+    without anything saying so, which is the mistake this array type exists
+    to make impossible.
+    """
+    outputs = na.ScalarArray(np.array([3.0, 4.0]), axes="x")
+
+    here = na.FunctionArray(
+        inputs=na.ScalarArray(np.array([1.0, 2.0]), axes="x"),
+        outputs=outputs,
+    )
+    elsewhere = na.FunctionArray(
+        inputs=na.ScalarArray(np.array([9.0, 9.0]), axes="x"),
+        outputs=outputs,
+    )
+
+    with pytest.raises(na.InputValueError):
+        here + elsewhere
+
+    # The same function against itself is of the same coordinates, and adds.
+    result = here + here
+    assert np.all(result.inputs == here.inputs)
+    assert np.all(result.outputs == 2 * outputs)
