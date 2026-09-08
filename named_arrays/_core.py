@@ -13,6 +13,8 @@ import named_arrays as na
 
 __all__ = [
     "QuantityLike",
+    "threshold_print",
+    "edgeitems_print",
     "StartT",
     "StopT",
     "named_array_like",
@@ -52,6 +54,36 @@ __all__ = [
 ]
 
 QuantityLike = Union[int, float, complex, np.ndarray, u.Quantity]
+
+threshold_print = 100
+"""
+The number of elements an array may have before :meth:`AbstractArray.to_string`
+shows only its ends.
+
+This is the ``threshold`` argument of :func:`numpy.array2string`, but it is
+smaller than the :mod:`numpy` default of 1000, since an array in this package
+usually has more axes than a bare :class:`numpy.ndarray`, and the string
+representation of a vector or a function array repeats the representation of
+every array it contains.
+
+Assign to :data:`named_arrays.threshold_print` to change it, in the same
+spirit as :func:`numpy.set_printoptions`::
+
+    import named_arrays as na
+    na.threshold_print = 1000
+"""
+
+edgeitems_print = 2
+"""
+The number of elements :meth:`AbstractArray.to_string` shows at each end of an
+axis of an array which is too large to show in full.
+
+This is the ``edgeitems`` argument of :func:`numpy.array2string`, but it is
+smaller than the :mod:`numpy` default of 3, since the number of lines it costs
+grows with the number of axes.
+
+Assign to :data:`named_arrays.edgeitems_print` to change it.
+"""
 
 
 def _required() -> Any:
@@ -951,6 +983,24 @@ class AbstractArray(
         """
         raise NotImplementedError
 
+    @property
+    def _attrs_print(self) -> dict[str, Any]:
+        """
+        The name and value of each attribute shown by :meth:`to_string`.
+
+        These are the fields of the dataclass, which is what defines the array,
+        except that a field named ``axes`` is shown as :attr:`shape`.
+        The shape names the axes just as ``axes`` does, and gives the length of
+        each one as well, so it says strictly more in about the same space.
+        """
+        result = dict()
+        for f in dataclasses.fields(self):
+            if f.name == "axes":
+                result["shape"] = self.shape
+            else:
+                result[f.name] = getattr(self, f.name)
+        return result
+
     def to_string(
             self,
             prefix: None | str = None,
@@ -971,10 +1021,10 @@ class AbstractArray(
         -------
         array represented as a :class:`str`
         """
-        fields = dataclasses.fields(self)
+        attrs = self._attrs_print
 
         if multiline is None:
-            multiline_normalized = any(isinstance(getattr(self, f.name), (np.ndarray, na.AbstractArray)) for f in fields)
+            multiline_normalized = any(isinstance(v, (np.ndarray, na.AbstractArray)) for v in attrs.values())
         else:
             multiline_normalized = multiline
 
@@ -990,9 +1040,9 @@ class AbstractArray(
         if multiline_normalized:
             result += "\n"
 
-        for i, f in enumerate(fields):
-            field_str = f"{pre}{tab}{f.name}="
-            val = getattr(self, f.name)
+        for i, name in enumerate(attrs):
+            field_str = f"{pre}{tab}{name}="
+            val = attrs[name]
             if isinstance(val, AbstractArray):
                 val_str = val.to_string(prefix=f"{pre}{tab}", multiline=multiline)
             elif isinstance(val, np.ndarray):
@@ -1001,13 +1051,15 @@ class AbstractArray(
                     max_line_width=120,
                     separator=", ",
                     prefix=field_str,
+                    threshold=na.threshold_print,
+                    edgeitems=na.edgeitems_print,
                 )
                 if isinstance(val, u.Quantity):
                     val_str = f"{val_str} {val.unit}"
             else:
                 val_str = repr(val)
             field_str += val_str
-            if multiline_normalized or i < (len(fields) - 1):
+            if multiline_normalized or i < (len(attrs) - 1):
                 field_str += f",{delim_field}"
             result += field_str
         result += f"{pre})"

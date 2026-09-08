@@ -594,6 +594,118 @@ class TestPercentileWeights:
             np.percentile(self._a(), 50, axis="x", weights=self._weights())
 
 
+class TestToStringShape:
+    """
+    Tests that :meth:`named_arrays.AbstractArray.to_string` shows the shape of
+    an array rather than only the names of its axes.
+    """
+
+    def test_shape_instead_of_axes(self):
+        array = na.ScalarArray(np.array([[5, 6], [6, 7], [7, 8]]), axes=("x", "y"))
+
+        result = repr(array)
+
+        assert "shape={'x': 3, 'y': 2}" in result
+        assert "axes=" not in result
+
+    def test_shape_of_a_zero_dimensional_array(self):
+        result = repr(na.ScalarArray(np.array(5.0)))
+
+        assert "shape={}" in result
+
+    def test_implicit_array_keeps_its_arguments(self):
+        # an implicit array has no `axes` field, so its representation is still
+        # the arguments which define it
+        result = repr(na.ScalarLinearSpace(0, 1, axis="z", num=4))
+
+        assert "axis='z'" in result
+        assert "num=4" in result
+        assert "shape=" not in result
+
+    def test_shape_of_each_component_of_a_vector(self):
+        array = na.Cartesian2dVectorArray(
+            na.ScalarArray(np.array([1, 2, 3]), axes=("x",)),
+            na.ScalarArray(np.array([4, 5]), axes=("y",)),
+        )
+
+        result = repr(array)
+
+        # each component reports its own shape, not the broadcasted shape
+        assert "shape={'x': 3}" in result
+        assert "shape={'y': 2}" in result
+
+
+class TestToStringTruncation:
+    """
+    Tests for how :meth:`named_arrays.AbstractArray.to_string` shortens an
+    array which is too large to show in full.
+    """
+
+    def _array(self, num: int) -> na.ScalarArray:
+        return na.ScalarArray(np.arange(num), axes=("x",))
+
+    def _values(self, result: str) -> list[str]:
+        """Recover the elements shown between the brackets of a 1D array."""
+        return [v.strip() for v in result.split("[")[1].split("]")[0].split(",")]
+
+    def test_array_at_threshold_shown_in_full(self):
+        num = na.threshold_print
+
+        result = repr(self._array(num))
+
+        assert "..." not in result
+        assert self._values(result) == [str(i) for i in range(num)]
+
+    def test_array_above_threshold_truncated(self):
+        num = na.threshold_print + 1
+
+        result = repr(self._array(num))
+
+        assert "..." in result
+        assert len(result.splitlines()) == 4
+
+    def test_number_of_edge_items(self):
+        num = na.threshold_print + 1
+        edgeitems = na.edgeitems_print
+
+        result = repr(self._array(num))
+
+        # both ends of the array are shown, with an ellipsis between them
+        assert self._values(result) == (
+            [str(i) for i in range(edgeitems)]
+            + ["..."]
+            + [str(num - edgeitems + i) for i in range(edgeitems)]
+        )
+
+    def test_nested_array_truncated(self):
+        array = self._array(na.threshold_print + 1)
+
+        result = repr(na.Cartesian2dVectorArray(array, array))
+
+        # every array is shortened, not only the outermost one
+        assert result.count("...") == 2
+        assert len(result.splitlines()) == 10
+
+    def test_threshold_print_is_configurable(self, monkeypatch):
+        num = na.threshold_print + 1
+        array = self._array(num)
+        assert "..." in repr(array)
+
+        monkeypatch.setattr(na, "threshold_print", num)
+
+        # raising the threshold above the size of the array shows it in full
+        assert self._values(repr(array)) == [str(i) for i in range(num)]
+
+    def test_edgeitems_print_is_configurable(self, monkeypatch):
+        array = self._array(na.threshold_print + 1)
+        edgeitems = na.edgeitems_print + 1
+
+        monkeypatch.setattr(na, "edgeitems_print", edgeitems)
+
+        values = self._values(repr(array))
+        assert len(values) == 2 * edgeitems + 1
+
+
 class TestIscloseDispatch:
     """
     Tests for how :func:`numpy.isclose` combines operands of different types.

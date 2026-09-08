@@ -42,6 +42,8 @@ from . import geometry
 from . import pdf
 from ._core import (
     QuantityLike,
+    threshold_print,
+    edgeitems_print,
     StartT,
     StopT,
     named_array_like,
@@ -448,6 +450,8 @@ __all__ = [
     "geometry",
     "pdf",
     "QuantityLike",
+    "threshold_print",
+    "edgeitems_print",
     "StartT",
     "StopT",
     "named_array_like",
