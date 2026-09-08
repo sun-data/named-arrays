@@ -175,6 +175,19 @@ class AbstractTestAbstractCartesian3dVectorArray(
         assert np.allclose(result @ array, 0)
         assert np.allclose(result@ array_2, 0)
 
+        # `numpy.cross` is the same operation by another name
+        assert np.all(np.cross(array, array_2) == result)
+
+    def test_cross_numpy_axis_arguments(
+        self,
+        array: na.AbstractCartesian3dVectorArray,
+    ):
+        # the axis arguments of `numpy.cross` select which axis holds the
+        # components, which a vector names instead, so they do not apply
+        for kwargs in [dict(axisa=0), dict(axisb=0), dict(axisc=0), dict(axis=0)]:
+            with pytest.raises(ValueError, match="components of a vector are named"):
+                np.cross(array, array, **kwargs)
+
     @pytest.mark.parametrize(
         argnames='item',
         argvalues=_cartesian3d_items()

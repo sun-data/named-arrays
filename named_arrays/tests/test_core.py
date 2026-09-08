@@ -1827,6 +1827,48 @@ class AbstractTestAbstractArray(
             assert result_out is out
             assert np.all(result == result_out)
 
+        @pytest.mark.parametrize("shift", [0, 1, -2, num_y, num_y + 1])
+        def test_roll(self, array: na.AbstractArray, shift: int):
+            axis = "y"
+
+            # the shift is expressed as indexing by an array of indices, so an
+            # array which cannot be indexed that way cannot be shifted either.
+            # the vertex axis of a function array is the case in point: it has
+            # one more input than it has outputs, so there is no one index
+            # which applies to both
+            if axis in array.shape:
+                try:
+                    array[{axis: na.arange(0, array.shape[axis], axis=axis)}]
+                except ValueError:
+                    with pytest.raises(ValueError):
+                        np.roll(array, shift, axis)
+                    return
+
+            result = np.roll(array, shift, axis)
+
+            assert result.type_abstract == array.type_abstract
+            assert result.shape == array.shape
+
+            # shifting back by the same amount restores the original array
+            assert np.all(np.roll(result, -shift, axis) == array)
+
+            if axis in array.shape:
+                # a shift of a whole turn, or of nothing, changes nothing
+                if shift % array.shape[axis] == 0:
+                    assert np.all(result == array)
+            else:
+                # an axis the array does not have is ignored
+                assert np.all(result == array)
+
+        def test_roll_requires_an_axis(self, array: na.AbstractArray):
+            # unlike `numpy`, there is no positional order to flatten along
+            with pytest.raises(ValueError, match="`axis` is required"):
+                np.roll(array, 1)
+
+        def test_roll_shift_matches_axis(self, array: na.AbstractArray):
+            with pytest.raises(ValueError, match="must have the same length"):
+                np.roll(array, (1, 2), "y")
+
         @pytest.mark.parametrize(
             argnames="repeats",
             argvalues=[
