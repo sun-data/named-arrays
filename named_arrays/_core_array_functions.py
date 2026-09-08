@@ -224,3 +224,79 @@ def flip(
     axes = _axes_normalized(m.shape, axis)
 
     return m[{ax: slice(None, None, -1) for ax in axes}]
+
+
+@implements(np.roll)
+def roll(
+    a: na.AbstractArray,
+    shift: int | Sequence[int],
+    axis: None | str | Sequence[str] = None,
+) -> na.AbstractExplicitArray:
+    """
+    Shift the elements of the given array along the given axes, with the
+    elements shifted off the end reappearing at the start.
+
+    Parameters
+    ----------
+    a
+        The array to shift.
+    shift
+        The number of places to shift by.
+        If `axis` names more than one axis, this may be one number for each of
+        them, or one number used for all of them.
+    axis
+        The axes to shift along.
+        Axes not present in `a` are ignored.
+
+    Raises
+    ------
+    ValueError
+        If `axis` is :obj:`None`, or if `shift` and `axis` are sequences of
+        different lengths.
+
+    See Also
+    --------
+    :func:`numpy.roll`: Equivalent :mod:`numpy` function.
+
+    Notes
+    -----
+    Unlike :func:`numpy.roll`, `axis` is required. The :mod:`numpy` version
+    shifts the flattened array when given no axis, and this package has no
+    positional order to flatten along.
+
+    An axis which `a` does not have is ignored, since an array broadcasts along
+    such an axis as though it had length one, and shifting an axis of length one
+    leaves the array unchanged.
+
+    The shift is expressed as indexing `a` by an array of indices, so an array
+    which does not support that kind of indexing along `axis` cannot be shifted
+    along it either. The vertex axis of a
+    :class:`named_arrays.FunctionArray` is the case in point, since it has one
+    more input than it has outputs and no single index applies to both.
+    """
+    if axis is None:
+        raise ValueError(
+            "`axis` is required, since there is no positional order to flatten "
+            "along. Name the axes to shift along, or use `combine_axes` first."
+        )
+
+    axes = (axis,) if isinstance(axis, str) else tuple(axis)
+    shifts = (shift,) * len(axes) if isinstance(shift, int) else tuple(shift)
+
+    if len(shifts) != len(axes):
+        raise ValueError(
+            f"`shift` and `axis` must have the same length, "
+            f"got {len(shifts)} and {len(axes)}"
+        )
+
+    a = a.explicit
+    shape = a.shape
+
+    index = dict()
+    for ax, sh in zip(axes, shifts):
+        if ax not in shape:
+            continue
+        num = shape[ax]
+        index[ax] = (na.arange(0, num, axis=ax) - sh) % num
+
+    return a[index]
