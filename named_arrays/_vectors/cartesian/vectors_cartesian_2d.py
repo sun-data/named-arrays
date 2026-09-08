@@ -12,6 +12,7 @@ __all__ = [
     "AbstractCartesian2dVectorArray",
     "Cartesian2dVectorArray",
     "AbstractImplicitCartesian2dVectorArray",
+    "AbstractPolarVectorArray",
     "PolarVectorArray",
     "AbstractCartesian2dVectorRandomSample",
     "Cartesian2dVectorUniformRandomSample",
@@ -140,74 +141,36 @@ class AbstractImplicitCartesian2dVectorArray(
 
 
 @dataclasses.dataclass(eq=False, repr=False)
-class PolarVectorArray(
+class AbstractPolarVectorArray(
     AbstractImplicitCartesian2dVectorArray,
-    Generic[RadiusT, AzimuthT],
 ):
-    r"""
-    An array of 2D Cartesian vectors given by their polar coordinates.
+    """
+    An interface describing a 2D Cartesian vector given by its polar
+    coordinates.
 
-    This is an implicit :class:`Cartesian2dVectorArray` whose components are
-    :math:`x = r \cos \phi` and :math:`y = r \sin \phi`, so it can be used
-    anywhere a 2D Cartesian vector is expected, while being sampled in
-    :attr:`radius` and :attr:`azimuth`.
-    Its purpose is to sample an annulus or a sector of one with a grid which
-    follows its edges, where a rectilinear grid would waste most of its
-    samples on the hole and the corners.
-
-    Examples
+    See Also
     --------
-
-    Sample an annulus with a polar grid and plot the samples.
-
-    .. jupyter-execute::
-
-        import matplotlib.pyplot as plt
-        import astropy.units as u
-        import named_arrays as na
-
-        # Define a grid which is linear in radius and in azimuth.
-        # The azimuth omits its endpoint so that no sample is repeated,
-        # since 360 degrees is the same direction as zero.
-        a = na.PolarVectorArray(
-            radius=na.linspace(50, 100, axis="radius", num=6) * u.mm,
-            azimuth=na.linspace(0, 360, axis="azimuth", num=24, endpoint=False) * u.deg,
-        )
-
-        # The Cartesian components are computed from the polar ones.
-        fig, ax = plt.subplots()
-        ax.set_aspect("equal")
-        na.plt.scatter(a.x, a.y, ax=ax);
-
-    A grid of samples is not a grid of cells.
-    :meth:`volume_cell` reads its arguments as the vertices of the cells
-    between them, so `n` vertices describe `n - 1` cells, and a grid built
-    with ``endpoint=False`` describes one cell fewer than it appears to:
-    the one which wraps past the last sample back to the first is missing.
-    Keep the endpoint when the areas matter, which closes the turn.
-
-    .. jupyter-execute::
-
-        b = na.PolarVectorArray(
-            radius=na.linspace(50, 100, axis="radius", num=6) * u.mm,
-            azimuth=na.linspace(0, 360, axis="azimuth", num=25) * u.deg,
-        )
-
-        # the areas of the 5 by 24 cells sum to the area of the annulus
-        b.volume_cell(("radius", "azimuth")).sum()
+    :class:`named_arrays.PolarVectorArray`: The explicit version of this class.
     """
 
-    radius: RadiusT = 0
-    """The distance of this vector from the origin."""
+    @property
+    @abc.abstractmethod
+    def radius(self) -> na.ArrayLike:
+        """The distance of this vector from the origin."""
 
-    azimuth: AzimuthT = 0
-    """The angle of this vector from the :math:`x` axis, toward the :math:`y` axis."""
+    @property
+    @abc.abstractmethod
+    def azimuth(self) -> na.ArrayLike:
+        r"""
+        The angle of this vector from the :math:`x` axis, toward the
+        :math:`y` axis.
+        """
 
     @property
     def explicit(self) -> Cartesian2dVectorArray:
         radius = self.radius
         azimuth = self.azimuth
-        return Cartesian2dVectorArray(
+        return self.type_explicit(
             x=radius * np.cos(azimuth),
             y=radius * np.sin(azimuth),
         )
@@ -275,6 +238,71 @@ class PolarVectorArray(
             angle = angle.to_value(u.rad)
 
         return radius_squared * angle / 2
+
+
+@dataclasses.dataclass(eq=False, repr=False)
+class PolarVectorArray(
+    AbstractPolarVectorArray,
+    Generic[RadiusT, AzimuthT],
+):
+    r"""
+    An array of 2D Cartesian vectors given by their polar coordinates.
+
+    This is an implicit :class:`Cartesian2dVectorArray` whose components are
+    :math:`x = r \cos \phi` and :math:`y = r \sin \phi`, so it can be used
+    anywhere a 2D Cartesian vector is expected, while being sampled in
+    :attr:`radius` and :attr:`azimuth`.
+    Its purpose is to sample an annulus or a sector of one with a grid which
+    follows its edges, where a rectilinear grid would waste most of its
+    samples on the hole and the corners.
+
+    Examples
+    --------
+
+    Sample an annulus with a polar grid and plot the samples.
+
+    .. jupyter-execute::
+
+        import matplotlib.pyplot as plt
+        import astropy.units as u
+        import named_arrays as na
+
+        # Define a grid which is linear in radius and in azimuth.
+        # The azimuth omits its endpoint so that no sample is repeated,
+        # since 360 degrees is the same direction as zero.
+        a = na.PolarVectorArray(
+            radius=na.linspace(50, 100, axis="radius", num=6) * u.mm,
+            azimuth=na.linspace(0, 360, axis="azimuth", num=24, endpoint=False) * u.deg,
+        )
+
+        # The Cartesian components are computed from the polar ones.
+        fig, ax = plt.subplots()
+        ax.set_aspect("equal")
+        na.plt.scatter(a.x, a.y, ax=ax);
+
+    A grid of samples is not a grid of cells.
+    :meth:`volume_cell` reads its arguments as the vertices of the cells
+    between them, so `n` vertices describe `n - 1` cells, and a grid built
+    with ``endpoint=False`` describes one cell fewer than it appears to:
+    the one which wraps past the last sample back to the first is missing.
+    Keep the endpoint when the areas matter, which closes the turn.
+
+    .. jupyter-execute::
+
+        b = na.PolarVectorArray(
+            radius=na.linspace(50, 100, axis="radius", num=6) * u.mm,
+            azimuth=na.linspace(0, 360, axis="azimuth", num=25) * u.deg,
+        )
+
+        # the areas of the 5 by 24 cells sum to the area of the annulus
+        b.volume_cell(("radius", "azimuth")).sum()
+    """
+
+    radius: RadiusT = 0
+    """The distance of this vector from the origin."""
+
+    azimuth: AzimuthT = 0
+    """The angle of this vector from the :math:`x` axis, toward the :math:`y` axis."""
 
 
 @dataclasses.dataclass(eq=False, repr=False)
