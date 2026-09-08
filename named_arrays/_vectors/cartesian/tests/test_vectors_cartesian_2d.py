@@ -320,14 +320,20 @@ def _polar_arrays() -> list[na.PolarVectorArray]:
             radius=na.ScalarUniformRandomSample(1, 2, shape_random=dict(x=_num_x, y=_num_y)) * u.mm,
             azimuth=na.linspace(0, 2 * np.pi, axis="y", num=_num_y, endpoint=False),
         ),
+        na.PolarVectorArray(
+            radius=na.UniformUncertainScalarArray(
+                nominal=na.linspace(50, 100, axis="x", num=_num_x),
+                width=1,
+                num_distribution=_num_distribution,
+            ) * u.mm,
+            azimuth=na.linspace(0, 90, axis="y", num=_num_y) * u.deg,
+        ),
     ]
 
 
 @pytest.mark.parametrize("array", _polar_arrays())
 class TestPolarVectorArray(
     AbstractTestAbstractImplicitCartesian2dVectorArray,
-    named_arrays._vectors.tests.test_vectors.AbstractTestAbstractVectorArray,
-    named_arrays.tests.test_core.AbstractTestAbstractArray,
 ):
     def test_radius(self, array: na.PolarVectorArray):
         assert np.allclose(array.length, array.radius)
@@ -338,10 +344,18 @@ class TestPolarVectorArray(
         assert np.allclose(np.sin(azimuth), np.sin(array.azimuth))
 
     def test_explicit(self, array: na.PolarVectorArray):
+        super().test_explicit(array=array)
+
         result = array.explicit
         assert isinstance(result, na.Cartesian2dVectorArray)
-        assert np.allclose(result.x, array.radius * np.cos(array.azimuth))
-        assert np.allclose(result.y, array.radius * np.sin(array.azimuth))
+
+        # the Cartesian components carry the polar ones, which is checked by
+        # converting back rather than by repeating the formula they were
+        # computed with
+        assert np.allclose(np.sqrt(np.square(result.x) + np.square(result.y)), array.radius)
+
+        # already explicit, so making it explicit again changes nothing
+        assert np.all(result.explicit == result)
 
 
 @pytest.mark.parametrize("num_azimuth", [6, 24, 360])
