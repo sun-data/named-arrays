@@ -248,6 +248,8 @@ def array_function_percentile_like(
         overwrite_input: bool = np._NoValue,
         method: str = np._NoValue,
         keepdims: bool = False,
+        *,
+        weights: float | u.Quantity | na.AbstractScalar = np._NoValue,
 ):
     if isinstance(a, na.AbstractArray):
         if isinstance(a, na.AbstractScalar):
@@ -261,6 +263,20 @@ def array_function_percentile_like(
             return NotImplemented
     else:
         a = na.UncertainScalarArray(a, a)
+
+    if weights is not np._NoValue:
+        if isinstance(weights, na.AbstractArray):
+            if isinstance(weights, na.AbstractScalarArray):
+                weights_nominal = weights_distribution = weights
+            elif isinstance(weights, na.AbstractUncertainScalarArray):
+                weights_nominal = weights.nominal
+                weights_distribution = weights.distribution
+            else:
+                return NotImplemented
+        else:
+            weights_nominal = weights_distribution = weights
+    else:
+        weights_nominal = weights_distribution = np._NoValue
 
     if isinstance(q, na.AbstractArray):
         if isinstance(q, na.AbstractScalar):
@@ -276,6 +292,9 @@ def array_function_percentile_like(
     else:
         q_nominal = q_distribution = q
 
+    # the weights may have axes which `a` does not, so every axis of the
+    # result is an axis of the shape the two broadcast to
+    a = a.broadcast_to(na.shape_broadcasted(a, weights))
     shape_a = a.shape
 
     axis_normalized = na.axis_normalized(a, axis)
@@ -307,6 +326,9 @@ def array_function_percentile_like(
         kwargs["overwrite_input"] = overwrite_input
     if method is not np._NoValue:
         kwargs["method"] = method
+    if weights is not np._NoValue:
+        kwargs_nominal["weights"] = weights_nominal
+        kwargs_distribution["weights"] = weights_distribution
     kwargs["keepdims"] = keepdims
 
     kwargs_nominal = kwargs | kwargs_nominal
