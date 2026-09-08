@@ -166,6 +166,7 @@ def weights(
     method: Literal['multilinear', 'conservative'] = 'multilinear',
     perturb: None | bool = None,
     seed: None | int | np.random.Generator = _seed_default,
+    device: None | str = None,
 ) -> tuple[na.AbstractScalar, dict[str, int], dict[str, int]]:
     """
     Save the results of a regridding operation as a sequence of weights,
@@ -216,6 +217,12 @@ def weights(
         grids return identical results.
         If :obj:`None`, the generator is seeded from fresh entropy,
         and each call draws an independent perturbation.
+    device
+        The device on which to build the weights, passed through to
+        :func:`regridding.weights`. :obj:`None` (the default) builds them on
+        the host; ``"cuda"`` builds them on the GPU and leaves the weight
+        values there, so that :func:`regrid_from_weights` can apply them
+        without a round trip.
 
     See Also
     --------
@@ -234,6 +241,7 @@ def weights(
         method=method,
         perturb=perturb,
         seed=seed,
+        device=device,
     )
 
 
@@ -265,6 +273,7 @@ def regrid_from_weights(
         shape_output=shape_output,
         values_input=values_input,
     )
+
 
 def transpose_weights(
     weights: tuple[na.AbstractScalar, dict[str, int], dict[str, int]],
