@@ -6,11 +6,11 @@ import named_arrays as na
 import numpy as np
 
 __all__ = [
-    'AbstractSpectralMatrixArray',
-    'SpectralMatrixArray',
+    "AbstractSpectralMatrixArray",
+    "SpectralMatrixArray",
 ]
 
-WavelengthT = TypeVar('WavelengthT', bound=na.AbstractVectorArray)
+WavelengthT = TypeVar('WavelengthT', bound=na.AbstractVectorArray, covariant=True)
 
 
 @dataclasses.dataclass(eq=False, repr=False)

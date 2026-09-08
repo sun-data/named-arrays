@@ -1,4 +1,3 @@
-import dataclasses
 from typing import Callable, Sequence, Literal
 import collections
 import numpy as np
@@ -121,6 +120,38 @@ def unit_normalized(
     )
 
 
+@_implements(na.broadcast_to)
+def broadcast_to(
+    array: na.AbstractUncertainScalarArray,
+    shape: dict[str, int],
+    append: bool = False,
+) -> na.AbstractExplicitArray:
+
+    array = array.explicit
+    shape_distribution = na.broadcast_shapes(shape, array.shape_distribution)
+
+    return na.UncertainScalarArray(
+        nominal=na.broadcast_to(
+            array=array.nominal,
+            shape=shape,
+            append=append,
+        ),
+        distribution=na.broadcast_to(
+            array=array.distribution,
+            shape=shape_distribution,
+            append=append,
+        )
+    )
+
+
+@_implements(na.debroadcast)
+def debroadcast(
+    array: na.AbstractUncertainScalarArray,
+    axes: None | str | Sequence[str] = None,
+) -> na.AbstractExplicitArray:
+    return na._named_array_functions._debroadcast(array, axes)
+
+
 @_implements(na.interp)
 def interp(
         x: float | u.Quantity | na.AbstractScalar,
@@ -146,6 +177,7 @@ def interp(
             x=x.nominal,
             xp=xp.nominal,
             fp=fp.nominal,
+            axis=axis,
             left=left.nominal,
             right=right.nominal,
             period=period.nominal,
@@ -154,6 +186,7 @@ def interp(
             x=x.distribution,
             xp=xp.distribution,
             fp=fp.distribution,
+            axis=axis,
             left=left.distribution,
             right=right.distribution,
             period=period.distribution,
@@ -462,8 +495,7 @@ def convolve(
         mode=mode,
     )
 
-    return dataclasses.replace(
-        array,
+    return array.replace(
         nominal=result_nominal,
         distribution=result_distribution,
     )
@@ -860,6 +892,25 @@ def optimize_root_newton(
         guess=guess,
         jacobian=jacobian,
         max_abs_error=max_abs_error,
+        max_iterations=max_iterations,
+        callback=callback,
+    )
+
+
+@_implements(na.optimize.minimum_brent)
+def optimize_minimum_brent(
+        function: Callable[[na.ScalarLike], na.ScalarLike],
+        a: na.ScalarLike,
+        b: na.ScalarLike,
+        min_step_size: na.ScalarLike,
+        max_iterations: int = 100,
+        callback: None | Callable[[int, na.ScalarLike, na.ScalarLike, na.ScalarLike], None] = None,
+) -> na.UncertainScalarArray:
+    return named_arrays._scalars.scalar_named_array_functions.optimize_minimum_brent(
+        function=function,
+        a=a,
+        b=b,
+        min_step_size=min_step_size,
         max_iterations=max_iterations,
         callback=callback,
     )
@@ -1281,3 +1332,82 @@ def despike(
     )
 
     return result
+
+
+@_implements(na.numexpr.evaluate)
+def evaluate(
+    ex: str,
+    order: str = 'K',
+    casting: str = 'same_kind',
+    sanitize: None | bool = None,
+    optimization: Literal["none", "moderate", "aggressive"] = "aggressive",
+    truediv: bool | Literal["auto"] = "auto",
+    **arrays,
+) -> na.UncertainScalarArray:
+
+    try:
+        arrays = {name: uncertainties._normalize(arrays[name]) for name in arrays}
+    except uncertainties.UncertainScalarTypeError:  # pragma: nocover
+        return NotImplemented
+
+    arrays_nominal = {name: arrays[name].nominal for name in arrays}
+    arrays_distribution = {name: arrays[name].distribution for name in arrays}
+
+    kwargs = dict(
+        ex=ex,
+        order=order,
+        casting=casting,
+        sanitize=sanitize,
+        optimization=optimization,
+        truediv=truediv,
+    )
+
+    return na.UncertainScalarArray(
+        nominal=na.numexpr.evaluate(
+            local_dict=arrays_nominal,
+            **kwargs,
+        ),
+        distribution=na.numexpr.evaluate(
+            local_dict=arrays_distribution,
+            **kwargs,
+        )
+    )
+
+
+@_implements(na.geometry.point_in_polygon)
+def point_in_polygon(
+    x: na.AbstractScalar,
+    y: na.AbstractScalar,
+    vertices_x: na.AbstractScalar,
+    vertices_y: na.AbstractScalar,
+    axis: str,
+) -> na.UncertainScalarArray:
+
+    try:
+        x = uncertainties._normalize(x)
+        y = uncertainties._normalize(y)
+        vertices_x = uncertainties._normalize(vertices_x)
+        vertices_y = uncertainties._normalize(vertices_y)
+    except uncertainties.UncertainScalarTypeError:  # pragma: nocover
+        return NotImplemented
+
+    result_nominal = na.geometry.point_in_polygon(
+        x=x.nominal,
+        y=y.nominal,
+        vertices_x=vertices_x.nominal,
+        vertices_y=vertices_y.nominal,
+        axis=axis,
+    )
+
+    result_distribution = na.geometry.point_in_polygon(
+        x=x.distribution,
+        y=y.distribution,
+        vertices_x=vertices_x.distribution,
+        vertices_y=vertices_y.distribution,
+        axis=axis,
+    )
+
+    return na.UncertainScalarArray(
+        nominal=result_nominal,
+        distribution=result_distribution,
+    )

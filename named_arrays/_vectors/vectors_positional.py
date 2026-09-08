@@ -1,21 +1,19 @@
 from __future__ import annotations
 from typing import Type, Generic, TypeVar
-from typing_extensions import Self
 import abc
 import dataclasses
 import named_arrays as na
 
 __all__ = [
-    'AbstractPositionalVectorArray',
-    'PositionalVectorArray',
-    'AbstractImplicitPositionalVectorArray',
-    'AbstractParameterizedPositionalVectorArray',
-    'AbstractPositionalVectorSpace',
-    'PositionalVectorLinearSpace',
-
+    "AbstractPositionalVectorArray",
+    "PositionalVectorArray",
+    "AbstractImplicitPositionalVectorArray",
+    "AbstractParameterizedPositionalVectorArray",
+    "AbstractPositionalVectorSpace",
+    "PositionalVectorLinearSpace",
 ]
 
-PositionT = TypeVar("PositionT", bound=na.ArrayLike)
+PositionT = TypeVar("PositionT", bound=na.ArrayLike, covariant=True)
 
 
 @dataclasses.dataclass(eq=False, repr=False)
@@ -35,11 +33,11 @@ class AbstractPositionalVectorArray(
         return AbstractPositionalVectorArray
 
     @property
-    def type_explicit(self) -> Type[na.AbstractExplicitArray]:
+    def type_explicit(self) -> Type[PositionalVectorArray]:
         return PositionalVectorArray
 
     @property
-    def type_matrix(self) -> Type[na.PositionalMatrixArray]:
+    def type_matrix(self) -> Type[na.AbstractExplicitMatrixArray]:
         return na.PositionalMatrixArray
 
 
@@ -50,17 +48,6 @@ class PositionalVectorArray(
     Generic[PositionT],
 ):
     position: PositionT = 0
-
-    @classmethod
-    def from_scalar(
-            cls: Type[Self],
-            scalar: na.AbstractScalar,
-            like: None | na.AbstractExplicitVectorArray = None,
-    ) -> PositionalVectorArray:
-        result = super().from_scalar(scalar, like=like)
-        if result is not NotImplemented:
-            return result
-        return cls(position=scalar)
 
 
 @dataclasses.dataclass(eq=False, repr=False)

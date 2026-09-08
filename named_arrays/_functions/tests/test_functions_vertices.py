@@ -1,4 +1,4 @@
-from typing import Sequence, Literal, Callable
+from typing import Mapping, Sequence, Literal, Callable
 import pytest
 import numpy as np
 import astropy.units as u
@@ -111,16 +111,11 @@ class AbstractTestAbstractFunctionArrayVertices(
                 method=method,
             )
 
-    @pytest.mark.parametrize('newshape', [dict(r=-1)])
-    def test_reshape(self, array: na.AbstractArray, newshape: dict[str, int]):
+    @pytest.mark.parametrize('shape', [dict(r=-1)])
+    def test_reshape(self, array: na.AbstractArray, shape: dict[str, int]):
+        with pytest.raises(ValueError):
+            np.reshape(array, shape)
 
-        for ax in newshape:
-            if ax in array.axes_vertex or (ax not in array.axes and len(array.axes_vertex) != 0):
-                with pytest.raises(ValueError):
-                    result = np.reshape(a=array, newshape=newshape)
-                return
-
-        super().test_reshape(array, newshape)
     @pytest.mark.parametrize('axes', [None, ('x', 'y'), ('x', 'y', 'z')])
     def test_combine_axes(
             self,
@@ -140,11 +135,11 @@ class AbstractTestAbstractFunctionArrayVertices(
 
         super().test_combine_axes(array=array, axes=axes)
 
-
     @pytest.mark.parametrize(
         argnames='item',
         argvalues=[
             dict(y=0),
+            dict(y=np.int64(0)),
             dict(y=slice(0, 1)),
         ]
 
@@ -152,11 +147,10 @@ class AbstractTestAbstractFunctionArrayVertices(
     def test__getitem__(
             self,
             array: na.AbstractFunctionArray,
-            item: dict[str, int | slice | na.AbstractArray] | na.AbstractArray
+            item: Mapping[str, int | slice | na.AbstractArray] | na.AbstractArray
     ):
 
         super().test__getitem__(array=array, item=item)
-
 
     @pytest.mark.parametrize("array_2", _function_arrays_2())
     class TestUfuncBinary(
@@ -173,16 +167,10 @@ class AbstractTestAbstractFunctionArrayVertices(
     class TestArrayFunctions(
         test_functions.AbstractTestAbstractFunctionArray.TestArrayFunctions
     ):
-        @pytest.mark.parametrize('newshape', [dict(r=-1)])
-        def test_reshape(self, array: na.AbstractArray, newshape: dict[str, int]):
-
-            for ax in newshape:
-                if ax in array.axes_vertex or (ax not in array.axes and len(array.axes_vertex) != 0):
-                    with pytest.raises(ValueError):
-                        result = np.reshape(a=array, newshape=newshape)
-                    return
-
-            super().test_reshape(array, newshape)
+        @pytest.mark.parametrize('shape', [dict(r=-1)])
+        def test_reshape(self, array: na.AbstractArray, shape: dict[str, int]):
+            with pytest.raises(ValueError):
+                np.reshape(array, shape)
 
         @pytest.mark.parametrize('axis', ['x', 'y'])
         def test_concatenate(
@@ -197,10 +185,19 @@ class AbstractTestAbstractFunctionArrayVertices(
                 return
             super().test_concatenate(array, axis)
 
+        @pytest.mark.parametrize('axis', ['x', 'y'])
+        def test_take_along_axis(self, array: na.AbstractArray, axis: str):
+            if axis in array.axes_vertex:
+                indices = na.ScalarArray(np.array([0]), axes=axis)
+                with pytest.raises(ValueError, match="describes input vertices"):
+                    np.take_along_axis(array, indices, axis=axis)
+                return
+            super().test_take_along_axis(array=array, axis=axis)
+
         def test_nonzero(self, array: na.AbstractArray):
             if len(array.axes_vertex) != 0:
                 with pytest.raises(ValueError, match=f"item not supported by array with type {type(array)}"):
-                    #matches test_core, but is a bad test. nonzero only applied to boolean arrays
+                    # matches test_core, but is a bad test. nonzero only applied to boolean arrays
                     array[np.nonzero(array>array.mean())]
                 return
             super().test_nonzero(array=array)

@@ -2,13 +2,13 @@ import dataclasses
 import named_arrays as na
 
 __all__ = [
-    'AbstractCartesianMatrixArray',
-    'AbstractExplicitCartesianMatrixArray',
-    'AbstractImplicitCartesianMatrixArray',
-    'AbstractCartesianMatrixRandomSample',
-    'AbstractCartesianMatrixUniformRandomSample',
-    'AbstractCartesianMatrixNormalRandomSample',
-    'AbstractParameterizedCartesianMatrixArray',
+    "AbstractCartesianMatrixArray",
+    "AbstractExplicitCartesianMatrixArray",
+    "AbstractImplicitCartesianMatrixArray",
+    "AbstractCartesianMatrixRandomSample",
+    "AbstractCartesianMatrixUniformRandomSample",
+    "AbstractCartesianMatrixNormalRandomSample",
+    "AbstractParameterizedCartesianMatrixArray",
 ]
 
 

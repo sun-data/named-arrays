@@ -5,11 +5,11 @@ import dataclasses
 import named_arrays as na
 
 __all__ = [
-    'AbstractDirectionalMatrixArray',
-    'DirectionalMatrixArray',
+    "AbstractDirectionalMatrixArray",
+    "DirectionalMatrixArray",
 ]
 
-DirectionT = TypeVar('DirectionT', bound=na.AbstractVectorArray)
+DirectionT = TypeVar('DirectionT', bound=na.AbstractVectorArray, covariant=True)
 
 
 @dataclasses.dataclass(eq=False, repr=False)

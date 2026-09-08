@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TypeVar, Generic, ClassVar, Type, Sequence, Callable, Collection, Any, Union, cast, Dict
+from typing import Mapping, TYPE_CHECKING, TypeVar, Generic, ClassVar, Type, Sequence, Callable, Collection, Any, Union, overload
 from typing_extensions import Self
 import abc
 import dataclasses
@@ -11,28 +11,30 @@ import named_arrays as na
 import xarray as xr
 
 __all__ = [
-    'ScalarStartT',
-    'ScalarStopT',
-    'ScalarTypeError',
-    'as_named_array',
-    'AbstractScalar',
-    'AbstractScalarArray',
-    'ScalarLike',
-    'ScalarArray',
-    'AbstractImplicitScalarArray',
-    'ScalarUniformRandomSample',
-    'ScalarNormalRandomSample',
-    'ScalarPoissonRandomSample',
-    'AbstractParameterizedScalarArray',
-    'ScalarArrayRange',
-    'AbstractScalarSpace',
-    'ScalarLinearSpace',
-    'ScalarStratifiedRandomSpace',
-    'ScalarLogarithmicSpace',
-    'ScalarGeometricSpace',
+    "ScalarStartT",
+    "ScalarStopT",
+    "ScalarTypeError",
+    "as_named_array",
+    "AbstractScalar",
+    "AbstractScalarArray",
+    "ScalarLike",
+    "AbstractExplicitScalarArray",
+    "ScalarArray",
+    "AbstractImplicitScalarArray",
+    "AbstractScalarRandomSample",
+    "ScalarUniformRandomSample",
+    "ScalarNormalRandomSample",
+    "ScalarPoissonRandomSample",
+    "AbstractParameterizedScalarArray",
+    "ScalarArrayRange",
+    "AbstractScalarSpace",
+    "ScalarLinearSpace",
+    "ScalarStratifiedRandomSpace",
+    "ScalarLogarithmicSpace",
+    "ScalarGeometricSpace",
 ]
 
-NDArrayT = TypeVar('NDArrayT', bound=npt.ArrayLike)
+NDArrayT = TypeVar('NDArrayT', bound=npt.ArrayLike, covariant=True)
 StartT = TypeVar('StartT', bound='ScalarLike')
 StopT = TypeVar('StopT', bound='ScalarLike')
 ScalarStartT = TypeVar('ScalarStartT', bound='ScalarLike')
@@ -62,6 +64,18 @@ def _normalize(a: float | u.Quantity | na.AbstractScalarArray) -> na.AbstractSca
 
 
 def as_named_array(value: bool | int | float | complex | str | u.Quantity | na.AbstractArray):
+    """
+    Cast the argument to an instance of :class:`named_arrays.AbstractArray`.
+
+    If the argument is not an instance of :class:`named_arrays.AbstractArray`,
+    wrap it in an instance of :class:`named_arrays.ScalarArray`,
+    otherwise do nothing.
+
+    Parameters
+    ----------
+    value
+        The array-like value to cast.
+    """
     if not hasattr(value, "__named_array_function__"):
         return ScalarArray(value)
     else:
@@ -72,6 +86,7 @@ def as_named_array(value: bool | int | float | complex | str | u.Quantity | na.A
 class AbstractScalar(
     na.AbstractArray,
 ):
+    """An interface representing a physical scalar."""
 
     @property
     @abc.abstractmethod
@@ -105,7 +120,7 @@ class AbstractScalar(
         else:
             raise ValueError('Can only compute length of numeric arrays')
 
-    def volume_cell(self, axis: None | str | tuple[str]) -> na.AbstractScalar:
+    def volume_cell(self, axis: None | str | Sequence[str]) -> na.AbstractScalar:
         if axis is None:
             if self.ndim != 1:
                 raise ValueError(
@@ -141,12 +156,43 @@ class AbstractScalar(
             **kwargs,
         )
 
+    def mean_trimmed(
+        self,
+        q: float = .25,
+        axis: None | str | Sequence[str] = None,
+    ) -> Self:
+        """
+        Compute the trimmed mean along the specified axes.
+
+        Parameters
+        ----------
+        q
+            The fraction of the largest and smallest elements to remove.
+            Must be between 0 and 1/2.
+            If the specified fraction does not result in an integer number of elements,
+            the number of elements to trim is rounded down.
+        axis
+            The axis or axes along which to compute the trimmed mean.
+
+        See Also
+        --------
+        :func:`mean_trimmed` functional version of this method.
+        """
+        return na.mean_trimmed(
+            a=self,
+            q=q,
+            axis=axis,
+        )
+
 
 @dataclasses.dataclass(eq=False, repr=False)
 class AbstractScalarArray(
     AbstractScalar,
     Generic[NDArrayT],
 ):
+    """
+    An interface representing a physical scalar array.
+    """
 
     __named_array_priority__: ClassVar[int] = 1
 
@@ -167,6 +213,7 @@ class AbstractScalarArray(
         This is usually an instance of :class:`numpy.ndarray` or :class:`astropy.units.Quantity`, but it can also be a
         built-in python type such as a :class:`int`, :class:`float`, or :class:`bool`
         """
+
     @property
     def to_xarray(self: Self) -> xr.DataArray:
         """
@@ -218,6 +265,22 @@ class AbstractScalarArray(
             axes=self.axes,
         )
 
+    def to_value(
+        self: Self,
+        unit: u.UnitBase,
+        equivalencies: None | list[tuple[u.Unit, u.Unit]] = [],
+    ) -> Self:
+        ndarray = self.ndarray
+        if not isinstance(ndarray, u.Quantity):
+            ndarray = ndarray << u.dimensionless_unscaled
+        return ScalarArray(
+            ndarray=ndarray.to_value(
+                unit=unit,
+                equivalencies=equivalencies,
+            ),
+            axes=self.axes,
+        )
+
     def ndarray_aligned(self: Self, axes: Sequence[str]) -> np.ndarray:
         """
         Align :attr:`ndarray` to a particular sequence of axes.
@@ -234,7 +297,9 @@ class AbstractScalarArray(
         axes = tuple(axes)
         axes_self = self.axes
 
-        ndarray = np.asanyarray(self.ndarray)
+        ndarray = self.ndarray
+        if not hasattr(ndarray, "__array_function__"):
+            ndarray = np.asanyarray(ndarray)
 
         if axes == axes_self:
             return ndarray
@@ -265,6 +330,16 @@ class AbstractScalarArray(
         )
 
     def change_axis_index(self: Self, axis: str, index: int) -> ScalarArray:
+        """
+        Change the position of an axis in this array.
+
+        Parameters
+        ----------
+        axis
+            The name of the logical axis to modify.
+        index
+            The new index of the logical axis.
+        """
         shape = self.shape
         size_axis = shape.pop(axis)
         keys = list(shape.keys())
@@ -325,14 +400,14 @@ class AbstractScalarArray(
         if unit is not None:
             a = f"{a}{pad_unit}{unit:{format_unit}}"
 
-        return np.char.mod(
+        return np.strings.mod(
             a=a,
             values=self.value,
         )
 
     def _getitem(
             self: Self,
-            item: dict[str, int | slice | AbstractScalarArray] | AbstractScalarArray,
+            item: Mapping[str, int | slice | na.AbstractArray] | na.AbstractArray,
     ):
 
         if isinstance(item, AbstractScalarArray):
@@ -358,7 +433,20 @@ class AbstractScalarArray(
             )
 
         elif isinstance(item, dict):
+
             axes = self.axes
+
+            item = {ax: item[ax] for ax in item if ax in axes}
+
+            if not item:
+                if not axes:
+                    ndarray = self.ndarray
+                    if isinstance(ndarray, np.ndarray):
+                        return self.replace(ndarray=self.ndarray[()])
+                    else:
+                        return self
+                else:
+                    return self
 
             item_advanced = dict()      # type: typ.Dict[str, AbstractScalarArray]
             for axis in item:
@@ -368,9 +456,8 @@ class AbstractScalarArray(
                         item_advanced[axis] = item_axis
                     else:
                         return NotImplemented
-
-            if not set(ax for ax in item if item[ax] is not None).issubset(axes):
-                raise ValueError(f"the axes in item, {tuple(item)}, must be a subset of the axes in the array, {axes}")
+                elif np.issubdtype(type(item_axis), np.integer):
+                    item_advanced[axis] = item_axis
 
             shape_advanced = na.shape_broadcasted(*item_advanced.values())
 
@@ -380,29 +467,22 @@ class AbstractScalarArray(
                 destination=tuple(range(len(item_advanced))),
             )
 
-            axes_organized = list(item_advanced.keys()) + list(ax for ax in axes if ax not in item_advanced)
+            axes_basic = tuple(ax for ax in axes if ax not in item_advanced)
+            axes_self = tuple(item_advanced) + axes_basic
+            axes_value = tuple(shape_advanced) + axes_basic
 
-            axes_new = axes_organized.copy()
             index = [slice(None)] * self.ndim   # type: list[int | slice | AbstractScalar]
             for ax in item:
                 item_axis = item[ax]
                 if item_axis is None:
                     continue
-                if ax in item_advanced:
+                if isinstance(item_axis, na.AbstractScalarArray):
                     item_axis = item_axis.ndarray_aligned(shape_advanced)
-                index[axes_organized.index(ax)] = item_axis
-                if not isinstance(item_axis, slice):
-                    axes_new.remove(ax)
-
-            if any(ax in shape_advanced for ax in axes_new):
-                raise ValueError(
-                    f"axis in advanced axes, {tuple(shape_advanced)}, "
-                    f"is already in basic axes, {tuple(axes_new)}"
-                )
+                index[axes_self.index(ax)] = item_axis
 
             return ScalarArray(
                 ndarray=ndarray_organized[tuple(index)],
-                axes=tuple(shape_advanced.keys()) + tuple(axes_new),
+                axes=axes_value,
             )
 
         else:
@@ -410,8 +490,8 @@ class AbstractScalarArray(
 
     def _getitem_reversed(
             self: Self,
-            array: AbstractScalarArray,
-            item: dict[str, int | slice | na.AbstractArray] | na.AbstractArray,
+            array: na.AbstractArray,
+            item: Mapping[str, int | slice | na.AbstractArray] | na.AbstractArray,
     ):
         return NotImplemented
 
@@ -556,6 +636,9 @@ class AbstractScalarArray(
         if func in scalar_array_functions.DEFAULT_FUNCTIONS:
             return scalar_array_functions.array_function_default(func, *args, **kwargs)
 
+        if func in scalar_array_functions.CUMULATIVE_REDUCE_FUNCTIONS:
+            return scalar_array_functions.array_function_cumulative_reduce(func, *args, **kwargs)
+
         if func in scalar_array_functions.PERCENTILE_LIKE_FUNCTIONS:
             return scalar_array_functions.array_function_percentile_like(func, *args, **kwargs)
 
@@ -597,6 +680,9 @@ class AbstractScalarArray(
 
         if func in scalar_named_array_functions.PLT_AXES_GETTERS:
             return scalar_named_array_functions.plt_axes_getter(func, *args, **kwargs)
+
+        if func in scalar_named_array_functions.PLT_GET_LIM:
+            return scalar_named_array_functions.plt_get_lim(func, *args, **kwargs)
 
         if func in scalar_named_array_functions.PLT_AXES_ATTRIBUTES:
             return scalar_named_array_functions.plt_axes_attribute(func, *args, **kwargs)
@@ -731,9 +817,17 @@ ScalarLike = Union[na.QuantityLike, AbstractScalar]
 
 
 @dataclasses.dataclass(eq=False, repr=False)
+class AbstractExplicitScalarArray(
+    AbstractScalar,
+    na.AbstractExplicitArray,
+):
+    """An interface describing an explicit physical scalar."""
+
+
+@dataclasses.dataclass(eq=False, repr=False)
 class ScalarArray(
     AbstractScalarArray,
-    na.AbstractExplicitArray,
+    AbstractExplicitScalarArray,
     Generic[NDArrayT],
 ):
     """
@@ -786,8 +880,261 @@ class ScalarArray(
         print(radius.mean(axis='position_x'))
     """
 
+    # The operators declared on `AbstractArray` can only promise the widest
+    # array type. The result of an operation is the explicit array of the
+    # highest family involved, so the result is `Self` unless a higher family
+    # absorbs it. Declarations only; the implementation is inherited.
+    if TYPE_CHECKING:  # pragma: nocover
+
+        @overload
+        def __add__(self, other: na.AbstractFunctionArray) -> na.AbstractFunctionArray: ...
+
+        @overload
+        def __add__(self, other: na.AbstractVectorArray) -> na.AbstractVectorArray: ...
+
+        @overload
+        def __add__(self, other: na.AbstractUncertainScalarArray) -> na.AbstractUncertainScalarArray: ...
+
+        @overload
+        def __add__(self, other: na.ArrayLike) -> Self: ...
+
+        @overload
+        def __sub__(self, other: na.AbstractFunctionArray) -> na.AbstractFunctionArray: ...
+
+        @overload
+        def __sub__(self, other: na.AbstractVectorArray) -> na.AbstractVectorArray: ...
+
+        @overload
+        def __sub__(self, other: na.AbstractUncertainScalarArray) -> na.AbstractUncertainScalarArray: ...
+
+        @overload
+        def __sub__(self, other: na.ArrayLike) -> Self: ...
+
+        @overload
+        def __floordiv__(self, other: na.AbstractFunctionArray) -> na.AbstractFunctionArray: ...
+
+        @overload
+        def __floordiv__(self, other: na.AbstractVectorArray) -> na.AbstractVectorArray: ...
+
+        @overload
+        def __floordiv__(self, other: na.AbstractUncertainScalarArray) -> na.AbstractUncertainScalarArray: ...
+
+        @overload
+        def __floordiv__(self, other: na.ArrayLike) -> Self: ...
+
+        @overload
+        def __mod__(self, other: na.AbstractFunctionArray) -> na.AbstractFunctionArray: ...
+
+        @overload
+        def __mod__(self, other: na.AbstractVectorArray) -> na.AbstractVectorArray: ...
+
+        @overload
+        def __mod__(self, other: na.AbstractUncertainScalarArray) -> na.AbstractUncertainScalarArray: ...
+
+        @overload
+        def __mod__(self, other: na.ArrayLike) -> Self: ...
+
+        @overload
+        def __pow__(self, other: na.AbstractFunctionArray) -> na.AbstractFunctionArray: ...
+
+        @overload
+        def __pow__(self, other: na.AbstractVectorArray) -> na.AbstractVectorArray: ...
+
+        @overload
+        def __pow__(self, other: na.AbstractUncertainScalarArray) -> na.AbstractUncertainScalarArray: ...
+
+        @overload
+        def __pow__(self, other: na.ArrayLike) -> Self: ...
+
+        @overload
+        def __radd__(self, other: na.AbstractFunctionArray) -> na.AbstractFunctionArray: ...
+
+        @overload
+        def __radd__(self, other: na.AbstractVectorArray) -> na.AbstractVectorArray: ...
+
+        @overload
+        def __radd__(self, other: na.AbstractUncertainScalarArray) -> na.AbstractUncertainScalarArray: ...
+
+        @overload
+        def __radd__(self, other: na.ArrayLike) -> Self: ...
+
+        @overload
+        def __rsub__(self, other: na.AbstractFunctionArray) -> na.AbstractFunctionArray: ...
+
+        @overload
+        def __rsub__(self, other: na.AbstractVectorArray) -> na.AbstractVectorArray: ...
+
+        @overload
+        def __rsub__(self, other: na.AbstractUncertainScalarArray) -> na.AbstractUncertainScalarArray: ...
+
+        @overload
+        def __rsub__(self, other: na.ArrayLike) -> Self: ...
+
+        @overload
+        def __rmul__(self, other: na.AbstractFunctionArray) -> na.AbstractFunctionArray: ...
+
+        @overload
+        def __rmul__(self, other: na.AbstractVectorArray) -> na.AbstractVectorArray: ...
+
+        @overload
+        def __rmul__(self, other: na.AbstractUncertainScalarArray) -> na.AbstractUncertainScalarArray: ...
+
+        @overload
+        def __rmul__(self, other: na.ArrayLike) -> Self: ...
+
+        @overload
+        def __rtruediv__(self, other: na.AbstractFunctionArray) -> na.AbstractFunctionArray: ...
+
+        @overload
+        def __rtruediv__(self, other: na.AbstractVectorArray) -> na.AbstractVectorArray: ...
+
+        @overload
+        def __rtruediv__(self, other: na.AbstractUncertainScalarArray) -> na.AbstractUncertainScalarArray: ...
+
+        @overload
+        def __rtruediv__(self, other: na.ArrayLike) -> Self: ...
+
+        @overload
+        def __rfloordiv__(self, other: na.AbstractFunctionArray) -> na.AbstractFunctionArray: ...
+
+        @overload
+        def __rfloordiv__(self, other: na.AbstractVectorArray) -> na.AbstractVectorArray: ...
+
+        @overload
+        def __rfloordiv__(self, other: na.AbstractUncertainScalarArray) -> na.AbstractUncertainScalarArray: ...
+
+        @overload
+        def __rfloordiv__(self, other: na.ArrayLike) -> Self: ...
+
+        @overload
+        def __rmod__(self, other: na.AbstractFunctionArray) -> na.AbstractFunctionArray: ...
+
+        @overload
+        def __rmod__(self, other: na.AbstractVectorArray) -> na.AbstractVectorArray: ...
+
+        @overload
+        def __rmod__(self, other: na.AbstractUncertainScalarArray) -> na.AbstractUncertainScalarArray: ...
+
+        @overload
+        def __rmod__(self, other: na.ArrayLike) -> Self: ...
+
+        @overload
+        def __rpow__(self, other: na.AbstractFunctionArray) -> na.AbstractFunctionArray: ...
+
+        @overload
+        def __rpow__(self, other: na.AbstractVectorArray) -> na.AbstractVectorArray: ...
+
+        @overload
+        def __rpow__(self, other: na.AbstractUncertainScalarArray) -> na.AbstractUncertainScalarArray: ...
+
+        @overload
+        def __rpow__(self, other: na.ArrayLike) -> Self: ...
+
+        @overload
+        def __lt__(self, other: na.AbstractFunctionArray) -> na.AbstractFunctionArray: ...
+
+        @overload
+        def __lt__(self, other: na.AbstractVectorArray) -> na.AbstractVectorArray: ...
+
+        @overload
+        def __lt__(self, other: na.AbstractUncertainScalarArray) -> na.AbstractUncertainScalarArray: ...
+
+        @overload
+        def __lt__(self, other: na.ArrayLike) -> Self: ...
+
+        @overload
+        def __le__(self, other: na.AbstractFunctionArray) -> na.AbstractFunctionArray: ...
+
+        @overload
+        def __le__(self, other: na.AbstractVectorArray) -> na.AbstractVectorArray: ...
+
+        @overload
+        def __le__(self, other: na.AbstractUncertainScalarArray) -> na.AbstractUncertainScalarArray: ...
+
+        @overload
+        def __le__(self, other: na.ArrayLike) -> Self: ...
+
+        @overload
+        def __gt__(self, other: na.AbstractFunctionArray) -> na.AbstractFunctionArray: ...
+
+        @overload
+        def __gt__(self, other: na.AbstractVectorArray) -> na.AbstractVectorArray: ...
+
+        @overload
+        def __gt__(self, other: na.AbstractUncertainScalarArray) -> na.AbstractUncertainScalarArray: ...
+
+        @overload
+        def __gt__(self, other: na.ArrayLike) -> Self: ...
+
+        @overload
+        def __ge__(self, other: na.AbstractFunctionArray) -> na.AbstractFunctionArray: ...
+
+        @overload
+        def __ge__(self, other: na.AbstractVectorArray) -> na.AbstractVectorArray: ...
+
+        @overload
+        def __ge__(self, other: na.AbstractUncertainScalarArray) -> na.AbstractUncertainScalarArray: ...
+
+        @overload
+        def __ge__(self, other: na.ArrayLike) -> Self: ...
+
+        @overload
+        def __mul__(self, other: na.AbstractFunctionArray) -> na.AbstractFunctionArray: ...
+
+        @overload
+        def __mul__(self, other: na.AbstractVectorArray) -> na.AbstractVectorArray: ...
+
+        @overload
+        def __mul__(self, other: na.AbstractUncertainScalarArray) -> na.AbstractUncertainScalarArray: ...
+
+        @overload
+        def __mul__(self, other: na.ArrayLike | u.UnitBase) -> Self: ...
+
+        @overload
+        def __truediv__(self, other: na.AbstractFunctionArray) -> na.AbstractFunctionArray: ...
+
+        @overload
+        def __truediv__(self, other: na.AbstractVectorArray) -> na.AbstractVectorArray: ...
+
+        @overload
+        def __truediv__(self, other: na.AbstractUncertainScalarArray) -> na.AbstractUncertainScalarArray: ...
+
+        @overload
+        def __truediv__(self, other: na.ArrayLike | u.UnitBase) -> Self: ...
+
+        @overload
+        def __lshift__(self, other: na.AbstractFunctionArray) -> na.AbstractFunctionArray: ...
+
+        @overload
+        def __lshift__(self, other: na.AbstractVectorArray) -> na.AbstractVectorArray: ...
+
+        @overload
+        def __lshift__(self, other: na.AbstractUncertainScalarArray) -> na.AbstractUncertainScalarArray: ...
+
+        @overload
+        def __lshift__(self, other: na.ArrayLike | u.UnitBase) -> Self: ...
+
+        def __neg__(self) -> Self: ...
+
+        def __pos__(self) -> Self: ...
+
+        def __abs__(self) -> Self: ...
+
+
     ndarray: None | NDArrayT = 0
+    """
+    Underlying data that is wrapped by this class.
+
+    This is usually an instance of :class:`numpy.ndarray` or :class:`astropy.units.Quantity`, but it can also be a
+    built-in python type such as a :class:`int`, :class:`float`, or :class:`bool`
+    """
+
     axes: None | str | tuple[str, ...] = None
+    """
+    A :class:`tuple` of :class:`str` representing the names of each dimension of this array.
+
+    Must have the same length as the number of dimensions of this array.
+    """
 
     def __post_init__(self: Self):
         if self.axes is None:
@@ -896,6 +1243,34 @@ class ScalarArray(
             axes=tuple(shape.keys()),
         )
 
+    @classmethod
+    def full(
+        cls: Type[Self],
+        shape: dict[str, int],
+        fill_value: float | u.Quantity,
+        dtype: None | Type | np.dtype = None,
+    ) -> Self:
+        """
+        Create a new array filled with `fill_value`.
+
+        Parameters
+        ----------
+        shape
+            shape of the new array
+        fill_value
+            value with which to fill the new array
+        dtype
+            data type of the new array
+
+        Returns
+        -------
+            A new array of the specified shape filled with `fill_value`
+        """
+        return cls(
+            ndarray=np.full(shape=tuple(shape.values()), fill_value=fill_value, dtype=dtype),
+            axes=tuple(shape.keys()),
+        )
+
     @property
     def shape(self: Self) -> dict[str, int]:
         try:
@@ -921,7 +1296,7 @@ class ScalarArray(
 
     def __setitem__(
             self: Self,
-            item: dict[str, int | slice | AbstractScalarArray] | AbstractScalarArray,
+            item: Mapping[str, int | slice | na.AbstractArray] | na.AbstractArray,
             value: int | float | u.Quantity | AbstractScalarArray,
     ) -> None:
 
@@ -964,33 +1339,35 @@ class ScalarArray(
 
             if not set(item).issubset(shape_self):
                 raise ValueError(
-                    f"if `item` is a `{dict.__name__}`, the keys in `item`, {tuple(item)}, "
-                    f"must be a subset of `self.axes`, {self.axes}"
+                    f"{item.keys()=} must be a subset of {self.axes=}"
                 )
 
-            item_advanced = {ax: item[ax] for ax in item if na.shape(item[ax])}
+            item_advanced = dict()  # type: typ.Dict[str, AbstractScalarArray]
+            for axis in item:
+                item_axis = item[axis]
+                if isinstance(item_axis, na.AbstractArray):
+                    if isinstance(item_axis, AbstractScalarArray):
+                        item_advanced[axis] = item_axis
+                    else:  #pragma: nocover
+                        raise TypeError(
+                            "if `item[axis]` is an instance of `AbstractArray`, "
+                            "it must be an instance of `AbstractScalarArray`, "
+                            f"got {type(item[axis])=}."
+                        )
+                elif isinstance(item_axis, int):
+                    item_advanced[axis] = item_axis
 
             shape_advanced = na.shape_broadcasted(*item_advanced.values())
 
-            axes_self = tuple(shape_advanced) + tuple(ax for ax in shape_self if ax not in shape_advanced)
-            axes_value = list(axes_self)
+            axes_basic = tuple(ax for ax in shape_self if ax not in item_advanced)
+            axes_self = tuple(item_advanced) + axes_basic
+            axes_value = tuple(shape_advanced) + axes_basic
 
             index = [slice(None)] * len(axes_self)   # type: list[Union[int, slice, AbstractScalar]]
             for axis in item:
                 item_axis = item[axis]
                 if isinstance(item_axis, na.AbstractScalarArray):
                     item_axis = item_axis.ndarray_aligned(shape_advanced)
-                elif isinstance(item_axis, slice):
-                    pass
-                elif isinstance(item_axis, int):
-                    if axis in value.shape:
-                        raise ValueError(f"`value` has an axis, '{axis}', that is set to an `int` in `item`")
-                    axes_value.remove(axis)
-                else:
-                    raise TypeError(
-                        f"if `item` is a `{dict}`, all its values must be an instance of an `{int}`, a `{slice}`,"
-                        f"or an {na.AbstractScalarArray.__name__}, got {type(item_axis).__name__} for key '{axis}'"
-                    )
                 index[axes_self.index(axis)] = item_axis
 
             if value.shape:
@@ -1046,7 +1423,7 @@ class ScalarUniformRandomSample(
     AbstractScalarRandomSample,
     na.AbstractUniformRandomSample[ScalarStartT, ScalarStopT],
 ):
-    def volume_cell(self, axis: None | str | tuple[str]) -> na.AbstractScalar:
+    def volume_cell(self, axis: None | str | Sequence[str]) -> na.AbstractScalar:
         axis = na.axis_normalized(self, axis)
         if len(axis) != 1:
             raise ValueError(
@@ -1156,7 +1533,7 @@ class ScalarLinearSpace(
         print(wavelength)
     """
 
-    def volume_cell(self, axis: None | str | tuple[str]) -> na.AbstractScalar:
+    def volume_cell(self, axis: None | str | Sequence[str]) -> na.AbstractScalar:
         axis = na.axis_normalized(self, axis)
         if len(axis) != 1:
             raise ValueError(

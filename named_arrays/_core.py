@@ -1,63 +1,81 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, TypeVar, Generic, Sequence, Iterator, Union, Type, Callable, Collection, Any
+from typing import Mapping, TYPE_CHECKING, TypeVar, Generic, Sequence, Iterator, Union, Type, Callable, Collection, Any
 from typing_extensions import Self
 import abc
 import dataclasses
 import copy
 import secrets
+from types import NotImplementedType
 import numpy as np
 import numpy.typing as npt
 import astropy.units as u
 import named_arrays as na
 
 __all__ = [
-    'QuantityLike',
-    'StartT',
-    'StopT',
-    'named_array_like',
-    'get_dtype',
-    'value',
-    'type_array',
-    'broadcast_shapes',
-    'shape_broadcasted',
-    'ndindex',
-    'indices',
-    'flatten_axes',
-    'axis_normalized',
-    'explicit',
-    'AbstractArray',
-    'ArrayLike',
-    'AbstractExplicitArray',
-    'AbstractImplicitArray',
-    'AbstractRandomMixin',
-    'AbstractRangeMixin',
-    'AbstractSymmetricRangeMixin',
-    'AbstractRandomSample',
-    'AbstractParameterizedArray',
-    'AbstractLinearParameterizedArrayMixin',
-    'AbstractArrayRange',
-    'AbstractSpace',
-    'AbstractLinearSpace',
-    'strata',
-    'AbstractStratifiedRandomSpace',
-    'AbstractLogarithmicSpace',
-    'AbstractGeometricSpace',
-    'AbstractUniformRandomSample',
-    'AbstractNormalRandomSample',
-    'AbstractPoissonRandomSample',
+    "QuantityLike",
+    "StartT",
+    "StopT",
+    "named_array_like",
+    "get_dtype",
+    "value",
+    "type_array",
+    "broadcast_shapes",
+    "shape_broadcasted",
+    "ndindex",
+    "indices",
+    "flatten_axes",
+    "axis_normalized",
+    "explicit",
+    "getitem",
+    "pack",
+    "unpack",
+    "AbstractArray",
+    "ArrayLike",
+    "AbstractExplicitArray",
+    "AbstractImplicitArray",
+    "AbstractRandomMixin",
+    "AbstractRangeMixin",
+    "AbstractSymmetricRangeMixin",
+    "AbstractRandomSample",
+    "AbstractParameterizedArray",
+    "AbstractLinearParameterizedArrayMixin",
+    "AbstractArrayRange",
+    "AbstractSpace",
+    "AbstractLinearSpace",
+    "strata",
+    "AbstractStratifiedRandomSpace",
+    "AbstractLogarithmicSpace",
+    "AbstractGeometricSpace",
+    "AbstractUniformRandomSample",
+    "AbstractNormalRandomSample",
+    "AbstractPoissonRandomSample",
 ]
 
 QuantityLike = Union[int, float, complex, np.ndarray, u.Quantity]
 
-AxisT = TypeVar("AxisT", bound="str | AbstractArray")
-NumT = TypeVar("NumT", bound="int | AbstractArray")
-StartT = TypeVar("StartT", bound="QuantityLike | AbstractArray")
-StopT = TypeVar("StopT", bound="QuantityLike | AbstractArray")
-CenterT = TypeVar("CenterT", bound="QuantityLike | AbstractArray")
-WidthT = TypeVar("WidthT", bound="QuantityLike | AbstractArray")
-StartExponentT = TypeVar("StartExponentT", bound="QuantityLike | AbstractArray")
-StopExponentT = TypeVar("StopExponentT", bound="QuantityLike | AbstractArray")
-BaseT = TypeVar("BaseT", bound="QuantityLike | AbstractArray")
+
+def _required() -> Any:
+    """
+    Clear a default value inherited from a base dataclass.
+
+    Returns :obj:`dataclasses.MISSING`, which the dataclass machinery reads as
+    "this field has no default". Writing ``dataclasses.MISSING`` directly is
+    equivalent at runtime but is rejected by a type checker, since the
+    sentinel is not a value of the field's declared type.
+    """
+    return dataclasses.MISSING
+
+
+AxisT = TypeVar("AxisT", bound="str | AbstractArray", covariant=True)
+NumT = TypeVar("NumT", bound="int | AbstractArray", covariant=True)
+StartT = TypeVar("StartT", bound="QuantityLike | AbstractArray", covariant=True)
+StopT = TypeVar("StopT", bound="QuantityLike | AbstractArray", covariant=True)
+CenterT = TypeVar("CenterT", bound="QuantityLike | AbstractArray", covariant=True)
+WidthT = TypeVar("WidthT", bound="QuantityLike | AbstractArray", covariant=True)
+StartExponentT = TypeVar("StartExponentT", bound="QuantityLike | AbstractArray", covariant=True)
+StopExponentT = TypeVar("StopExponentT", bound="QuantityLike | AbstractArray", covariant=True)
+BaseT = TypeVar("BaseT", bound="QuantityLike | AbstractArray", covariant=True)
+PrototypeT = TypeVar("PrototypeT")
 
 
 def named_array_like(a: Any) -> bool:
@@ -164,6 +182,18 @@ def type_array(
 
 
 def broadcast_shapes(*shapes: dict[str, int]) -> dict[str, int]:
+    r"""
+    An analogue of :func:`numpy.broadcast_shapes` for named axes.
+
+    Whereas the :mod:`numpy` version of this function accepts a sequence
+    of :class:`tuple`\ s, this function accepts a sequence of :class:`dict`\ s
+    since each axis now has an associated name.
+
+    Parameters
+    ----------
+    shapes
+        A sequence of shapes to broadcast against one another.
+    """
     if not shapes:
         return dict()
     result = shapes[0].copy()
@@ -188,6 +218,14 @@ def broadcast_shapes(*shapes: dict[str, int]) -> dict[str, int]:
 
 
 def shape_broadcasted(*arrays: Any) -> dict[str, int]:
+    """
+    Find the broadcasted shape of a sequence of arrays.
+
+    Parameters
+    ----------
+    arrays
+        A sequence of arrays to broadcast against one another.
+    """
     shapes = [a.shape for a in arrays if hasattr(a, "__named_array_function__")]
     return broadcast_shapes(*shapes)
 
@@ -196,6 +234,19 @@ def ndindex(
         shape: dict[str, int],
         axis_ignored: None | str | Sequence[str] = None,
 ) -> Iterator[dict[str, int]]:
+    """
+    An analogue of :class:`numpy.ndindex` for named axes.
+
+    This version adds a new argument, `axis_ignored`,
+    to allow some of the axes to be excluded from the returned iterator.
+
+    Parameters
+    ----------
+    shape
+        The size of each dimension of the array to index over.
+    axis_ignored
+        The axes to ignore when iterating.
+    """
 
     shape = shape.copy()
 
@@ -213,10 +264,30 @@ def ndindex(
 
 
 def indices(shape: dict[str, int]) -> dict[str, na.ScalarArrayRange]:
+    """
+    An analogue of :func:`numpy.indices` for named axes.
+
+    Parameters
+    ----------
+    shape
+
+    """
     return {axis: na.ScalarArrayRange(0, shape[axis], axis=axis) for axis in shape}
 
 
 def flatten_axes(axes: Sequence[str]):
+    """
+    Given a sequence of axes names,
+    combine them into a single :class:`str` using ``*`` as a delimiter.
+
+    This is intended to be used during boolean advanced indexing to
+    represent the axes selected by the mask.
+
+    Parameters
+    ----------
+    axes
+        A sequence of axes names.
+    """
     if not axes:
         raise ValueError(f"`axes` must be a non-empty sequence, got {axes}")
     return '*'.join(axes)
@@ -227,11 +298,14 @@ def axis_normalized(
         axis: None | str | Sequence[str],
 ) -> tuple[str]:
     """
-    Convert all the possible values of the ``axis`` argument to a :class:`tuple` of :class:`str`.
+    Convert all the possible values of the `axis` argument to a :class:`tuple` of :class:`str`.
 
-    :param a: If ``axis`` is :class:`None` the result is ``a.axes``.
-    :param axis: The ``axis`` value to normalize.
-    :return: Normalized ``axis`` parameter.
+    Parameters
+    ----------
+    a
+        If `axis` is :obj:`None`, the result is :code:`a.axes`.
+    axis
+        The axis to normalize.
     """
 
     if axis is None:
@@ -263,6 +337,269 @@ def explicit(value: Any | AbstractArray):
         return value
 
 
+def getitem(
+    a: Any,
+    item: dict | AbstractArray,
+) -> Any:
+    """
+    Recursively index an arbitrarily-nested structure with a named index.
+
+    The index ``item`` is applied only to the leaves of ``a`` that are
+    compatible with the :mod:`named_arrays` API (see :func:`named_array_like`).
+    Containers (:class:`dict`, :class:`list`, :class:`tuple`) and
+    :mod:`dataclasses` are traversed recursively, and any other leaf value is
+    returned unchanged.
+
+    Parameters
+    ----------
+    a
+        The structure to index. May be a named array, a (possibly nested)
+        :class:`dict`, :class:`list`, or :class:`tuple` of named arrays, a
+        :mod:`dataclasses` instance whose fields are named arrays, or any other
+        value (which is returned unchanged).
+    item
+        The named index to apply to each array-like leaf of ``a``, for example
+        a :class:`dict` mapping axis names to index arrays.
+
+    Returns
+    -------
+        A structure with the same shape as ``a`` where every array-like leaf
+        has been indexed by ``item``.
+
+    Examples
+    --------
+
+    .. jupyter-execute::
+
+        import numpy as np
+        import named_arrays as na
+
+        a = na.arange(0, 5, axis="x")
+        index = {"x": na.ScalarArray(np.array([1, 3]), axes="x")}
+
+        na.getitem({"foo": a, "bar": 2 * a}, index)
+
+    Notes
+    -----
+    A :class:`tuple` leaf is rebuilt as a plain :class:`tuple`, so the subtype
+    of a :class:`typing.NamedTuple` is not preserved.
+    """
+
+    if named_array_like(a):
+        return a[item]
+
+    elif isinstance(a, dict):
+        return {
+            key: getitem(a[key], item)
+            for key in a
+        }
+
+    elif isinstance(a, list):
+        return [getitem(a_i, item) for a_i in a]
+
+    elif isinstance(a, tuple):
+        return tuple(getitem(a_i, item) for a_i in a)
+
+    elif dataclasses.is_dataclass(a):
+        changes = {
+            field.name: getitem(getattr(a, field.name), item)
+            for field in dataclasses.fields(a)
+            if field.init
+        }
+        return dataclasses.replace(a, **changes)
+
+    else:
+        return a
+
+
+def pack(a: Any, axis: str = "pack") -> na.ScalarArray:
+    """
+    Flatten the numeric leaves of a nested structure into a 1D array.
+
+    The magnitudes of every array-like leaf of ``a`` are stripped of their
+    units and concatenated into a single, one-dimensional, dimensionless
+    :class:`named_arrays.ScalarArray` along ``axis``, in a deterministic
+    traversal order. Containers (:class:`dict`, :class:`list`, :class:`tuple`,
+    :mod:`dataclasses` instances) and composite named arrays
+    (e.g. :class:`named_arrays.AbstractVectorArray`) are traversed recursively;
+    non-numeric values (e.g. :obj:`None`, :class:`str`) are ignored.
+
+    This is the inverse of :func:`unpack`. Together they bridge the gap between
+    the named, united arrays used throughout this package and the flat,
+    dimensionless float vectors expected by optimizers such as those in
+    :mod:`scipy.optimize`. The units, axis names, and structure dropped here are
+    restored by :func:`unpack` from a prototype, so the pair round-trips:
+    ``na.unpack(na.pack(a), a) == a``.
+
+    Parameters
+    ----------
+    a
+        The structure to flatten. May be a named array, a (possibly nested)
+        :class:`dict`, :class:`list`, :class:`tuple`, or :mod:`dataclasses`
+        instance of named arrays, or any other value.
+    axis
+        The name of the logical axis of the flattened result.
+
+    See Also
+    --------
+    unpack : Reconstruct a structure from a flattened array and a prototype.
+
+    Examples
+    --------
+
+    .. jupyter-execute::
+
+        import astropy.units as u
+        import named_arrays as na
+
+        params = na.CartesianNdVectorArray({
+            "yaw": 1 * u.deg,
+            "roll": 2 * u.deg,
+            "defocus": -3 * u.mm,
+        })
+
+        na.pack(params)
+    """
+    chunks = []
+
+    def visit(x: Any) -> None:
+        if isinstance(x, na.AbstractScalarArray):
+            chunks.append(np.reshape(value(x).ndarray, -1))
+        elif isinstance(x, na.AbstractVectorArray):
+            for component in x.components.values():
+                visit(component)
+        elif named_array_like(x):
+            raise NotImplementedError(
+                f"pack is not supported for {type(x).__qualname__!r} leaves."
+            )
+        elif isinstance(x, dict):
+            for element in x.values():
+                visit(element)
+        elif isinstance(x, (list, tuple)):
+            for element in x:
+                visit(element)
+        elif dataclasses.is_dataclass(x) and not isinstance(x, type):
+            for field in dataclasses.fields(x):
+                if field.init:
+                    visit(getattr(x, field.name))
+        elif isinstance(x, (u.Quantity, int, float, complex, np.ndarray)):
+            chunks.append(np.reshape(value(x), -1))
+
+    visit(a)
+    flat = np.concatenate(chunks).astype(float) if chunks else np.empty(0)
+    return na.ScalarArray(flat, axes=axis)
+
+
+def unpack(
+    a: na.AbstractScalarArray | npt.ArrayLike,
+    prototype: PrototypeT,
+    axis: str = "pack",
+) -> PrototypeT:
+    """
+    Reconstruct a structure from a flattened array and a prototype.
+
+    This is the inverse of :func:`pack`. The flat values in ``a`` are
+    distributed, in order, back onto the numeric leaves of a copy of
+    ``prototype``, restoring each leaf's units, axis names, and type from the
+    prototype. Non-numeric parts of the structure are copied from ``prototype``
+    unchanged. Thus ``na.unpack(na.pack(a), a) == a``.
+
+    Parameters
+    ----------
+    a
+        The flattened values, for example the result of :func:`pack` or the
+        ``x`` returned by a :mod:`scipy.optimize` routine.
+    prototype
+        A structure with the same layout as the one that produced ``a``,
+        supplying the units, axes, types, and traversal order used to rebuild it.
+    axis
+        The name of the logical axis of ``a`` if it is a named array.
+
+    See Also
+    --------
+    pack : Flatten the numeric leaves of a structure into a 1D array.
+
+    Examples
+    --------
+
+    .. jupyter-execute::
+
+        import numpy as np
+        import astropy.units as u
+        import named_arrays as na
+
+        prototype = na.CartesianNdVectorArray({
+            "yaw": 0 * u.deg,
+            "roll": 0 * u.deg,
+            "defocus": 0 * u.mm,
+        })
+
+        na.unpack(na.ScalarArray(np.array([1.0, 2.0, -3.0]), axes="pack"), prototype)
+    """
+    if isinstance(a, na.AbstractArray):
+        flat = np.reshape(value(a).ndarray, -1)
+    else:
+        flat = np.reshape(np.asarray(a), -1)
+    position = 0
+
+    def visit(p: Any) -> Any:
+        nonlocal position
+        if isinstance(p, na.AbstractScalarArray):
+            shape = na.shape(p)
+            num = int(np.prod(tuple(shape.values()), dtype=int))
+            chunk = np.reshape(flat[position : position + num], tuple(shape.values()))
+            position += num
+            _unit = na.unit(p)
+            chunk = chunk if _unit is None else chunk << _unit
+            return na.ScalarArray(chunk, axes=tuple(shape))
+        elif isinstance(p, na.AbstractVectorArray):
+            return p.type_explicit.from_cartesian_nd(
+                na.CartesianNdVectorArray(
+                    {name: visit(c) for name, c in p.components.items()}
+                )
+            )
+        elif named_array_like(p):
+            raise NotImplementedError(
+                f"unpack is not supported for {type(p).__qualname__!r} leaves."
+            )
+        elif isinstance(p, dict):
+            return {key: visit(element) for key, element in p.items()}
+        elif isinstance(p, (list, tuple)):
+            return type(p)(visit(element) for element in p)
+        elif dataclasses.is_dataclass(p) and not isinstance(p, type):
+            return dataclasses.replace(
+                p,
+                **{
+                    field.name: visit(getattr(p, field.name))
+                    for field in dataclasses.fields(p)
+                    if field.init
+                },
+            )
+        elif isinstance(p, (u.Quantity, int, float, complex, np.ndarray)):
+            shape = np.shape(value(p))
+            num = int(np.prod(shape, dtype=int))
+            chunk = flat[position : position + num]
+            position += num
+            _unit = na.unit(p)
+            if shape:
+                chunk = np.reshape(chunk, shape)
+            else:
+                chunk = chunk[0]
+                if isinstance(p, (int, float, complex)):
+                    chunk = type(p)(chunk)
+            return chunk if _unit is None else chunk * _unit
+        else:
+            return p
+
+    result = visit(prototype)
+    if position != flat.size:
+        raise ValueError(
+            f"the size of `a` ({flat.size}) does not match the number of "
+            f"elements in `prototype` ({position})."
+        )
+    return result
+
+
 @dataclasses.dataclass(eq=False, repr=False)
 class AbstractArray(
     np.lib.mixins.NDArrayOperatorsMixin,
@@ -287,23 +624,23 @@ class AbstractArray(
     @abc.abstractmethod
     def type_abstract(self: Self) -> Type[AbstractArray]:
         """
-        The :class:`AbstractArray` type corresponding to this array
+        The :class:`named_arrays.AbstractArray` type corresponding to this array.
         """
 
     @property
     @abc.abstractmethod
     def type_explicit(self: Self) -> Type[AbstractExplicitArray]:
         """
-        The :class:`AbstractExplicitArray` type corresponding to this array
+        The :class:`named_arrays.AbstractExplicitArray` type corresponding to this array.
         """
 
     @property
     @abc.abstractmethod
     def axes(self: Self) -> tuple[str, ...]:
         """
-        A :class:`tuple` of :class:`str` representing the names of each dimension of :attr:`ndarray`.
+        A :class:`tuple` of :class:`str` representing the names of each dimension of this array.
 
-        Must have the same length as the number of dimensions of :attr:`ndarray`.
+        Must have the same length as the number of dimensions of this array.
         """
 
     @property
@@ -319,7 +656,8 @@ class AbstractArray(
     @abc.abstractmethod
     def shape(self: Self) -> dict[str, int]:
         """
-        Shape of the array. Analogous to :attr:`numpy.ndarray.shape` but represented as a :class:`dict` where the keys
+        The number of elements along each axis of the array.
+        Analogous to :attr:`numpy.ndarray.shape` but represented as a :class:`dict` where the keys
         are the axis names and the values are the axis sizes.
         """
 
@@ -339,16 +677,20 @@ class AbstractArray(
 
     @property
     @abc.abstractmethod
-    def value(self: Self) -> Self:
+    def value(self: Self) -> AbstractExplicitArray:
         """
-        Returns a new array with its units removed, if they exist
+        Returns a new array with its units removed, if they exist.
+
+        The family is preserved, so a vector returns a vector and a function
+        array returns a function array, but the result is always explicit:
+        an implicit array materializes into its family's explicit type.
         """
 
     @property
     @abc.abstractmethod
     def explicit(self: Self) -> AbstractExplicitArray:
         """
-        Converts this array to an instance of :class:`named_arrays.AbstractExplicitArray`
+        Converts this array to an instance of :class:`named_arrays.AbstractExplicitArray`.
         """
 
     @property
@@ -356,7 +698,7 @@ class AbstractArray(
         """
         if this array has multiple components, broadcast them against each other.
 
-        Equivalent to ``a.broadcast_to(a.shape)``
+        Equivalent to :code:`a.broadcast_to(a.shape)`.
         """
         a = self.explicit
         return a.broadcast_to(a.shape)
@@ -399,6 +741,26 @@ class AbstractArray(
             Boolean flag controlling whether to copy the array.
         """
 
+    @abc.abstractmethod
+    def to_value(
+        self: Self,
+        unit: u.UnitBase,
+        equivalencies: None | list[tuple[u.Unit, u.Unit]] = [],
+    ) -> Self:
+        """
+        The numerical value of this array, possibly in a different unit.
+
+        Equivalent to :meth:`astropy.units.Quantity.to_value`.
+
+        Parameters
+        ----------
+        unit
+            New unit of the returned array
+        equivalencies
+            A list of equivalence pairs to try if the units are not directly
+            convertible.
+        """
+
     @property
     @abc.abstractmethod
     def length(self: Self) -> na.AbstractScalar:
@@ -408,12 +770,31 @@ class AbstractArray(
 
     @property
     def indices(self: Self) -> dict[str, na.ScalarArrayRange]:
+        """
+        Compute the index of each element of this array.
+
+        See Also
+        --------
+        :func:`named_arrays.indices`: A functional version of this method.
+        """
         return indices(self.shape)
 
     def ndindex(
             self: Self,
             axis_ignored: None | str | Sequence[str] = None,
     ) -> Iterator[dict[str, int]]:
+        """
+        An iterator that yields the index of each element of this array.
+
+        Parameters
+        ----------
+        axis_ignored
+            The of the array to ignore when generating the iterator.
+
+        See Also
+        --------
+        :func:`named_arrays.ndindex`: A functional version of this method.
+        """
         return ndindex(
             shape=self.shape,
             axis_ignored=axis_ignored,
@@ -422,16 +803,16 @@ class AbstractArray(
     @abc.abstractmethod
     def add_axes(self: Self, axes: str | Sequence[str]) -> AbstractExplicitArray:
         """
-        Add new singleton axes to this array
+        Add new singleton axes to this array.
 
         Parameters
         ----------
         axes
-            New axes to add to the array
+            Either a single axis name or a sequence of axis names add to this array.
 
-        Returns
-        -------
-        Array with new axes added
+        See Also
+        --------
+        :func:`named_arrays.add_axes`: A functional version of this method.
         """
 
     @abc.abstractmethod
@@ -489,6 +870,7 @@ class AbstractArray(
         self,
         axis: None | str | Sequence[str] = None,
         random: bool = False,
+        seed: None | int = None,
     ) -> na.AbstractExplicitArray:
         """
         Convert an array from cell vertices to cell centers.
@@ -500,6 +882,11 @@ class AbstractArray(
         random
             If true, select a random point within each cell instead of the
             geometric center.
+        seed
+            The seed of the random sampling, which has an effect only where
+            ``random`` is true.
+            If :obj:`None` (the default), the sampling differs from one call
+            to the next, and anything computed from it cannot be reproduced.
         """
 
         if axis is None:
@@ -525,9 +912,18 @@ class AbstractArray(
                 for a in axis
             }
         else:
+            # Each axis is drawn from its own stream. Giving them all the same
+            # seed would give them all the same offsets, which would put every
+            # sample on the diagonal of its cell rather than inside it.
+            seeds = np.random.SeedSequence(seed).generate_state(len(axis))
             i = {
-                a: na.random.uniform(0, 1, shape_random=shape_centers)
-                for a in axis
+                a: na.random.uniform(
+                    0,
+                    1,
+                    shape_random=shape_centers,
+                    seed=int(s),
+                )
+                for a, s in zip(axis, seeds)
             }
 
         return self._nlerp(i)
@@ -626,7 +1022,7 @@ class AbstractArray(
         format_value: str = "%.2f",
         format_unit: str = "latex_inline",
         pad_unit: str = r"$\,$",
-    ):
+    ) -> AbstractExplicitArray:
         """
         Convert to an array of strings where each string has an
         appropriately-formatted unit attached to the value.
@@ -642,9 +1038,11 @@ class AbstractArray(
         """
 
     def copy_shallow(self: Self) -> Self:
+        """Create a shallow copy of this array."""
         return copy.copy(self)
 
     def copy(self: Self) -> Self:
+        """Create a deep copy of this array."""
         return copy.deepcopy(self)
 
     def __copy__(self: Self) -> Self:
@@ -655,24 +1053,38 @@ class AbstractArray(
         fields = {field.name: copy.deepcopy(getattr(self, field.name)) for field in dataclasses.fields(self)}
         return type(self)(**fields)
 
+    def replace(self, /, **changes) -> Self:
+        """
+        A method version of :func:`dataclasses.replace` for named arrays.
+
+        Parameters
+        ----------
+        changes
+            The fields of the dataclass to be overwritten
+        """
+        return dataclasses.replace(
+            self,
+            **changes,
+        )
+
     @abc.abstractmethod
     def _getitem(
             self: Self,
-            item: dict[str, int | slice | AbstractArray] | AbstractArray,
-    ):
+            item: Mapping[str, int | slice | AbstractArray] | AbstractArray,
+    ) -> AbstractExplicitArray | NotImplementedType:
         pass
 
     @abc.abstractmethod
     def _getitem_reversed(
             self: Self,
             array: AbstractArray,
-            item: dict[str, int | slice | AbstractArray] | AbstractArray
-    ):
+            item: Mapping[str, int | slice | AbstractArray] | AbstractArray
+    ) -> AbstractExplicitArray | NotImplementedType:
         pass
 
     def __getitem__(
             self: Self,
-            item: dict[str, int | slice | AbstractArray] | AbstractArray,
+            item: Mapping[str, int | slice | AbstractArray] | AbstractArray,
     ) -> AbstractExplicitArray:
         result = self._getitem(item)
         if result is not NotImplemented:
@@ -693,6 +1105,27 @@ class AbstractArray(
 
         raise ValueError(f"item not supported by array with type {type(self)}")
 
+    def isel(
+            self: Self,
+            **item: int | slice | AbstractArray,
+    ) -> AbstractExplicitArray:
+        """
+        Index this array along named axes given as keyword arguments.
+
+        This is a convenience wrapper around :meth:`__getitem__`:
+        ``a.isel(x=0)`` is equivalent to ``a[dict(x=0)]``.
+
+        Since keyword-argument names must be valid Python identifiers, axes
+        whose names are not valid identifiers can only be indexed using the
+        :class:`dict` form, ``a[{...}]``.
+
+        Parameters
+        ----------
+        item
+            The index to apply along each named axis.
+        """
+        return self[item]
+
     @abc.abstractmethod
     def __bool__(self: Self) -> bool:
         return True
@@ -708,6 +1141,109 @@ class AbstractArray(
     @abc.abstractmethod
     def __truediv__(self: Self, other: ArrayLike | u.UnitBase) -> AbstractExplicitArray:
         return super().__truediv__(other)
+
+    # The remaining operators are inherited from
+    # `numpy.lib.mixins.NDArrayOperatorsMixin`, which declares each of them as
+    # returning `Any`. That is not merely imprecise: `Any` silences every
+    # subsequent check, so a single arithmetic operation disables type checking
+    # for everything downstream of it. Declare them here with an honest return
+    # type. These are declarations only: at runtime the mixin's implementation
+    # is inherited unchanged. Subclasses are free to narrow them further, as
+    # the vectors and function arrays do.
+
+    if TYPE_CHECKING:  # pragma: nocover
+
+        def __add__(self, other: ArrayLike) -> AbstractExplicitArray: ...
+
+        def __sub__(self, other: ArrayLike) -> AbstractExplicitArray: ...
+
+        def __matmul__(self, other: ArrayLike) -> AbstractExplicitArray: ...
+
+        def __floordiv__(self, other: ArrayLike) -> AbstractExplicitArray: ...
+
+        def __mod__(self, other: ArrayLike) -> AbstractExplicitArray: ...
+
+        def __pow__(self, other: ArrayLike) -> AbstractExplicitArray: ...
+
+        def __rshift__(self, other: ArrayLike) -> AbstractExplicitArray: ...
+
+        def __and__(self, other: ArrayLike) -> AbstractExplicitArray: ...
+
+        def __xor__(self, other: ArrayLike) -> AbstractExplicitArray: ...
+
+        def __or__(self, other: ArrayLike) -> AbstractExplicitArray: ...
+
+        def __radd__(self, other: ArrayLike) -> AbstractExplicitArray: ...
+
+        def __rsub__(self, other: ArrayLike) -> AbstractExplicitArray: ...
+
+        def __rmul__(self, other: ArrayLike) -> AbstractExplicitArray: ...
+
+        def __rmatmul__(self, other: ArrayLike) -> AbstractExplicitArray: ...
+
+        def __rtruediv__(self, other: ArrayLike) -> AbstractExplicitArray: ...
+
+        def __rfloordiv__(self, other: ArrayLike) -> AbstractExplicitArray: ...
+
+        def __rmod__(self, other: ArrayLike) -> AbstractExplicitArray: ...
+
+        def __rpow__(self, other: ArrayLike) -> AbstractExplicitArray: ...
+
+        def __rlshift__(self, other: ArrayLike) -> AbstractExplicitArray: ...
+
+        def __rrshift__(self, other: ArrayLike) -> AbstractExplicitArray: ...
+
+        def __rand__(self, other: ArrayLike) -> AbstractExplicitArray: ...
+
+        def __rxor__(self, other: ArrayLike) -> AbstractExplicitArray: ...
+
+        def __ror__(self, other: ArrayLike) -> AbstractExplicitArray: ...
+
+        def __iadd__(self, other: ArrayLike) -> AbstractExplicitArray: ...
+
+        def __isub__(self, other: ArrayLike) -> AbstractExplicitArray: ...
+
+        def __imul__(self, other: ArrayLike) -> AbstractExplicitArray: ...
+
+        def __imatmul__(self, other: ArrayLike) -> AbstractExplicitArray: ...
+
+        def __itruediv__(self, other: ArrayLike) -> AbstractExplicitArray: ...
+
+        def __ifloordiv__(self, other: ArrayLike) -> AbstractExplicitArray: ...
+
+        def __imod__(self, other: ArrayLike) -> AbstractExplicitArray: ...
+
+        def __ipow__(self, other: ArrayLike) -> AbstractExplicitArray: ...
+
+        def __ilshift__(self, other: ArrayLike) -> AbstractExplicitArray: ...
+
+        def __irshift__(self, other: ArrayLike) -> AbstractExplicitArray: ...
+
+        def __iand__(self, other: ArrayLike) -> AbstractExplicitArray: ...
+
+        def __ixor__(self, other: ArrayLike) -> AbstractExplicitArray: ...
+
+        def __ior__(self, other: ArrayLike) -> AbstractExplicitArray: ...
+
+        def __lt__(self, other: ArrayLike) -> AbstractExplicitArray: ...
+
+        def __le__(self, other: ArrayLike) -> AbstractExplicitArray: ...
+
+        def __gt__(self, other: ArrayLike) -> AbstractExplicitArray: ...
+
+        def __ge__(self, other: ArrayLike) -> AbstractExplicitArray: ...
+
+        def __neg__(self) -> AbstractExplicitArray: ...
+
+        def __pos__(self) -> AbstractExplicitArray: ...
+
+        def __abs__(self) -> AbstractExplicitArray: ...
+
+        def __invert__(self) -> AbstractExplicitArray: ...
+
+        def __divmod__(self, other: ArrayLike) -> tuple[AbstractExplicitArray, AbstractExplicitArray]: ...
+
+        def __rdivmod__(self, other: ArrayLike) -> tuple[AbstractExplicitArray, AbstractExplicitArray]: ...
 
     @abc.abstractmethod
     def __array_matmul__(
@@ -767,17 +1303,64 @@ class AbstractArray(
             shape: dict[str, int],
             append: bool = False,
     ) -> Self:
+        """
+        A new view of this array with the specified shape.
+
+        Parameters
+        ----------
+        shape
+            The shape of the new array.
+        append
+            If :obj:`True`, `shape` will be appended to the current shape
+            of this array before broadcasting.
+
+        See Also
+        --------
+        :func:`named_arrays.broadcast_to`: A functional version of this method.
+        """
         return na.broadcast_to(
             array=self,
             shape=shape,
             append=append,
         )
 
+    def debroadcast(
+            self: Self,
+            axes: None | str | Sequence[str] = None,
+    ) -> Self:
+        """
+        Remove redundant axes introduced by broadcasting.
+
+        Parameters
+        ----------
+        axes
+            The axes to consider removing.
+            If :obj:`None` (the default), every axis of this array is
+            considered.
+            Axes not present in this array are ignored.
+
+        See Also
+        --------
+        :func:`named_arrays.debroadcast`: A functional version of this method.
+        """
+        return na.debroadcast(
+            array=self,
+            axes=axes,
+        )
+
     def reshape(
             self: Self,
             shape: dict[str, int],
     ) -> Self:
-        return np.reshape(self, newshape=shape)
+        """
+        Reorganize this array into a new shape.
+
+        Parameters
+        ----------
+        shape
+            The new shape of the array, must be compatible with this array.
+        """
+        return np.reshape(self, shape)
 
     def min(
             self: Self,
@@ -785,6 +1368,22 @@ class AbstractArray(
             initial: npt.ArrayLike = np._NoValue,
             where: Self = np._NoValue,
     ) -> Self:
+        """
+        The minimum value of this array along the given axes.
+
+        Parameters
+        ----------
+        axis
+            The logical axis or axes along which the operation is computed.
+        initial
+            The initial value of the minimum, required if `where` provided.
+        where
+            An optional mask which selects which elements to be considered.
+
+        See Also
+        --------
+        :func:`numpy.min`: A functional version of this method.
+        """
         return np.min(self, axis=axis, initial=initial, where=where)
 
     def max(
@@ -793,6 +1392,22 @@ class AbstractArray(
             initial: npt.ArrayLike = np._NoValue,
             where: Self = np._NoValue,
     ) -> Self:
+        """
+        The maximum value of this array along the given axes.
+
+        Parameters
+        ----------
+        axis
+            The logical axis or axes along which the operation is computed.
+        initial
+            The initial value of the minimum, required if `where` provided.
+        where
+            An optional mask which selects which elements to be considered.
+
+        See Also
+        --------
+        :func:`numpy.max`: A functional version of this method.
+        """
         return np.max(self, axis=axis, initial=initial, where=where)
 
     def sum(
@@ -800,12 +1415,38 @@ class AbstractArray(
             axis: None | str | Sequence[str] = None,
             where: Self = np._NoValue,
     ) -> Self:
+        """
+        The sum of each element of this array along the given axes.
+
+        Parameters
+        ----------
+        axis
+            The logical axis or axes along which the operation is computed.
+        where
+            An optional mask which selects which elements to be considered.
+
+        See Also
+        --------
+        :func:`numpy.sum`: A functional version of this method.
+        """
         return np.sum(self, axis=axis, where=where)
 
     def ptp(
             self: Self,
             axis: None | str | Sequence[str] = None,
     ) -> Self:
+        """
+        The peak-to-peak value of this array along the given axes.
+
+        Parameters
+        ----------
+        axis
+            The logical axis or axes along which the operation is computed.
+
+        See Also
+        --------
+        :func:`numpy.ptp`: A functional version of this method.
+        """
         return np.ptp(self, axis=axis)
 
     def mean(
@@ -813,6 +1454,20 @@ class AbstractArray(
             axis: None | str | Sequence[str] = None,
             where: Self = np._NoValue,
     ) -> Self:
+        """
+        The mean value of this array along the given axes.
+
+        Parameters
+        ----------
+        axis
+            The logical axis or axes along which the operation is computed.
+        where
+            An optional mask which selects which elements to be considered.
+
+        See Also
+        --------
+        :func:`numpy.mean`: A functional version of this method.
+        """
         return np.mean(self, axis=axis, where=where)
 
     def std(
@@ -820,6 +1475,20 @@ class AbstractArray(
             axis: None | str | Sequence[str] = None,
             where: Self = np._NoValue,
     ) -> Self:
+        """
+        The standard deviation of this array along the given axes.
+
+        Parameters
+        ----------
+        axis
+            The logical axis or axes along which the operation is computed.
+        where
+            An optional mask which selects which elements to be considered.
+
+        See Also
+        --------
+        :func:`numpy.std`: A functional version of this method.
+        """
         return np.std(self, axis=axis, where=where)
 
     def var(
@@ -827,12 +1496,38 @@ class AbstractArray(
             axis: None | str | Sequence[str] = None,
             where: Self = np._NoValue,
     ) -> Self:
+        """
+        The variance of this array along the given axes.
+
+        Parameters
+        ----------
+        axis
+            The logical axis or axes along which the operation is computed.
+        where
+            An optional mask which selects which elements to be considered.
+
+        See Also
+        --------
+        :func:`numpy.var`: A functional version of this method.
+        """
         return np.var(self, axis=axis, where=where)
 
     def median(
             self,
             axis: None | str | Sequence[str] = None,
     ):
+        """
+        The median value of this array along the given axes.
+
+        Parameters
+        ----------
+        axis
+            The logical axis or axes along which the operation is computed.
+
+        See Also
+        --------
+        :func:`numpy.median`: A functional version of this method.
+        """
         return np.median(self, axis=axis)
 
     def percentile(
@@ -844,6 +1539,28 @@ class AbstractArray(
             method: str = 'linear',
             keepdims: bool = False,
     ):
+        """
+        The requested percentile of this array along the given axes.
+
+        Parameters
+        ----------
+        q
+            The percentile to compute.
+        axis
+            The logical axis or axes along which the operation is computed.
+        out
+            An optional output array in which to place the result.
+        overwrite_input
+            Whether to overwrite the input array.
+        method
+            How to interpolate the result.
+        keepdims
+            A boolean flag indicating whether to keep the reduced dimensions.
+
+        See Also
+        --------
+        :func:`numpy.percentile`: A functional version of this method.
+        """
         return np.percentile(
             a=self,
             q=q,
@@ -859,6 +1576,20 @@ class AbstractArray(
             axis: None | str | Sequence[str] = None,
             where: Self = np._NoValue,
     ) -> Self:
+        """
+        Return :obj:`True` if `all` of the elements along the given axes are :obj:`True`.
+
+        Parameters
+        ----------
+        axis
+            The logical axis or axes along which the operation is computed.
+        where
+            An optional mask which selects which elements to be considered.
+
+        See Also
+        --------
+        :func:`numpy.all`: A functional version of this method.
+        """
         return np.all(self, axis=axis, where=where)
 
     def any(
@@ -866,13 +1597,58 @@ class AbstractArray(
             axis: None | str | Sequence[str] = None,
             where: Self = np._NoValue,
     ) -> Self:
+        """
+        Return :obj:`True` if `any` of the elements along the given axes are :obj:`True`.
+
+        Parameters
+        ----------
+        axis
+            The logical axis or axes along which the operation is computed.
+        where
+            An optional mask which selects which elements to be considered.
+
+        See Also
+        --------
+        :func:`numpy.any`: A functional version of this method.
+        """
         return np.any(self, axis=axis, where=where)
+
+    def take_along_axis(
+            self: Self,
+            indices: AbstractArray,
+            axis: str,
+    ) -> Self:
+        """
+        Take values from this array by matching ``indices`` along ``axis``.
+
+        Parameters
+        ----------
+        indices
+            The integer indices to take along ``axis``.
+        axis
+            The axis of this array along which the values are taken.
+
+        See Also
+        --------
+        :func:`named_arrays.take_along_axis`: A functional version of this method.
+        """
+        return na.take_along_axis(self, indices=indices, axis=axis)
 
     def rms(
             self: Self,
             axis: None | str | Sequence[str] = None,
             where: Self = np._NoValue,
     ) -> Self:
+        """
+        The root-mean-square of this array along the given axes.
+
+        Parameters
+        ----------
+        axis
+            The logical axis or axes along which the operation is computed.
+        where
+            An optional mask which selects which elements to be considered.
+        """
         return np.sqrt(np.mean(np.square(self), axis=axis, where=where))
 
     def vmr(
@@ -880,12 +1656,34 @@ class AbstractArray(
             axis: None | str | Sequence[str] = None,
             where: Self = np._NoValue,
     ):
+        """
+        The variance-to-mean ratio of this array along the given axes.
+
+        Parameters
+        ----------
+        axis
+            The logical axis or axes along which the operation is computed.
+        where
+            An optional mask which selects which elements to be considered.
+        """
         return na.vmr(self, axis=axis, where=where)
 
     def transpose(
             self: Self,
             axes: None | Sequence[str] = None,
     ) -> Self:
+        """
+        Reorder the axes of this array to the given sequence.
+
+        Parameters
+        ----------
+        axes
+            The new axis ordering of this array.
+
+        See Also
+        --------
+        :func:`numpy.transpose`: The :mod:`numpy` version of this method.
+        """
         return np.transpose(self, axes=axes)
 
     def _interp_linear_recursive(
@@ -936,6 +1734,15 @@ class AbstractArray(
             self: Self,
             item: dict[str, Self],
     ) -> Self:
+        """
+        Linearly interpolate this array to find its value at the given
+        fractional index.
+
+        Parameters
+        ----------
+        item
+            A fractional index at which to evaluate the array.
+        """
         if item:
             return self._interp_linear_recursive(
                 item=item,
@@ -1007,6 +1814,12 @@ ArrayLike = Union[QuantityLike, AbstractArray]
 class AbstractExplicitArray(
     AbstractArray,
 ):
+    """
+    An interface describing an explicit array or an actual array of numbers.
+
+    This is in contrast to a :class:`named_arrays.AbstractImplicitArray`.
+    """
+
     @classmethod
     @abc.abstractmethod
     def from_scalar_array(
@@ -1049,6 +1862,10 @@ class AbstractExplicitArray(
 class AbstractImplicitArray(
     AbstractArray,
 ):
+    """
+    An interface describing an implicit array or a lazily-evaluated array.
+    """
+
     @property
     def axes(self: Self) -> tuple[str, ...]:
         return self.explicit.axes
@@ -1062,7 +1879,7 @@ class AbstractImplicitArray(
         return self.explicit.size
 
     @property
-    def value(self: Self) -> Self:
+    def value(self: Self) -> AbstractExplicitArray:
         return self.explicit.value
 
     @property
@@ -1080,6 +1897,7 @@ class AbstractImplicitArray(
 class AbstractRandomMixin(
     abc.ABC,
 ):
+    """A mixin class used for random implicit arrays."""
 
     def __post_init__(self):
         if self.seed is None:
@@ -1106,6 +1924,7 @@ class AbstractRandomMixin(
 class AbstractRangeMixin(
     abc.ABC,
 ):
+    """A mixin class for implicit arrays which describe a range of values."""
 
     @property
     @abc.abstractmethod
@@ -1173,8 +1992,8 @@ class AbstractUniformRandomSample(
     AbstractRandomSample,
     Generic[StartT, StopT],
 ):
-    start: StartT = dataclasses.MISSING
-    stop: StopT = dataclasses.MISSING
+    start: StartT = _required()
+    stop: StopT = _required()
     shape_random: None | dict[str, int] = None
     seed: None | int = None
 
@@ -1198,8 +2017,8 @@ class AbstractNormalRandomSample(
     AbstractRandomSample,
     Generic[CenterT, WidthT],
 ):
-    center: CenterT = dataclasses.MISSING
-    width: WidthT = dataclasses.MISSING
+    center: CenterT = _required()
+    width: WidthT = _required()
     shape_random: None | dict[str, int] = None
     seed: None | int = None
 
@@ -1221,7 +2040,7 @@ class AbstractPoissonRandomSample(
     AbstractRandomSample,
     Generic[CenterT],
 ):
-    center: CenterT = dataclasses.MISSING
+    center: CenterT = _required()
     shape_random: None | dict[str, int] = None
     seed: None | int = None
 
@@ -1275,9 +2094,9 @@ class AbstractArrayRange(
     AbstractParameterizedArray,
     Generic[StartT, StopT]
 ):
-    start: StartT = dataclasses.MISSING
-    stop: StopT = dataclasses.MISSING
-    axis: str | na.AbstractArray= dataclasses.MISSING
+    start: StartT = _required()
+    stop: StopT = _required()
+    axis: str | na.AbstractArray= _required()
     step: int | float | na.AbstractArray = 1
 
     @property
@@ -1316,9 +2135,9 @@ class AbstractLinearSpace(
     AbstractSpace,
     Generic[StartT, StopT, AxisT, NumT],
 ):
-    start: StartT = dataclasses.MISSING
-    stop: StopT = dataclasses.MISSING
-    axis: AxisT = dataclasses.MISSING
+    start: StartT = _required()
+    stop: StopT = _required()
+    axis: AxisT = _required()
     num: NumT = 11
     endpoint: bool = True
     centers: bool = False
@@ -1347,8 +2166,8 @@ class AbstractLinearSpace(
 
 def strata(a: AbstractArray) -> AbstractArray:
     """
-    If ``a`` is an instance of :class:`AbstractStratifiedRandomSpace`,
-    return ``a.strata``, otherwise return ``a``
+    If `a` is an instance of :class:`AbstractStratifiedRandomSpace`,
+    return :code:`a.strata`, otherwise return `a`.
 
     Parameters
     ----------
@@ -1437,10 +2256,10 @@ class AbstractLogarithmicSpace(
     AbstractSpace,
     Generic[StartExponentT, StopExponentT, BaseT, AxisT, NumT]
 ):
-    start_exponent: StartExponentT = dataclasses.MISSING
-    stop_exponent: StopExponentT = dataclasses.MISSING
-    base: BaseT = dataclasses.MISSING
-    axis: AxisT = dataclasses.MISSING
+    start_exponent: StartExponentT = _required()
+    stop_exponent: StopExponentT = _required()
+    base: BaseT = _required()
+    axis: AxisT = _required()
     num: NumT = 11
     endpoint: bool = True
 
@@ -1470,9 +2289,9 @@ class AbstractGeometricSpace(
     AbstractSpace,
     Generic[StartT, StopT, AxisT, NumT]
 ):
-    start: StartT = dataclasses.MISSING
-    stop: StopT = dataclasses.MISSING
-    axis: AxisT = dataclasses.MISSING
+    start: StartT = _required()
+    stop: StopT = _required()
+    axis: AxisT = _required()
     num: NumT = 11
     endpoint: bool = True
 

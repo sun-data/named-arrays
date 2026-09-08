@@ -14,7 +14,6 @@ __all__ = [
     "array_function_percentile_like",
     "array_function_arg_reduce",
     "array_function_stack_like",
-    "broadcast_to",
     "tranpose",
     "moveaxis",
     "reshape",
@@ -22,6 +21,7 @@ __all__ = [
 ]
 
 DEFAULT_FUNCTIONS = named_arrays._scalars.uncertainties.uncertainties_array_functions.DEFAULT_FUNCTIONS
+CUMULATIVE_REDUCE_FUNCTIONS = named_arrays._scalars.uncertainties.uncertainties_array_functions.CUMULATIVE_REDUCE_FUNCTIONS
 PERCENTILE_LIKE_FUNCTIONS = named_arrays._scalars.uncertainties.uncertainties_array_functions.PERCENTILE_LIKE_FUNCTIONS
 ARG_REDUCE_FUNCTIONS = named_arrays._scalars.uncertainties.uncertainties_array_functions.ARG_REDUCE_FUNCTIONS
 STACK_LIKE_FUNCTIONS = named_arrays._scalars.uncertainties.uncertainties_array_functions.STACK_LIKE_FUNCTIONS
@@ -115,7 +115,69 @@ def array_function_default(
     )
 
     if out is None:
-        result = a.type_explicit(
+        result = a.replace(
+            inputs=inputs_result,
+            outputs=outputs_result,
+        )
+    else:
+        result = out
+
+    return result
+
+
+def array_function_cumulative_reduce(
+    func: Callable,
+    a: na.AbstractFunctionArray,
+    axis: None | str | Sequence[str] = None,
+    dtype: None | type | np.dtype = np._NoValue,
+    out: None | na.AbstractFunctionArray = None,
+    **kwargs,
+) -> na.FunctionArray:
+
+    a = a.explicit
+    inputs = a.inputs
+    outputs = a.outputs
+
+    shape = a.shape
+
+    if axis is None:
+        _axis = tuple(shape)
+    elif isinstance(axis, str):
+        _axis = (axis, )
+    else:
+        _axis = axis
+
+    if len(_axis) != 1:
+        raise ValueError(f"only one axis is supported, got {_axis}.")
+
+    _axis = _axis[0]
+
+    if dtype is not np._NoValue:
+        kwargs["dtype"] = dtype
+
+    if isinstance(out, na.AbstractFunctionArray):
+        inputs_out = out.inputs
+        outputs_out = out.outputs
+    else:
+        inputs_out = outputs_out = out
+
+    if inputs_out is not None:
+        np.copyto(src=inputs, dst=inputs_out)
+        inputs_result = inputs_out
+    else:
+        inputs_result = inputs
+
+    shape_base = {_axis: shape[_axis]}
+
+    outputs_result = func(
+        na.broadcast_to(outputs, shape_base, append=True),
+        axis=_axis,
+        out=outputs_out,
+        **kwargs,
+    )
+
+    if out is None:
+        result = a.replace(
             inputs=inputs_result,
             outputs=outputs_result,
         )
@@ -134,15 +196,18 @@ def array_function_percentile_like(
         overwrite_input: bool = False,
         method: str = "linear",
         keepdims: bool = False,
+        *,
+        weights: float | u.Quantity | na.AbstractArray = np._NoValue,
 ) -> na.FunctionArray:
 
     a = a.explicit
     inputs = a.inputs
     outputs = a.outputs
 
-    shape = a.shape
+    # the weights apply to the outputs, and may have axes which they do not
+    shape_outputs = na.shape_broadcasted(outputs, weights)
+    shape = na.broadcast_shapes(a.shape, shape_outputs)
     shape_inputs = a.inputs.shape
-    shape_outputs = a.outputs.shape
 
     axis_normalized = na.axis_normalized(a, axis)
 
@@ -151,8 +216,6 @@ def array_function_percentile_like(
             raise ValueError(
                 f"the `axis` argument, {axis}, must be `None` or a subset of the shape of `a`, {shape}"
             )
-
-    shape_base = {ax: shape[ax] for ax in axis_normalized}
 
     kwargs = dict(
         overwrite_input=overwrite_input,
@@ -180,6 +243,9 @@ def array_function_percentile_like(
             keepdims=keepdims,
         )
 
+    if weights is not np._NoValue:
+        kwargs["weights"] = weights
+
     outputs_result = func(
         a=na.broadcast_to(outputs, shape_outputs),
         q=q,
@@ -189,7 +255,7 @@ def array_function_percentile_like(
     )
 
     if out is None:
-        result = a.type_explicit(
+        result = a.replace(
             inputs=inputs_result,
             outputs=outputs_result,
         )
@@ -224,17 +290,25 @@ def array_function_stack_like(
     if func is np.concatenate:
 
         if any(axis not in array.shape for array in arrays):
-            raise ValueError(f"axis '{axis}' must be present in all the input arrays, got {[a.axes for a in arrays]}")
+            raise ValueError(
+                f"axis '{axis}' must be present in all the input arrays, "
+                f"got {[a.axes for a in arrays]}"
+            )
+
+        if any(axis in a.axes_vertex for a in arrays):
+            raise ValueError(
+                f"concatenating along vertex a vertex axis '{axis}' is not supported."
+            )
 
         arrays_broadcasted = list()
         for array in arrays:
+
+            array = array.explicit
             shape = array.shape
-            shape_base = {axis: shape[axis]}
-            array = na.FunctionArray(
-                inputs=na.broadcast_to(array.inputs, na.broadcast_shapes(array.inputs.shape, shape_base)),
-                outputs=na.broadcast_to(array.outputs, na.broadcast_shapes(array.outputs.shape, shape_base)),
-            )
+
+            array = array.broadcast_to({axis: shape[axis]}, append=True)
             arrays_broadcasted.append(array)
+
         arrays = arrays_broadcasted
 
     arrays_inputs = tuple(array.inputs for array in arrays)
@@ -261,7 +335,10 @@ def array_function_stack_like(
     )
 
     if out is None:
-        result = na.FunctionArray(inputs=inputs_result, outputs=outputs_result)
+        result = arrays[0].replace(
+            inputs=inputs_result,
+            outputs=outputs_result,
+        )
     else:
         out.inputs = inputs_result
         out.outputs = outputs_result
@@ -292,8 +369,8 @@ def copyto(
 
     if isinstance(where, na.AbstractArray):
         if isinstance(where, na.AbstractFunctionArray):
-            if np.any(where.inputs != src.inputs):
-                raise ValueError(f"`where.inputs` must be equivalent to `src.inputs`")
+            if np.any(where.inputs != src.inputs):  #pragma: nocover
+                raise ValueError("`where.inputs` must be equivalent to `src.inputs`")
             where_inputs = where.inputs
             where_outputs = where.outputs
         else:
@@ -312,21 +389,6 @@ def copyto(
         dst.outputs = src.outputs
 
 
-@_implements(np.broadcast_to)
-def broadcast_to(
-        array: na.AbstractFunctionArray,
-        shape: dict[str, int]
-) -> na.FunctionArray:
-
-    axes_vertex = array.axes_vertex
-    shape_inputs = {ax: shape[ax]+1 if ax in axes_vertex else shape[ax] for ax in shape}
-
-    return array.type_explicit(
-        inputs=na.broadcast_to(array.inputs, shape=shape_inputs),
-        outputs=na.broadcast_to(array.outputs, shape=shape),
-    )
-
-
 @_implements(np.transpose)
 def tranpose(
         a: na.AbstractFunctionArray,
@@ -336,8 +398,7 @@ def tranpose(
     shape = a.shape
     axes_normalized = tuple(reversed(shape) if axes is None else axes)
 
-
-    return a.type_explicit(
+    return a.replace(
         inputs=np.transpose(
             a=a.inputs,
             axes=axes_normalized,
@@ -376,7 +437,7 @@ def moveaxis(
     source_inputs, destination_inputs = tuple(tuple(i) for i in zip(*source_destination_inputs))
     source_outputs, destination_outputs = tuple(tuple(i) for i in zip(*source_destination_outputs))
 
-    return a.type_explicit(
+    return a.replace(
         inputs=np.moveaxis(
             a=a.inputs,
             source=source_inputs,
@@ -393,17 +454,52 @@ def moveaxis(
 @_implements(np.reshape)
 def reshape(
         a: na.AbstractFunctionArray,
-        newshape: dict[str, int],
+        shape: dict[str, int],
 ) -> na.FunctionArray:
 
+    if a.axes_vertex:
+        raise ValueError(
+            f"Cannot reshape an {type(a)} containing axes on cell vertices, "
+            f"got {a.axes_vertex=}."
+        )
+
     a = a.broadcasted
-    for ax in newshape:
-        if ax in a.axes_vertex or (ax not in a.axes and len(a.axes_vertex) != 0):
-            raise ValueError(f"Cannot reshape along axes vertex {a.axes_vertex}.")
 
     return a.type_explicit(
-        inputs=np.reshape(a.inputs, newshape=newshape),
-        outputs=np.reshape(a.outputs, newshape=newshape)
+        inputs=np.reshape(a.inputs, shape),
+        outputs=np.reshape(a.outputs, shape)
+    )
+
+
+@_implements(np.take_along_axis)
+def take_along_axis(
+        arr: na.AbstractFunctionArray,
+        indices: na.AbstractArray,
+        axis: str,
+) -> na.FunctionArray:
+
+    arr = arr.explicit
+    shape = arr.shape
+
+    if axis not in shape:
+        raise ValueError(
+            f"`axis`, {axis!r}, must be one of the axes in `arr`, {tuple(shape)}"
+        )
+
+    if axis in arr.axes_vertex:
+        raise ValueError(
+            f"`axis`, {axis!r}, describes input vertices and cannot be used in `take_along_axis`, "
+            f"got vertex axes {arr.axes_vertex}."
+        )
+
+    # Broadcast only `axis` so that `inputs` and `outputs` are reordered
+    # consistently even if one of them does not vary along `axis`.
+    inputs = na.broadcast_to(arr.inputs, shape={axis: shape[axis]}, append=True)
+    outputs = na.broadcast_to(arr.outputs, shape={axis: shape[axis]}, append=True)
+
+    return arr.replace(
+        inputs=np.take_along_axis(inputs, indices, axis=axis),
+        outputs=np.take_along_axis(outputs, indices, axis=axis),
     )
 
 
@@ -474,6 +570,97 @@ def nonzero(a: na.AbstractFunctionArray) -> dict[str, na.AbstractArray]:
     return np.nonzero(a.outputs)
 
 
+@_implements(np.clip)
+def clip(
+    a: na.AbstractFunctionArray,
+    a_min: None | float | na.AbstractScalarArray | na.AbstractVectorArray = np._NoValue,
+    a_max: None | float | na.AbstractScalarArray | na.AbstractVectorArray = np._NoValue,
+    out: None | na.FunctionArray = None,
+) -> na.FunctionArray:
+
+    a = a.explicit
+
+    a_outputs = a.outputs
+
+    if out is not None:
+        _out = out.outputs
+    else:
+        _out = None
+
+    result = np.clip(
+        a=a_outputs,
+        a_min=a_min,
+        a_max=a_max,
+        out=_out,
+    )
+
+    if out is None:
+        result = a.replace(outputs=result)
+    else:
+        result = out
+
+    return result
+
+
+@_implements(np.round)
+@_implements(np.around)
+def round(
+    a: na.AbstractFunctionArray,
+    decimals: int = 0,
+    out: None | na.FunctionArray = None,
+) -> na.FunctionArray:
+
+    a = a.explicit
+
+    if out is not None:
+        _out = out.outputs
+    else:
+        _out = None
+
+    result = np.round(
+        a=a.outputs,
+        decimals=decimals,
+        out=_out,
+    )
+
+    if out is None:
+        result = a.replace(outputs=result)
+    else:
+        result = out
+
+    return result
+
+
+@_implements(np.isclose)
+def isclose(
+    a: na.ArrayLike,
+    b: na.ArrayLike,
+    rtol: float = 1e-05,
+    atol: float = 1e-08,
+    equal_nan: bool = False,
+) -> na.FunctionArray:
+
+    operands = (a, b)
+
+    functions = [x for x in operands if isinstance(x, na.AbstractFunctionArray)]
+    outputs = [x.outputs if isinstance(x, na.AbstractFunctionArray) else x for x in operands]
+
+    inputs = functions[0].inputs
+    for function in functions[1:]:
+        if np.any(function.inputs != inputs):
+            raise na.InputValueError("`a.inputs` must match `b.inputs`")
+
+    return functions[0].explicit.replace(
+        inputs=inputs,
+        outputs=np.isclose(
+            *outputs,
+            rtol=rtol,
+            atol=atol,
+            equal_nan=equal_nan,
+        ),
+    )
+
+
 @_implements(np.repeat)
 def repeat(
     a: na.AbstractFunctionArray,
@@ -485,7 +672,7 @@ def repeat(
 
     a = a.broadcasted
 
-    return a.type_explicit(
+    return a.replace(
         inputs=np.repeat(
             a=a.inputs,
             repeats=repeats,

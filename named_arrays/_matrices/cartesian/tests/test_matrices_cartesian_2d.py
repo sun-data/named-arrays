@@ -1,3 +1,4 @@
+from typing import Mapping
 import pytest
 import numpy as np
 import astropy.units as u
@@ -99,12 +100,6 @@ def _cartesian_2d_matrices_2():
         for array_yy in arrays_yy
         for unit in units
     ]
-    vectors = [
-        na.Cartesian2dVectorArray(x=array_xx, y=array_yy) * unit
-        for array_xx in arrays_xx
-        for array_yy in arrays_yy
-        for unit in units
-    ]
     matrices = [
         na.Cartesian2dMatrixArray(
             x=na.Cartesian2dVectorArray(x=array_xx, y=array_xy),
@@ -200,7 +195,7 @@ class AbstractTestAbstractCartesian2dMatrixArray(
     def test__getitem__(
             self,
             array: na.AbstractCartesian2dVectorArray,
-            item: dict[str, int | slice | na.AbstractArray] | na.AbstractArray
+            item: Mapping[str, int | slice | na.AbstractArray] | na.AbstractArray
     ):
         super().test__getitem__(array=array, item=item)
 
@@ -210,7 +205,20 @@ class AbstractTestAbstractCartesian2dMatrixArray(
     ):
         pass
 
-    @pytest.mark.parametrize('array_2', _cartesian_2d_matrices_2())
+    class TestArrayFunctions(
+        named_arrays._vectors.cartesian.tests.test_vectors_cartesian_2d
+        .AbstractTestAbstractCartesian2dVectorArray.TestArrayFunctions,
+    ):
+        @pytest.mark.parametrize('array_2', _cartesian_2d_matrices_2())
+        class TestStackLikeFunctions(
+            named_arrays.tests.test_core.AbstractTestAbstractArray.TestArrayFunctions.TestStackLikeFunctions,
+        ):
+            pass
+
+    @pytest.mark.parametrize(
+        argnames='array_2',
+        argvalues=_cartesian_2d_matrices_2() + [na.Cartesian2dVectorArray(1, 2)]
+    )
     class TestMatmul(
         test_matrices_cartesian.AbstractTestAbstractCartesianMatrixArray.TestMatmul
     ):

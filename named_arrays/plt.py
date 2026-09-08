@@ -1,9 +1,12 @@
+"""Wrappers around :mod:`matplotlib.pyplot` functions."""
+
 from __future__ import annotations
 from typing import Literal, Any, Callable, TypeVar
 import matplotlib.axes
 import matplotlib.transforms
 import matplotlib.animation
 import matplotlib.text
+import matplotlib.colors
 import matplotlib.pyplot as plt
 import astropy.units as u
 import numpy as np
@@ -13,9 +16,14 @@ import named_arrays as na
 __all__ = [
     "subplots",
     "plot",
+    "line_collection",
     "fill",
     "scatter",
     "stairs",
+    "axhline",
+    "axvline",
+    "axhspan",
+    "axvspan",
     "imshow",
     "pcolormesh",
     "rgbmesh",
@@ -24,10 +32,15 @@ __all__ = [
     "text",
     "annotate",
     "brace_vertical",
+    "dimension",
     "set_xlabel",
     "get_xlabel",
     "set_ylabel",
     "get_ylabel",
+    "set_xlim",
+    "get_xlim",
+    "set_ylim",
+    "get_ylim",
     "set_title",
     "get_title",
     "set_xscale",
@@ -54,6 +67,7 @@ def subplots(
         sharex: bool | Literal["none", "all", "row", "col"] = False,
         sharey: bool | Literal["none", "all", "row", "col"] = False,
         squeeze: bool = True,
+        origin: Literal["lower", "upper"] = "lower",
         **kwargs,
 ) -> tuple[
     matplotlib.figure.Figure,
@@ -89,6 +103,10 @@ def subplots(
         If :obj:`True`, :func:`numpy.squeeze` is called on the result, which removes singleton dimensions from the
         array.
         See the documentation of :func:`matplotlib.pyplot.subplots` for more information.
+    origin
+        Place the (0, 0) axis in the upper-left or lower-left corner.
+        Defaults to lower-left since this mirrors the mathematical convention,
+        but this is the opposite convention adopted by :func:`matplotlib.pyplot.subplots`.
     kwargs
         Additional keyword arguments passed to :func:`matplotlib.pyplot.subplots`
     """
@@ -109,8 +127,9 @@ def subplots(
 
     axs = na.ScalarArray(axs, axes=tuple(shape.keys()))
 
-    if axis_rows in shape:
-        axs = axs[{axis_rows: slice(None, None, -1)}]
+    if origin == "lower":
+        if axis_rows in shape:
+            axs = axs[{axis_rows: slice(None, None, -1)}]
 
     return fig, axs
 
@@ -220,6 +239,113 @@ def plot(
         args = tuple(transformation(arg) for arg in args)
     return na._named_array_function(
         plot,
+        *args,
+        ax=ax,
+        axis=axis,
+        where=where,
+        components=components,
+        **kwargs,
+    )
+
+
+def line_collection(
+        *args: na.AbstractArray,
+        ax: None | matplotlib.axes.Axes | na.ScalarArray[npt.NDArray] = None,
+        axis: None | str = None,
+        where: bool | na.AbstractScalar = True,
+        transformation: None | na.transformations.AbstractTransformation = None,
+        components: None | tuple[str, ...] = None,
+        **kwargs,
+) -> na.ScalarArray[npt.NDArray]:
+    """
+    Plot a line as a sequence of separate segments.
+
+    This is a thin wrapper around :class:`matplotlib.collections.LineCollection`,
+    and around :class:`mpl_toolkits.mplot3d.art3d.Line3DCollection` if ``ax`` is
+    a 3D axes.
+
+    The difference from :func:`plot` is what matplotlib is given to draw.
+    :func:`plot` makes one :class:`matplotlib.lines.Line2D` per line, and a 3D
+    axes leaves the zorder of such a line alone, which places the whole line
+    either in front of every filled surface or behind all of them. This function
+    makes a collection instead, and a 3D axes sorts a collection into the scene
+    by its depth, so a line is drawn among the surfaces rather than over or
+    under all of them.
+
+    Each pair of adjacent points along ``axis`` becomes its own collection, since
+    a collection is sorted by a single depth and a line spanning a scene needs
+    more than one. The returned array therefore has the broadcasted shape of
+    ``*args`` with ``axis`` one element shorter.
+
+    Parameters
+    ----------
+    args
+        The coordinates of the line, ``x, y`` on a 2D axes and ``x, y, z`` on a
+        3D one.
+    ax
+        The instances of :class:`matplotlib.axes.Axes` to use.
+        If :obj:`None`, calls :func:`matplotlib.pyplot.gca` to get the current axes.
+        If an instance of :class:`named_arrays.ScalarArray`, ``ax.shape`` should be a subset of the broadcasted shape of
+        ``*args``.
+    axis
+        The name of the axis that the line should be connected along.
+        If :obj:`None`, the broadcasted shape of ``args`` should have only one element,
+        otherwise a :class:`ValueError` is raised.
+    where
+        A boolean array that selects which elements to plot
+    transformation
+        A callable that is applied to args before plotting
+    components
+        The component names of ``*args`` to plot, helpful if ``*args`` are an instance of
+        :class:`named_arrays.AbstractVectorArray`.
+    kwargs
+        Additional keyword arguments passed to
+        :class:`matplotlib.collections.LineCollection`.
+        These can be instances of :class:`named_arrays.AbstractArray`.
+        The singular spellings ``color``, ``linewidth``, and ``linestyle`` are
+        accepted and passed on as the plural forms a collection expects.
+
+    Returns
+    -------
+        An array of the collections that were drawn.
+
+    Notes
+    -----
+    A collection is given plain numbers rather than
+    :class:`astropy.units.Quantity`, since matplotlib does not convert the units
+    of the segments of a collection as it does for the data of a line. Convert
+    the arguments to the unit you want before calling this function.
+
+    Examples
+    --------
+
+    A helix, drawn a segment at a time so that each turn is sorted into the
+    scene by its own depth.
+
+    .. jupyter-execute::
+
+        import numpy as np
+        import matplotlib.pyplot as plt
+        import named_arrays as na
+
+        angle = na.linspace(0, 6 * np.pi, axis="angle", num=201)
+
+        helix = na.Cartesian3dVectorArray(
+            x=np.cos(angle),
+            y=np.sin(angle),
+            z=angle / (6 * np.pi),
+        )
+
+        fig = plt.figure();
+        ax = fig.add_subplot(projection="3d");
+
+        na.plt.line_collection(helix, axis="angle", ax=ax);
+
+    """
+    if transformation is not None:
+        args = tuple(transformation(arg) for arg in args)
+    return na._named_array_function(
+        line_collection,
         *args,
         ax=ax,
         axis=axis,
@@ -472,6 +598,138 @@ def scatter(
     )
 
 
+def axhline(
+    y: float | na.AbstractScalar = 0,
+    xmin: float | na.AbstractScalar = 0,
+    xmax: float | na.AbstractScalar = 1,
+    ax: None | matplotlib.axes.Axes | na.AbstractScalar = None,
+    **kwargs,
+) -> na.ScalarArray:
+    """
+    A wrapper around :meth:`matplotlib.axes.Axes.axhline`.
+
+    Parameters
+    ----------
+    y
+        `y`-coordinate of the line in data units.
+    xmin
+        Lower  `x`-coordinate of the span in `x` axis units (0-1).
+    xmax
+        Upper `x`-coordinate of the span in `x` axis units (0-1).
+    ax
+        The matplotlib axes instance(s) to use.
+    """
+    return na._named_array_function(
+        axhline,
+        y=na.as_named_array(y),
+        xmin=xmin,
+        xmax=xmax,
+        ax=ax,
+        **kwargs,
+    )
+
+
+def axvline(
+    x: float | na.AbstractScalar = 0,
+    ymin: float | na.AbstractScalar = 0,
+    ymax: float | na.AbstractScalar = 1,
+    ax: None | matplotlib.axes.Axes | na.AbstractScalar = None,
+    **kwargs,
+) -> na.ScalarArray:
+    """
+    A wrapper around :meth:`matplotlib.axes.Axes.axvline`.
+
+    Parameters
+    ----------
+    x
+        `x`-coordinate of the line in data units.
+    ymin
+        Lower  `y`-coordinate of the span in `y` axis units (0-1).
+    ymax
+        Upper `y`-coordinate of the span in `y` axis units (0-1).
+    ax
+        The matplotlib axes instance(s) to use.
+    """
+    return na._named_array_function(
+        axvline,
+        x=na.as_named_array(x),
+        ymin=ymin,
+        ymax=ymax,
+        ax=ax,
+        **kwargs,
+    )
+
+
+def axhspan(
+    ymin: float | na.AbstractScalar,
+    ymax: float | na.AbstractScalar,
+    xmin: float | na.AbstractScalar = 0,
+    xmax: float | na.AbstractScalar = 1,
+    ax: None | matplotlib.axes.Axes | na.AbstractScalar = None,
+    **kwargs,
+) -> na.ScalarArray:
+    """
+    A wrapper around :meth:`matplotlib.axes.Axes.axhspan`.
+
+    Parameters
+    ----------
+    ymin
+        Lower `y`-coordinate of the span in data units.
+    ymax
+        Upper `y`-coordinate of the span in data units.
+    xmin
+        Lower  `x`-coordinate of the span in `x` axis units (0-1).
+    xmax
+        Upper `x`-coordinate of the span in `x` axis units (0-1).
+    ax
+        The matplotlib axes instance(s) to use.
+    """
+    return na._named_array_function(
+        axhspan,
+        ymin=na.as_named_array(ymin),
+        ymax=ymax,
+        xmin=xmin,
+        xmax=xmax,
+        ax=ax,
+        **kwargs,
+    )
+
+
+def axvspan(
+    xmin: float | na.AbstractScalar,
+    xmax: float | na.AbstractScalar,
+    ymin: float | na.AbstractScalar = 0,
+    ymax: float | na.AbstractScalar = 1,
+    ax: None | matplotlib.axes.Axes | na.AbstractScalar = None,
+    **kwargs,
+) -> na.ScalarArray:
+    """
+    A wrapper around :meth:`matplotlib.axes.Axes.axvspan`.
+
+    Parameters
+    ----------
+    xmin
+        Lower `x`-coordinate of the span in data units.
+    xmax
+        Upper `x`-coordinate of the span in data units.
+    ymin
+        Lower  `y`-coordinate of the span in `y` axis units (0-1).
+    ymax
+        Upper `y`-coordinate of the span in `y` axis units (0-1).
+    ax
+        The matplotlib axes instance(s) to use.
+    """
+    return na._named_array_function(
+        axvspan,
+        xmin=na.as_named_array(xmin),
+        xmax=xmax,
+        ymin=ymin,
+        ymax=ymax,
+        ax=ax,
+        **kwargs,
+    )
+
+
 def imshow(
     X: na.AbstractArray,
     *,
@@ -644,7 +902,7 @@ def pcolormesh(
     axis_rgb: None | str = None,
     ax: None | matplotlib.axes.Axes | na.AbstractArray = None,
     components: None | tuple[str, str] = None,
-    cmap: None | str | matplotlib.colors.Colormap = None,
+    cmap: None | str | matplotlib.colors.Colormap | na.AbstractArray = None,
     norm: None | str | matplotlib.colors.Normalize = None,
     vmin: None | na.ArrayLike = None,
     vmax: None | na.ArrayLike = None,
@@ -946,7 +1204,7 @@ def pcolormovie(
     axis_rgb: None | str = None,
     ax: None | matplotlib.axes.Axes | na.AbstractArray = None,
     components: None | tuple[str, str] = None,
-    cmap: None | str | matplotlib.colors.Colormap = None,
+    cmap: None | str | matplotlib.colors.Colormap | na.AbstractArray = None,
     norm: None | str | matplotlib.colors.Normalize = None,
     vmin: None | na.ArrayLike = None,
     vmax: None | na.ArrayLike = None,
@@ -1547,6 +1805,98 @@ def get_ylabel(
     )
 
 
+def set_xlim(
+    left: None | float | na.AbstractScalar = None,
+    right: None | float | na.AbstractScalar = None,
+    ax: None | matplotlib.axes.Axes | na.AbstractScalar = None,
+    **kwargs,
+) -> tuple[na.AbstractScalar, na.AbstractScalar]:
+    """
+    A thin wrapper around :meth:`matplotlib.axes.Axes.set_xlim` for named arrays.
+
+    Parameters
+    ----------
+    left
+        The left limit of the plot in data coordinates.
+        If :obj:`None`, this limit is unchanged.
+    right
+        The right limit of the plot in data coordinates.
+        If :obj:`None`, this limit is unchanged.
+    ax
+        The matplotlib axes instance on which to apply the label.
+    """
+    return na._named_array_function(
+        set_xlim,
+        left=na.as_named_array(left),
+        right=right,
+        ax=ax,
+        **kwargs,
+    )
+
+
+def get_xlim(
+    ax: None | matplotlib.axes.Axes | na.AbstractScalar = None,
+) -> tuple[na.AbstractScalar, na.AbstractScalar]:
+    """
+    A thin wrapper around :meth:`matplotlib.axes.Axes.get_xlim` for named arrays.
+
+    Parameters
+    ----------
+    ax
+        The matplotlib axes instance(s) to get the horizontal axis label from.
+    """
+    return na._named_array_function(
+        get_xlim,
+        ax=na.as_named_array(ax),
+    )
+
+
+def set_ylim(
+    bottom: None | float | na.AbstractScalar = None,
+    top: None | float | na.AbstractScalar = None,
+    ax: None | matplotlib.axes.Axes | na.AbstractScalar = None,
+    **kwargs,
+) -> tuple[na.AbstractScalar, na.AbstractScalar]:
+    """
+    A thin wrapper around :meth:`matplotlib.axes.Axes.set_ylim` for named arrays.
+
+    Parameters
+    ----------
+    bottom
+        The bottom of the plot in data coordinates.
+        If :obj:`None`, this limit is unchanged.
+    top
+        The top of the plot in data coordinates.
+        If :obj:`None`, this limit is unchanged.
+    ax
+        The matplotlib axes instance on which to apply the label.
+    """
+    return na._named_array_function(
+        set_ylim,
+        bottom=na.as_named_array(bottom),
+        top=top,
+        ax=ax,
+        **kwargs,
+    )
+
+
+def get_ylim(
+    ax: None | matplotlib.axes.Axes | na.AbstractScalar = None,
+) -> tuple[na.AbstractScalar, na.AbstractScalar]:
+    """
+    A thin wrapper around :meth:`matplotlib.axes.Axes.get_ylim` for named arrays.
+
+    Parameters
+    ----------
+    ax
+        The matplotlib axes instance(s) to get the vertical axis label from.
+    """
+    return na._named_array_function(
+        get_ylim,
+        ax=na.as_named_array(ax),
+    )
+
+
 def set_title(
     label: str | na.AbstractScalar,
     ax: None | matplotlib.axes.Axes | na.AbstractScalar = None,
@@ -1949,6 +2299,303 @@ def brace_vertical(
         ha=ha,
         va="center",
         **kwargs_text
+    )
+
+    return result
+
+
+def _display_aspect(
+    ax: matplotlib.axes.Axes | na.AbstractScalar,
+) -> na.ScalarArray:
+    """
+    The ratio of the vertical to horizontal scale of the data-to-display
+    transform, ``sy / sx``, for each axes.
+
+    This is a snapshot of the current axes limits and size, used by
+    :func:`dimension` to make the displacement direction and label rotation
+    visually correct under a non-equal aspect ratio.
+
+    Assumes the axes are linear and unrotated.
+    """
+    ax = na.as_named_array(ax)
+    result = na.ScalarArray.empty(ax.shape, dtype=float)
+    for index in na.ndindex(ax.shape):
+        ax_index = ax[index].ndarray
+        bbox = ax_index.bbox
+        xmin, xmax = ax_index.get_xlim()
+        ymin, ymax = ax_index.get_ylim()
+        result[index] = (bbox.height / bbox.width) * ((xmax - xmin) / (ymax - ymin))
+    return result
+
+
+def _facecolor(
+    ax: matplotlib.axes.Axes | na.AbstractScalar,
+) -> na.ScalarArray:
+    """
+    The background (face) color of each axes, as a hex string.
+
+    Used by :func:`dimension` to draw the label on a background that matches
+    the axes so it cleanly masks the dimension line underneath.
+    """
+    ax = na.as_named_array(ax)
+    result = na.ScalarArray.empty(ax.shape, dtype=object)
+    for index in na.ndindex(ax.shape):
+        ax_index = ax[index].ndarray
+        result[index] = matplotlib.colors.to_hex(
+            ax_index.get_facecolor(),
+            keep_alpha=True,
+        )
+    return result
+
+
+def dimension(
+    a: na.AbstractCartesian2dVectorArray,
+    b: na.AbstractCartesian2dVectorArray,
+    offset: float | u.Quantity | na.AbstractScalar = 0,
+    label: None | str | na.AbstractScalar = None,
+    decimals: int = 2,
+    gap: float | na.AbstractScalar = 0.1,
+    rotate: bool = True,
+    ax: None | matplotlib.axes.Axes | na.AbstractScalar = None,
+    components: None | tuple[str, str] = None,
+    arrowstyle: str = "<->",
+    kwargs_extension: None | dict[str, Any] = None,
+    kwargs_dimension: None | dict[str, Any] = None,
+    kwargs_text: None | dict[str, Any] = None,
+    **kwargs,
+) -> na.ScalarArray[npt.NDArray[matplotlib.text.Annotation]]:
+    """
+    Annotate the distance between two points like a mechanical drawing.
+
+    A dimension line with arrowheads at both ends is drawn parallel to the
+    segment connecting `a` and `b`, joined to each point by an extension line.
+    The dimension line can be displaced to either side of the segment using the
+    `offset` parameter, which is useful for moving the annotation clear of other
+    components in the drawing.
+
+    Parameters
+    ----------
+    a
+        The first point being dimensioned, in data coordinates.
+    b
+        The second point being dimensioned, in data coordinates.
+    offset
+        The displacement of the dimension line from the segment connecting `a`
+        and `b`. The magnitude is given in data coordinates, but the direction
+        is perpendicular to the segment *as it appears on screen*, computed from
+        the data-to-display transform so that the displacement looks orthogonal
+        and the label is rotated correctly even when the aspect ratio is not
+        equal.
+        Positive values displace the dimension line 90 degrees
+        counterclockwise from the direction pointing from `a` to `b`,
+        negative values displace it to the other side.
+        Use this to move the annotation away from other components.
+
+        .. note::
+
+            The displacement direction and label rotation are a snapshot of the
+            axes limits and size at the time `dimension` is called, so call it
+            after the data has been plotted and the limits have been set.
+            Linear, unrotated axes are assumed.
+    label
+        The text label for the dimension.
+        If :obj:`None`, the measured distance :math:`|b - a|`,
+        rounded to `decimals` places, is used.
+    decimals
+        The number of decimal places to round the default `label` to.
+        Ignored if `label` is given explicitly.
+    gap
+        The fraction of the `offset` distance to leave as a gap between each
+        point and the start of its extension line, matching the convention of
+        a mechanical drawing.
+    rotate
+        If :obj:`True`, the default, rotate the label to match the on-screen
+        angle of the dimension line.
+        If :obj:`False`, draw the label horizontally.
+    ax
+        A matplotlib axes instance on which to plot the dimension.
+    components
+        If `a` and `b` have more than two components, use this argument to
+        specify which components correspond to the horizontal and vertical
+        positions.
+    arrowstyle
+        The :class:`matplotlib.patches.ArrowStyle` used to draw the
+        dimension line.
+        Defaults to a double-headed arrow, ``"<->"``.
+    kwargs_extension
+        Additional keyword arguments passed to :func:`plot` when drawing the
+        extension lines.
+    kwargs_dimension
+        Additional keyword arguments passed to :func:`annotate` when drawing
+        the dimension line.
+    kwargs_text
+        Additional keyword arguments passed to :func:`text` when drawing the
+        label.
+    kwargs
+        Additional keyword arguments passed to :func:`plot`, :func:`annotate`,
+        and :func:`text`.
+
+    Returns
+    -------
+        The array of annotations representing the dimension lines.
+
+    Examples
+    --------
+
+    Dimension a horizontal distance, displaced below the segment to clear a
+    plotted marker.
+
+    .. jupyter-execute::
+
+        import numpy as np
+        import matplotlib.pyplot as plt
+        import named_arrays as na
+
+        a = na.Cartesian2dVectorArray(0.2, 0.5)
+        b = na.Cartesian2dVectorArray(0.8, 0.5)
+
+        fig, ax = plt.subplots()
+        na.plt.scatter(
+            na.stack([a.x, b.x], axis="point"),
+            na.stack([a.y, b.y], axis="point"),
+            ax=ax,
+        )
+        na.plt.dimension(a, b, offset=-0.15, ax=ax)
+        ax.set_xlim(0, 1)
+        ax.set_ylim(0, 1)
+
+    |
+
+    Dimension an array of distances, alternating the side the annotation is
+    displaced to.
+
+    .. jupyter-execute::
+
+        num = 3
+
+        a = na.Cartesian2dVectorArray(
+            x=na.linspace(0.1, 0.5, axis="d", num=num),
+            y=0.2,
+        )
+        b = na.Cartesian2dVectorArray(
+            x=na.linspace(0.5, 0.9, axis="d", num=num),
+            y=na.linspace(0.4, 0.9, axis="d", num=num),
+        )
+        offset = na.ScalarArray(np.array([0.1, -0.1, 0.1]), axes="d")
+
+        fig, ax = plt.subplots()
+        na.plt.dimension(a, b, offset=offset, ax=ax)
+        ax.set_xlim(0, 1)
+        ax.set_ylim(0, 1)
+    """
+    if ax is None:
+        ax = plt.gca()
+
+    components_a = a.cartesian_nd.components
+    components_b = b.cartesian_nd.components
+
+    if components is None:
+        components = tuple(components_a)
+
+    cx, cy = components
+    a = na.Cartesian2dVectorArray(components_a[cx], components_a[cy])
+    b = na.Cartesian2dVectorArray(components_b[cx], components_b[cy])
+
+    if kwargs_extension is None:
+        kwargs_extension = dict()
+    kwargs_extension = dict(color="gray") | kwargs | kwargs_extension
+
+    if kwargs_dimension is None:
+        kwargs_dimension = dict()
+    kwargs_dimension = kwargs | kwargs_dimension
+
+    if kwargs_text is None:
+        kwargs_text = dict()
+    kwargs_text = kwargs | kwargs_text
+
+    # Direction from `a` to `b` and the unit normal used for the displacement.
+    # The perpendicular direction is computed in display coordinates (via the
+    # snapshot scale ratio `aspect`) so the displacement is visually orthogonal
+    # and the label is rotated correctly even when the aspect ratio is not
+    # equal, while the offset magnitude stays in data coordinates.
+    delta = b - a
+    length = delta.length
+    aspect = _display_aspect(ax)
+    normal = na.Cartesian2dVectorArray(-aspect * delta.y, delta.x / aspect)
+    normal = normal / normal.length
+
+    # Give a unitless `offset` the same unit as the coordinates so that the
+    # default `offset=0` can be displaced against unitful points.
+    offset = na.as_named_array(offset)
+    if na.unit(offset) is None:
+        offset = offset * na.unit_normalized(length)
+
+    if label is None:
+        label = na.as_named_array(length).to_string_array(f"%.{decimals}f")
+    label = na.as_named_array(label).astype(str).astype(object)
+
+    # Endpoints of the dimension line, displaced to one side of the segment.
+    p1 = a + offset * normal
+    p2 = b + offset * normal
+
+    # Start the extension lines a fraction of the way out from each point so
+    # they do not touch it, as in a mechanical drawing.
+    a_gap = a + gap * offset * normal
+    b_gap = b + gap * offset * normal
+
+    axis = "_dimension"
+
+    # Extension lines joining each point to the dimension line.
+    plot(
+        na.stack([a_gap.x, p1.x], axis=axis),
+        na.stack([a_gap.y, p1.y], axis=axis),
+        ax=ax,
+        axis=axis,
+        **kwargs_extension,
+    )
+    plot(
+        na.stack([b_gap.x, p2.x], axis=axis),
+        na.stack([b_gap.y, p2.y], axis=axis),
+        ax=ax,
+        axis=axis,
+        **kwargs_extension,
+    )
+
+    # Dimension line drawn as a double-headed arrow between the displaced points.
+    arrowprops = dict(arrowstyle=arrowstyle, shrinkA=0, shrinkB=0)
+    arrowprops = arrowprops | kwargs_dimension.pop("arrowprops", dict())
+    result = annotate(
+        text="",
+        xy=p1,
+        xytext=p2,
+        ax=ax,
+        arrowprops=arrowprops,
+        **kwargs_dimension,
+    )
+
+    # Label placed at the midpoint of the dimension line, rotated to match its
+    # angle as it appears on screen (in display coordinates). It is drawn on a
+    # background matching the axes, and above the dimension line, so it masks
+    # the line underneath.
+    midpoint = (p1 + p2) / 2
+    if rotate:
+        rotation = (np.arctan2(aspect * delta.y, delta.x) << u.rad).to_value(u.deg)
+    else:
+        rotation = 0
+    kwargs_text = dict(
+        ha="center",
+        va="center",
+        rotation=rotation,
+        rotation_mode="anchor",
+        backgroundcolor=_facecolor(ax),
+        zorder=5,
+    ) | kwargs_text
+    text(
+        x=midpoint.x,
+        y=midpoint.y,
+        s=label,
+        ax=ax,
+        **kwargs_text,
     )
 
     return result

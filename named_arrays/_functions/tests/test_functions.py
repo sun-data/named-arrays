@@ -1,4 +1,4 @@
-from typing import Sequence, Callable, Literal
+from typing import Mapping, Sequence, Callable, Literal
 import pytest
 import numpy as np
 import astropy.units as u
@@ -198,6 +198,7 @@ class AbstractTestAbstractFunctionArray(
         argnames='item',
         argvalues=[
             dict(y=0),
+            dict(z=0),  # an axis not present in the function array: indexing is a no-op
             dict(y=slice(0, 1)),
             dict(y=na.ScalarArrayRange(0, 2, axis='y')),
             dict(
@@ -231,7 +232,7 @@ class AbstractTestAbstractFunctionArray(
     def test__getitem__(
             self,
             array: na.AbstractFunctionArray,
-            item: dict[str, int | slice | na.AbstractArray] | na.AbstractArray
+            item: Mapping[str, int | slice | na.AbstractArray] | na.AbstractArray
     ):
         super().test__getitem__(array=array, item=item)
 
@@ -267,7 +268,7 @@ class AbstractTestAbstractFunctionArray(
                         if ax in array.outputs.shape:
                             item_outputs[ax] = item_ax
                     if ax in array.axes_vertex:
-                        if isinstance(item_ax, int):
+                        if np.issubdtype(type(item_ax), np.integer):
                             item_outputs[ax] = slice(item_ax, item_ax + 1)
                             item_inputs[ax] = slice(item_ax, item_ax + 2)
                         elif isinstance(item_ax, slice):
@@ -471,13 +472,37 @@ class AbstractTestAbstractFunctionArray(
 
             if axis in array.axes_vertex:
                 with pytest.raises(ValueError, match=f"Array cannot be repeated along vertex axis {axis}."):
-                    result = np.repeat(
+                    np.repeat(
                         a=array,
                         repeats=repeats,
                         axis=axis,
                     )
                 return
             super().test_repeat(array, repeats, axis)
+
+        @pytest.mark.parametrize("array_2", _function_arrays_2())
+        class TestStackLikeFunctions(
+            named_arrays.tests.test_core.AbstractTestAbstractArray.TestArrayFunctions.TestStackLikeFunctions,
+        ):
+            def test_stack(
+                    self,
+                    array: na.AbstractFunctionArray,
+                    array_2: None | float | u.Quantity | na.AbstractArray,
+                    axis: str,
+            ):
+                # stacking a function with an array that is not a function
+                # is rejected since there is no way to promote the other
+                # array to a function
+                if not isinstance(array_2, na.AbstractFunctionArray):
+                    with pytest.raises(TypeError):
+                        np.stack([array, array_2], axis=axis)
+                    return
+
+                super().test_stack(
+                    array=array,
+                    array_2=array_2,
+                    axis=axis,
+                )
 
         @pytest.mark.parametrize("array_2", _function_arrays_2())
         class TestAsArrayLikeFunctions(
@@ -609,6 +634,56 @@ class AbstractTestAbstractFunctionArray(
                 out = 0 * result
                 out.inputs = 0 * out.inputs
                 result_out = func(array, axis=axis, out=out, keepdims=keepdims, **kwargs)
+
+                assert np.allclose(result.inputs, inputs_expected)
+                assert np.allclose(result.outputs, outputs_expected)
+                assert np.all(result == result_out)
+                assert result_out is out
+
+        class TestCumulativeReductionFunctions(
+            named_arrays.tests.test_core.AbstractTestAbstractArray.TestArrayFunctions.TestCumulativeReductionFunctions
+        ):
+            def test_cumulative_reduction_functions(
+                    self,
+                    func: Callable,
+                    array: na.AbstractFunctionArray,
+                    axis: None | str | Sequence[str],
+                    dtype: None | type | np.dtype,
+            ):
+
+                shape = array.shape
+                array_broadcasted = na.broadcast_to(array, shape)
+
+                if axis is None:
+                    _axis = tuple(shape)
+                elif isinstance(axis, str):
+                    _axis = (axis,)
+                else:
+                    _axis = axis
+
+                kwargs = dict()
+                kwargs_output = dict()
+                if dtype is not np._NoValue:
+                    kwargs["dtype"] = kwargs_output["dtype"] = dtype
+
+                try:
+                    outputs_expected = func(
+                        array_broadcasted.outputs,
+                        axis=_axis,
+                        **kwargs_output,
+                    )
+
+                    inputs_expected = array_broadcasted.inputs
+                except Exception as e:
+                    with pytest.raises(type(e)):
+                        func(array, axis=axis, **kwargs)
+                    return
+
+                result = func(array, axis=axis, **kwargs)
+
+                out = 0 * result
+                out.inputs = 0 * out.inputs
+                result_out = func(array, axis=axis, out=out, **kwargs)
 
                 assert np.allclose(result.inputs, inputs_expected)
                 assert np.allclose(result.outputs, outputs_expected)
@@ -777,7 +852,7 @@ class AbstractTestAbstractFunctionArray(
             pass    # pragma: nocover
 
         @pytest.mark.skip
-        def test_char_mod(self, array: na.AbstractArray, a: na.AbstractArray):
+        def test_strings_mod(self, array: na.AbstractArray, a: na.AbstractArray):
             pass    # pragma: nocover
 
     class TestNamedArrayFunctions(
@@ -914,6 +989,12 @@ class AbstractTestAbstractFunctionArray(
         ):
             pass
 
+        @pytest.mark.skip
+        class TestOptimizeMinimumBrent(
+            named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestOptimizeMinimumBrent,
+        ):
+            pass
+
         class TestColorsynth(
             named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestColorsynth,
         ):
@@ -1022,21 +1103,15 @@ class AbstractTestAbstractPolynomialFunctionArray(
     def test_coefficients(self, array: na.AbstractPolynomialFunctionArray):
         assert isinstance(array.coefficients, na.AbstractVectorArray)
 
-    def test_degree(self, array: na.AbstractPolynomialFunctionArray):
-        assert isinstance(array.degree, int)
-        assert array.degree >= 0
+    def test_coefficient_names(self, array: na.AbstractPolynomialFunctionArray):
+        result = array.coefficient_names
+        assert len(result) > 0
+        for name in result:
+            assert isinstance(name, str)
 
     def test_axis_polynomial(self, array: na.AbstractPolynomialFunctionArray):
         result = array.axis_polynomial
         if array.axis_polynomial is not None:
-            if isinstance(result, str):
-                result = (result, )
-            for ax in result:
-                assert isinstance(ax, str)
-
-    def test_components_polynomial(self, array: na.AbstractPolynomialFunctionArray):
-        result = array.components_polynomial
-        if array.components_polynomial is not None:
             if isinstance(result, str):
                 result = (result, )
             for ax in result:
@@ -1050,13 +1125,31 @@ class AbstractTestAbstractPolynomialFunctionArray(
 
 def _polynomial_function_arrays():
     return [
-        na.PolynomialFitFunctionArray(
+        na.PolynomialFitFunctionArray.from_degree(
             inputs=function.inputs,
             outputs=function.outputs,
             degree=2,
         )
         for function in _function_arrays()
     ] + [
+        na.PolynomialFitFunctionArray.from_degree(
+            inputs=na.Cartesian2dVectorLinearSpace(
+                start=0,
+                stop=1,
+                axis=na.Cartesian2dVectorArray('x', 'y'),
+                num=na.Cartesian2dVectorArray(_num_x, _num_y)
+            ),
+            outputs=na.ScalarUniformRandomSample(
+                start=-5,
+                stop=5,
+                shape_random=dict(x=_num_x, y=_num_y),
+            ),
+            center=na.Cartesian2dVectorArray(0.5, 0.5),
+            degree=1,
+            axis_polynomial="y",
+            components="y",
+        ),
+        # explicit (pruned) coefficient names
         na.PolynomialFitFunctionArray(
             inputs=na.Cartesian2dVectorLinearSpace(
                 start=0,
@@ -1069,10 +1162,8 @@ def _polynomial_function_arrays():
                 stop=5,
                 shape_random=dict(x=_num_x, y=_num_y),
             ),
-            degree=1,
-            axis_polynomial="y",
-            components_polynomial="y",
-        )
+            coefficient_names=["", "x", "y", "x*y"],
+        ),
     ]
 
 
@@ -1125,6 +1216,3 @@ class TestPolynomialFitFunctionArray(
         AbstractTestAbstractFunctionArray.TestMatmul
     ):
         pass
-
-
-

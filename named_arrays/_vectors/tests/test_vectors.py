@@ -1,8 +1,6 @@
-from typing import Type, Callable, Sequence, Literal
+from typing import Mapping, Type, Callable, Sequence, Literal
 import pytest
-import abc
 import numpy as np
-import matplotlib.axes
 import astropy.units as u
 import named_arrays as na
 
@@ -106,14 +104,9 @@ class AbstractTestAbstractVectorArray(
     def test__getitem__(
             self,
             array: na.AbstractVectorArray,
-            item: dict[str, int | slice | na.AbstractArray] | na.AbstractArray
+            item: Mapping[str, int | slice | na.AbstractArray] | na.AbstractArray
     ):
         super().test__getitem__(array=array, item=item)
-
-        if not array.shape:
-            with pytest.raises(ValueError):
-                array[item]
-            return
 
         components = array.broadcasted.components
         components_expected = dict()
@@ -129,6 +122,11 @@ class AbstractTestAbstractVectorArray(
                     components_item[c][ax] = components_item_ax[c]
 
         else:
+            if not array.shape:
+                with pytest.raises(ValueError):
+                    array[item]
+                return
+
             if not item.type_abstract == array.type_abstract:
                 components_item = array.type_explicit.from_scalar(item, like=array).components
             else:
@@ -190,7 +188,7 @@ class AbstractTestAbstractVectorArray(
 
             result = np.matmul(array, array_2)
 
-            out = 0 * result
+            out = na.asanyarray(0 * result)
             result_out = np.matmul(array, array_2, out=out)
 
             assert np.all(result == result_expected)
@@ -293,6 +291,59 @@ class AbstractTestAbstractVectorArray(
 
                         if isinstance(kwargs_components[c][k], na.AbstractArray):
                             kwargs_components[c][k] = kwargs_components[c][k].broadcast_to(shape)
+
+                try:
+                    result_expected = array.prototype_vector
+                    for c in components:
+                        component = na.as_named_array(array.components[c]).broadcast_to(shape)
+                        result_expected.components[c] = func(component, **kwargs_components[c])
+                except (ValueError, TypeError, u.UnitsError) as e:
+                    with pytest.raises(type(e)):
+                        func(array, **kwargs)
+                    return
+
+                result = func(array, **kwargs)
+
+                out = 0 * result
+
+                result_out = func(array, out=out, **kwargs)
+
+                assert np.allclose(result, result_expected)
+                assert np.allclose(result, result_out)
+                assert result_out is out
+
+        class TestCumulativeReductionFunctions(
+            named_arrays.tests.test_core.AbstractTestAbstractArray.TestArrayFunctions.TestCumulativeReductionFunctions,
+        ):
+
+            def test_cumulative_reduction_functions(
+                    self,
+                    func: Callable,
+                    array: na.AbstractVectorArray,
+                    axis: None | str | Sequence[str],
+                    dtype: Type,
+            ):
+                super().test_cumulative_reduction_functions(
+                    func=func,
+                    array=array,
+                    axis=axis,
+                    dtype=dtype,
+                )
+
+                shape = array.shape
+                components = array.components
+
+                if not shape:
+                    return
+
+                kwargs = dict(
+                    axis=axis,
+                )
+
+                if dtype is not np._NoValue:
+                    kwargs["dtype"] = dtype
+
+                kwargs_components = {c: kwargs for c in components}
 
                 try:
                     result_expected = array.prototype_vector
@@ -461,7 +512,7 @@ class AbstractTestAbstractVectorArray(
 
             if axis is not None:
                 if not axis:
-                    with pytest.raises(ValueError, match=f"if `axis` is a sequence, it must not be empty, got .*"):
+                    with pytest.raises(ValueError, match="if `axis` is a sequence, it must not be empty, got .*"):
                         np.sort(array, axis=axis)
                     return
 
@@ -488,13 +539,20 @@ class AbstractTestAbstractVectorArray(
         def test_nan_to_num(self, array: na.AbstractVectorArray, copy: bool):
             components = array.components
 
-            components_expected = {c: np.nan_to_num(components[c], copy=copy) for c in components}
-            result_expected = array.type_explicit.from_components(components_expected)
-
             if not copy and isinstance(array, na.AbstractImplicitArray):
                 with pytest.raises(ValueError, match=r"can\'t write to an array that is not an instance of .*"):
                     np.nan_to_num(array, copy=copy)
                 return
+
+            try:
+                components_expected = {c: np.nan_to_num(components[c], copy=copy) for c in components}
+                result_expected = array.type_explicit.from_components(components_expected)
+            except ValueError as e:
+                match = "Unable to avoid copy"
+                if e.args[0].startswith(match):
+                    with pytest.raises(ValueError, match=match):
+                        np.nan_to_num(array, copy=copy)
+                    return
 
             result = np.nan_to_num(array, copy=copy)
 
@@ -650,6 +708,12 @@ class AbstractTestAbstractVectorArray(
         )
         class TestOptimizeMinimum(
             named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestOptimizeMinimum,
+        ):
+            pass
+
+        @pytest.mark.skip
+        class TestOptimizeMinimumBrent(
+            named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestOptimizeMinimumBrent,
         ):
             pass
 

@@ -1,6 +1,5 @@
 from __future__ import annotations
 from typing import Type, Generic, TypeVar
-from typing_extensions import Self
 import abc
 import dataclasses
 import named_arrays as na
@@ -14,7 +13,7 @@ __all__ = [
     "DirectionalVectorLinearSpace",
 ]
 
-DirectionT = TypeVar("DirectionT", bound=na.ArrayLike)
+DirectionT = TypeVar("DirectionT", bound=na.ArrayLike, covariant=True)
 
 
 @dataclasses.dataclass(eq=False, repr=False)
@@ -34,11 +33,11 @@ class AbstractDirectionalVectorArray(
         return AbstractDirectionalVectorArray
 
     @property
-    def type_explicit(self) -> Type[na.AbstractExplicitArray]:
+    def type_explicit(self) -> Type[DirectionalVectorArray]:
         return DirectionalVectorArray
 
     @property
-    def type_matrix(self) -> Type[na.DirectionalMatrixArray]:
+    def type_matrix(self) -> Type[na.AbstractExplicitMatrixArray]:
         return na.DirectionalMatrixArray
 
 
@@ -49,17 +48,6 @@ class DirectionalVectorArray(
     Generic[DirectionT],
 ):
     direction: DirectionT = 0
-
-    @classmethod
-    def from_scalar(
-        cls: Type[Self],
-        scalar: na.AbstractScalar,
-        like: None | na.AbstractExplicitVectorArray = None,
-    ) -> DirectionalVectorArray:
-        result = super().from_scalar(scalar, like=like)
-        if result is not NotImplemented:
-            return result
-        return cls(direction=scalar)
 
 
 @dataclasses.dataclass(eq=False, repr=False)

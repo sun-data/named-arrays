@@ -1,6 +1,5 @@
 from __future__ import annotations
 from typing import Type, Generic, TypeVar
-from typing_extensions import Self
 import abc
 import dataclasses
 import named_arrays as na
@@ -14,8 +13,8 @@ __all__ = [
     "InputOutputVectorLinearSpace",
 ]
 
-InputT = TypeVar("InputT", bound=na.ArrayLike)
-OutputT = TypeVar("OutputT", bound=na.ArrayLike)
+InputT = TypeVar("InputT", bound=na.ArrayLike, covariant=True)
+OutputT = TypeVar("OutputT", bound=na.ArrayLike, covariant=True)
 
 
 @dataclasses.dataclass(eq=False, repr=False)
@@ -42,7 +41,7 @@ class AbstractInputOutputVectorArray(
         return AbstractInputOutputVectorArray
 
     @property
-    def type_explicit(self) -> Type[na.AbstractExplicitArray]:
+    def type_explicit(self) -> Type[InputOutputVectorArray]:
         return InputOutputVectorArray
 
     @property
@@ -58,17 +57,6 @@ class InputOutputVectorArray(
 ):
     input: InputT = 0
     output: OutputT = 0
-
-    @classmethod
-    def from_scalar(
-        cls: Type[Self],
-        scalar: na.AbstractScalar,
-        like: None | na.AbstractExplicitVectorArray = None,
-    ) -> InputOutputVectorArray:
-        result = super().from_scalar(scalar, like=like)
-        if result is not NotImplemented:
-            return result
-        return cls(input=scalar, output=scalar)
 
 
 @dataclasses.dataclass(eq=False, repr=False)

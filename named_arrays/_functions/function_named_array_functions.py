@@ -102,12 +102,82 @@ def unit_normalized(
     )
 
 
+@_implements(na.broadcast_to)
+def broadcast_to(
+    array: na.AbstractFunctionArray,
+    shape: dict[str, int],
+    append: bool = False,
+) -> na.FunctionArray:
+
+    array = array.explicit
+
+    axes_vertex = array.axes_vertex
+    shape_inputs = {
+        ax: shape[ax] + 1 if ax in axes_vertex else shape[ax]
+        for ax in shape
+    }
+
+    return array.replace(
+        inputs=na.broadcast_to(
+            array=array.inputs,
+            shape=shape_inputs,
+            append=append,
+        ),
+        outputs=na.broadcast_to(
+            array=array.outputs,
+            shape=shape,
+            append=append,
+        ),
+    )
+
+
+@_implements(na.debroadcast)
+def debroadcast(
+    array: na.AbstractFunctionArray,
+    axes: None | str | Sequence[str] = None,
+) -> na.FunctionArray:
+    array = array.explicit
+    shape = array.shape
+
+    if axes is None:
+        axes = tuple(shape)
+    elif isinstance(axes, str):
+        axes = (axes,)
+
+    inputs = array.inputs
+    outputs = array.outputs
+    shape_inputs = na.shape(inputs)
+
+    # A vertex axis represents bin edges, which vary along the axis and so are
+    # never constant, and cannot be sliced symmetrically with the bin centers.
+    axes_vertex = array.axes_vertex
+
+    index = dict()
+    for axis in axes:
+        if axis not in shape:
+            continue
+        if axis in axes_vertex:
+            continue
+        # ``outputs`` and ``inputs`` are compared separately (rather than the
+        # whole function) so that differing coordinates along ``axis`` register
+        # as "not constant" instead of raising.
+        # Empty axes are never removed (see :func:`_debroadcast`).
+        constant = shape[axis] != 0
+        constant = constant and bool(np.all(outputs == outputs[{axis: slice(0, 1)}]))
+        if constant and axis in shape_inputs:
+            constant = bool(np.all(inputs == inputs[{axis: slice(0, 1)}]))
+        if constant:
+            index[axis] = 0
+
+    return array[index]
+
+
 @_implements(na.nominal)
 def nominal(
     a: na.AbstractFunctionArray,
 ) -> na.FunctionArray:
-
-    return a.type_explicit(
+    a = a.explicit
+    return a.replace(
         inputs=na.nominal(a.inputs),
         outputs=na.nominal(a.outputs),
     )
@@ -133,8 +203,6 @@ def histogram(
     for ax in axis_normalized:
         if ax in a.axes_vertex:
             raise ValueError("Taking a histogram of a histogram doesn't work right now.")
-
-
 
     return na.histogram(
         a=a.inputs,
@@ -197,18 +265,21 @@ def ndfilter(
     else:
         return NotImplemented   # pragma: nocover
 
+    array = array.explicit
+
     if isinstance(where, bool):
         where = na.FunctionArray(None, where)
     elif isinstance(where, na.AbstractFunctionArray):
+        where = where.explicit
         if np.all(where.inputs != array.inputs):    # pragma: nocover
             raise ValueError(
-                f"if `where` is an instance of `na.AbstractFunctionArray`, "
-                f"its inputs must match `array`."
+                "if `where` is an instance of `na.AbstractFunctionArray`, "
+                "its inputs must match `array`."
             )
     else:
         return NotImplemented   # pragma: nocover
 
-    return array.type_explicit(
+    return array.replace(
         inputs=array.inputs.copy(),
         outputs=func(
             array=array.outputs,

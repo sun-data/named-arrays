@@ -182,6 +182,45 @@ def unit_normalized(
     return a.type_explicit.from_components(components)
 
 
+@_implements(na.broadcast_to)
+def broadcast_to(
+    array: na.AbstractVectorArray,
+    shape: dict[str, int],
+    append: bool = False,
+) -> na.AbstractExplicitVectorArray:
+    components = array.components
+
+    components = {
+        c: na.broadcast_to(
+            array=components[c],
+            shape=shape,
+            append=append,
+        )
+        for c in components
+    }
+
+    return array.type_explicit.from_components(components)
+
+
+@_implements(na.debroadcast)
+def debroadcast(
+    array: na.AbstractVectorArray,
+    axes: None | str | Sequence[str] = None,
+) -> na.AbstractExplicitVectorArray:
+    array = array.explicit
+    components = array.components
+
+    components = {
+        c: na.debroadcast(
+            array=components[c],
+            axes=axes,
+        )
+        for c in components
+    }
+
+    return array.type_explicit.from_components(components)
+
+
 @_implements(na.nominal)
 def nominal(
     a: na.AbstractVectorArray,
@@ -845,7 +884,10 @@ def regridding_weights(
     coordinates_output: na.AbstractVectorArray,
     axis_input: None | str | Sequence[str] = None,
     axis_output: None | str | Sequence[str] = None,
+    weights_input: None | na.AbstractScalar = None,
     method: Literal['multilinear', 'conservative'] = 'multilinear',
+    perturb: None | bool = None,
+    seed: "None | int | np.random.Generator" = na.regridding._seed_default,
 ) -> tuple[na.AbstractScalar, dict[str, int], dict[str, int]]:
 
     try:
@@ -863,6 +905,8 @@ def regridding_weights(
             if coordinates_output[c] is not None
         }
         coordinates_output = na.CartesianNdVectorArray(coordinates_output)
+        if weights_input is not None:
+            weights_input = scalars._normalize(weights_input)
     except scalars.ScalarTypeError:  # pragma: nocover
         return NotImplemented
 
@@ -921,12 +965,18 @@ def regridding_weights(
     axis_input = tuple(tuple(shape_input).index(a) for a in axis_input)
     axis_output = tuple(tuple(shape_output).index(a) for a in axis_output)
 
+    if weights_input is not None:
+        weights_input = weights_input.ndarray_aligned(shape_input)
+
     result, _shape_input, _shape_output = regridding.weights(
         coordinates_input=coordinates_input,
         coordinates_output=coordinates_output,
         axis_input=axis_input,
         axis_output=axis_output,
+        weights_input=weights_input,
         method=method,
+        perturb=perturb,
+        seed=seed,
     )
 
     result = na.ScalarArray(result, tuple(shape_orthogonal))
@@ -958,3 +1008,157 @@ def regridding_regrid_from_weights(
         na.CartesianNdVectorArray(new_values_inputs),
         like=values_input.explicit
     )
+
+
+@_implements(na.regridding.transpose_weights_conservative)
+def regridding_transpose_weights_conservative(
+    weights: na.AbstractScalar,
+    shape_input: dict[str, int],
+    shape_output: dict[str, int],
+    coordinates_input: na.AbstractVectorArray,
+    coordinates_output: na.AbstractVectorArray,
+    axis_input: None | str | Sequence[str] = None,
+    axis_output: None | str | Sequence[str] = None,
+    weights_input: None | na.AbstractScalar = None,
+) -> tuple[na.AbstractScalar, dict[str, int], dict[str, int]]:
+
+    _shape_input = shape_input
+    _shape_output = shape_output
+
+    try:
+        prototype = vectors._prototype(coordinates_input, coordinates_output)
+        coordinates_input = vectors._normalize(coordinates_input, prototype)
+        coordinates_output = vectors._normalize(coordinates_output, prototype)
+    except vectors.VectorTypeError:  # pragma: nocover
+        return NotImplemented
+
+    try:
+        coordinates_output = coordinates_output.components
+        coordinates_output = {
+            c: scalars._normalize(coordinates_output[c])
+            for c in coordinates_output
+            if coordinates_output[c] is not None
+        }
+        coordinates_output = na.CartesianNdVectorArray(coordinates_output)
+    except scalars.ScalarTypeError:  # pragma: nocover
+        return NotImplemented
+
+    try:
+        weights = scalars._normalize(weights)
+        coordinates_input = coordinates_input.components
+        coordinates_input = {
+            c: scalars._normalize(coordinates_input[c])
+            for c in coordinates_output.components
+        }
+        coordinates_input = na.CartesianNdVectorArray(coordinates_input)
+        if weights_input is not None:
+            weights_input = scalars._normalize(weights_input)
+    except scalars.ScalarTypeError:  # pragma: nocover
+        return NotImplemented
+
+    coordinates_output = coordinates_output.explicit
+    coordinates_input = coordinates_input.explicit
+
+    shape_input = coordinates_input.shape
+    shape_output = coordinates_output.shape
+
+    if axis_input is None:
+        axis_input = tuple(shape_input)
+    elif isinstance(axis_input, str):
+        axis_input = (axis_input,)
+
+    if axis_output is None:
+        axis_output = tuple(shape_output)
+    elif isinstance(axis_output, str):
+        axis_output = (axis_output,)
+
+    shape_orthogonal_input = {
+        a: shape_input[a]
+        for a in shape_input if a not in axis_input
+    }
+    shape_orthogonal_output = {
+        a: shape_output[a]
+        for a in shape_output if a not in axis_output
+    }
+
+    shape_orthogonal = na.broadcast_shapes(
+        shape_orthogonal_input,
+        shape_orthogonal_output,
+        weights.shape
+    )
+
+    shape_input = na.broadcast_shapes(shape_orthogonal, shape_input)
+    shape_output = na.broadcast_shapes(shape_orthogonal, shape_output)
+
+    weights = weights.broadcast_to(shape_orthogonal)
+
+    weights = weights.ndarray, tuple(_shape_input.values()), tuple(_shape_output.values())
+
+    coordinates_input = coordinates_input.broadcast_to(shape_input)
+    coordinates_output = coordinates_output.broadcast_to(shape_output)
+
+    coordinates_input = coordinates_input.components
+    coordinates_output = coordinates_output.components
+
+    coordinates_input = tuple(coordinates_input[c].ndarray for c in coordinates_input)
+    coordinates_output = tuple(coordinates_output[c].ndarray for c in coordinates_output)
+
+    axis_input = tuple(tuple(shape_input).index(a) for a in axis_input)
+    axis_output = tuple(tuple(shape_output).index(a) for a in axis_output)
+
+    if weights_input is not None:
+        weights_input = weights_input.ndarray_aligned(shape_input)
+
+    result, _, _ = regridding.transpose_weights_conservative(
+        weights=weights,
+        coordinates_input=coordinates_input,
+        coordinates_output=coordinates_output,
+        axis_input=axis_input,
+        axis_output=axis_output,
+        weights_input=weights_input,
+    )
+
+    result = na.ScalarArray(result, tuple(shape_orthogonal))
+
+    return result, _shape_output, _shape_input
+
+
+@_implements(na.numexpr.evaluate)
+def evaluate(
+    ex: str,
+    order: str = 'K',
+    casting: str = 'same_kind',
+    sanitize: None | bool = None,
+    optimization: Literal["none", "moderate", "aggressive"] = "aggressive",
+    truediv: bool | Literal["auto"] = "auto",
+    **arrays,
+) -> na.AbstractExplicitVectorArray:
+
+    try:
+        prototype = vectors._prototype(*arrays.values())
+        arrays = {
+            name: vectors._normalize(arrays[name], prototype).explicit
+            for name in arrays
+        }
+    except vectors.VectorTypeError:  # pragma: nocover
+        return NotImplemented
+
+    prototype = next(iter(arrays.values()))
+
+    arrays = {name: arrays[name].components for name in arrays}
+
+    result = dict()
+
+    for c in next(iter(arrays.values())):
+
+        result[c] = na.numexpr.evaluate(
+            ex=ex,
+            local_dict={name: arrays[name][c] for name in arrays},
+            order=order,
+            casting=casting,
+            sanitize=sanitize,
+            optimization=optimization,
+            truediv=truediv,
+        )
+
+    return prototype.type_explicit.from_components(result)

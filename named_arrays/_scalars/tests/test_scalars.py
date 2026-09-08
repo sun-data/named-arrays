@@ -1,12 +1,11 @@
 from __future__ import annotations
-from typing import Type, Sequence, Callable
+from typing import Mapping, Type, Sequence, Callable
 import pytest
 import numpy as np
 import matplotlib
-import matplotlib.pyplot as plt
+import scipy.stats
 import astropy.units as u
 import astropy.visualization
-import astropy.units.quantity_helper.helpers as quantity_helpers
 import named_arrays as na
 from ... import tests
 
@@ -150,6 +149,12 @@ class AbstractTestAbstractScalar(
 
         assert isinstance(na.as_named_array(result), na.AbstractScalar)
 
+    def test_mean_trimmed(
+            self,
+            array: na.AbstractArray,
+    ):
+        assert np.array_equal(array.mean_trimmed(), na.mean_trimmed(array))
+
     def test__bool__(self, array: na.AbstractScalarArray):
         if array.shape or array.unit is not None:
             with pytest.raises(
@@ -186,6 +191,49 @@ class AbstractTestAbstractScalar(
             assert np.all(result == result_expected)
             assert np.all(result == result_out)
             assert result_out is out
+
+    class TestArrayFunctions(
+        tests.test_core.AbstractTestAbstractArray.TestArrayFunctions,
+    ):
+
+        @pytest.mark.parametrize(
+            argnames="kth",
+            argvalues=[
+                2,
+            ]
+        )
+        @pytest.mark.parametrize(
+            argnames="axis",
+            argvalues=["y",],
+        )
+        def test_partition(
+            self,
+            array: na.AbstractScalar,
+            kth: int | Sequence[int],
+            axis: str,
+        ):
+            if axis not in array.shape:
+                with pytest.raises(ValueError):
+                    np.partition(
+                        a=array,
+                        kth=kth,
+                        axis=axis,
+                    )
+                return
+
+            result = np.partition(
+                a=array,
+                kth=kth,
+                axis=axis,
+            )
+
+            if isinstance(kth, int):
+                kth = [kth]
+
+            for k in kth:
+                result_lower = result[{axis: slice(None, k)}].mean(axis)
+                result_upper = result[{axis: slice(k, None)}].mean(axis)
+                assert np.all(result_lower <= result_upper)
 
     class TestNamedArrayFunctions(
         tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions,
@@ -375,6 +423,7 @@ class AbstractTestAbstractScalarArray(
         argnames='item',
         argvalues=[
             dict(y=0),
+            dict(y=np.int64(0)),
             dict(y=slice(0,1)),
             dict(y=na.ScalarArray(np.array([0, 1]), axes=('y', ))),
             na.ScalarLinearSpace(0, 1, axis='y', num=_num_y) > 0.5,
@@ -383,33 +432,39 @@ class AbstractTestAbstractScalarArray(
     def test__getitem__(
             self,
             array: na.AbstractScalarArray,
-            item: dict[str, int | slice | na.AbstractArray] | na.AbstractArray
+            item: Mapping[str, int | slice | na.AbstractArray] | na.AbstractArray
     ):
         super().test__getitem__(array=array, item=item)
 
-        if array.shape:
+        if isinstance(item, dict):
             result = array[item]
-            assert isinstance(result, na.AbstractArray)
-
-            if isinstance(item, dict):
-                item_expected = [Ellipsis]
-                for axis in item:
+            item_expected = [Ellipsis]
+            for axis in item:
+                if axis in array.axes:
                     if isinstance(item[axis], na.AbstractArray):
                         item_expected.append(item[axis].ndarray)
                     else:
                         item_expected.append(item[axis])
-                item_expected = tuple(item_expected)
-            else:
-                item_expected = (Ellipsis, item.ndarray)
-
-            result_expected = array.ndarray[item_expected]
-            if 'y' in result.axes:
-                result = result.change_axis_index('y', ~0)
-            assert np.all(result.ndarray == result_expected)
-
+            item_expected = tuple(item_expected)
         else:
-            with pytest.raises(ValueError):
-                array[item]
+            if array.shape:
+                result = array[item]
+                item_expected = (Ellipsis, item.ndarray)
+            else:
+                with pytest.raises(ValueError):
+                    array[item]
+                return
+
+        assert isinstance(result, na.AbstractArray)
+
+        if len(item_expected) > 1:
+            result_expected = array.ndarray[item_expected]
+        else:
+            result_expected = array
+
+        if 'y' in result.axes:
+            result = result.change_axis_index('y', ~0)
+        assert np.all(result.ndarray == result_expected)
 
     @pytest.mark.parametrize(
         argnames='item',
@@ -444,14 +499,6 @@ class AbstractTestAbstractScalarArray(
     ):
 
         if isinstance(item, dict):
-
-            if not (set(item) - set((na.UncertainScalarArray.axis_distribution, ))).issubset(array.shape):
-                with pytest.raises(
-                    expected_exception=ValueError,
-                    match="the axes in item, .*, must be a subset of the axes in the array, .*"
-                ):
-                    array[item]
-                return
 
             num_distribution = item[na.UncertainScalarArray.axis_distribution].distribution.max().ndarray + 1
             shape_distribution = na.broadcast_shapes(
@@ -524,6 +571,8 @@ class AbstractTestAbstractScalarArray(
 
             if "where" in kwargs:
                 kwargs_ndarray["where"] = kwargs["where"].ndarray
+                kwargs["out"] = None
+                kwargs_ndarray["out"] = None
 
             try:
                 ufunc(array.ndarray, **kwargs_ndarray)
@@ -540,7 +589,7 @@ class AbstractTestAbstractScalarArray(
             else:
                 out = tuple(0 * np.nan_to_num(r) for r in result)
 
-            result_out = ufunc(array, out=out, **kwargs)
+            result_out = ufunc(array, **(kwargs | {"out": out}))
 
             if ufunc.nout == 1:
                 out = (out, )
@@ -588,6 +637,8 @@ class AbstractTestAbstractScalarArray(
             if "where" in kwargs:
                 kwargs["where"] = na.broadcast_to(kwargs["where"], shape)
                 kwargs_ndarray["where"] = kwargs["where"].ndarray
+                kwargs["out"] =  None
+                kwargs_ndarray["out"] = None
 
             try:
                 ufunc(array_ndarray, array_2_ndarray, **kwargs_ndarray)
@@ -604,7 +655,7 @@ class AbstractTestAbstractScalarArray(
             else:
                 out = tuple(0 * np.nan_to_num(r) for r in result)
 
-            result_out = ufunc(array, array_2, out=out, **kwargs)
+            result_out = ufunc(array, array_2, **(kwargs | {"out": out}))
 
             if ufunc.nout == 1:
                 out = (out,)
@@ -626,6 +677,12 @@ class AbstractTestAbstractScalarArray(
     class TestArrayFunctions(
         AbstractTestAbstractScalar.TestArrayFunctions,
     ):
+
+        @pytest.mark.parametrize("array_2", _scalar_arrays_2())
+        class TestStackLikeFunctions(
+            AbstractTestAbstractScalar.TestArrayFunctions.TestStackLikeFunctions,
+        ):
+            pass
 
         @pytest.mark.parametrize("array_2", _scalar_arrays_2())
         class TestAsArrayLikeFunctions(
@@ -723,6 +780,66 @@ class AbstractTestAbstractScalarArray(
 
                 if func in [np.min, np.nanmin, np.max, np.nanmax]:
                     kwargs["initial"] = kwargs_ndarray["initial"] = 0
+
+                try:
+                    result_ndarray = func(array.ndarray, **kwargs_ndarray)
+                except (ValueError, TypeError, u.UnitsError) as e:
+                    with pytest.raises(type(e)):
+                        func(array, **kwargs)
+                    return
+
+                result = func(array, **kwargs)
+
+                out = 0 * result
+                result_out = func(array, out=out, **kwargs)
+
+                assert np.all(result.ndarray == result_ndarray)
+                assert np.allclose(result, result_out)
+                assert result_out is out
+
+        class TestCumulativeReductionFunctions(
+            AbstractTestAbstractScalar.TestArrayFunctions.TestCumulativeReductionFunctions
+        ):
+
+            def test_cumulative_reduction_functions(
+                    self,
+                    func: Callable,
+                    array: na.AbstractScalarArray,
+                    axis: None | str | Sequence[str],
+                    dtype: None | type | np.dtype,
+            ):
+                super().test_cumulative_reduction_functions(
+                    func=func,
+                    array=array,
+                    axis=axis,
+                    dtype=dtype,
+
+                )
+
+                kwargs = dict(
+                    axis=axis,
+                )
+
+                axis_normalized = na.axis_normalized(array, axis=axis)
+
+                if len(axis_normalized) != 1:
+                    with pytest.raises(ValueError):
+                        func(array, axis=axis)
+                    return
+
+                axis_normalized = axis_normalized[0]
+
+                if axis_normalized not in array.shape:
+                    with pytest.raises(ValueError):
+                        func(array, axis=axis)
+                    return
+
+                kwargs_ndarray = dict(
+                    axis=array.axes.index(axis_normalized),
+                )
+
+                if dtype is not np._NoValue:
+                    kwargs["dtype"] = kwargs_ndarray["dtype"] = dtype
 
                 try:
                     result_ndarray = func(array.ndarray, **kwargs_ndarray)
@@ -876,7 +993,7 @@ class AbstractTestAbstractScalarArray(
 
                 assert isinstance(result, na.AbstractArray)
                 assert axis[1] in result.axes
-                assert not axis[0] in result.axes
+                assert axis[0] not in result.axes
 
                 assert np.all(result.ndarray == result_expected)
 
@@ -1013,8 +1130,16 @@ class AbstractTestAbstractScalarArray(
                     np.nan_to_num(array, copy=copy)
                 return
 
+            try:
+                expected = np.nan_to_num(array.ndarray, copy=copy)
+            except ValueError as e:
+                match = "Unable to avoid copy"
+                if e.args[0].startswith(match):
+                    with pytest.raises(ValueError, match=match):
+                        np.nan_to_num(array, copy=copy)
+                    return
+
             result = np.nan_to_num(array, copy=copy)
-            expected = np.nan_to_num(array.ndarray, copy=copy)
 
             if not copy:
                 assert result is array
@@ -1053,6 +1178,25 @@ class AbstractTestAbstractScalarArray(
         def test_nominal(self, array: na.AbstractScalarArray):
             result = na.nominal(array)
             assert np.all(result == array)
+
+        def test_mean_trimmed(
+                self,
+                array: na.AbstractArray,
+                q: float | Sequence[float] = 0.25,
+                axis: None | str | Sequence[str] = None,
+        ):
+            result = na.mean_trimmed(
+                a=array,
+                q=q,
+                axis=axis,
+            )
+            result_expected = scipy.stats.trim_mean(
+                a=array.ndarray,
+                proportiontocut=q,
+                axis=axis,
+            )
+
+            assert np.allclose(result.value.ndarray, result_expected)
 
         class TestInterp(
             AbstractTestAbstractScalar.TestNamedArrayFunctions.TestInterp,
@@ -1230,6 +1374,126 @@ class AbstractTestAbstractScalarArray(
         ):
             pass
 
+        @pytest.mark.parametrize(
+            argnames="func",
+            argvalues=[
+                na.optimize.minimum_brent,
+            ],
+        )
+        @pytest.mark.parametrize(
+            argnames="function,expected",
+            argvalues=[
+                (
+                    lambda x, p=profile, s=shift_horizontal: p(na.value(x) - s) + 1,
+                    shift_horizontal,
+                )
+                for profile in [
+                    np.square,
+                    np.abs,
+                ]
+                for shift_horizontal in [
+                    20,
+                    na.linspace(19, 20, axis="c", num=6),
+                ]
+            ]
+        )
+        class TestOptimizeMinimumBrent(
+            AbstractTestAbstractScalar.TestNamedArrayFunctions.TestOptimizeMinimumBrent,
+        ):
+            pass
+
+
+@pytest.mark.parametrize(
+    argnames="edges_x",
+    argvalues=[
+        na.linspace(-2, 2, axis="bx", num=17),
+        na.ScalarArray(np.sort(np.random.default_rng(2).uniform(-2, 2, 13)), axes="bx"),
+        na.linspace(-2, 2, axis="bx", num=17) + na.linspace(0, 0.3, axis="p", num=3),
+        na.ScalarArray(
+            np.sort(np.random.default_rng(2).uniform(-2, 2, (3, 13)), axis=~0),
+            axes=("p", "bx"),
+        ),
+    ],
+    ids=["uniform", "irregular", "uniform-per-slice", "irregular-per-slice"],
+)
+@pytest.mark.parametrize(
+    argnames="weights",
+    argvalues=[None, "real", "complex"],
+)
+@pytest.mark.parametrize("unit", [None, u.mm])
+@pytest.mark.parametrize("density", [False, True])
+def test_histogramdd_matches_numpy(
+    edges_x: na.AbstractScalarArray,
+    weights: None | str,
+    unit: None | u.UnitBase,
+    density: bool,
+):
+    """
+    The histogram of every orthogonal index equals a separate
+    :func:`numpy.histogramdd` of that index, including points on the edges,
+    outside the edges, and not a number.
+    """
+    rng = np.random.default_rng(1)
+    shape = dict(p=3, n=400, q=2)
+    x = na.ScalarArray(rng.normal(0, 1, tuple(shape.values())), axes=tuple(shape))
+    y = na.ScalarArray(rng.normal(0, 1, tuple(shape.values())), axes=tuple(shape))
+    x.ndarray[0, :4, 0] = na.value(edges_x[dict(p=0)] if "p" in edges_x.shape else edges_x).ndarray[-1]
+    x.ndarray[0, 4:8, 0] = na.value(edges_x[dict(p=0)] if "p" in edges_x.shape else edges_x).ndarray[3]
+    x.ndarray[1, :4, 0] = np.nan
+    x.ndarray[1, 4:8, 0] = 50
+    edges_y = na.linspace(-3, 3, axis="by", num=9)
+    if weights is None:
+        w = None
+    else:
+        w = na.ScalarArray(rng.random(tuple(shape.values())), axes=tuple(shape))
+        if weights == "complex":
+            w = w + 0.5j * w
+    if unit is not None:
+        x = x * unit
+        y = y * unit
+        edges_x = edges_x * unit
+        edges_y = (edges_y / 10) * (10 * unit)
+        if w is not None:
+            w = w * u.photon
+
+    hist, _ = na.histogramdd(
+        x,
+        y,
+        bins=[edges_x, edges_y],
+        axis=("n", "q"),
+        weights=w,
+        density=density,
+    )
+
+    for i in range(shape["p"]):
+        edges_x_i = edges_x[dict(p=i)] if "p" in edges_x.shape else edges_x
+        expected, _ = np.histogramdd(
+            sample=[
+                na.value(x[dict(p=i)]).ndarray.reshape(-1),
+                na.value(y[dict(p=i)]).ndarray.reshape(-1),
+            ],
+            bins=[na.value(edges_x_i).ndarray, na.value(edges_y).ndarray],
+            weights=None if w is None else np.real(na.value(w[dict(p=i)]).ndarray).reshape(-1),
+            density=density,
+        )
+        if w is not None and weights == "complex":
+            expected = expected * (1 + 0.5j) if not density else expected
+        result = na.value(hist[dict(p=i)]).ndarray_aligned(("bx", "by"))
+        assert np.allclose(result, expected, rtol=1e-12, atol=0)
+
+    unit_expected = na.unit_normalized(w)
+    if density and unit is not None:
+        unit_expected = unit_expected / (unit * unit)
+    assert na.unit_normalized(hist) == unit_expected
+
+
+def test_histogramdd_edges_with_two_axes():
+    """Edges with more than one axis besides the orthogonal axes are an error."""
+    x = na.ScalarArray(np.linspace(-1, 1, 11), axes="n")
+    edges = na.linspace(-1, 1, axis="bx", num=5) + na.linspace(0, 0.1, axis="c", num=2)
+    with pytest.raises(ValueError, match="exactly one axis"):
+        na.histogramdd(x, bins=[edges], axis="n")
+
 
 @pytest.mark.parametrize('array', _scalar_arrays())
 class TestScalarArray(
@@ -1242,6 +1506,7 @@ class TestScalarArray(
         argvalues=[
             dict(y=0),
             dict(x=0, y=0),
+            dict(foo=None),
             dict(y=slice(None)),
             dict(y=na.ScalarArrayRange(0, _num_y, axis='y')),
             dict(x=na.ScalarArrayRange(0, _num_x, axis='x'), y=na.ScalarArrayRange(0, _num_y, axis='y')),
@@ -1358,6 +1623,19 @@ class TestScalarArrayCreation(
             result = type_array.ones(shape, dtype=dtype)
             assert result.shape == shape
             assert np.all(result == 1)
+            assert result.dtype == dtype
+
+        @pytest.mark.parametrize("fill_value", [0, 1, 3.14])
+        def test_full(
+                self,
+                type_array: type[na.AbstractArray],
+                shape: dict[str, int],
+                dtype: None | type | np.dtype | str,
+                fill_value: float,
+        ):
+            result = type_array.full(shape, fill_value=fill_value, dtype=dtype)
+            assert result.shape == shape
+            assert np.all(result == np.array(fill_value).astype(dtype))
             assert result.dtype == dtype
 
 

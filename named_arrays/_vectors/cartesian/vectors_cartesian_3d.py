@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TypeVar, Type, Generic
+from typing import Sequence, TypeVar, Type, Generic
 from typing_extensions import Self
 import abc
 import dataclasses
@@ -8,40 +8,42 @@ import astropy.units as u
 import named_arrays as na
 
 __all__ = [
-    'AbstractCartesian3dVectorArray',
-    'Cartesian3dVectorArray',
-    'AbstractImplicitCartesian3dVectorArray',
-    'AbstractCartesian3dVectorRandomSample',
-    'Cartesian3dVectorUniformRandomSample',
-    'Cartesian3dVectorNormalRandomSample',
-    'AbstractParameterizedCartesian3dVectorArray',
-    'Cartesian3dVectorArrayRange',
-    'AbstractCartesian3dVectorSpace',
-    'Cartesian3dVectorLinearSpace',
-    'Cartesian3dVectorStratifiedRandomSpace',
-    'Cartesian3dVectorLogarithmicSpace',
-    'Cartesian3dVectorGeometricSpace',
+    "AbstractCartesian3dVectorArray",
+    "Cartesian3dVectorArray",
+    "AbstractImplicitCartesian3dVectorArray",
+    "AbstractCartesian3dVectorRandomSample",
+    "Cartesian3dVectorUniformRandomSample",
+    "Cartesian3dVectorNormalRandomSample",
+    "AbstractParameterizedCartesian3dVectorArray",
+    "Cartesian3dVectorArrayRange",
+    "AbstractCartesian3dVectorSpace",
+    "Cartesian3dVectorLinearSpace",
+    "Cartesian3dVectorStratifiedRandomSpace",
+    "Cartesian3dVectorLogarithmicSpace",
+    "Cartesian3dVectorGeometricSpace",
 ]
 
-XT = TypeVar('XT', bound=na.ArrayLike)
-YT = TypeVar('YT', bound=na.ArrayLike)
-ZT = TypeVar('ZT', bound=na.ArrayLike)
+XT = TypeVar('XT', bound=na.ArrayLike, covariant=True)
+YT = TypeVar('YT', bound=na.ArrayLike, covariant=True)
+ZT = TypeVar('ZT', bound=na.ArrayLike, covariant=True)
 
 
 @dataclasses.dataclass(eq=False, repr=False)
 class AbstractCartesian3dVectorArray(
     na.AbstractCartesian2dVectorArray,
 ):
+    """An interface describing an array of 3D Cartesian vectors."""
 
     @property
     @abc.abstractmethod
     def z(self: Self) -> na.ArrayLike:
         """
-        The `z` component of the vector.
+        The `z` component of this vector.
         """
 
     @property
     def xy(self) -> na.Cartesian2dVectorArray:
+        """Only the :math:`x` and :math:`y` components of this vector."""
         return na.Cartesian2dVectorArray(
             x=self.x,
             y=self.y,
@@ -65,7 +67,7 @@ class AbstractCartesian3dVectorArray(
 
     def volume_cell(
         self,
-        axis: None | tuple[str, str, str],
+        axis: None | str | Sequence[str],
     ) -> na.AbstractScalar:
 
         shape = self.shape
@@ -235,19 +237,18 @@ class Cartesian3dVectorArray(
     na.Cartesian2dVectorArray,
     Generic[XT, YT, ZT],
 ):
-    x: XT = 0
-    y: YT = 0
-    z: ZT = 0
+    """
+    An array of 3D Cartesian vectors.
+    """
 
-    @classmethod
-    def from_scalar(
-            cls: Type[Self],
-            scalar: na.AbstractScalar,
-            like: None | na.AbstractExplicitVectorArray = None,
-    ) -> Cartesian3dVectorArray:
-        result = super().from_scalar(scalar, like=like)
-        result.z = scalar
-        return result
+    x: XT = 0
+    """The :math:`x` component of this vector."""
+
+    y: YT = 0
+    """The :math:`y` component of this vector."""
+
+    z: ZT = 0
+    """The :math:`z` component of this vector."""
 
 
 @dataclasses.dataclass(eq=False, repr=False)

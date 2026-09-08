@@ -11,19 +11,22 @@ authors = [
 description = "Numpy arrays with labeled axes, similar to xarray but with support for uncertainties"
 readme = "README.md"
 requires-python = ">=3.10"
+license = "BSD-3-Clause"
+license-files = ["LICENSE"]
 classifiers = [
     "Programming Language :: Python :: 3",
 ]
 dependencies = [
     "typing_extensions",
-    "numpy<2",
+    "numpy>2",
+    "numexpr",
     "matplotlib",
     "scipy",
     "astropy",
     "astroscrappy",
-    "ndfilters==0.3.1",
-    "colorsynth==0.1.5",
-    "regridding==0.2.0",
+    "ndfilters~=1.0",
+    "colorsynth~=1.0",
+    "regridding~=3.4",
     "xarray",
 ]
 dynamic = ["version"]
@@ -36,7 +39,6 @@ test = [
 doc = [
     "pytest",
     "graphviz",
-    "Sphinx<8.2",
     "sphinx-autodoc-typehints",
     "sphinxcontrib-bibtex",
     "pydata-sphinx-theme",
@@ -54,5 +56,27 @@ Documentation = "https://named-arrays.readthedocs.io/en/latest"
 
 [tool.setuptools_scm]
 
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F"]
+
 [tool.setuptools.package-data]
 named_arrays = ["py.typed"]
+
+[tool.pytest.ini_options]
+filterwarnings = [
+    "error",
+    "ignore: numpy.ndarray size changed, may indicate binary incompatibility. *:RuntimeWarning",
+    "ignore: 'where' used without 'out', expect unitialized memory in output. If this is intentional, use out=None.",
+    "ignore: function 'mod' is not known to astropy's Quantity. *",
+    "ignore: invalid value encountered in divide",
+    "ignore: 'mode' parameter is deprecated and will be removed",
+    "ignore: More than 20 figures have been opened.",
+
+]
+
+[tool.coverage.report]
+exclude_also = [
+    "return NotImplemented",
+    "raise ValueError",
+    "raise NotImplementedError",
+]

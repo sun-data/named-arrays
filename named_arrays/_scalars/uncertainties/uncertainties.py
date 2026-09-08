@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TypeVar, Generic, ClassVar, Type, Sequence, Callable, Collection, Any
+from typing import Mapping, TYPE_CHECKING, TypeVar, Generic, ClassVar, Type, Sequence, Callable, Collection, Any, overload
 from typing_extensions import Self
 
 import abc
@@ -7,37 +7,41 @@ import dataclasses
 import numpy as np
 import astropy.units as u
 import named_arrays as na
+from named_arrays._core import _required
 
 __all__ = [
     "nominal",
-    'UncertainScalarStartT',
-    'UncertainScalarStopT',
-    'UncertainScalarTypeError',
-    'AbstractUncertainScalarArray',
-    'UncertainScalarArray',
-    'UniformUncertainScalarArray',
-    'NormalUncertainScalarArray',
-    'UncertainScalarUniformRandomSample',
-    'UncertainScalarNormalRandomSample',
-    'UncertainScalarPoissionRandomSample',
-    'AbstractParameterizedUncertainScalarArray',
-    'AbstractUncertainScalarSpace',
-    'UncertainScalarLinearSpace',
-    'UncertainScalarStratifiedRandomSpace',
-    'UncertainScalarLogarithmicSpace',
-    'UncertainScalarGeometricSpace',
+    "UncertainScalarStartT",
+    "UncertainScalarStopT",
+    "UncertainScalarTypeError",
+    "AbstractUncertainScalarArray",
+    "UncertainScalarArray",
+    "AbstractImplicitUncertainScalarArray",
+    "UniformUncertainScalarArray",
+    "NormalUncertainScalarArray",
+    "AbstractUncertainScalarRandomSample",
+    "UncertainScalarUniformRandomSample",
+    "UncertainScalarNormalRandomSample",
+    "UncertainScalarPoissionRandomSample",
+    "AbstractParameterizedUncertainScalarArray",
+    "AbstractUncertainScalarSpace",
+    "UncertainScalarLinearSpace",
+    "UncertainScalarStratifiedRandomSpace",
+    "UncertainScalarLogarithmicSpace",
+    "UncertainScalarGeometricSpace",
 ]
 
-AnyT = TypeVar("AnyT")
 NominalArrayT = TypeVar(
     'NominalArrayT',
     bound=None | float | complex | np.ndarray | u.Quantity | na.AbstractScalarArray,
+    covariant=True,
 )
 DistributionArrayT = TypeVar(
     'DistributionArrayT',
     bound=None | float | complex | np.ndarray | u.Quantity | na.AbstractScalarArray,
+    covariant=True,
 )
-WidthT = TypeVar('WidthT', bound=int | float | np.ndarray | u.Quantity | na.AbstractScalarArray)
+WidthT = TypeVar('WidthT', bound=int | float | np.ndarray | u.Quantity | na.AbstractScalarArray, covariant=True)
 UncertainScalarStartT = TypeVar("UncertainScalarStartT", bound=float | u.Quantity | na.AbstractScalar)
 UncertainScalarStopT = TypeVar("UncertainScalarStopT", bound=float | u.Quantity | na.AbstractScalar)
 UncertainScalarCenterT = TypeVar("UncertainScalarCenterT", bound=float | u.Quantity | na.AbstractScalar)
@@ -67,12 +71,15 @@ def _normalize(a: float | u.Quantity | na.AbstractScalar):
 
 
 def nominal(
-    a: AnyT | na.UncertainScalarArray[NominalArrayT, DistributionArrayT],
-) -> AnyT | NominalArrayT:
+    a: Any | na.UncertainScalarArray[NominalArrayT, DistributionArrayT],
+) -> na.AbstractExplicitArray:
     """
     Isolate the `nominal` attribute of an uncertain array.
-    If `a` is a nested object, such a vector, this function is recursively
-    applied to all the attributes of the nested object.
+    If `a` is a nested object, such as a vector, or an arbitrarily-nested
+    structure (:class:`dict`, :class:`list`, :class:`tuple`, or
+    :mod:`dataclasses` instance), this function is recursively applied to all
+    the attributes/elements of the nested object, leaving non-array values
+    unchanged.
 
     Parameters
     ----------
@@ -109,12 +116,27 @@ def nominal(
 
         na.nominal(a)
     """
-    try:
-        return na._named_array_function(
-            func=nominal,
-            a=a,
-        )
-    except TypeError:
+    if na.named_array_like(a):
+        try:
+            return na._named_array_function(
+                func=nominal,
+                a=a,
+            )
+        except TypeError:
+            return a
+    elif isinstance(a, dict):
+        return {key: nominal(a[key]) for key in a}
+    elif isinstance(a, list):
+        return [nominal(a_i) for a_i in a]
+    elif isinstance(a, tuple):
+        return tuple(nominal(a_i) for a_i in a)
+    elif dataclasses.is_dataclass(a):
+        return dataclasses.replace(a, **{
+            field.name: nominal(getattr(a, field.name))
+            for field in dataclasses.fields(a)
+            if field.init
+        })
+    else:
         return a
 
 
@@ -213,6 +235,19 @@ class AbstractUncertainScalarArray(
             distribution=self.distribution.to(unit),
         )
 
+    def to_value(
+        self,
+        unit: u.UnitBase,
+        equivalencies: None | list[tuple[u.Unit, u.Unit]] = None,
+    ) -> UncertainScalarArray:
+        return UncertainScalarArray(
+            nominal=na.as_named_array(self.nominal).to_value(
+                unit=unit,
+                equivalencies=equivalencies,
+            ),
+            distribution=self.distribution.to_value(unit),
+        )
+
     def add_axes(self, axes: str | Sequence[str]) -> UncertainScalarArray:
         return UncertainScalarArray(
             nominal=na.as_named_array(self.nominal).add_axes(axes),
@@ -240,6 +275,38 @@ class AbstractUncertainScalarArray(
             distribution=distribution.combine_axes(axes=axes, axis_new=axis_new),
         )
 
+    def matrix_inverse(
+            self,
+            axis_rows: str,
+            axis_columns: str,
+    ) -> UncertainScalarArray:
+        """
+        Compute the inverse of this array, treating it as a matrix with the
+        given row and column axes.
+
+        The nominal value and every sample of the distribution are inverted
+        separately, since the distribution axis is independent of the axes of
+        the matrix.
+
+        Parameters
+        ----------
+        axis_rows
+            The axis representing the rows of the matrix.
+        axis_columns
+            The axis representing the columns of the matrix.
+        """
+
+        shape = self.shape
+        shape_base = {ax: shape[ax] for ax in (axis_rows, axis_columns)}
+
+        nominal = na.broadcast_to(self.nominal, na.shape(self.nominal) | shape_base)
+        distribution = na.broadcast_to(self.distribution, na.shape(self.distribution) | shape_base)
+
+        return UncertainScalarArray(
+            nominal=nominal.matrix_inverse(axis_rows=axis_rows, axis_columns=axis_columns),
+            distribution=distribution.matrix_inverse(axis_rows=axis_rows, axis_columns=axis_columns),
+        )
+
     def to_string_array(
         self,
         format_value: str = "%.2f",
@@ -258,10 +325,9 @@ class AbstractUncertainScalarArray(
 
     def _getitem(
             self,
-            item: dict[str, int | slice | na.AbstractScalar] | na.AbstractScalar,
+            item: Mapping[str, int | slice | na.AbstractArray] | na.AbstractArray,
     ):
         array = self.explicit
-        shape_array = array.shape
         shape_array_distribution = array.shape_distribution
 
         nominal = na.as_named_array(array.nominal)
@@ -298,9 +364,6 @@ class AbstractUncertainScalarArray(
 
         elif isinstance(item, dict):
 
-            if not set(item).issubset(shape_array_distribution):
-                raise ValueError(f"the axes in item, {tuple(item)}, must be a subset of the axes in the array, {array.axes}")
-
             item_nominal = dict()
             item_distribution = dict()
             for ax in item:
@@ -312,7 +375,9 @@ class AbstractUncertainScalarArray(
                         item_nominal[ax] = item_distribution[ax] = item[ax]
                     else:
                         return NotImplemented
-                elif isinstance(item[ax], (int, slice)):
+                elif isinstance(item[ax], slice):
+                    item_nominal[ax] = item_distribution[ax] = item[ax]
+                elif np.issubdtype(type(item[ax]), np.integer):
                     item_nominal[ax] = item_distribution[ax] = item[ax]
                 else:
                     return NotImplemented
@@ -334,8 +399,8 @@ class AbstractUncertainScalarArray(
 
     def _getitem_reversed(
             self,
-            array: na.ScalarArray,
-            item: dict[str, int | slice | AbstractUncertainScalarArray] | AbstractUncertainScalarArray
+            array: na.AbstractArray,
+            item: Mapping[str, int | slice | na.AbstractArray] | na.AbstractArray
     ):
         if isinstance(array, AbstractUncertainScalarArray):
             pass
@@ -518,6 +583,9 @@ class AbstractUncertainScalarArray(
         if func in uncertainties_array_functions.DEFAULT_FUNCTIONS:
             return uncertainties_array_functions.array_function_default(func, *args, **kwargs)
 
+        if func in uncertainties_array_functions.CUMULATIVE_REDUCE_FUNCTIONS:
+            return uncertainties_array_functions.array_function_cumulative_reduce(func, *args, **kwargs)
+
         if func in uncertainties_array_functions.PERCENTILE_LIKE_FUNCTIONS:
             return uncertainties_array_functions.array_function_percentile_like(func, *args, **kwargs)
 
@@ -569,11 +637,198 @@ class AbstractUncertainScalarArray(
 @dataclasses.dataclass(eq=False, repr=False)
 class UncertainScalarArray(
     AbstractUncertainScalarArray,
-    na.AbstractExplicitArray,
+    na.AbstractExplicitScalarArray,
     Generic[NominalArrayT, DistributionArrayT],
 ):
     nominal: NominalArrayT = 0
+    """The nominal value of the array."""
+
     distribution: DistributionArrayT = 0
+    """Distribution of possible values of the array."""
+
+    # The operators declared on `AbstractArray` can only promise the widest
+    # array type. The result of an operation is the explicit array of the
+    # highest family involved, so the result is `Self` unless a higher family
+    # absorbs it. Declarations only; the implementation is inherited.
+    if TYPE_CHECKING:  # pragma: nocover
+
+        @overload
+        def __add__(self, other: na.AbstractFunctionArray) -> na.AbstractFunctionArray: ...
+
+        @overload
+        def __add__(self, other: na.AbstractVectorArray) -> na.AbstractVectorArray: ...
+
+        @overload
+        def __add__(self, other: na.ArrayLike) -> Self: ...
+
+        @overload
+        def __sub__(self, other: na.AbstractFunctionArray) -> na.AbstractFunctionArray: ...
+
+        @overload
+        def __sub__(self, other: na.AbstractVectorArray) -> na.AbstractVectorArray: ...
+
+        @overload
+        def __sub__(self, other: na.ArrayLike) -> Self: ...
+
+        @overload
+        def __floordiv__(self, other: na.AbstractFunctionArray) -> na.AbstractFunctionArray: ...
+
+        @overload
+        def __floordiv__(self, other: na.AbstractVectorArray) -> na.AbstractVectorArray: ...
+
+        @overload
+        def __floordiv__(self, other: na.ArrayLike) -> Self: ...
+
+        @overload
+        def __mod__(self, other: na.AbstractFunctionArray) -> na.AbstractFunctionArray: ...
+
+        @overload
+        def __mod__(self, other: na.AbstractVectorArray) -> na.AbstractVectorArray: ...
+
+        @overload
+        def __mod__(self, other: na.ArrayLike) -> Self: ...
+
+        @overload
+        def __pow__(self, other: na.AbstractFunctionArray) -> na.AbstractFunctionArray: ...
+
+        @overload
+        def __pow__(self, other: na.AbstractVectorArray) -> na.AbstractVectorArray: ...
+
+        @overload
+        def __pow__(self, other: na.ArrayLike) -> Self: ...
+
+        @overload
+        def __radd__(self, other: na.AbstractFunctionArray) -> na.AbstractFunctionArray: ...
+
+        @overload
+        def __radd__(self, other: na.AbstractVectorArray) -> na.AbstractVectorArray: ...
+
+        @overload
+        def __radd__(self, other: na.ArrayLike) -> Self: ...
+
+        @overload
+        def __rsub__(self, other: na.AbstractFunctionArray) -> na.AbstractFunctionArray: ...
+
+        @overload
+        def __rsub__(self, other: na.AbstractVectorArray) -> na.AbstractVectorArray: ...
+
+        @overload
+        def __rsub__(self, other: na.ArrayLike) -> Self: ...
+
+        @overload
+        def __rmul__(self, other: na.AbstractFunctionArray) -> na.AbstractFunctionArray: ...
+
+        @overload
+        def __rmul__(self, other: na.AbstractVectorArray) -> na.AbstractVectorArray: ...
+
+        @overload
+        def __rmul__(self, other: na.ArrayLike) -> Self: ...
+
+        @overload
+        def __rtruediv__(self, other: na.AbstractFunctionArray) -> na.AbstractFunctionArray: ...
+
+        @overload
+        def __rtruediv__(self, other: na.AbstractVectorArray) -> na.AbstractVectorArray: ...
+
+        @overload
+        def __rtruediv__(self, other: na.ArrayLike) -> Self: ...
+
+        @overload
+        def __rfloordiv__(self, other: na.AbstractFunctionArray) -> na.AbstractFunctionArray: ...
+
+        @overload
+        def __rfloordiv__(self, other: na.AbstractVectorArray) -> na.AbstractVectorArray: ...
+
+        @overload
+        def __rfloordiv__(self, other: na.ArrayLike) -> Self: ...
+
+        @overload
+        def __rmod__(self, other: na.AbstractFunctionArray) -> na.AbstractFunctionArray: ...
+
+        @overload
+        def __rmod__(self, other: na.AbstractVectorArray) -> na.AbstractVectorArray: ...
+
+        @overload
+        def __rmod__(self, other: na.ArrayLike) -> Self: ...
+
+        @overload
+        def __rpow__(self, other: na.AbstractFunctionArray) -> na.AbstractFunctionArray: ...
+
+        @overload
+        def __rpow__(self, other: na.AbstractVectorArray) -> na.AbstractVectorArray: ...
+
+        @overload
+        def __rpow__(self, other: na.ArrayLike) -> Self: ...
+
+        @overload
+        def __lt__(self, other: na.AbstractFunctionArray) -> na.AbstractFunctionArray: ...
+
+        @overload
+        def __lt__(self, other: na.AbstractVectorArray) -> na.AbstractVectorArray: ...
+
+        @overload
+        def __lt__(self, other: na.ArrayLike) -> Self: ...
+
+        @overload
+        def __le__(self, other: na.AbstractFunctionArray) -> na.AbstractFunctionArray: ...
+
+        @overload
+        def __le__(self, other: na.AbstractVectorArray) -> na.AbstractVectorArray: ...
+
+        @overload
+        def __le__(self, other: na.ArrayLike) -> Self: ...
+
+        @overload
+        def __gt__(self, other: na.AbstractFunctionArray) -> na.AbstractFunctionArray: ...
+
+        @overload
+        def __gt__(self, other: na.AbstractVectorArray) -> na.AbstractVectorArray: ...
+
+        @overload
+        def __gt__(self, other: na.ArrayLike) -> Self: ...
+
+        @overload
+        def __ge__(self, other: na.AbstractFunctionArray) -> na.AbstractFunctionArray: ...
+
+        @overload
+        def __ge__(self, other: na.AbstractVectorArray) -> na.AbstractVectorArray: ...
+
+        @overload
+        def __ge__(self, other: na.ArrayLike) -> Self: ...
+
+        @overload
+        def __mul__(self, other: na.AbstractFunctionArray) -> na.AbstractFunctionArray: ...
+
+        @overload
+        def __mul__(self, other: na.AbstractVectorArray) -> na.AbstractVectorArray: ...
+
+        @overload
+        def __mul__(self, other: na.ArrayLike | u.UnitBase) -> Self: ...
+
+        @overload
+        def __truediv__(self, other: na.AbstractFunctionArray) -> na.AbstractFunctionArray: ...
+
+        @overload
+        def __truediv__(self, other: na.AbstractVectorArray) -> na.AbstractVectorArray: ...
+
+        @overload
+        def __truediv__(self, other: na.ArrayLike | u.UnitBase) -> Self: ...
+
+        @overload
+        def __lshift__(self, other: na.AbstractFunctionArray) -> na.AbstractFunctionArray: ...
+
+        @overload
+        def __lshift__(self, other: na.AbstractVectorArray) -> na.AbstractVectorArray: ...
+
+        @overload
+        def __lshift__(self, other: na.ArrayLike | u.UnitBase) -> Self: ...
+
+        def __neg__(self) -> Self: ...
+
+        def __pos__(self) -> Self: ...
+
+        def __abs__(self) -> Self: ...
+
 
     def __post_init__(self):
         if self.axis_distribution in na.shape(self.nominal):
@@ -643,7 +898,7 @@ class UncertainScalarArray(
 
     def __setitem__(
             self,
-            item: dict[str, int | slice | na.AbstractScalar] | na.AbstractScalar,
+            item: Mapping[str, int | slice | na.AbstractArray] | na.AbstractArray,
             value: int | float | u.Quantity | na.AbstractScalar,
     ):
         shape_self = self.shape
@@ -752,8 +1007,8 @@ class UniformUncertainScalarArray(
     na.AbstractRandomMixin,
     Generic[NominalArrayT, WidthT],
 ):
-    nominal: NominalArrayT = dataclasses.MISSING
-    width: WidthT = dataclasses.MISSING
+    nominal: NominalArrayT = _required()
+    width: WidthT = _required()
     num_distribution: int = _num_distribution_default
     seed: None | int = None
 
@@ -780,8 +1035,8 @@ class NormalUncertainScalarArray(
     na.AbstractRandomMixin,
     Generic[NominalArrayT, WidthT],
 ):
-    nominal: NominalArrayT = dataclasses.MISSING
-    width: WidthT = dataclasses.MISSING
+    nominal: NominalArrayT = _required()
+    width: WidthT = _required()
     num_distribution: int = _num_distribution_default
     seed: None | int = None
 
@@ -825,7 +1080,7 @@ class UncertainScalarUniformRandomSample(
     AbstractUncertainScalarRandomSample,
     na.AbstractUniformRandomSample[UncertainScalarStartT, UncertainScalarStopT],
 ):
-    def volume_cell(self, axis: None | str | tuple[str]) -> na.AbstractScalar:
+    def volume_cell(self, axis: None | str | Sequence[str]) -> na.AbstractScalar:
         axis = na.axis_normalized(self, axis)
         if len(axis) != 1:
             raise ValueError(
@@ -889,7 +1144,7 @@ class UncertainScalarLinearSpace(
     AbstractUncertainScalarSpace,
     na.AbstractLinearSpace,
 ):
-    def volume_cell(self, axis: None | str | tuple[str]) -> na.AbstractScalar:
+    def volume_cell(self, axis: None | str | Sequence[str]) -> na.AbstractScalar:
         axis = na.axis_normalized(self, axis)
         if len(axis) != 1:
             raise ValueError(

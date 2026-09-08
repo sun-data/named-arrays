@@ -9,6 +9,7 @@ __all__ = [
     'SINGLE_ARG_FUNCTIONS',
     'ARRAY_CREATION_LIKE_FUNCTIONS',
     'DEFAULT_FUNCTIONS',
+    'CUMULATIVE_REDUCE_FUNCTIONS',
     'PERCENTILE_LIKE_FUNCTIONS',
     'ARG_REDUCE_FUNCTIONS',
     'FFT_LIKE_FUNCTIONS',
@@ -52,6 +53,14 @@ DEFAULT_FUNCTIONS = [
     np.any,
     np.ptp,
     np.count_nonzero,
+]
+CUMULATIVE_REDUCE_FUNCTIONS = [
+    np.cumsum,
+    np.cumulative_sum,
+    np.nancumsum,
+    np.cumprod,
+    np.cumulative_prod,
+    np.nancumprod,
 ]
 PERCENTILE_LIKE_FUNCTIONS = [
     np.percentile,
@@ -154,6 +163,12 @@ def array_function_sequence(
         else:
             return NotImplemented
 
+    if isinstance(num, na.AbstractArray):
+        if isinstance(num, na.AbstractScalarArray):
+            num = num.ndarray
+        else:
+            return NotImplemented
+
     return na.ScalarArray(
         ndarray=func(
             *args,
@@ -233,6 +248,62 @@ def array_function_default(
     return result
 
 
+def array_function_cumulative_reduce(
+    func: Callable,
+    a: na.AbstractScalarArray,
+    axis: None | str | Sequence[str] = None,
+    dtype: type | np.dtype = np._NoValue,
+    out: None | na.ScalarArray = None,
+    **kwargs,
+):
+    a = a.explicit
+    shape = a.shape
+
+    axis_normalized = na.axis_normalized(a, axis=axis)
+    if len(axis_normalized) != 1:
+        raise ValueError(
+            f"only one axis is supported, got {axis_normalized}."
+        )
+    axis_normalized = axis_normalized[0]
+
+    if axis is not None:
+        if axis_normalized not in shape:
+            raise ValueError(
+                f"the `axis` argument must be `None` or a member of {a.shape=},"
+                f"but got {axis=}."
+            )
+
+    if out is not None:
+        if not isinstance(out, na.ScalarArray):
+            raise ValueError(
+                f"`out` should be `None` or an instance of `{a.type_explicit}`,"
+                f"got `{type(out)}`"
+            )
+        axes_ndarray = out.axes
+    else:
+        axes_ndarray = tuple(shape)
+
+    kwargs["axis"] = axes_ndarray.index(axis_normalized)
+    if dtype is not np._NoValue:
+        kwargs["dtype"] = dtype
+    if out is not None and isinstance(out.ndarray, np.ndarray):
+        kwargs["out"] = out.ndarray
+    else:
+        kwargs["out"] = None
+
+    result_ndarray = func(a.ndarray, **kwargs)
+
+    if out is None:
+        result = na.ScalarArray(
+            ndarray=result_ndarray,
+            axes=axes_ndarray,
+        )
+    else:
+        out.ndarray = result_ndarray
+        result = out
+    return result
+
+
 def array_function_percentile_like(
         func: Callable,
         a: na.AbstractScalarArray,
@@ -242,15 +313,27 @@ def array_function_percentile_like(
         overwrite_input: bool = np._NoValue,
         method: str = np._NoValue,
         keepdims: bool = False,
+        *,
+        weights: na.AbstractScalarArray = np._NoValue,
 ) -> na.ScalarArray:
 
-    if isinstance(a, na.AbstractArray):
-        if isinstance(a, na.AbstractScalarArray):
-            a = a.explicit
-        else:
-            return NotImplemented
-    else:
-        a = na.ScalarArray(a)
+    try:
+        a = scalars._normalize(a)
+        q = scalars._normalize(q)
+        if weights is not np._NoValue:
+            weights = scalars._normalize(weights)
+    except scalars.ScalarTypeError:
+        return NotImplemented
+
+    a = a.explicit
+    q = q.explicit
+    if weights is not np._NoValue:
+        weights = weights.explicit
+
+    # the weights may have axes which `a` does not, so every axis of the
+    # result is an axis of the shape the two broadcast to
+    shape = na.shape_broadcasted(a, weights)
+    a = a.broadcast_to(shape)
 
     axes_a = a.axes
 
@@ -259,21 +342,14 @@ def array_function_percentile_like(
     if axis is not None:
         if not set(axis_normalized).issubset(axes_a):
             raise ValueError(
-                f"the `axis` argument must be `None` or a subset of `a.axes`, "
-                f"got {axis} for `axis`, but `{a.axes} for `a.axes`"
+                f"the `axis` argument must be `None` or a subset of the "
+                f"broadcasted shape of `a` and `weights`, {shape}, "
+                f"got {axis} for `axis`."
             )
-
-    if isinstance(q, na.AbstractArray):
-        if isinstance(q, na.AbstractScalarArray):
-            q = q.explicit
-        else:
-            return NotImplemented
-    else:
-        q = na.ScalarArray(q)
 
     axes_q = q.axes
 
-    axis_union = set(a.axes) & set(q.axes)
+    axis_union = set(axes_a) & set(q.axes)
     if axis_union:
         raise ValueError(f"'q' must not have any shared axes with 'a', but axes {axis_union} are shared")
 
@@ -293,6 +369,10 @@ def array_function_percentile_like(
         kwargs['overwrite_input'] = overwrite_input
     if method is not np._NoValue:
         kwargs['method'] = method
+    if weights is not np._NoValue:
+        # `numpy` requires the weights to have the same shape as `a`, not
+        # merely a shape which broadcasts against it
+        kwargs['weights'] = weights.broadcast_to(shape).ndarray
     kwargs['keepdims'] = keepdims
 
     result_ndarray = func(a.ndarray, q.ndarray, **kwargs)
@@ -465,17 +545,6 @@ def copyto(
         )
     except TypeError:
         dst.ndarray = src.ndarray
-
-
-@implements(np.broadcast_to)
-def broadcast_to(
-        array: na.AbstractScalarArray,
-        shape: dict[str, int],
-):
-    return na.ScalarArray(
-        ndarray=np.broadcast_to(array.ndarray_aligned(shape), tuple(shape.values()), subok=True),
-        axes=tuple(shape.keys()),
-    )
 
 
 @implements(np.transpose)
@@ -725,6 +794,65 @@ def argsort(
     return result
 
 
+@implements(np.take_along_axis)
+def take_along_axis(
+        arr: na.AbstractScalarArray,
+        indices: na.AbstractScalarArray,
+        axis: str,
+) -> na.ScalarArray:
+    try:
+        arr = scalars._normalize(arr)
+        indices = scalars._normalize(indices)
+    except na.ScalarTypeError:  # pragma: nocover
+        return NotImplemented
+
+    if axis not in arr.axes:
+        raise ValueError(
+            f"`axis`, {axis!r}, must be one of the axes in `arr`, {arr.axes}"
+        )
+
+    # The non-`axis` axes broadcast against each other by matching names.
+    shape = na.broadcast_shapes(
+        {ax: n for ax, n in arr.shape.items() if ax != axis},
+        {ax: n for ax, n in indices.shape.items() if ax != axis},
+    )
+    axes = (axis,) + tuple(shape)
+
+    return na.ScalarArray(
+        ndarray=np.take_along_axis(
+            arr.ndarray_aligned(axes),
+            indices.ndarray_aligned(axes),
+            axis=0,
+        ),
+        axes=axes,
+    )
+
+
+@implements(np.partition)
+def partition(
+    a: na.AbstractScalarArray,
+    kth: int | Sequence[int],
+    axis: str,
+    kind: str = "introselect",
+    order: None | str | list[str] = None,
+):
+    a = a.explicit
+
+    if axis not in a.axes:
+        raise ValueError(f"{axis=} is not in {a.shape=}")
+
+    return na.ScalarArray(
+        ndarray=np.partition(
+            a=a.ndarray,
+            kth=kth,
+            axis=a.axes.index(axis),
+            kind=kind,
+            order=order
+        ),
+        axes=a.axes,
+    )
+
+
 @implements(np.unravel_index)
 def unravel_index(indices: na.AbstractScalarArray, shape: dict[str, int]) -> dict[str, na.ScalarArray]:
 
@@ -839,15 +967,18 @@ def nan_to_num(
         posinf: None | float = None,
         neginf: None | float = None,
 ):
+    if not copy:
+        if not isinstance(x, na.AbstractExplicitArray):
+            raise ValueError("can't write to an array that is not an instance of `named_array.AbstractExplictArray`")
+
     result_ndarray = np.nan_to_num(x.ndarray, copy=copy, nan=nan, posinf=posinf, neginf=neginf)
+
     if copy:
         return na.ScalarArray(
             ndarray=result_ndarray,
             axes=x.axes,
         )
     else:
-        if not isinstance(x, na.AbstractExplicitArray):
-            raise ValueError("can't write to an array that is not an instance of `named_array.AbstractExplictArray`")
         return x
 
 
@@ -877,6 +1008,119 @@ def convolve(
     return na.ScalarArray(
         ndarray=result_ndarray,
         axes=tuple(shape_broadcasted.keys()),
+    )
+
+
+@implements(np.clip)
+def clip(
+    a: na.AbstractScalarArray,
+    a_min: None | float | na.AbstractScalarArray = np._NoValue,
+    a_max: None | float | na.AbstractScalarArray = np._NoValue,
+    out: None | na.ScalarArray = None,
+) -> na.ScalarArray:
+    try:
+        a = scalars._normalize(a)
+        if a_min is not None:
+            a_min = scalars._normalize(a_min)
+        if a_max is not None:
+            a_max = scalars._normalize(a_max)
+    except scalars.ScalarTypeError:  # pragma: nocover
+        return NotImplemented
+
+    if out is not None:
+        shape = out.shape
+        out_ndarray = out.ndarray
+    else:
+        shape = a.shape
+        out_ndarray = None
+
+    a = a.broadcast_to(shape)
+    if a_min is not None:
+        a_min = a_min.broadcast_to(shape).ndarray
+    if a_max is not None:
+        a_max = a_max.broadcast_to(shape).ndarray
+
+    result = np.clip(
+        a=a.ndarray,
+        a_min=a_min,
+        a_max=a_max,
+        out=out_ndarray,
+    )
+
+    if out is None:
+        result = a.replace(
+            ndarray=result,
+            axes=tuple(shape),
+        )
+    else:
+        result = out
+
+    return result
+
+
+@implements(np.round)
+@implements(np.around)
+def round(
+    a: na.AbstractScalarArray,
+    decimals: int = 0,
+    out: None | na.ScalarArray = None,
+) -> na.ScalarArray:
+    try:
+        a = scalars._normalize(a)
+    except scalars.ScalarTypeError:  # pragma: nocover
+        return NotImplemented
+
+    if out is not None:
+        shape = out.shape
+        out_ndarray = out.ndarray
+    else:
+        shape = a.shape
+        out_ndarray = None
+
+    a = a.broadcast_to(shape)
+
+    result = np.round(
+        a=a.ndarray,
+        decimals=decimals,
+        out=out_ndarray,
+    )
+
+    if out is None:
+        result = a.replace(
+            ndarray=result,
+            axes=tuple(shape),
+        )
+    else:
+        result = out
+
+    return result
+
+
+@implements(np.isclose)
+def isclose(
+    a: na.ScalarLike,
+    b: na.ScalarLike,
+    rtol: float = 1e-05,
+    atol: float = 1e-08,
+    equal_nan: bool = False,
+) -> na.ScalarArray:
+    try:
+        a = scalars._normalize(a)
+        b = scalars._normalize(b)
+    except scalars.ScalarTypeError:
+        return NotImplemented
+
+    shape = na.shape_broadcasted(a, b)
+
+    return a.type_explicit(
+        ndarray=np.isclose(
+            a=a.ndarray_aligned(shape),
+            b=b.ndarray_aligned(shape),
+            rtol=rtol,
+            atol=atol,
+            equal_nan=equal_nan,
+        ),
+        axes=tuple(shape),
     )
 
 
@@ -946,8 +1190,8 @@ def diff(
     )
 
 
-@implements(np.char.mod)
-def char_mod(
+@implements(np.strings.mod)
+def strings_mod(
     a: str | na.AbstractScalarArray,
     values: str | na.AbstractScalarArray,
 ) -> na.ScalarArray:
@@ -960,7 +1204,7 @@ def char_mod(
 
     shape = na.shape_broadcasted(a, values)
 
-    result_ndarray = np.char.mod(
+    result_ndarray = np.strings.mod(
         a=a.ndarray_aligned(shape),
         values=values.ndarray_aligned(shape),
     )

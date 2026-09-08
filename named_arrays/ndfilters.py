@@ -3,7 +3,7 @@ A thin wrapper around the :mod:`ndfilters` package for named arrays.
 """
 
 from __future__ import annotations
-from typing import TypeVar, Literal
+from typing import Literal
 import named_arrays as na
 
 __all__ = [
@@ -12,15 +12,14 @@ __all__ = [
     "variance_filter",
 ]
 
-ArrayT = TypeVar("ArrayT", bound="na.AbstractArray")
-WhereT = TypeVar("WhereT", bound="bool | na.AbstractArray")
 
 
 def mean_filter(
-    array: ArrayT,
+    array: na.AbstractArray,
     size: dict[str, int],
-    where: WhereT = True,
-) -> ArrayT | WhereT:
+    where: bool | na.AbstractArray = True,
+    mode: Literal["mirror", "nearest", "wrap", "truncate"] = "mirror",
+) -> na.AbstractExplicitArray:
     """
     A thin wrapper around :func:`ndfilters.mean_filter` for named arrays.
 
@@ -33,6 +32,11 @@ def mean_filter(
     where
         A boolean mask used to select which elements of the input array are to
         be filtered.
+    mode
+        The method used to extend the input array beyond its boundaries.
+        See :func:`scipy.ndimage.generic_filter` for the definitions.
+        Currently, only "mirror", "nearest", "wrap", and "truncate" modes are
+        supported.
 
     Examples
     --------
@@ -80,16 +84,17 @@ def mean_filter(
         array=array,
         size=size,
         where=where,
+        mode=mode,
     )
 
 
 def trimmed_mean_filter(
-    array: ArrayT,
+    array: na.AbstractArray,
     size: dict[str, int],
-    where: WhereT = True,
+    where: bool | na.AbstractArray = True,
     mode: Literal["mirror", "nearest", "wrap", "truncate"] = "mirror",
     proportion: float = 0.25,
-) -> ArrayT | WhereT:
+) -> na.AbstractExplicitArray:
     """
     A thin wrapper around :func:`ndfilters.trimmed_mean_filter` for named arrays.
 
@@ -165,10 +170,11 @@ def trimmed_mean_filter(
 
 
 def variance_filter(
-    array: ArrayT,
+    array: na.AbstractArray,
     size: dict[str, int],
-    where: WhereT = True,
-) -> ArrayT | WhereT:
+    where: bool | na.AbstractArray = True,
+    mode: Literal["mirror", "nearest", "wrap", "truncate"] = "mirror",
+) -> na.AbstractExplicitArray:
     """
     A thin wrapper around :func:`ndfilters.variance_filter` for named arrays.
 
@@ -181,6 +187,11 @@ def variance_filter(
     where
         A boolean mask used to select which elements of the input array are to
         be filtered.
+    mode
+        The method used to extend the input array beyond its boundaries.
+        See :func:`scipy.ndimage.generic_filter` for the definitions.
+        Currently, only "mirror", "nearest", "wrap", and "truncate" modes are
+        supported.
 
     Examples
     --------
@@ -228,4 +239,5 @@ def variance_filter(
         array=array,
         size=size,
         where=where,
+        mode=mode,
     )

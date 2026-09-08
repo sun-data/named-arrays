@@ -1,18 +1,24 @@
 from __future__ import annotations
-from typing import Type, Sequence
+from typing import Type, TypeVar, Generic
 import dataclasses
 import named_arrays as na
 
+ComponentT = TypeVar("ComponentT", bound="na.ArrayLike")
+
 __all__ = [
     "AbstractCartesianNdVectorArray",
-    "CartesianNdVectorArray"
+    "CartesianNdVectorArray",
 ]
 
 
 @dataclasses.dataclass(eq=False, repr=False)
 class AbstractCartesianNdVectorArray(
     na.AbstractCartesianVectorArray,
+    Generic[ComponentT],
 ):
+    """
+    An interface describing an :math:`n`-dimensional Cartesian vector array.
+    """
 
     @property
     def type_abstract(self) -> Type[AbstractCartesianNdVectorArray]:
@@ -26,13 +32,39 @@ class AbstractCartesianNdVectorArray(
     def type_matrix(self) -> Type[na.CartesianNdMatrixArray]:
         return na.CartesianNdMatrixArray
 
+    def __getattr__(self, name: str):
+        # ``pickle`` probes attributes on a bare instance before any state has
+        # been restored, and relies on receiving ``AttributeError`` (and nothing
+        # else) for missing attributes.
+        components = self.__dict__.get("components")
+        if components is None:
+            raise AttributeError(name)
+        try:
+            return components[name]
+        except KeyError:
+            raise AttributeError(
+                f"component {name} is not a member of {components.values()=}"
+            )
+
 
 @dataclasses.dataclass(eq=False, repr=False)
 class CartesianNdVectorArray(
-    AbstractCartesianNdVectorArray,
+    AbstractCartesianNdVectorArray[ComponentT],
     na.AbstractExplicitCartesianVectorArray,
+    Generic[ComponentT],
 ):
-    components: dict[str, na.ArrayLike] = None
+    """
+    An :math:`n`-dimensional Cartesian vector array.
+    """
+
+    components: dict[str, ComponentT] = None
+    """
+    The vector components of this array.
+    
+    Expressed as a :class:`dict`,
+    where the keys are the component names 
+    and the values are the component values.
+    """
 
     def __post_init__(self):
         if self.components is None:
@@ -48,12 +80,7 @@ class CartesianNdVectorArray(
         if like is None:
             raise ValueError("like argument must be specified for CartesianNdArrays")
 
-        result = super().from_scalar(scalar, like=like)
-        if result is not NotImplemented:
-            return result
-        else:
-            raise ValueError("all implementations of from_scalar return NotImplemented")
-
+        return super().from_scalar(scalar, like=like)
 
 
     @classmethod

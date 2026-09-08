@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TypeVar, Generic, Type
+from typing import TYPE_CHECKING, TypeVar, Type, overload
 from typing_extensions import Self
 import abc
 import dataclasses
@@ -8,19 +8,19 @@ import astropy.units as u
 import named_arrays as na
 
 __all__ = [
-    'AbstractCartesianVectorArray',
-    'AbstractExplicitCartesianVectorArray',
-    'AbstractImplicitCartesianVectorArray',
-    'AbstractCartesianVectorRandomSample',
-    'AbstractCartesianVectorUniformRandomSample',
-    'AbstractCartesianVectorNormalRandomSample',
-    'AbstractParameterizedCartesianVectorArray',
-    'AbstractCartesianVectorArrayRange',
-    'AbstractCartesianVectorSpace',
-    'AbstractCartesianVectorLinearSpace',
-    'AbstractCartesianVectorStratifiedRandomSpace',
-    'AbstractCartesianVectorLogarithmicSpace',
-    'AbstractCartesianVectorGeometricSpace',
+    "AbstractCartesianVectorArray",
+    "AbstractExplicitCartesianVectorArray",
+    "AbstractImplicitCartesianVectorArray",
+    "AbstractCartesianVectorRandomSample",
+    "AbstractCartesianVectorUniformRandomSample",
+    "AbstractCartesianVectorNormalRandomSample",
+    "AbstractParameterizedCartesianVectorArray",
+    "AbstractCartesianVectorArrayRange",
+    "AbstractCartesianVectorSpace",
+    "AbstractCartesianVectorLinearSpace",
+    "AbstractCartesianVectorStratifiedRandomSpace",
+    "AbstractCartesianVectorLogarithmicSpace",
+    "AbstractCartesianVectorGeometricSpace",
 ]
 
 
@@ -28,6 +28,10 @@ __all__ = [
 class AbstractCartesianVectorArray(
     na.AbstractVectorArray
 ):
+    """
+    An interface describing a vector whose components are all orthogonal.
+    """
+
     @property
     @abc.abstractmethod
     def type_explicit(self: Self) -> Type[AbstractExplicitCartesianVectorArray]:
@@ -50,6 +54,7 @@ class AbstractCartesianVectorArray(
         Return a normalized copy of this vector, where :attr:`length` is unity.
         """
         return self / self.length
+
 
     def __mul__(self: Self, other: na.ArrayLike | u.Unit) -> AbstractExplicitCartesianVectorArray:
         if isinstance(other, u.UnitBase):
@@ -105,43 +110,47 @@ class AbstractCartesianVectorArray(
                     components_inp = inp.components
                 elif isinstance(inp, na.AbstractScalar):
                     components_inp = {c: inp for c in components}
-                else:
+                else:  # pragma: nocover
                     return NotImplemented
             else:
                 components_inp = {c: inp for c in components}
             components_inputs.append(components_inp)
 
         if "out" in kwargs:
-            out = kwargs.pop("out")
-            components_out = dict()
-            for c in components:
-                components_out[c] = tuple(o.components[c] if o is not None else o for o in out)
-                components_out[c] = tuple(o if isinstance(np.ndarray, na.AbstractArray) else None for o in out)
+            out = kwargs["out"]
         else:
             out = (None, ) * function.nout
-            components_out = {c: (None, ) * function.nout for c in components}
-
-        if "where" in kwargs:
-            where = kwargs.pop("where")
-            if isinstance(where, na.AbstractArray):
-                if where.type_abstract == self.type_abstract:
-                    components_where = where.components
-                elif isinstance(where, na.AbstractScalar):
-                    components_where = {c: where for c in components}
-                else:
-                    return NotImplemented
-            else:
-                components_where = {c: where for c in components}
-        else:
-            components_where = {c: True for c in components}
 
         components_result = tuple(dict() for _ in range(function.nout))
+        func = getattr(function, method)
         for c in components:
-            component_result = getattr(function, method)(
+
+            kwargs_c = kwargs.copy()
+
+            if "out" in kwargs_c:
+                out = kwargs_c.pop("out")
+                if out is not None:
+                    out_c = tuple(o.components[c] if o is not None else o for o in out)
+                else:
+                    out_c = None
+                kwargs_c["out"] = out_c
+
+            if "where" in kwargs_c:
+                where = kwargs_c.pop("where")
+                if isinstance(where, na.AbstractArray):
+                    if where.type_abstract == self.type_abstract:
+                        where_c = where.components[c]
+                    elif isinstance(where, na.AbstractScalar):
+                        where_c = where
+                    else:
+                        return NotImplemented
+                else:
+                    where_c = where
+                kwargs_c["where"] = where_c
+
+            component_result = func(
                 *[inp[c] for inp in components_inputs],
-                out=components_out[c],
-                where=components_where[c],
-                **kwargs,
+                **kwargs_c,
             )
             if function.nout == 1:
                 component_result = (component_result, )
@@ -166,7 +175,134 @@ class AbstractExplicitCartesianVectorArray(
     AbstractCartesianVectorArray,
     na.AbstractExplicitVectorArray,
 ):
-    pass
+
+    # The operators declared on `AbstractArray` can only promise the widest
+    # array type. The result of an operation is the explicit array of the
+    # highest family involved, so on an explicit array of this family the
+    # result is `Self` unless a higher family absorbs it. Declarations only;
+    # the implementation is inherited.
+    if TYPE_CHECKING:  # pragma: nocover
+
+        @overload
+        def __add__(self, other: na.AbstractFunctionArray) -> na.AbstractFunctionArray: ...
+
+        @overload
+        def __add__(self, other: na.ArrayLike) -> Self: ...
+
+        @overload
+        def __sub__(self, other: na.AbstractFunctionArray) -> na.AbstractFunctionArray: ...
+
+        @overload
+        def __sub__(self, other: na.ArrayLike) -> Self: ...
+
+        @overload
+        def __floordiv__(self, other: na.AbstractFunctionArray) -> na.AbstractFunctionArray: ...
+
+        @overload
+        def __floordiv__(self, other: na.ArrayLike) -> Self: ...
+
+        @overload
+        def __mod__(self, other: na.AbstractFunctionArray) -> na.AbstractFunctionArray: ...
+
+        @overload
+        def __mod__(self, other: na.ArrayLike) -> Self: ...
+
+        @overload
+        def __pow__(self, other: na.AbstractFunctionArray) -> na.AbstractFunctionArray: ...
+
+        @overload
+        def __pow__(self, other: na.ArrayLike) -> Self: ...
+
+        @overload
+        def __radd__(self, other: na.AbstractFunctionArray) -> na.AbstractFunctionArray: ...
+
+        @overload
+        def __radd__(self, other: na.ArrayLike) -> Self: ...
+
+        @overload
+        def __rsub__(self, other: na.AbstractFunctionArray) -> na.AbstractFunctionArray: ...
+
+        @overload
+        def __rsub__(self, other: na.ArrayLike) -> Self: ...
+
+        @overload
+        def __rmul__(self, other: na.AbstractFunctionArray) -> na.AbstractFunctionArray: ...
+
+        @overload
+        def __rmul__(self, other: na.ArrayLike) -> Self: ...
+
+        @overload
+        def __rtruediv__(self, other: na.AbstractFunctionArray) -> na.AbstractFunctionArray: ...
+
+        @overload
+        def __rtruediv__(self, other: na.ArrayLike) -> Self: ...
+
+        @overload
+        def __rfloordiv__(self, other: na.AbstractFunctionArray) -> na.AbstractFunctionArray: ...
+
+        @overload
+        def __rfloordiv__(self, other: na.ArrayLike) -> Self: ...
+
+        @overload
+        def __rmod__(self, other: na.AbstractFunctionArray) -> na.AbstractFunctionArray: ...
+
+        @overload
+        def __rmod__(self, other: na.ArrayLike) -> Self: ...
+
+        @overload
+        def __rpow__(self, other: na.AbstractFunctionArray) -> na.AbstractFunctionArray: ...
+
+        @overload
+        def __rpow__(self, other: na.ArrayLike) -> Self: ...
+
+        @overload
+        def __lt__(self, other: na.AbstractFunctionArray) -> na.AbstractFunctionArray: ...
+
+        @overload
+        def __lt__(self, other: na.ArrayLike) -> Self: ...
+
+        @overload
+        def __le__(self, other: na.AbstractFunctionArray) -> na.AbstractFunctionArray: ...
+
+        @overload
+        def __le__(self, other: na.ArrayLike) -> Self: ...
+
+        @overload
+        def __gt__(self, other: na.AbstractFunctionArray) -> na.AbstractFunctionArray: ...
+
+        @overload
+        def __gt__(self, other: na.ArrayLike) -> Self: ...
+
+        @overload
+        def __ge__(self, other: na.AbstractFunctionArray) -> na.AbstractFunctionArray: ...
+
+        @overload
+        def __ge__(self, other: na.ArrayLike) -> Self: ...
+
+        @overload
+        def __mul__(self, other: na.AbstractFunctionArray) -> na.AbstractFunctionArray: ...
+
+        @overload
+        def __mul__(self, other: na.ArrayLike | u.UnitBase) -> Self: ...
+
+        @overload
+        def __truediv__(self, other: na.AbstractFunctionArray) -> na.AbstractFunctionArray: ...
+
+        @overload
+        def __truediv__(self, other: na.ArrayLike | u.UnitBase) -> Self: ...
+
+        @overload
+        def __lshift__(self, other: na.AbstractFunctionArray) -> na.AbstractFunctionArray: ...
+
+        @overload
+        def __lshift__(self, other: na.ArrayLike | u.UnitBase) -> Self: ...
+
+        def __neg__(self) -> Self: ...
+
+        def __pos__(self) -> Self: ...
+
+        def __abs__(self) -> Self: ...
+
 
 
 @dataclasses.dataclass(eq=False, repr=False)

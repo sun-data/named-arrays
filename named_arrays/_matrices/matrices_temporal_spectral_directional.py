@@ -1,12 +1,11 @@
 from __future__ import annotations
 from typing import Type
-
 import dataclasses
 import named_arrays as na
 
 __all__ = [
-    'AbstractTemporalSpectralDirectionalMatrixArray',
-    'TemporalSpectralDirectionalMatrixArray',
+    "AbstractTemporalSpectralDirectionalMatrixArray",
+    "TemporalSpectralDirectionalMatrixArray",
 ]
 
 
@@ -29,7 +28,7 @@ class AbstractTemporalSpectralDirectionalMatrixArray(
 
     @property
     def determinant(self) -> na.ScalarLike:
-        return NotImplementedError
+        raise NotImplementedError
 
 
 @dataclasses.dataclass(eq=False, repr=False)

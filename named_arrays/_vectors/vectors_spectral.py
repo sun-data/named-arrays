@@ -1,21 +1,19 @@
 from __future__ import annotations
 from typing import Type, Generic, TypeVar
-from typing_extensions import Self
 import abc
 import dataclasses
 import named_arrays as na
 
 __all__ = [
-    'AbstractSpectralVectorArray',
-    'SpectralVectorArray',
-    'AbstractImplicitSpectralVectorArray',
-    'AbstractParameterizedSpectralVectorArray',
-    'AbstractSpectralVectorSpace',
-    'SpectralVectorLinearSpace',
-
+    "AbstractSpectralVectorArray",
+    "SpectralVectorArray",
+    "AbstractImplicitSpectralVectorArray",
+    "AbstractParameterizedSpectralVectorArray",
+    "AbstractSpectralVectorSpace",
+    "SpectralVectorLinearSpace",
 ]
 
-WavelengthT = TypeVar("WavelengthT", bound=na.ScalarLike)
+WavelengthT = TypeVar("WavelengthT", bound=na.ArrayLike, covariant=True)
 
 
 @dataclasses.dataclass(eq=False, repr=False)
@@ -35,11 +33,11 @@ class AbstractSpectralVectorArray(
         return AbstractSpectralVectorArray
 
     @property
-    def type_explicit(self) -> Type[na.AbstractExplicitArray]:
+    def type_explicit(self) -> Type[SpectralVectorArray]:
         return SpectralVectorArray
 
     @property
-    def type_matrix(self) -> Type[na.SpectralMatrixArray]:
+    def type_matrix(self) -> Type[na.AbstractExplicitMatrixArray]:
         return na.SpectralMatrixArray
 
 
@@ -50,17 +48,6 @@ class SpectralVectorArray(
     Generic[WavelengthT],
 ):
     wavelength: WavelengthT = 0
-
-    @classmethod
-    def from_scalar(
-            cls: Type[Self],
-            scalar: na.AbstractScalar,
-            like: None | na.AbstractExplicitVectorArray = None,
-    ) -> SpectralVectorArray:
-        result = super().from_scalar(scalar, like=like)
-        if result is not NotImplemented:
-            return result
-        return cls(wavelength=scalar)
 
 
 @dataclasses.dataclass(eq=False, repr=False)

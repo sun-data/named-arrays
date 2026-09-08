@@ -4,21 +4,22 @@ import abc
 import dataclasses
 import numpy as np
 import named_arrays as na
+from named_arrays._core import _required
 
 __all__ = [
-    'AbstractCartesian3dMatrixArray',
-    'Cartesian3dMatrixArray',
-    'AbstractImplicitCartesian3dMatrixArray',
-    'Cartesian3dIdentityMatrixArray',
-    'AbstractCartesian3dRotationMatrixArray',
-    'Cartesian3dXRotationMatrixArray',
-    'Cartesian3dYRotationMatrixArray',
-    'Cartesian3dZRotationMatrixArray',
+    "AbstractCartesian3dMatrixArray",
+    "Cartesian3dMatrixArray",
+    "AbstractImplicitCartesian3dMatrixArray",
+    "Cartesian3dIdentityMatrixArray",
+    "AbstractCartesian3dRotationMatrixArray",
+    "Cartesian3dXRotationMatrixArray",
+    "Cartesian3dYRotationMatrixArray",
+    "Cartesian3dZRotationMatrixArray",
 ]
 
-XT = TypeVar('XT', bound=na.AbstractVectorArray)
-YT = TypeVar('YT', bound=na.AbstractVectorArray)
-ZT = TypeVar('ZT', bound=na.AbstractVectorArray)
+XT = TypeVar('XT', bound=na.AbstractVectorArray, covariant=True)
+YT = TypeVar('YT', bound=na.AbstractVectorArray, covariant=True)
+ZT = TypeVar('ZT', bound=na.AbstractVectorArray, covariant=True)
 
 
 @dataclasses.dataclass(eq=False, repr=False)
@@ -111,7 +112,7 @@ class AbstractCartesian3dRotationMatrixArray(
 class Cartesian3dXRotationMatrixArray(
     AbstractCartesian3dRotationMatrixArray,
 ):
-    angle: na.ScalarLike = dataclasses.MISSING
+    angle: na.ScalarLike = _required()
 
     @property
     def explicit(self) -> Cartesian3dMatrixArray:
@@ -127,7 +128,7 @@ class Cartesian3dXRotationMatrixArray(
 class Cartesian3dYRotationMatrixArray(
     AbstractCartesian3dRotationMatrixArray,
 ):
-    angle: na.ScalarLike = dataclasses.MISSING
+    angle: na.ScalarLike = _required()
 
     @property
     def explicit(self) -> Cartesian3dMatrixArray:
@@ -143,7 +144,7 @@ class Cartesian3dYRotationMatrixArray(
 class Cartesian3dZRotationMatrixArray(
     AbstractCartesian3dRotationMatrixArray,
 ):
-    angle: na.ScalarLike = dataclasses.MISSING
+    angle: na.ScalarLike = _required()
 
     @property
     def explicit(self) -> Cartesian3dMatrixArray:

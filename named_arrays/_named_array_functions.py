@@ -1,51 +1,50 @@
 from __future__ import annotations
 from typing import Sequence, overload, Type, Any, Callable, TypeVar, Literal
 import functools
+import dataclasses
 import numpy as np
 import astropy.units as u
 import named_arrays as na
 
 __all__ = [
-    '_named_array_function',
-    'asarray',
-    'asanyarray',
-    'arange',
-    'step',
-    'linspace',
-    'logspace',
-    'geomspace',
-    'ndim',
-    'shape',
-    'unit',
-    'unit_normalized',
-    'broadcast_to',
-    'stack',
-    'concatenate',
-    'add_axes',
+    "_named_array_function",
+    "asarray",
+    "asanyarray",
+    "arange",
+    "step",
+    "linspace",
+    "logspace",
+    "geomspace",
+    "ndim",
+    "shape",
+    "unit",
+    "unit_normalized",
+    "broadcast_to",
+    "debroadcast",
+    "stack",
+    "concatenate",
+    "add_axes",
     "vmr",
+    "mean_trimmed",
+    "take_along_axis",
     "interp",
     "histogram",
     "histogram2d",
     "histogramdd",
     "convolve",
-    'jacobian',
-    'despike',
+    "jacobian",
+    "despike",
 ]
 
 NDArrayT = TypeVar("NDArrayT", bound=np.ndarray)
 ArrayT = TypeVar("ArrayT")
 LikeT = TypeVar("LikeT", bound="None | na.AbstractArray")
-AxisT = TypeVar("AxisT", bound="str | na.AbstractArray")
-NumT = TypeVar("NumT", bound="int | na.AbstractArray")
-BaseT = TypeVar("BaseT", bound="int | na.AbstractArray")
 InputT = TypeVar("InputT", bound="float | u.Quantity | na.AbstractScalarArray")
 OutputT = TypeVar("OutputT", bound="float | u.Quantity | na.AbstractScalarArray")
-KernelT = TypeVar("KernelT", bound="na.AbstractArray")
-WhereT = TypeVar("WhereT", bound="bool | na.AbstractScalarArray")
 
 
 def _is_subclass(a: Any, b: Any):
-    if type(a) == type(b):
+    if type(a) is type(b):
         return 0
     elif isinstance(a, type(b)):
         return 1
@@ -75,12 +74,12 @@ def _named_array_function(func: Callable, *args, **kwargs):
 
 def _asarray_like(
         func: Callable,
-        a: ArrayT,
+        a: na.ArrayLike,
         dtype: None | type | np.dtype | str = None,
         order: None | str = None,
         *,
-        like: None | LikeT = None,
-) -> ArrayT | LikeT:
+        like: None | na.AbstractArray = None,
+) -> na.AbstractExplicitArray:
 
     if like is None:
         like = na.ScalarArray(None)
@@ -109,7 +108,7 @@ def asarray(
 
 @overload
 def asarray(
-        a: ArrayT,
+        a: na.ArrayLike,
         dtype: None | type | np.dtype | str = ...,
         order: None | str = ...,
         *,
@@ -119,12 +118,12 @@ def asarray(
 
 
 def asarray(
-        a: ArrayT,
+        a: na.ArrayLike,
         dtype: None | type | np.dtype | str = None,
         order: None | str = None,
         *,
-        like: None | LikeT = None,
-) -> ArrayT | LikeT:
+        like: None | na.AbstractArray = None,
+) -> na.AbstractExplicitArray:
     """
     Converts the input to use only instances of :class:`numpy.ndarray` as the underlying data.
 
@@ -201,7 +200,7 @@ def asanyarray(
 
 @overload
 def asanyarray(
-        a: ArrayT,
+        a: na.ArrayLike,
         dtype: None | type | np.dtype | str = ...,
         order: None | str = ...,
         *,
@@ -211,12 +210,12 @@ def asanyarray(
 
 
 def asanyarray(
-        a: ArrayT,
+        a: na.ArrayLike,
         dtype: None | type | np.dtype | str = None,
         order: None | str = None,
         *,
-        like: None | LikeT = None,
-) -> ArrayT | LikeT:
+        like: None | na.AbstractArray = None,
+) -> na.AbstractExplicitArray:
     """
     Converts the input to use only instances of :class:`numpy.ndarray` subclasses as the underlying data.
 
@@ -278,7 +277,7 @@ def arange(
         step: int | na.AbstractArray = 1,
 ) -> na.AbstractExplicitArray:
     """
-    Redefined version of :func:`numpy.arange` with an ``axis`` parameter.
+    Redefined version of :func:`numpy.arange` with an `axis` parameter.
 
     Parameters
     ----------
@@ -307,12 +306,12 @@ def arange(
 
 
 def step(
-    start: na.StartT,
-    stop: na.StopT,
-    num: NumT,
+    start: na.QuantityLike | na.AbstractArray,
+    stop: na.QuantityLike | na.AbstractArray,
+    num: int | na.AbstractArray,
     endpoint: bool = True,
     centers: bool = False,
-) -> na.StartT | na.StopT | NumT:
+) -> na.QuantityLike | na.AbstractExplicitArray:
     """
     Helper function to compute the step size for :func:`linspace`.
 
@@ -339,16 +338,16 @@ def step(
 
 
 def linspace(
-        start: na.StartT,
-        stop: na.StopT,
-        axis: AxisT,
-        num: NumT = 50,
+        start: na.QuantityLike | na.AbstractArray,
+        stop: na.QuantityLike | na.AbstractArray,
+        axis: str | na.AbstractArray,
+        num: int | na.AbstractArray = 50,
         endpoint: bool = True,
         dtype: None | type | np.dtype = None,
         centers: bool = False,
-) -> na.StartT | na.StopT | AxisT | NumT:
+) -> na.AbstractExplicitArray:
     """
-    Create an array of evenly-spaced numbers between :attr:`start` and :attr:`stop`
+    Create an array of evenly-spaced numbers between `start` and `stop`.
 
     Parameters
     ----------
@@ -424,16 +423,16 @@ def linspace(
 
 
 def logspace(
-        start: na.StartT,
-        stop: na.StopT,
-        axis: AxisT,
-        num: NumT = 50,
+        start: na.QuantityLike | na.AbstractArray,
+        stop: na.QuantityLike | na.AbstractArray,
+        axis: str | na.AbstractArray,
+        num: int | na.AbstractArray = 50,
         endpoint: bool = True,
-        base: BaseT = 10,
+        base: int | na.AbstractArray = 10,
         dtype: None | type | np.dtype = None,
-) -> na.StartT | na.StopT | AxisT | NumT:
+) -> na.AbstractExplicitArray:
     """
-    Create an array of evenly-spaced numbers on a log scale between :attr:`start` and :attr:`stop`
+    Create an array of evenly-spaced numbers on a log scale between `start` and `stop`.
 
     Parameters
     ----------
@@ -472,15 +471,15 @@ def logspace(
 
 
 def geomspace(
-        start: na.StartT,
-        stop: na.StopT,
-        axis: AxisT,
-        num: NumT = 50,
+        start: na.QuantityLike | na.AbstractArray,
+        stop: na.QuantityLike | na.AbstractArray,
+        axis: str | na.AbstractArray,
+        num: int | na.AbstractArray = 50,
         endpoint: bool = True,
         dtype: None | type | np.dtype = None,
-) -> na.StartT | na.StopT | AxisT | NumT:
+) -> na.AbstractExplicitArray:
     """
-    Create an array of a geometric progression of numbers between :attr:`start` and :attr:`stop`
+    Create an array of a geometric progression of numbers between `start` and `stop`.
 
     Parameters
     ----------
@@ -516,13 +515,115 @@ def geomspace(
 
 
 def ndim(a: na.AbstractArray) -> int:
+    """
+    Compute the number of dimensions of the argument.
+
+    Parameters
+    ----------
+    a
+        An array-like object
+
+    See Also
+    --------
+    :func:`numpy.ndim` :  Corresponding :mod:`numpy` function.
+    """
     return np.ndim(a)
 
 
 def shape(a: na.ArrayLike) -> dict[str, int]:
-    if not isinstance(a, na.AbstractArray):
-        a = na.ScalarArray(a)
-    return np.shape(a)
+    """
+    Compute the shape of the given array.
+
+    In :mod:`numpy`, the shape of an array is a :class:`tuple` of integers.
+    For this package, each axis is characterized by a name instead of
+    its position, so the shape is a :class:`dict` where the keys are
+    the axis names and the values are number of elements along each axis.
+
+    If ``a`` is an arbitrarily-nested structure (:class:`dict`, :class:`list`,
+    :class:`tuple`, or :mod:`dataclasses` instance), the result is the
+    :func:`broadcast_shapes` of the shapes of all the array-like leaves, so a
+    container of compatible arrays reports their combined broadcasted shape.
+
+    A dataclass which defines its own :attr:`shape` is believed rather than
+    walked. This is for objects carrying arrays which they are not themselves
+    shaped by, a table of measurements they were fitted against being the usual
+    case: such a table is sampled along an axis of its own, which has nothing
+    to say about the shape of the object holding it and need not agree with the
+    axes of any other table alongside it. Inheriting :attr:`shape` from
+    :class:`named_arrays.mixins.Indexable` is not defining one, since that is
+    this function.
+
+    Parameters
+    ----------
+    a
+        The array, or nested structure of arrays, to compute the shape of.
+
+    Examples
+    --------
+
+    .. jupyter-execute::
+
+        import named_arrays as na
+
+        x = na.arange(0, 5, axis="x")
+        y = na.arange(0, 3, axis="y")
+
+        # the broadcasted shape of every array-like leaf
+        na.shape({"foo": x, "bar": y})
+
+    A dataclass which says what its shape is, is believed.
+
+    .. jupyter-execute::
+
+        import dataclasses
+
+        @dataclasses.dataclass
+        class Detector:
+            gain: na.AbstractScalar
+            measurement: na.AbstractScalar
+
+            @property
+            def shape(self) -> dict[str, int]:
+                # the measurement was fitted against, not sampled by, this
+                return na.shape(self.gain)
+
+        detector = Detector(
+            gain=na.arange(0, 4, axis="channel"),
+            measurement=na.arange(0, 100, axis="wavelength"),
+        )
+
+        na.shape(detector)
+    """
+    if isinstance(a, na.AbstractArray):
+        return a.shape
+    elif isinstance(a, dict):
+        return na.broadcast_shapes(*[shape(a[key]) for key in a])
+    elif isinstance(a, (list, tuple)):
+        return na.broadcast_shapes(*[shape(a_i) for a_i in a])
+    elif dataclasses.is_dataclass(a) and not isinstance(a, type):
+        if _shape_is_declared(type(a)):
+            return a.shape
+        return na.broadcast_shapes(*[
+            shape(getattr(a, field.name))
+            for field in dataclasses.fields(a)
+        ])
+    else:
+        return np.shape(na.ScalarArray(a))
+
+
+def _shape_is_declared(cls: type) -> bool:
+    """
+    Whether a class says what its own shape is.
+
+    Inheriting :attr:`named_arrays.Indexable.shape` is not saying: that
+    property is :func:`shape` itself, so believing it would be circular.
+    """
+    from named_arrays._mixins import Indexable
+
+    for klass in cls.__mro__:
+        if "shape" in vars(klass):
+            return klass is not Indexable
+    return False
 
 
 def unit(
@@ -573,10 +674,9 @@ def unit_normalized(
         squeeze: bool = True,
 ) -> u.UnitBase | na.AbstractArray:
     """
-    Isolate the physical units associated with a given object,`
+    Isolate the physical units associated with a given object,
     normalizing to the given dimensionless units if the object does not have
     associated units.
-
 
     Parameters
     ----------
@@ -652,7 +752,6 @@ def broadcast_to(
         The array to broadcast.
     shape
         The desired shape of the output array.
-        If `strict` is :obj:`True`, the shape of the output array will have elements.
     append
         A boolean flag indicating whether to throw an error if there are
         axes in `array` that aren't in `shape`.
@@ -697,11 +796,112 @@ def broadcast_to(
 
         na.broadcast_to(a, shape_y, append=True)
     """
-    if not isinstance(array, na.AbstractArray):
-        array = na.ScalarArray(array)
-    if append:
-        shape = na.broadcast_shapes(array.shape, shape)
-    return np.broadcast_to(array=array, shape=shape)
+    return na._named_array_function(
+        func=broadcast_to,
+        array=na.as_named_array(array),
+        shape=shape,
+        append=append,
+    )
+
+
+def debroadcast(
+    array: ArrayT,
+    axes: None | str | Sequence[str] = None,
+) -> ArrayT:
+    """
+    Remove redundant axes introduced by broadcasting.
+
+    This is the approximate inverse of :func:`broadcast_to`: it collapses
+    every axis along which `array` is constant (all slices equal), returning
+    the smallest array which broadcasts back to the original.
+    In particular, ``na.debroadcast(na.broadcast_to(a, shape))`` recovers an
+    array equal to `a` whenever `a` is not itself constant along any of its
+    own axes.
+
+    An axis is only removed if every element of `array` is equal along that
+    axis, so any axis containing a NaN (which compares unequal to itself) is
+    never removed.
+
+    Parameters
+    ----------
+    array
+        The array to remove redundant axes from.
+    axes
+        The axes to consider removing.
+        If :obj:`None` (the default), every axis of `array` is considered.
+        Axes not present in `array` are ignored.
+
+    See Also
+    --------
+    :func:`broadcast_to` : Broadcast an array to a given shape.
+
+    Examples
+    --------
+
+    Broadcast a 1D array to two dimensions, then recover the original.
+
+    .. jupyter-execute::
+
+        import named_arrays as na
+
+        a = na.random.uniform(0, 1, dict(x=3))
+
+        b = na.broadcast_to(a, dict(x=3, y=4))
+
+        # ``b`` is constant along ``y``, so that axis is removed
+        c = na.debroadcast(b)
+
+        c.shape
+
+    .. jupyter-execute::
+
+        # the recovered array equals the original
+        bool((c == a).all())
+
+    A subset of axes can be considered by passing `axes` explicitly.
+
+    .. jupyter-execute::
+
+        na.debroadcast(b, axes="x").shape
+    """
+    return na._named_array_function(
+        func=debroadcast,
+        array=na.as_named_array(array),
+        axes=axes,
+    )
+
+
+def _debroadcast(
+    array: na.AbstractExplicitArray,
+    axes: None | str | Sequence[str],
+) -> na.AbstractExplicitArray:
+    """
+    Shared value-based implementation of :func:`debroadcast`.
+
+    Removes every axis in `axes` (defaulting to all axes of `array`) along
+    which `array` is constant.
+    Relies only on ``==``, :func:`numpy.all`, and integer indexing, so it
+    works for any array family whose axes can be sliced independently.
+    Empty axes (with a length of zero) are never removed, since indexing them
+    is not possible and :func:`numpy.all` is vacuously :obj:`True` along them.
+    """
+    array = array.explicit
+    shape = array.shape
+
+    if axes is None:
+        axes = tuple(shape)
+    elif isinstance(axes, str):
+        axes = (axes,)
+
+    index = dict()
+    for axis in axes:
+        if axis not in shape:
+            continue
+        other = array[{axis: slice(0, 1)}]
+        if shape[axis] != 0 and bool(np.all(array == other)):
+            index[axis] = 0
+
+    return array[index]
 
 
 def stack(
@@ -712,6 +912,26 @@ def stack(
         dtype: str | np.dtype | Type = None,
         casting: None | str = "same_kind",
 ) -> na.AbstractArray:
+    """
+    Stack the given arrays along a new axis.
+
+    Parameters
+    ----------
+    arrays
+        A sequence of arrays to combine into a new array.
+    axis
+        The name of the new axis along which to stack.
+    out
+        An optional array in which to place the output.
+    dtype
+        The data type of the new array.
+    casting
+        The casting rule to follow when combining arrays of different dtypes.
+
+    See Also
+    --------
+    :func:`numpy.stack`: Corresponding :mod:`numpy` function.
+    """
     if not any(isinstance(a, na.AbstractArray) for a in arrays):
         arrays = list(arrays)
         arrays[0] = na.ScalarArray(arrays[0])
@@ -732,6 +952,26 @@ def concatenate(
         dtype: str | np.dtype | Type = None,
         casting: None | str = "same_kind",
 ) -> na.AbstractArray:
+    """
+    Concatenate the given arrays along an existing axis.
+
+    Parameters
+    ----------
+    arrays
+        A sequence of arrays to combine into a new array.
+    axis
+        The name of the new axis along which to concatenate.
+    out
+        An optional array in which to place the output.
+    dtype
+        The data type of the new array.
+    casting
+        The casting rule to follow when combining arrays of different dtypes.
+
+    See Also
+    --------
+    :func:`numpy.concatenate`: Corresponding :mod:`numpy` function.
+    """
     if not any(isinstance(a, na.AbstractArray) for a in arrays):
         arrays = list(arrays)
         arrays[0] = na.ScalarArray(arrays[0])
@@ -745,20 +985,30 @@ def concatenate(
 
 
 def add_axes(array: na.ArrayLike, axes: str | Sequence[str]):
+    """
+    Add singleton axes to an existing array.
+
+    Parameters
+    ----------
+    array
+        The array to add the axes to.
+    axes
+        The axes names to add.
+    """
     if not isinstance(array, na.AbstractArray):
         array = na.ScalarArray(array)
     return array.add_axes(axes)
 
 
 def vmr(
-    a: ArrayT,
+    a: na.ArrayLike,
     axis: None | str | Sequence[str] = None,
     dtype: None | str | Type | np.dtype = None,
     out: None | na.AbstractExplicitArray = None,
     keepdims: bool = False,
     *,
-    where: bool | WhereT = True,
-) -> ArrayT | WhereT:
+    where: bool | na.AbstractScalarArray = True,
+) -> na.AbstractExplicitArray:
     """
     Compute the
     `variance-to-mean ratio <https://en.wikipedia.org/wiki/Index_of_dispersion>`_
@@ -796,6 +1046,130 @@ def vmr(
     result = np.divide(result, np.mean(**kwargs), out=out)
 
     return result
+
+
+def mean_trimmed(
+    a: na.ArrayLike,
+    q: float | na.AbstractArray = 0.25,
+    axis: None | str | Sequence[str] = None,
+    dtype: None | str | Type | np.dtype = None,
+    out: None | na.AbstractExplicitArray = None,
+    keepdims: bool = False,
+) -> na.AbstractExplicitArray:
+    """
+    Compute the trimmed mean of the given array along the specified axes.
+
+    Parameters
+    ----------
+    a
+        The input array to compute the trimmed mean of.
+    q
+        The fraction of the largest and smallest elements to remove.
+        Must be between 0 and 1/2.
+        If the specified fraction does not result in an integer number of elements,
+        the number of elements to trim is rounded down.
+    axis
+        The axis or axes along which to compute the trimmed mean.
+    dtype
+        The data type of the output
+    out
+        An optional output array in which to store the results.
+    keepdims
+        If :obj:`True`, the resulting array will have the same dimensionality.
+
+    See Also
+    -----
+    :func:`scipy.stats.trim_mean`: equivalent Numpy function
+    :meth:`AbstractScalar.mean_trimmed`: A method version of this function.
+    """
+
+    a = a.explicit
+
+    if not a.shape:
+        return a
+
+    axis = na.axis_normalized(a, axis)
+
+    axis_flat = na.flatten_axes(axis)
+
+    a = a.combine_axes(axis, axis_new=axis_flat)
+
+    nobs = a.shape[axis_flat]
+
+    lowercut = int(q * nobs)
+    uppercut = nobs - lowercut
+    if lowercut > uppercut:  # pragma: nocover
+        raise ValueError("Proportion too big.")
+
+    a = np.partition(
+        a=a,
+        kth=(lowercut, uppercut - 1),
+        axis=axis_flat,
+    )
+
+    sl = {axis_flat: slice(lowercut, uppercut)}
+
+    return np.mean(
+        a=a[sl],
+        axis=axis_flat,
+        dtype=dtype,
+        out=out,
+        keepdims=keepdims,
+    )
+
+
+def take_along_axis(
+    a: ArrayT,
+    indices: na.AbstractScalarArray | ArrayT,
+    axis: str,
+) -> ArrayT:
+    """
+    Take values from the input array by matching indices along the given axis.
+
+    This is the named-array analogue of :func:`numpy.take_along_axis`.
+    Unlike the :mod:`numpy` version, ``indices`` is broadcast against ``a`` by
+    matching axis names, so ``indices`` only needs to define the axes it varies
+    along.
+
+    Parameters
+    ----------
+    a
+        The source array to take values from.
+    indices
+        The integer indices to take along ``axis``.
+        For scalars and uncertain scalars this is an instance of
+        :class:`named_arrays.AbstractScalarArray`.
+        For vectors this may either be a scalar (the same indices are used for
+        every component) or a vector of the same type as ``a`` (a separate set
+        of indices for each component).
+    axis
+        The axis of ``a`` along which the values are taken.
+        The result replaces this axis with the axes of ``indices``.
+
+    See Also
+    --------
+    :func:`numpy.take_along_axis` : The equivalent :mod:`numpy` function.
+    :func:`numpy.argsort` : Produces indices suitable for this function.
+    :meth:`named_arrays.AbstractArray.take_along_axis` : A method version of this function.
+
+    Examples
+    --------
+
+    Sort an array by taking values along an axis using indices from
+    :func:`numpy.argsort`.
+
+    .. jupyter-execute::
+
+        import numpy as np
+        import named_arrays as na
+
+        a = na.ScalarArray(np.array([3, 1, 2, 0]), axes="x")
+
+        indices = na.ScalarArray(np.argsort(a.ndarray), axes="x")
+
+        na.take_along_axis(a, indices, axis="x")
+    """
+    return np.take_along_axis(a, indices, axis=axis)
 
 
 def interp(
@@ -1081,12 +1455,12 @@ def histogramdd(
 
 
 def convolve(
-    array: ArrayT,
-    kernel: KernelT,
+    array: na.ArrayLike,
+    kernel: na.AbstractArray,
     axis: None | str | Sequence[str] = None,
     where: bool | na.AbstractArray = True,
     mode: str = "truncate",
-) -> ArrayT | KernelT | WhereT:
+) -> na.AbstractExplicitArray:
     """
     Convolve an array with a given :math:`n`-dimensional kernel.
 
@@ -1229,7 +1603,7 @@ def despike(
 ) -> ArrayT:
     """
     A thin wrapper around :func:`astroscrappy.detect_cosmics`
-    :cite:t:`vanDokkum2001`, which removes cosmic ray spikes from a series of
+    :cite:p:`vanDokkum2001`, which removes cosmic ray spikes from a series of
     images.
 
     Parameters
