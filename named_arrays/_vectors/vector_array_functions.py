@@ -853,6 +853,41 @@ def allclose(
     return result
 
 
+@implements(np.cross)
+def cross(
+    a: na.AbstractVectorArray,
+    b: na.AbstractVectorArray,
+    axisa: int = -1,
+    axisb: int = -1,
+    axisc: int = -1,
+    axis: None | int = None,
+) -> na.AbstractExplicitVectorArray:
+    """
+    Compute the vector product of two three-dimensional Cartesian vectors.
+
+    Forwards to :meth:`named_arrays.AbstractCartesian3dVectorArray.cross`.
+    The axis arguments of :func:`numpy.cross` select which axis of the operands
+    holds their components, which a vector in this package names instead, so
+    they may only take their default values.
+    """
+    for name, value in dict(axisa=axisa, axisb=axisb, axisc=axisc).items():
+        if value != -1:
+            raise ValueError(
+                f"the components of a vector are named rather than held along "
+                f"an axis, so `{name}` does not apply, got {value}"
+            )
+    if axis is not None:
+        raise ValueError(
+            f"the components of a vector are named rather than held along an "
+            f"axis, so `axis` does not apply, got {axis}"
+        )
+
+    if not isinstance(a, na.AbstractCartesian3dVectorArray):
+        return NotImplemented
+
+    return a.cross(b)
+
+
 @implements(np.nonzero)
 def nonzero(a: na.AbstractVectorArray):
     a = a.explicit
