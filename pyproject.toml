@@ -19,7 +19,6 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
 ]
 dependencies = [
-    "typing_extensions",
     "numpy>2",
     "numexpr",
     "matplotlib",

@@ -1,6 +1,6 @@
 from __future__ import annotations
 from typing import Mapping, TYPE_CHECKING, TypeVar, Generic, ClassVar, Type, Sequence, Callable, Collection, Any, overload
-from typing_extensions import Self
+from typing import Self
 
 import abc
 import dataclasses

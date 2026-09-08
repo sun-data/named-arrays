@@ -1,7 +1,7 @@
 from __future__ import annotations
 import functools
 from typing import Mapping, TYPE_CHECKING, TypeVar, Generic, Type, ClassVar, Sequence, Callable, Collection, Any, Literal
-from typing_extensions import Self
+from typing import Self
 import abc
 import dataclasses
 import numpy as np

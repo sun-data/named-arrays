@@ -1,6 +1,6 @@
 from __future__ import annotations
 from typing import Sequence, TypeVar, Type, Generic
-from typing_extensions import Self
+from typing import Self
 import abc
 import dataclasses
 import numpy as np
