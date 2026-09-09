@@ -393,6 +393,18 @@ def test_polar_volume_cell_of_a_sector():
     assert np.allclose(area, np.pi * (2**2 - 1**2) / 4 * u.m**2)
 
 
+def test_polar_volume_cell_axis_order():
+    # naming the azimuth first and the radius second describes the same cells
+    grid = na.PolarVectorArray(
+        radius=na.linspace(1, 2, axis="r", num=3) * u.m,
+        azimuth=na.linspace(0, 90, axis="phi", num=4) * u.deg,
+    )
+
+    result = grid.volume_cell(("phi", "r"))
+
+    assert np.all(result == grid.volume_cell(("r", "phi")))
+
+
 def test_polar_volume_cell_dimensionless_azimuth():
     # an azimuth without a unit is taken to be in radians
     grid = na.PolarVectorArray(
