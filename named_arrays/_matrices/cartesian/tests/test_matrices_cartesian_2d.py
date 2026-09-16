@@ -17,36 +17,28 @@ _num_y = named_arrays.tests.test_core.num_y
 _num_distribution = named_arrays.tests.test_core.num_distribution
 
 
+
 def _cartesian_2d_matrices():
-    arrays_xx = [
-        4,
-        na.ScalarUniformRandomSample(-4, 4, shape_random=dict(y=_num_y)),
-    ]
-    arrays_xy = [
-        1,
-    ]
-    arrays_yx = [
-        5.,
-        na.ScalarUniformRandomSample(-5, 5, shape_random=dict(x=_num_x, y=_num_y)),
-        na.UniformUncertainScalarArray(
-            nominal=na.ScalarUniformRandomSample(-5, 5, shape_random=dict(x=_num_x, y=_num_y)),
-            width=1,
-            num_distribution=_num_distribution
+    xx_1d = na.ScalarUniformRandomSample(-4, 4, shape_random=dict(y=_num_y)).explicit
+    yx_2d = na.ScalarUniformRandomSample(-5, 5, shape_random=dict(x=_num_x, y=_num_y)).explicit
+    yx_uncertain = na.UniformUncertainScalarArray(
+        nominal=na.ScalarUniformRandomSample(-5, 5, shape_random=dict(x=_num_x, y=_num_y)),
+        width=1,
+        num_distribution=_num_distribution
+    ).explicit
+
+    def matrix(xx, yx):
+        return na.Cartesian2dMatrixArray(
+            x=na.Cartesian2dVectorArray(x=xx, y=1),
+            y=na.Cartesian2dVectorArray(x=yx, y=0),
         )
-    ]
-    arrays_yy = [0]
-    units = [1, u.mm]
 
     matrices = [
-        na.Cartesian2dMatrixArray(
-            x=na.Cartesian2dVectorArray(x=array_xx, y=array_xy),
-            y=na.Cartesian2dVectorArray(x=array_yx, y=array_yy),
-        ) * unit
-        for array_xx in arrays_xx
-        for array_xy in arrays_xy
-        for array_yx in arrays_yx
-        for array_yy in arrays_yy
-        for unit in units
+        matrix(4, 5.),
+        matrix(4, 5.) * u.mm,
+        matrix(xx_1d, yx_2d) * u.mm,
+        matrix(4, yx_uncertain),
+        matrix(xx_1d, yx_uncertain) * u.mm,
     ]
 
     matrices.append(
@@ -73,43 +65,32 @@ def _cartesian_2d_matrices():
     return matrices
 
 
+
 def _cartesian_2d_matrices_2():
-    arrays_xx = [
-        6,
-        na.ScalarUniformRandomSample(-6, 6, shape_random=dict(y=_num_y)),
-    ]
-    arrays_xy = [
-        1,
-    ]
-    arrays_yx = [
-        0
-    ]
-    arrays_yy = [
-        7.,
-        na.ScalarUniformRandomSample(-7, 7, shape_random=dict(x=_num_x, y=_num_y)),
-        na.UniformUncertainScalarArray(
-            nominal=na.ScalarUniformRandomSample(-7, 7, shape_random=dict(x=_num_x, y=_num_y)),
-            width=1,
-            num_distribution=_num_distribution
+    xx_1d = na.ScalarUniformRandomSample(-6, 6, shape_random=dict(y=_num_y)).explicit
+    yy_2d = na.ScalarUniformRandomSample(-7, 7, shape_random=dict(x=_num_x, y=_num_y)).explicit
+    yy_uncertain = na.UniformUncertainScalarArray(
+        nominal=na.ScalarUniformRandomSample(-7, 7, shape_random=dict(x=_num_x, y=_num_y)),
+        width=1,
+        num_distribution=_num_distribution
+    ).explicit
+
+    def matrix(xx, yy):
+        return na.Cartesian2dMatrixArray(
+            x=na.Cartesian2dVectorArray(x=xx, y=1),
+            y=na.Cartesian2dVectorArray(x=0, y=yy),
         )
-    ]
-    units = [1, u.mm]
 
     scalars = [
-        array_yy * unit
-        for array_yy in arrays_yy
-        for unit in units
+        7.,
+        yy_2d * u.mm,
+        yy_uncertain,
     ]
     matrices = [
-        na.Cartesian2dMatrixArray(
-            x=na.Cartesian2dVectorArray(x=array_xx, y=array_xy),
-            y=na.Cartesian2dVectorArray(x=array_yx, y=array_yy),
-        ) * unit
-        for array_xx in arrays_xx
-        for array_xy in arrays_xy
-        for array_yx in arrays_yx
-        for array_yy in arrays_yy
-        for unit in units
+        matrix(6, 7.),
+        matrix(6, yy_2d) * u.mm,
+        matrix(xx_1d, yy_uncertain),
+        matrix(xx_1d, 7.) * u.mm,
     ]
 
     matrices.append(

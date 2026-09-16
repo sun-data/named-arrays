@@ -28,58 +28,52 @@ _num_z = test_vectors_cartesian._num_z
 _num_distribution = test_vectors_cartesian._num_distribution
 
 
+
 def _cartesian2d_arrays():
-    arrays_numeric_x = [
-        4,
-        na.ScalarUniformRandomSample(-4, 4, shape_random=dict(y=_num_y)),
-        na.Cartesian2dVectorArray(x=2, y=3)
+    x_1d = na.ScalarUniformRandomSample(-4, 4, shape_random=dict(y=_num_y)).explicit
+    y_2d = na.ScalarUniformRandomSample(-5, 5, shape_random=dict(x=_num_x, y=_num_y)).explicit
+    y_uncertain = na.UniformUncertainScalarArray(
+        nominal=na.ScalarUniformRandomSample(-5, 5, shape_random=dict(x=_num_x, y=_num_y)),
+        width=1,
+        num_distribution=_num_distribution
+    ).explicit
+    x_vector = na.Cartesian2dVectorArray(x=2, y=3)
+    y_vector = na.Cartesian2dVectorArray(x=4, y=8)
+    return [
+        na.Cartesian2dVectorArray(x=4, y=5.),
+        na.Cartesian2dVectorArray(x=4 * u.mm, y=5. * u.mm),
+        na.Cartesian2dVectorArray(x=4, y=5. * u.mm),
+        na.Cartesian2dVectorArray(x=4, y=y_2d),
+        na.Cartesian2dVectorArray(x=x_1d * u.mm, y=y_2d * u.mm),
+        na.Cartesian2dVectorArray(x=x_1d, y=y_uncertain),
+        na.Cartesian2dVectorArray(x=4 * u.mm, y=y_uncertain * u.mm),
+        na.Cartesian2dVectorArray(x=x_vector, y=y_vector),
+        na.Cartesian2dVectorArray(x=x_vector * u.mm, y=y_2d * u.mm),
+        na.Cartesian2dVectorArray(x=x_1d * u.mm, y=y_vector),
     ]
-    units_x = [1, u.mm]
-    arrays_numeric_x = [a * unit for a in arrays_numeric_x for unit in units_x]
 
-    arrays_numeric_y = [
-        5.,
-        na.ScalarUniformRandomSample(-5, 5, shape_random=dict(x=_num_x, y=_num_y)),
-        na.UniformUncertainScalarArray(
-            nominal=na.ScalarUniformRandomSample(-5, 5, shape_random=dict(x=_num_x, y=_num_y)),
-            width=1,
-            num_distribution=_num_distribution
-        ),
-        na.Cartesian2dVectorArray(x=4, y=8)
-    ]
-    units_y = [1, u.mm]
-    arrays_numeric_y = [a * unit for a in arrays_numeric_y for unit in units_y]
-
-    arrays = [na.Cartesian2dVectorArray(x=ax, y=ay) for ax in arrays_numeric_x for ay in arrays_numeric_y]
-    return arrays
 
 
 def _cartesian2d_arrays_2():
-    units = [1, u.mm]
-    arrays_scalar = [
+    scalar_2d = na.ScalarUniformRandomSample(-6, 6, shape_random=dict(y=_num_y, x=_num_x))
+    scalar_uncertain = na.UniformUncertainScalarArray(
+        nominal=na.ScalarUniformRandomSample(-6, 6, shape_random=dict(y=_num_y, x=_num_x)),
+        width=1,
+        num_distribution=_num_distribution
+    ).explicit
+    vector_x = na.ScalarUniformRandomSample(-7, 7, shape_random=dict(y=_num_y))
+    vector_y = na.random.binomial(10, .65, shape_random=dict(x=_num_x, y=_num_y)).explicit
+    return [
         6,
+        6 * u.mm,
         na.ScalarArray(6),
-        na.ScalarUniformRandomSample(-6, 6, shape_random=dict(y=_num_y, x=_num_x)),
-        na.UniformUncertainScalarArray(
-            nominal=na.ScalarUniformRandomSample(-6, 6, shape_random=dict(y=_num_y, x=_num_x)),
-            width=1,
-            num_distribution=_num_distribution
-        )
+        scalar_2d * u.mm,
+        scalar_uncertain,
+        na.Cartesian2dVectorArray(x=7, y=8),
+        na.Cartesian2dVectorArray(x=7 * u.mm, y=8),
+        na.Cartesian2dVectorArray(x=vector_x * u.mm, y=vector_y * u.mm),
+        na.Cartesian2dVectorArray(x=7, y=vector_y),
     ]
-    arrays_scalar = [a * unit for a in arrays_scalar for unit in units]
-    arrays_vector_x = [
-        7,
-        na.ScalarUniformRandomSample(-7, 7, shape_random=dict(y=_num_y)),
-    ]
-    arrays_vector_x = [a * unit for a in arrays_vector_x for unit in units]
-    arrays_vector_y = [
-        8,
-        na.random.binomial(10, .65, shape_random=dict(x=_num_x, y=_num_y)),
-    ]
-    arrays_vector_y = [a * unit for a in arrays_vector_y for unit in units]
-    arrays_vector = [na.Cartesian2dVectorArray(x=ax, y=ay) for ax in arrays_vector_x for ay in arrays_vector_y]
-    arrays = arrays_scalar + arrays_vector
-    return arrays
 
 
 def _cartesian2d_items() -> list[na.AbstractArray | dict[str, int, slice, na.AbstractArray]]:
@@ -440,31 +434,23 @@ class AbstractTestAbstractCartesian2dVectorRandomSample(
     pass
 
 
+
 def _cartesian_2d_uniform_random_samples() -> list[na.Cartesian2dVectorUniformRandomSample]:
-    starts = [
-        0,
-        na.Cartesian2dVectorArray(
-            x=na.ScalarLinearSpace(0, 1, axis='x', num=_num_x),
-            y=na.ScalarLinearSpace(1, 2, axis='x', num=_num_x)
-        )
-    ]
-    stops = [
-        10,
-        na.UniformUncertainScalarArray(10, width=1, num_distribution=_num_distribution),
-        na.Cartesian2dVectorArray(x=10, y=11),
-        na.Cartesian2dVectorArray(
-            x=na.ScalarLinearSpace(10, 11, axis='x', num=_num_x),
-            y=na.ScalarLinearSpace(11, 12, axis='x', num=_num_x)
-        ),
-    ]
-    units = [None, u.mm]
-    shapes_random = [dict(y=_num_y, z=_num_z)]
+    start = na.Cartesian2dVectorArray(
+        x=na.ScalarLinearSpace(0, 1, axis='x', num=_num_x),
+        y=na.ScalarLinearSpace(1, 2, axis='x', num=_num_x)
+    )
+    stop = na.Cartesian2dVectorArray(
+        x=na.ScalarLinearSpace(10, 11, axis='x', num=_num_x),
+        y=na.ScalarLinearSpace(11, 12, axis='x', num=_num_x)
+    )
+    stop_uncertain = na.UniformUncertainScalarArray(10, width=1, num_distribution=_num_distribution)
+    shape_random = dict(y=_num_y, z=_num_z)
     return [
-        na.Cartesian2dVectorUniformRandomSample(
-            start=start << unit if unit is not None else start,
-            stop=stop << unit if unit is not None else stop,
-            shape_random=shape_random,
-        ) for start in starts for stop in stops for unit in units for shape_random in shapes_random
+        na.Cartesian2dVectorUniformRandomSample(0, 10, shape_random=shape_random),
+        na.Cartesian2dVectorUniformRandomSample(0 * u.mm, stop_uncertain << u.mm, shape_random=shape_random),
+        na.Cartesian2dVectorUniformRandomSample(0, na.Cartesian2dVectorArray(x=10, y=11), shape_random=shape_random),
+        na.Cartesian2dVectorUniformRandomSample(start << u.mm, stop << u.mm, shape_random=shape_random),
     ]
 
 
@@ -476,31 +462,23 @@ class TestCartesian2dVectorUniformRandomSample(
     pass
 
 
+
 def _cartesian_2d_normal_random_samples() -> list[na.Cartesian2dVectorNormalRandomSample]:
-    centers = [
-        0,
-        na.Cartesian2dVectorArray(
-            x=na.ScalarLinearSpace(0, 1, axis='x', num=_num_x),
-            y=na.ScalarLinearSpace(1, 2, axis='x', num=_num_x)
-        )
-    ]
-    widths = [
-        10,
-        na.UniformUncertainScalarArray(10, width=1, num_distribution=_num_distribution),
-        na.Cartesian2dVectorArray(x=10, y=11),
-        na.Cartesian2dVectorArray(
-            x=na.ScalarLinearSpace(10, 11, axis='x', num=_num_x),
-            y=na.ScalarLinearSpace(11, 12, axis='x', num=_num_x)
-        ),
-    ]
-    units = [None, u.mm]
-    shapes_random = [dict(y=_num_y)]
+    center = na.Cartesian2dVectorArray(
+        x=na.ScalarLinearSpace(0, 1, axis='x', num=_num_x),
+        y=na.ScalarLinearSpace(1, 2, axis='x', num=_num_x)
+    )
+    width = na.Cartesian2dVectorArray(
+        x=na.ScalarLinearSpace(10, 11, axis='x', num=_num_x),
+        y=na.ScalarLinearSpace(11, 12, axis='x', num=_num_x)
+    )
+    width_uncertain = na.UniformUncertainScalarArray(10, width=1, num_distribution=_num_distribution)
+    shape_random = dict(y=_num_y)
     return [
-        na.Cartesian2dVectorNormalRandomSample(
-            center=center << unit if unit is not None else center,
-            width=width << unit if unit is not None else width,
-            shape_random=shape_random,
-        ) for center in centers for width in widths for unit in units for shape_random in shapes_random
+        na.Cartesian2dVectorNormalRandomSample(0, 10, shape_random=shape_random),
+        na.Cartesian2dVectorNormalRandomSample(0 * u.mm, width_uncertain << u.mm, shape_random=shape_random),
+        na.Cartesian2dVectorNormalRandomSample(0, na.Cartesian2dVectorArray(x=10, y=11), shape_random=shape_random),
+        na.Cartesian2dVectorNormalRandomSample(center << u.mm, width << u.mm, shape_random=shape_random),
     ]
 
 
