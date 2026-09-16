@@ -1,17 +1,20 @@
 """Wrappers around :mod:`matplotlib.pyplot` functions."""
 
 from __future__ import annotations
-from typing import Literal, Any, Callable, TypeVar
-import matplotlib.axes
-import matplotlib.transforms
-import matplotlib.animation
-import matplotlib.text
-import matplotlib.colors
-import matplotlib.pyplot as plt
+from typing import Literal, Any, Callable, TypeVar, TYPE_CHECKING
 import astropy.units as u
 import numpy as np
 import numpy.typing as npt
 import named_arrays as na
+
+if TYPE_CHECKING:
+    import matplotlib.animation
+    import matplotlib.artist
+    import matplotlib.axes
+    import matplotlib.colors
+    import matplotlib.figure
+    import matplotlib.text
+    import matplotlib.transforms
 
 __all__ = [
     "subplots",
@@ -110,6 +113,7 @@ def subplots(
     kwargs
         Additional keyword arguments passed to :func:`matplotlib.pyplot.subplots`
     """
+    import matplotlib.pyplot as plt
 
     shape = {axis_rows: nrows, axis_cols: ncols}
 
@@ -2337,6 +2341,7 @@ def _facecolor(
     Used by :func:`dimension` to draw the label on a background that matches
     the axes so it cleanly masks the dimension line underneath.
     """
+    import matplotlib.colors
     ax = na.as_named_array(ax)
     result = na.ScalarArray.empty(ax.shape, dtype=object)
     for index in na.ndindex(ax.shape):
@@ -2488,6 +2493,7 @@ def dimension(
         ax.set_xlim(0, 1)
         ax.set_ylim(0, 1)
     """
+    import matplotlib.pyplot as plt
     if ax is None:
         ax = plt.gca()
 

@@ -5,10 +5,11 @@ import abc
 import dataclasses
 import numpy as np
 import numpy.typing as npt
-import scipy.ndimage
 import astropy.units as u
 import named_arrays as na
-import xarray as xr
+
+if TYPE_CHECKING:
+    import xarray as xr
 
 __all__ = [
     "ScalarStartT",
@@ -219,6 +220,7 @@ class AbstractScalarArray(
         """
         Cast :class:`ScalarArray` to a :class:`xarray.DataArray`.  Useful for saving to netcdf/zarr or using Dask.
         """
+        import xarray as xr
         return xr.DataArray(self.ndarray, dims=self.axes)
 
     @property
@@ -793,6 +795,7 @@ class AbstractScalarArray(
             mode: str = 'reflect',
     ):
 
+        import scipy.ndimage
         shape = self.shape
         shape_kernel_final = {axis: shape_kernel[axis] if axis in shape_kernel else 1 for axis in shape}
 

@@ -395,6 +395,16 @@ class AbstractTestAbstractScalarArray(
         assert np.all(xarray.data == array.ndarray)
         assert set(xarray.dims) == set(array.axes)
 
+    @pytest.mark.parametrize("size", [1, 3])
+    def test_filter_median(self, array: na.AbstractScalarArray, size: int):
+        shape_kernel = {axis: size for axis in array.shape}
+        result = array.filter_median(shape_kernel)
+        assert isinstance(result, na.ScalarArray)
+        assert result.shape == array.shape
+        assert result.unit == array.unit
+        if size == 1:
+            assert np.all(result == array)
+
     def test_from_xarray(self, array: na.AbstractScalarArray):
         xarray = array.to_xarray
         scalar_array = na.ScalarArray.from_xarray(xarray)

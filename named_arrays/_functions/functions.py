@@ -6,7 +6,6 @@ import abc
 import dataclasses
 import numpy as np
 import astropy.units as u
-import astropy.visualization
 import named_arrays as na
 import itertools
 
@@ -927,6 +926,7 @@ class AbstractFunctionArray(
                 input_component_row='time',
             )
         """
+        import astropy.visualization
 
         if axs.ndim == 1:
             if input_component_row is not None:
@@ -951,20 +951,35 @@ class AbstractFunctionArray(
                 if input_component_column is not None:
                     index_final[input_component_column] = index_subplot['column']
 
-                inp = self[index_final].inputs.cartesian_nd
+                array = self[index_final]
 
-                inp_x = inp.components[input_component_x].ndarray
-                inp_y = inp.components[input_component_y].ndarray
+                inp = array.inputs.cartesian_nd
 
-                out = self[index_final].outputs
+                inp_x = inp.components[input_component_x]
+                inp_y = inp.components[input_component_y]
+
+                out = array.outputs
                 if output_component_color is not None:
                     out = out.components[output_component_color]
+
+                # Broadcast the coordinates and the values to 2D arrays with
+                # the same axis order so that matplotlib interprets them
+                # consistently. Along axes where the coordinates are cell
+                # vertices, the values have one fewer element.
+                shape_inp = na.shape_broadcasted(inp_x, inp_y)
+                shape_out = {
+                    axis: shape_inp[axis] - 1 if axis in array.axes_vertex else shape_inp[axis]
+                    for axis in shape_inp
+                }
+                inp_x = na.broadcast_to(inp_x, shape_inp).ndarray
+                inp_y = na.broadcast_to(inp_y, shape_inp).ndarray
+                out = na.broadcast_to(out, shape_out).ndarray
 
                 ax = axs[index_subplot].ndarray
                 ax.pcolormesh(
                     inp_x,
                     inp_y,
-                    out.ndarray,
+                    out,
                     shading='auto',
                     **kwargs,
                 )
