@@ -953,18 +953,25 @@ class AbstractFunctionArray(
 
                 inp = self[index_final].inputs.cartesian_nd
 
-                inp_x = inp.components[input_component_x].ndarray
-                inp_y = inp.components[input_component_y].ndarray
+                inp_x = inp.components[input_component_x]
+                inp_y = inp.components[input_component_y]
 
                 out = self[index_final].outputs
                 if output_component_color is not None:
                     out = out.components[output_component_color]
 
+                # Broadcast to a common shape so that the axis order of the
+                # coordinates and the values passed to matplotlib agree.
+                shape = na.shape_broadcasted(inp_x, inp_y, out)
+                inp_x = na.broadcast_to(inp_x, shape).ndarray
+                inp_y = na.broadcast_to(inp_y, shape).ndarray
+                out = na.broadcast_to(out, shape).ndarray
+
                 ax = axs[index_subplot].ndarray
                 ax.pcolormesh(
                     inp_x,
                     inp_y,
-                    out.ndarray,
+                    out,
                     shading='auto',
                     **kwargs,
                 )

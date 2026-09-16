@@ -1,6 +1,7 @@
 from typing import Mapping, Sequence, Callable, Literal
 import pytest
 import numpy as np
+import matplotlib.pyplot as plt
 import astropy.units as u
 import named_arrays as na
 import named_arrays.tests.test_core
@@ -313,6 +314,35 @@ class AbstractTestAbstractFunctionArray(
         result = array / unit
         assert np.all(result.outputs == array.outputs / unit)
         assert np.all(result.inputs == array.inputs)
+
+    @pytest.mark.parametrize("axis_row", [None, "row"])
+    def test_pcolormesh(
+        self,
+        array: na.AbstractFunctionArray,
+        axis_row: None | str,
+    ):
+        if not isinstance(array.inputs, na.AbstractCartesian2dVectorArray):
+            return
+        if not isinstance(array.outputs, na.AbstractScalarArray):
+            return
+
+        if axis_row is None:
+            fig, axs = plt.subplots(squeeze=False)
+        else:
+            array = na.stack([array, array], axis=axis_row)
+            fig, axs = plt.subplots(nrows=array.shape[axis_row])
+
+        array.pcolormesh(
+            axs=axs,
+            input_component_x="x",
+            input_component_y="y",
+            input_component_row=axis_row,
+        )
+
+        for ax in axs.flat:
+            assert ax.collections
+
+        plt.close(fig)
 
     class TestUfuncUnary(
         named_arrays.tests.test_core.AbstractTestAbstractArray.TestUfuncUnary
