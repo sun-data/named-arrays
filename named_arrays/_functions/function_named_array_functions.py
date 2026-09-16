@@ -1,9 +1,12 @@
-from typing import Callable, Literal, Sequence
+from typing import Callable, Literal, Sequence, TYPE_CHECKING
 import numpy as np
-import matplotlib
 import astropy.units as u
 import named_arrays as na
 import named_arrays._scalars.scalar_named_array_functions
+
+if TYPE_CHECKING:
+    import matplotlib.axes
+    import matplotlib.colors
 
 __all__ = [
     "ASARRAY_LIKE_FUNCTIONS",
@@ -221,9 +224,9 @@ def pcolormesh(
     C: na.AbstractFunctionArray,
     components: None | tuple[str, str] = None,
     axis_rgb: None | str = None,
-    ax: None | matplotlib.axes.Axes | na.AbstractArray = None,
-    cmap: None | str | matplotlib.colors.Colormap = None,
-    norm: None | str | matplotlib.colors.Normalize = None,
+    ax: "None | matplotlib.axes.Axes | na.AbstractArray" = None,
+    cmap: "None | str | matplotlib.colors.Colormap" = None,
+    norm: "None | str | matplotlib.colors.Normalize" = None,
     vmin: None | na.ArrayLike = None,
     vmax: None | na.ArrayLike = None,
     **kwargs,

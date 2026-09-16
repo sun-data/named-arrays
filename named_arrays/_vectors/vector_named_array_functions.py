@@ -1,16 +1,17 @@
-from typing import Callable, TypeVar, Sequence, Literal
+from typing import Callable, TypeVar, Sequence, Literal, TYPE_CHECKING
 import numpy as np
 import numpy.typing as npt
-import matplotlib.pyplot as plt
-import matplotlib.axes
-import matplotlib.transforms
-import matplotlib.text
 import astropy.units as u
-import regridding
 import named_arrays as na
 from named_arrays._scalars import scalars
 import named_arrays._scalars.scalar_named_array_functions
 from . import vectors
+
+if TYPE_CHECKING:
+    import matplotlib.artist
+    import matplotlib.axes
+    import matplotlib.colors
+    import matplotlib.transforms
 
 __all__ = [
     "ASARRAY_LIKE_FUNCTIONS",
@@ -428,12 +429,12 @@ def random(
 def plt_plot_like(
         func: Callable,
         *args: na.AbstractCartesian2dVectorArray,
-        ax: None | matplotlib.axes.Axes | na.ScalarArray[npt.NDArray[matplotlib.axes.Axes]] = None,
+        ax: "None | matplotlib.axes.Axes | na.ScalarArray[npt.NDArray[matplotlib.axes.Axes]]" = None,
         axis: None | str = None,
         where: bool | na.AbstractScalarArray = True,
         components: None | tuple[str, ...] = None,
         **kwargs,
-) -> na.ScalarArray[npt.NDArray[None | matplotlib.artist.Artist]]:
+) -> "na.ScalarArray[npt.NDArray[None | matplotlib.artist.Artist]]":
 
     if len(args) != 1:
         return NotImplemented
@@ -470,13 +471,15 @@ def annotate(
     xy: VectorT,
     xytext: None | VectorT = None,
     components: None | tuple[str, str] = None,
-    ax: None | matplotlib.axes.Axes | na.AbstractArray = None,
-    xycoords: str | matplotlib.transforms.Transform | na.AbstractScalarArray | VectorT = "data",
-    textcoords: None | str | matplotlib.transforms.Transform | na.AbstractScalarArray | VectorT = None,
+    ax: "None | matplotlib.axes.Axes | na.AbstractArray" = None,
+    xycoords: "str | matplotlib.transforms.Transform | na.AbstractScalarArray | VectorT" = "data",
+    textcoords: "None | str | matplotlib.transforms.Transform | na.AbstractScalarArray | VectorT" = None,
     arrowprops: None | dict = None,
     annotation_clip: None | bool | na.AbstractScalarArray = None,
     **kwargs,
 ):
+    import matplotlib.pyplot as plt
+    import matplotlib.text
     if ax is None:
         ax = plt.gca()
 
@@ -565,9 +568,9 @@ def pcolormesh(
     C: na.AbstractScalarArray,
     components: None | tuple[str, str] = None,
     axis_rgb: None | str = None,
-    ax: None | matplotlib.axes.Axes | na.AbstractScalarArray = None,
-    cmap: None | str | matplotlib.colors.Colormap = None,
-    norm: None | str | matplotlib.colors.Normalize = None,
+    ax: "None | matplotlib.axes.Axes | na.AbstractScalarArray" = None,
+    cmap: "None | str | matplotlib.colors.Colormap" = None,
+    norm: "None | str | matplotlib.colors.Normalize" = None,
     vmin: None | float | u.Quantity | na.AbstractScalarArray = None,
     vmax: None | float | u.Quantity | na.AbstractScalarArray = None,
     **kwargs,
@@ -890,6 +893,7 @@ def regridding_weights(
     seed: "None | int | np.random.Generator" = na.regridding._seed_default,
 ) -> tuple[na.AbstractScalar, dict[str, int], dict[str, int]]:
 
+    import regridding
     try:
         prototype = vectors._prototype(coordinates_input, coordinates_output)
         coordinates_input = vectors._normalize(coordinates_input, prototype)
@@ -1022,6 +1026,7 @@ def regridding_transpose_weights_conservative(
     weights_input: None | na.AbstractScalar = None,
 ) -> tuple[na.AbstractScalar, dict[str, int], dict[str, int]]:
 
+    import regridding
     _shape_input = shape_input
     _shape_output = shape_output
 

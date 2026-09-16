@@ -6,7 +6,6 @@ import abc
 import dataclasses
 import numpy as np
 import astropy.units as u
-import astropy.visualization
 import named_arrays as na
 import itertools
 
@@ -927,6 +926,7 @@ class AbstractFunctionArray(
                 input_component_row='time',
             )
         """
+        import astropy.visualization
 
         if axs.ndim == 1:
             if input_component_row is not None:

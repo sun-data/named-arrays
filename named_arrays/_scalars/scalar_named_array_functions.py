@@ -1,23 +1,20 @@
-from typing import Callable, Sequence, Any, Literal
+from typing import Callable, Sequence, Any, Literal, TYPE_CHECKING
 import collections
 import numpy as np
 import numpy.typing as npt
 import numexpr
-import matplotlib.axes
-import matplotlib.artist
-import matplotlib.collections
-import matplotlib.pyplot as plt
-import matplotlib.animation
-import mpl_toolkits.mplot3d
-import mpl_toolkits.mplot3d.art3d
 import astropy.units as u
 import astroscrappy
-import ndfilters
-import colorsynth
-import regridding
 import named_arrays as na
 from . import scalars
 from ..geometry._point_in_polygon import _point_in_polygon_quantity
+
+if TYPE_CHECKING:
+    import matplotlib.animation
+    import matplotlib.artist
+    import matplotlib.axes
+    import matplotlib.colors
+    import mpl_toolkits.mplot3d.art3d
 
 __all__ = [
     "ASARRAY_LIKE_FUNCTIONS",
@@ -692,6 +689,7 @@ def convolve(
     mode: str = "truncate",
 ) -> na.ScalarArray:
 
+    import ndfilters
     try:
         array = scalars._normalize(array).explicit
         kernel = scalars._normalize(kernel).explicit
@@ -979,13 +977,14 @@ def random_choice(
 def plt_plot_like(
         func: Callable,
         *args: na.AbstractScalarArray,
-        ax: None | matplotlib.axes.Axes | na.ScalarArray[npt.NDArray[matplotlib.axes.Axes]] = None,
+        ax: "None | matplotlib.axes.Axes | na.ScalarArray[npt.NDArray[matplotlib.axes.Axes]]" = None,
         axis: None | str = None,
         where: bool | na.AbstractScalarArray = True,
         components: None | tuple[str, ...] = None,
         **kwargs,
-) -> na.ScalarArray[npt.NDArray[None | matplotlib.artist.Artist]]:
+) -> "na.ScalarArray[npt.NDArray[None | matplotlib.artist.Artist]]":
 
+    import matplotlib.pyplot as plt
     if components is not None:
         raise ValueError(f"`components` should be `None` for scalars, got {components}")
 
@@ -1076,7 +1075,7 @@ def plt_plot_like(
 
 
 def _line_collection(
-        ax: matplotlib.axes.Axes,
+        ax: "matplotlib.axes.Axes",
         args: tuple,
         kwargs: dict[str, Any],
         axis: str,
@@ -1089,6 +1088,8 @@ def _line_collection(
     Given one depth for its whole length it would be placed either in front of
     every surface it crosses or behind all of them.
     """
+    import matplotlib.collections
+    import mpl_toolkits.mplot3d.art3d
     is_3d = isinstance(ax, mpl_toolkits.mplot3d.Axes3D)
 
     aliases = {
@@ -1124,10 +1125,11 @@ def _line_collection(
 
 def _is_fill_3d(
         func: Callable,
-        ax: matplotlib.axes.Axes,
+        ax: "matplotlib.axes.Axes",
         args: tuple,
 ) -> bool:
     """Whether this is a filled polygon being drawn on a 3D axes."""
+    import mpl_toolkits.mplot3d
     return (
         func is na.plt.fill
         and isinstance(ax, mpl_toolkits.mplot3d.Axes3D)
@@ -1136,10 +1138,10 @@ def _is_fill_3d(
 
 
 def _fill_3d(
-        ax: mpl_toolkits.mplot3d.Axes3D,
+        ax: "mpl_toolkits.mplot3d.Axes3D",
         args: tuple,
         kwargs: dict[str, Any],
-) -> mpl_toolkits.mplot3d.art3d.Poly3DCollection:
+) -> "mpl_toolkits.mplot3d.art3d.Poly3DCollection":
     """
     Fill a polygon on a 3D axes.
 
@@ -1150,6 +1152,7 @@ def _fill_3d(
     it is depth sorted along with everything else in the axes, so a surface
     drawn this way occludes what is behind it.
     """
+    import mpl_toolkits.mplot3d.art3d
     aliases = {
         "color": "facecolors",
         "linewidth": "linewidths",
@@ -1169,12 +1172,13 @@ def plt_scatter(
         *args: na.AbstractScalarArray,
         s: None | na.AbstractScalarArray = None,
         c: None | na.AbstractScalarArray = None,
-        ax: None | matplotlib.axes.Axes | na.ScalarArray = None,
+        ax: "None | matplotlib.axes.Axes | na.ScalarArray" = None,
         where: bool | na.AbstractScalarArray = True,
         components: None | tuple[str, ...] = None,
         **kwargs,
 ) -> na.ScalarArray:
 
+    import matplotlib.pyplot as plt
     if components is not None:
         raise ValueError(f"`components` should be `None` for scalars, got {components}")
 
@@ -1261,12 +1265,13 @@ def plt_scatter(
 @_implements(na.plt.stairs)
 def plt_stairs(
         *args: na.AbstractScalarArray,
-        ax: None | matplotlib.axes.Axes | na.ScalarArray[npt.NDArray[matplotlib.axes.Axes]] = None,
+        ax: "None | matplotlib.axes.Axes | na.ScalarArray[npt.NDArray[matplotlib.axes.Axes]]" = None,
         axis: None | str = None,
         where: bool | na.AbstractScalarArray = True,
         **kwargs,
-) -> na.ScalarArray[npt.NDArray[None | matplotlib.artist.Artist]]:
+) -> "na.ScalarArray[npt.NDArray[None | matplotlib.artist.Artist]]":
 
+    import matplotlib.pyplot as plt
     if len(args) == 1:
         edges = None
         values, = args
@@ -1367,9 +1372,9 @@ def plt_imshow(
     axis_x: str,
     axis_y: str,
     axis_rgb: None | str = None,
-    ax: None | matplotlib.axes.Axes | na.AbstractArray = None,
-    cmap: None | str | matplotlib.colors.Colormap = None,
-    norm: None | str | matplotlib.colors.Normalize = None,
+    ax: "None | matplotlib.axes.Axes | na.AbstractArray" = None,
+    cmap: "None | str | matplotlib.colors.Colormap" = None,
+    norm: "None | str | matplotlib.colors.Normalize" = None,
     aspect: None | na.ArrayLike = None,
     alpha: None | na.ArrayLike = None,
     vmin: None | na.ArrayLike = None,
@@ -1377,6 +1382,7 @@ def plt_imshow(
     extent: None | na.ArrayLike = None,
     **kwargs,
 ) -> na.ScalarArray:
+    import matplotlib.pyplot as plt
     try:
         X = scalars._normalize(X)
         aspect = scalars._normalize(aspect) if aspect is not None else aspect
@@ -1443,15 +1449,16 @@ def pcolormesh(
     *XY: na.AbstractScalarArray,
     C: na.AbstractScalarArray,
     axis_rgb: None | str = None,
-    ax: None | matplotlib.axes.Axes | na.AbstractScalarArray = None,
+    ax: "None | matplotlib.axes.Axes | na.AbstractScalarArray" = None,
     components: None | tuple[str, str] = None,
-    cmap: None | str | matplotlib.colors.Colormap = None,
-    norm: None | str | matplotlib.colors.Normalize = None,
+    cmap: "None | str | matplotlib.colors.Colormap" = None,
+    norm: "None | str | matplotlib.colors.Normalize" = None,
     vmin: None | float | u.Quantity | na.AbstractScalarArray = None,
     vmax: None | float | u.Quantity | na.AbstractScalarArray = None,
     **kwargs,
 ) -> na.ScalarArray:
 
+    import matplotlib.pyplot as plt
     if components is not None:  # pragma: nocover
         raise ValueError(f"`components` should be `None` for scalars, got {components}")
 
@@ -1512,16 +1519,18 @@ def pcolormovie(
     C: na.AbstractScalarArray,
     axis_time: str,
     axis_rgb: None | str = None,
-    ax: None | matplotlib.axes.Axes | na.AbstractScalarArray = None,
+    ax: "None | matplotlib.axes.Axes | na.AbstractScalarArray" = None,
     components: None | tuple[str, str] = None,
-    cmap: None | str | matplotlib.colors.Colormap = None,
-    norm: None | str | matplotlib.colors.Normalize = None,
+    cmap: "None | str | matplotlib.colors.Colormap" = None,
+    norm: "None | str | matplotlib.colors.Normalize" = None,
     vmin: None | float | u.Quantity | na.AbstractScalarArray = None,
     vmax: None | float | u.Quantity | na.AbstractScalarArray = None,
     kwargs_pcolormesh: None | dict[str, Any] = None,
     kwargs_animation: None | dict[str, Any] = None,
-) -> matplotlib.animation.FuncAnimation:
+) -> "matplotlib.animation.FuncAnimation":
 
+    import matplotlib.animation
+    import matplotlib.pyplot as plt
     t, x, y = TXY
 
     if ax is None:
@@ -1606,10 +1615,12 @@ def plt_text(
     x: float | u.Quantity | na.AbstractScalarArray,
     y: float | u.Quantity | na.AbstractScalarArray,
     s: str | na.AbstractScalarArray,
-    ax: None | matplotlib.axes.Axes | na.AbstractScalarArray = None,
+    ax: "None | matplotlib.axes.Axes | na.AbstractScalarArray" = None,
     **kwargs,
 ) -> na.AbstractScalarArray:
 
+    import matplotlib.axes
+    import matplotlib.pyplot as plt
     if ax is None:
         ax = plt.gca()
 
@@ -1647,10 +1658,11 @@ def plt_text(
 def plt_axes_setter(
     method: str,
     *args,
-    ax: None | matplotlib.axes.Axes | na.AbstractScalarArray = None,
+    ax: "None | matplotlib.axes.Axes | na.AbstractScalarArray" = None,
     **kwargs,
 ) -> na.ScalarArray:
 
+    import matplotlib.pyplot as plt
     if ax is None:
         ax = plt.gca()
 
@@ -1682,6 +1694,7 @@ def plt_axes_getter(
     ax: na.AbstractScalarArray,
 ) -> na.ScalarArray:
 
+    import matplotlib.pyplot as plt
     try:
         ax = scalars._normalize(ax)
     except na.ScalarTypeError:  # pragma: nocover
@@ -1703,6 +1716,7 @@ def plt_get_lim(
     ax: na.AbstractScalarArray,
 ) -> tuple[na.ScalarArray, na.ScalarArray]:
 
+    import matplotlib.pyplot as plt
     try:
         ax = scalars._normalize(ax)
     except na.ScalarTypeError:  # pragma: nocover
@@ -1725,6 +1739,7 @@ def plt_axes_attribute(
     ax: na.AbstractScalarArray,
 ) -> na.ScalarArray:
 
+    import matplotlib.pyplot as plt
     try:
         ax = scalars._normalize(ax)
     except na.ScalarTypeError:  # pragma: nocover
@@ -2075,6 +2090,7 @@ def colorsynth_rgb(
     wavelength_max: None | float | u.Quantity | na.AbstractScalarArray = None,
     wavelength_norm: None | Callable = None,
 ) -> na.ScalarArray:
+    import colorsynth
     try:
         spd = scalars._normalize(spd).astype(float)
         wavelength = scalars._normalize(wavelength) if wavelength is not None else wavelength
@@ -2147,6 +2163,7 @@ def colorsynth_colorbar(
     wavelength_max: None | float | u.Quantity | na.AbstractScalarArray = None,
     wavelength_norm: None | Callable = None,
 ) -> na.FunctionArray[na.Cartesian2dVectorArray, na.ScalarArray]:
+    import colorsynth
     try:
         spd = scalars._normalize(spd).astype(float)
         wavelength = scalars._normalize(wavelength) if wavelength is not None else wavelength
@@ -2228,6 +2245,7 @@ def ndfilter(
     where: bool | na.AbstractScalarArray,
     **kwargs,
 ) -> na.ScalarArray:
+    import ndfilters
 
     func = getattr(ndfilters, func.__name__)
 
@@ -2297,6 +2315,7 @@ def regridding_regrid_from_weights(
     values_input: na.AbstractScalarArray,
 ) -> na.ScalarArray:
 
+    import regridding
     try:
         weights = scalars._normalize(weights)
         values_input = scalars._normalize(values_input)
@@ -2351,6 +2370,7 @@ def regridding_transpose_weights(
         shape_output: dict[str, int],
 ) -> na.AbstractScalar:
 
+    import regridding
     new_weights, _, _, = regridding.transpose_weights((weights.ndarray, tuple(), tuple()))
 
     return (na.ScalarArray(new_weights, axes=weights.axes), shape_output, shape_input)

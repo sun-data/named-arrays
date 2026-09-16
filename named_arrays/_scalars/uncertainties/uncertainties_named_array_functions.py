@@ -1,14 +1,15 @@
-from typing import Callable, Sequence, Literal
+from typing import Callable, Sequence, Literal, TYPE_CHECKING
 import collections
 import numpy as np
 import numpy.typing as npt
-import matplotlib.axes
-import matplotlib.artist
-import matplotlib.pyplot as plt
 import astropy.units as u
 import named_arrays as na
 import named_arrays._scalars.scalar_named_array_functions
 from . import uncertainties
+
+if TYPE_CHECKING:
+    import matplotlib.artist
+    import matplotlib.axes
 
 __all__ = [
     "ASARRAY_LIKE_FUNCTIONS",
@@ -589,16 +590,14 @@ def random_choice(
 def plt_plot_like(
         func: Callable,
         *args: na.AbstractScalar,
-        ax: None | matplotlib.axes.Axes = None,
+        ax: "None | matplotlib.axes.Axes" = None,
         axis: None | str = None,
         where: bool | na.AbstractScalarArray = True,
         components: None | tuple[str, ...] = None,
         **kwargs,
-) -> na.UncertainScalarArray[
-    npt.NDArray[matplotlib.artist.Artist],
-    npt.NDArray[matplotlib.artist.Artist]
-]:
+) -> "na.UncertainScalarArray[npt.NDArray[matplotlib.artist.Artist], npt.NDArray[matplotlib.artist.Artist]]":
 
+    import matplotlib.pyplot as plt
     if components is not None:
         raise ValueError(f"`components` should be `None` for scalars, got {components}")
 
@@ -673,12 +672,13 @@ def plt_scatter(
         *args: na.AbstractScalar,
         s: None | na.AbstractScalar = None,
         c: None | na.AbstractScalar = None,
-        ax: None | matplotlib.axes.Axes | na.ScalarArray = None,
+        ax: "None | matplotlib.axes.Axes | na.ScalarArray" = None,
         where: bool | na.AbstractScalar = True,
         components: None | tuple[str, ...] = None,
         **kwargs,
 ) -> na.UncertainScalarArray:
 
+    import matplotlib.pyplot as plt
     if components is not None:
         raise ValueError(
             f"`components` should be `None` for scalars, got {components}"
@@ -756,15 +756,13 @@ def plt_scatter(
 @_implements(na.plt.stairs)
 def plt_stairs(
         *args: na.AbstractScalar,
-        ax: None | matplotlib.axes.Axes = None,
+        ax: "None | matplotlib.axes.Axes" = None,
         axis: None | str = None,
         where: bool | na.AbstractScalarArray = True,
         **kwargs,
-) -> na.UncertainScalarArray[
-    npt.NDArray[matplotlib.artist.Artist],
-    npt.NDArray[matplotlib.artist.Artist]
-]:
+) -> "na.UncertainScalarArray[npt.NDArray[matplotlib.artist.Artist], npt.NDArray[matplotlib.artist.Artist]]":
 
+    import matplotlib.pyplot as plt
     if len(args) == 1:
         edges = None
         values, = args
