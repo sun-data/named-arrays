@@ -1,5 +1,6 @@
 import pytest
 import numpy as np
+import astropy.units as u
 import named_arrays as na
 
 shape_vertices = dict(x=10, y=11)
@@ -11,6 +12,15 @@ z = na.linspace(-1, 1, axis="z", num=3)
 
 x_new = na.linspace(-1, 1, axis="x_new", num=5)
 y_new = na.linspace(-1, 1, axis="y_new", num=6)
+
+
+def _cuda_available() -> bool:
+    try:
+        from numba import cuda
+
+        return bool(cuda.is_available())
+    except Exception:  # pragma: nocover
+        return False
 
 
 @pytest.mark.parametrize(
@@ -388,3 +398,93 @@ def test_weights_seed_unperturbed():
 
     assert np.all(na.regridding.regrid(seed=1, **kwargs) == result)
     assert np.all(na.regridding.regrid(seed=None, **kwargs) == result)
+
+
+def test_regrid_from_weights_quantity():
+    """
+    Values with a unit are resampled as plain floats and the unit is restored
+    on the result, which is what a device kernel needs and what the host path
+    accepted already.
+    """
+    kwargs = dict(
+        coordinates_input=na.Cartesian2dVectorArray(x, y),
+        coordinates_output=na.Cartesian2dVectorArray(
+            x=1.1 * x + 0.01, y=1.2 * y + 0.01
+        ),
+        axis_input=("x", "y"),
+        axis_output=("x", "y"),
+        method="conservative",
+    )
+    weights, shape_input, shape_output = na.regridding.weights(**kwargs)
+    values = na.random.normal(0, 1, shape_random=shape_centers)
+    result = na.regridding.regrid_from_weights(
+        weights=weights,
+        shape_input=shape_input,
+        shape_output=shape_output,
+        values_input=values * u.erg,
+    )
+    result_plain = na.regridding.regrid_from_weights(
+        weights=weights,
+        shape_input=shape_input,
+        shape_output=shape_output,
+        values_input=values,
+    )
+    assert na.unit(result) == u.erg
+    assert np.all(na.value(result) == result_plain)
+
+
+def test_weights_device_host():
+    """The host is the default device, so asking for it changes nothing."""
+    kwargs = dict(
+        coordinates_input=na.Cartesian2dVectorArray(x, y),
+        coordinates_output=na.Cartesian2dVectorArray(
+            x=1.1 * x + 0.01, y=1.2 * y + 0.01
+        ),
+        axis_input=("x", "y"),
+        axis_output=("x", "y"),
+        method="conservative",
+    )
+    values = na.random.normal(0, 1, shape_random=shape_centers)
+    result = na.regridding.regrid_from_weights(
+        *na.regridding.weights(**kwargs),
+        values_input=values,
+    )
+    result_host = na.regridding.regrid_from_weights(
+        *na.regridding.weights(device=None, **kwargs),
+        values_input=values,
+    )
+    assert np.all(result_host == result)
+
+
+@pytest.mark.skipif(
+    not _cuda_available(),
+    reason="a CUDA device is needed to build weights on one",
+)
+def test_weights_device_cuda():  # pragma: nocover
+    """Weights built on a device apply to the same result as the host build."""
+    import warnings
+
+    from numba.core.errors import NumbaPerformanceWarning
+
+    # the test grid is tiny, which numba flags as an under-used GPU
+    warnings.simplefilter("ignore", NumbaPerformanceWarning)
+    kwargs = dict(
+        coordinates_input=na.Cartesian2dVectorArray(x, y),
+        coordinates_output=na.Cartesian2dVectorArray(
+            x=1.1 * x + 0.01, y=1.2 * y + 0.01
+        ),
+        axis_input=("x", "y"),
+        axis_output=("x", "y"),
+        method="conservative",
+    )
+    values = na.random.normal(0, 1, shape_random=shape_centers)
+    host = na.regridding.regrid_from_weights(
+        *na.regridding.weights(**kwargs),
+        values_input=values,
+    )
+    device = na.regridding.regrid_from_weights(
+        *na.regridding.weights(device="cuda", **kwargs),
+        values_input=values,
+    )
+    device = na.ScalarArray(np.asarray(device.ndarray.copy_to_host()), axes=device.axes)
+    assert np.allclose(device, host)
