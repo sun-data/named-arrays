@@ -397,10 +397,6 @@ class AbstractTestAbstractScalarArray(
 
     @pytest.mark.parametrize("size", [1, 3])
     def test_filter_median(self, array: na.AbstractScalarArray, size: int):
-        if np.issubdtype(array.dtype, np.complexfloating):
-            return
-        if np.issubdtype(array.dtype, np.str_):
-            return
         shape_kernel = {axis: size for axis in array.shape}
         result = array.filter_median(shape_kernel)
         assert isinstance(result, na.ScalarArray)
