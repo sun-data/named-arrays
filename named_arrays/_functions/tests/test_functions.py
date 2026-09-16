@@ -326,6 +326,11 @@ class AbstractTestAbstractFunctionArray(
         if not isinstance(array.outputs, na.AbstractScalarArray):
             return
 
+        # Only two axes can be plotted, so index the axes which are only in
+        # the outputs.
+        index = {axis: 0 for axis in array.shape if axis not in array.inputs.shape}
+        array = array[index]
+
         if axis_row is None:
             fig, axs = plt.subplots(squeeze=False)
         else:

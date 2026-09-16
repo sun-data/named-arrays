@@ -951,21 +951,29 @@ class AbstractFunctionArray(
                 if input_component_column is not None:
                     index_final[input_component_column] = index_subplot['column']
 
-                inp = self[index_final].inputs.cartesian_nd
+                array = self[index_final]
+
+                inp = array.inputs.cartesian_nd
 
                 inp_x = inp.components[input_component_x]
                 inp_y = inp.components[input_component_y]
 
-                out = self[index_final].outputs
+                out = array.outputs
                 if output_component_color is not None:
                     out = out.components[output_component_color]
 
-                # Broadcast to a common shape so that the axis order of the
-                # coordinates and the values passed to matplotlib agree.
-                shape = na.shape_broadcasted(inp_x, inp_y, out)
-                inp_x = na.broadcast_to(inp_x, shape).ndarray
-                inp_y = na.broadcast_to(inp_y, shape).ndarray
-                out = na.broadcast_to(out, shape).ndarray
+                # Broadcast the coordinates and the values to 2D arrays with
+                # the same axis order so that matplotlib interprets them
+                # consistently. Along axes where the coordinates are cell
+                # vertices, the values have one fewer element.
+                shape_inp = na.shape_broadcasted(inp_x, inp_y)
+                shape_out = {
+                    axis: shape_inp[axis] - 1 if axis in array.axes_vertex else shape_inp[axis]
+                    for axis in shape_inp
+                }
+                inp_x = na.broadcast_to(inp_x, shape_inp).ndarray
+                inp_y = na.broadcast_to(inp_y, shape_inp).ndarray
+                out = na.broadcast_to(out, shape_out).ndarray
 
                 ax = axs[index_subplot].ndarray
                 ax.pcolormesh(
