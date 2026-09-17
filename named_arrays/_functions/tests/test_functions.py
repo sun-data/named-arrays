@@ -359,7 +359,7 @@ class AbstractTestAbstractFunctionArray(
         named_arrays.tests.test_core.AbstractTestAbstractArray.TestUfuncBinary
     ):
 
-        def test_ufunc_binary(
+        def check_ufunc_binary(
                 self,
                 ufunc: np.ufunc,
                 array: None | bool | int | float | complex | str | na.AbstractArray,

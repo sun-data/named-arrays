@@ -1157,24 +1157,26 @@ class AbstractTestAbstractArray(
     ):
 
         @abc.abstractmethod
-        def test_ufunc_binary(
+        def check_ufunc_binary(
                 self,
                 ufunc: np.ufunc,
                 array: None | bool | int | float | complex | str | na.AbstractArray,
                 array_2: None | bool | int | float | complex | str | na.AbstractArray,
         ):
-            pass
+            """Check `ufunc` for one ordering of its two operands."""
 
-        def test_ufunc_binary_reversed(
+        def test_ufunc_binary(
                 self,
                 ufunc: np.ufunc,
                 array: na.AbstractArray,
                 array_2: None | bool | int | float | complex | str | na.AbstractArray,
         ):
+            self.check_ufunc_binary(ufunc, array, array_2)
+
             array = np.transpose(array)
             if array_2 is not None:
                 array_2 = np.transpose(array_2)
-            self.test_ufunc_binary(ufunc, array_2, array)
+            self.check_ufunc_binary(ufunc, array_2, array)
 
     class TestMatmul(abc.ABC):
         @abc.abstractmethod

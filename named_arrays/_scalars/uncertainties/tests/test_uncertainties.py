@@ -304,13 +304,13 @@ class AbstractTestAbstractUncertainScalarArray(
         named_arrays._scalars.tests.test_scalars.AbstractTestAbstractScalar.TestUfuncBinary
     ):
 
-        def test_ufunc_binary(
+        def check_ufunc_binary(
                 self,
                 ufunc: np.ufunc,
                 array: None | bool | int | float | complex | na.AbstractUncertainScalarArray,
                 array_2: None | bool | int | float | complex | na.AbstractUncertainScalarArray,
         ):
-            super().test_ufunc_binary(ufunc=ufunc, array=array, array_2=array_2)
+            super().check_ufunc_binary(ufunc=ufunc, array=array, array_2=array_2)
 
             if not isinstance(array, na.AbstractUncertainScalarArray):
                 array_normalized = na.UncertainScalarArray(

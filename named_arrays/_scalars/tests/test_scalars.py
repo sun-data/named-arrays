@@ -618,13 +618,13 @@ class AbstractTestAbstractScalarArray(
         AbstractTestAbstractScalar.TestUfuncBinary,
     ):
 
-        def test_ufunc_binary(
+        def check_ufunc_binary(
                 self,
                 ufunc: np.ufunc,
                 array: None | bool | int | float | complex | str | na.AbstractScalarArray,
                 array_2: None | bool | int | float | complex | str | na.AbstractScalarArray,
         ):
-            super().test_ufunc_binary(ufunc, array, array_2)
+            super().check_ufunc_binary(ufunc, array, array_2)
 
             if array is None or array_2 is None:
                 assert ufunc(array, array_2) is None

@@ -196,9 +196,9 @@ pip install -e .[test]
 pytest
 ```
 
-The suite is large, so continuous integration splits it into five groups using [pytest-split](https://github.com/jerry-git/pytest-split). To run one group:
+The suite is large, so continuous integration spreads it over every available core using [pytest-xdist](https://github.com/pytest-dev/pytest-xdist). To do the same locally:
 ```bash
-pytest --splits 5 --group 1
+pytest -n auto
 ```
 
 This project is linted using [ruff](https://docs.astral.sh/ruff), which is checked by continuous integration:

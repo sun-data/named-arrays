@@ -143,13 +143,13 @@ class AbstractTestAbstractCartesianVectorArray(
         named_arrays._vectors.tests.test_vectors.AbstractTestAbstractVectorArray.TestUfuncBinary,
     ):
 
-        def test_ufunc_binary(
+        def check_ufunc_binary(
                 self,
                 ufunc: np.ufunc,
                 array: None | bool | int | float | complex | str | na.AbstractArray | na.AbstractCartesianVectorArray,
                 array_2: None | bool | int | float | complex | str | na.AbstractArray | na.AbstractCartesianVectorArray,
         ):
-            super().test_ufunc_binary(ufunc, array, array_2)
+            super().check_ufunc_binary(ufunc, array, array_2)
 
             if isinstance(array, na.AbstractVectorArray):
                 array_normalized = array
