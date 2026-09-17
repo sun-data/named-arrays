@@ -58,7 +58,7 @@ jobs:
           NUMBA_NUM_THREADS: "1"
         run: |
           pip install pytest pytest-cov
-          pytest --cov=. --cov-report=xml -n auto --dist worksteal --durations=25
+          pytest --cov=. --cov-report=xml -n auto --durations=25
       - uses: codecov/codecov-action@v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
