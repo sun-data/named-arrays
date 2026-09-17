@@ -101,14 +101,15 @@ class AbstractTestAbstractTransformation(
             assert np.allclose(a.inverse(a(x)), x)
             assert np.allclose(a(a.inverse(x)), x)
 
-        @pytest.mark.parametrize("b", transformations)
+        @pytest.mark.parametrize("b", transformations_basic)
         def test__matmul__(
                 self,
                 a: na.transformations.AbstractTransformation,
                 b: na.transformations.AbstractTransformation,
                 x: na.AbstractVectorArray,
         ):
-            assert np.allclose((a @ a)(x), a(a(x)))
+            assert np.allclose((a @ b)(x), a(b(x)))
+            assert np.allclose((b @ a)(x), b(a(x)))
 
 
 @pytest.mark.parametrize("a", identities)

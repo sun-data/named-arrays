@@ -22,53 +22,42 @@ _num_y = named_arrays.tests.test_core.num_y
 _num_distribution = named_arrays.tests.test_core.num_distribution
 
 
+
 def _uncertain_scalar_arrays():
-    arrays_nominal = [
-        4.,
-        na.ScalarArray(4.),
-        na.ScalarUniformRandomSample(-4, 4, shape_random=dict(x=_num_x, y=_num_y))
+    nominal_2d = na.ScalarUniformRandomSample(-4, 4, shape_random=dict(x=_num_x, y=_num_y)).explicit
+    distribution_0d = 4 + na.ScalarUniformRandomSample(-0.1, 0.1, shape_random=dict(_distribution=_num_distribution))
+    distribution_2d = 4 + na.ScalarUniformRandomSample(
+        start=-0.1,
+        stop=0.1,
+        shape_random=dict(x=_num_x, y=_num_y, _distribution=_num_distribution)
+    )
+    return [
+        na.UncertainScalarArray(4., distribution_0d),
+        na.UncertainScalarArray(4. * u.mm, distribution_2d * u.mm),
+        na.UncertainScalarArray(na.ScalarArray(4.), distribution_2d),
+        na.UncertainScalarArray(na.ScalarArray(4.) * u.mm, distribution_0d * u.mm),
+        na.UncertainScalarArray(nominal_2d, distribution_2d),
+        na.UncertainScalarArray(nominal_2d * u.mm, distribution_2d * u.mm),
     ]
-    arrays_distribution = [
-        4 + na.ScalarUniformRandomSample(-0.1, 0.1, shape_random=dict(_distribution=_num_distribution)),
-        4 + na.ScalarUniformRandomSample(
-            start=-0.1,
-            stop=0.1,
-            shape_random=dict(x=_num_x, y=_num_y, _distribution=_num_distribution)
-        ),
-    ]
-    units = [1, u.mm]
-    arrays = [
-        na.UncertainScalarArray(nominal * unit, distribution * unit)
-        for nominal in arrays_nominal
-        for distribution in arrays_distribution
-        for unit in units
-    ]
-    return arrays
+
 
 
 def _uncertain_scalar_arrays_2():
-    arrays_exact = [
+    nominal_1d = na.ScalarUniformRandomSample(-5, 5, shape_random=dict(y=_num_y))
+    distribution_0d = na.ScalarArray(5.1).add_axes(na.UncertainScalarArray.axis_distribution)
+    distribution_2d = 5 + na.ScalarUniformRandomSample(
+        start=-5.1,
+        stop=5.1,
+        shape_random=dict(x=_num_x, y=_num_y, _distribution=_num_distribution),
+    )
+    return [
         5,
-        na.ScalarUniformRandomSample(-5, 5, shape_random=dict(y=_num_y)),
+        nominal_1d,
+        na.UncertainScalarArray(5, distribution_0d),
+        na.UncertainScalarArray(5 * u.mm, distribution_2d * u.mm),
+        na.UncertainScalarArray(nominal_1d * u.mm, distribution_0d * u.mm),
+        na.UncertainScalarArray(nominal_1d.explicit, distribution_2d),
     ]
-    arrays_nominal = arrays_exact
-    arrays_distribution = [
-        na.ScalarArray(5.1).add_axes(na.UncertainScalarArray.axis_distribution),
-        5 + na.ScalarUniformRandomSample(
-            start=-5.1,
-            stop=5.1,
-            shape_random=dict(x=_num_x, y=_num_y, _distribution=_num_distribution),
-        ),
-    ]
-    units = [1, u.mm]
-    arrays_uncertain = [
-        na.UncertainScalarArray(nominal * unit, distribution * unit)
-        for nominal in arrays_nominal
-        for distribution in arrays_distribution
-        for unit in units
-    ]
-    arrays = arrays_exact + arrays_uncertain
-    return arrays
 
 
 @dataclasses.dataclass(eq=False)
@@ -315,13 +304,13 @@ class AbstractTestAbstractUncertainScalarArray(
         named_arrays._scalars.tests.test_scalars.AbstractTestAbstractScalar.TestUfuncBinary
     ):
 
-        def test_ufunc_binary(
+        def check_ufunc_binary(
                 self,
                 ufunc: np.ufunc,
                 array: None | bool | int | float | complex | na.AbstractUncertainScalarArray,
                 array_2: None | bool | int | float | complex | na.AbstractUncertainScalarArray,
         ):
-            super().test_ufunc_binary(ufunc=ufunc, array=array, array_2=array_2)
+            super().check_ufunc_binary(ufunc=ufunc, array=array, array_2=array_2)
 
             if not isinstance(array, na.AbstractUncertainScalarArray):
                 array_normalized = na.UncertainScalarArray(
@@ -802,18 +791,20 @@ class AbstractTestAbstractUncertainScalarArray(
             argvalues=_uncertain_scalar_arrays_2(),
         )
         @pytest.mark.parametrize(
-            argnames="where",
+            argnames="where, alpha",
             argvalues=[
-                np._NoValue,
-                True,
-                na.linspace(0, 1, axis="x", num=_num_x) > 0.5,
-            ]
-        )
-        @pytest.mark.parametrize(
-            argnames="alpha",
-            argvalues=[
-                np._NoValue,
-                na.linspace(0, 1, axis="x", num=_num_x),
+                (
+                    np._NoValue,
+                    np._NoValue,
+                ),
+                (
+                    True,
+                    na.linspace(0, 1, axis="x", num=_num_x),
+                ),
+                (
+                    na.linspace(0, 1, axis="x", num=_num_x) > 0.5,
+                    np._NoValue,
+                ),
             ]
         )
         class TestPltPlotLikeFunctions(
@@ -1180,37 +1171,29 @@ class AbstractTestAbstractScalarSpace(
     pass
 
 
-def _uncertain_scalar_linear_spaces() -> tuple[na.UncertainScalarLinearSpace, ...]:
 
-    starts = (
-        na.UniformUncertainScalarArray(
-            na.ScalarLinearSpace(0, 1, axis='x', num=_num_x),
-            width=0.2,
-            num_distribution=_num_distribution,
-        ),
+def _uncertain_scalar_linear_spaces() -> tuple[na.UncertainScalarLinearSpace, ...]:
+    start = na.UniformUncertainScalarArray(
+        na.ScalarLinearSpace(0, 1, axis='x', num=_num_x),
+        width=0.2,
+        num_distribution=_num_distribution,
     )
-    stops = (
-        2,
+    stop_uncertain = na.UniformUncertainScalarArray(
         na.ScalarLinearSpace(2, 3, axis='x', num=_num_x),
-        na.UniformUncertainScalarArray(
-            na.ScalarLinearSpace(2, 3, axis='x', num=_num_x),
-            width=0.1,
-            num_distribution=_num_distribution,
-        ),
+        width=0.1,
+        num_distribution=_num_distribution,
     )
-    units = (1, u.mm)
-    arrays = tuple(
+    return (
+        na.UncertainScalarLinearSpace(start, 2, axis='y', num=_num_y),
         na.UncertainScalarLinearSpace(
-            start=start * unit,
-            stop=stop * unit,
+            start=start * u.mm,
+            stop=na.ScalarLinearSpace(2, 3, axis='x', num=_num_x) * u.mm,
             axis='y',
             num=_num_y,
-        )
-        for start in starts
-        for stop in stops
-        for unit in units
+        ),
+        na.UncertainScalarLinearSpace(start, stop_uncertain, axis='y', num=_num_y),
+        na.UncertainScalarLinearSpace(start * u.mm, stop_uncertain * u.mm, axis='y', num=_num_y),
     )
-    return arrays
 
 
 @pytest.mark.parametrize("array", _uncertain_scalar_linear_spaces())

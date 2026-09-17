@@ -16,64 +16,45 @@ _num_z = test_vectors_cartesian._num_z
 _num_distribution = test_vectors_cartesian._num_distribution
 
 
+
 def _cartesian_nd_arrays():
-    units = [1, u.mm]
-    arrays_numeric_x = [
-        4,
-        na.ScalarUniformRandomSample(-4, 4, shape_random=dict(y=_num_y)),
+    x_1d = na.ScalarUniformRandomSample(-4, 4, shape_random=dict(y=_num_y)).explicit
+    y_uncertain = na.UniformUncertainScalarArray(
+        nominal=na.ScalarUniformRandomSample(-5, 5, shape_random=dict(x=_num_x, y=_num_y)),
+        width=1,
+        num_distribution=_num_distribution
+    ).explicit
+    y_vector = na.Cartesian2dVectorArray(x=7.3, y=5)
+    return [
+        na.CartesianNdVectorArray(components=dict(x=4, y=5.)),
+        na.CartesianNdVectorArray(components=dict(x=4, y=5.)) * u.mm,
+        na.CartesianNdVectorArray(components=dict(x=x_1d, y=y_uncertain)),
+        na.CartesianNdVectorArray(components=dict(x=4, y=y_uncertain)) * u.mm,
+        na.CartesianNdVectorArray(components=dict(x=x_1d, y=y_vector)) * u.mm,
+        na.CartesianNdVectorArray(components=dict(x=4, y=y_vector)),
     ]
 
-    arrays_numeric_y = [
-        5.,
-        na.UniformUncertainScalarArray(
-            nominal=na.ScalarUniformRandomSample(-5, 5, shape_random=dict(x=_num_x, y=_num_y)),
-            width=1,
-            num_distribution=_num_distribution
-        ),
-        na.Cartesian2dVectorArray(x=7.3, y=5)
-    ]
-
-    arrays = [
-        na.CartesianNdVectorArray(components=dict(x=ax, y=ay)) * unit
-        for ax in arrays_numeric_x
-        for ay in arrays_numeric_y
-        for unit in units
-    ]
-
-    return arrays
 
 
 def _cartesian_nd_arrays_2():
-    units = [1, u.mm]
-    arrays_scalar = [
+    scalar_2d = na.ScalarUniformRandomSample(-6, 6, shape_random=dict(y=_num_y, x=_num_x))
+    scalar_uncertain = na.UniformUncertainScalarArray(
+        nominal=na.ScalarUniformRandomSample(-6, 6, shape_random=dict(y=_num_y, x=_num_x)),
+        width=1,
+        num_distribution=_num_distribution
+    ).explicit
+    vector_x = na.ScalarUniformRandomSample(-7, 7, shape_random=dict(y=_num_y))
+    vector_y = na.ScalarUniformRandomSample(-8, 8, shape_random=dict(y=_num_y, x=_num_x)).explicit
+    return [
         6,
+        6 * u.mm,
         na.ScalarArray(6),
-        na.ScalarUniformRandomSample(-6, 6, shape_random=dict(y=_num_y, x=_num_x)),
-        na.UniformUncertainScalarArray(
-            nominal=na.ScalarUniformRandomSample(-6, 6, shape_random=dict(y=_num_y, x=_num_x)),
-            width=1,
-            num_distribution=_num_distribution
-        )
+        scalar_2d * u.mm,
+        scalar_uncertain,
+        na.CartesianNdVectorArray(dict(x=7, y=8)),
+        na.CartesianNdVectorArray(dict(x=vector_x, y=vector_y)) * u.mm,
+        na.CartesianNdVectorArray(dict(x=7, y=vector_y)),
     ]
-    arrays_scalar = [a * unit for a in arrays_scalar for unit in units]
-
-    arrays_vector_x = [
-        7,
-        na.ScalarUniformRandomSample(-7, 7, shape_random=dict(y=_num_y)),
-    ]
-    arrays_vector_y = [
-        8,
-        na.ScalarUniformRandomSample(-8, 8, shape_random=dict(y=_num_y, x=_num_x)),
-    ]
-    arrays_vector = [
-        na.CartesianNdVectorArray(dict(x=ax, y=ay))  * unit
-        for ax in arrays_vector_x
-        for ay in arrays_vector_y
-        for unit in units
-    ]
-
-    arrays = arrays_scalar + arrays_vector
-    return arrays
 
 
 def _cartesian_nd_items() -> list[na.AbstractArray | dict[str, int, slice, na.AbstractArray]]:

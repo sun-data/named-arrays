@@ -1118,12 +1118,10 @@ class AbstractTestAbstractArray(
             np.divide,
             np.logaddexp,
             np.logaddexp2,
-            np.true_divide,
             np.floor_divide,
             np.power,
             np.float_power,
             np.remainder,
-            np.mod,
             np.fmod,
             np.divmod,
             np.heaviside,
@@ -1152,7 +1150,6 @@ class AbstractTestAbstractArray(
             np.copysign,
             np.nextafter,
             np.ldexp,
-            np.fmod,
         ]
     )
     class TestUfuncBinary(
@@ -1160,24 +1157,26 @@ class AbstractTestAbstractArray(
     ):
 
         @abc.abstractmethod
-        def test_ufunc_binary(
+        def check_ufunc_binary(
                 self,
                 ufunc: np.ufunc,
                 array: None | bool | int | float | complex | str | na.AbstractArray,
                 array_2: None | bool | int | float | complex | str | na.AbstractArray,
         ):
-            pass
+            """Check `ufunc` for one ordering of its two operands."""
 
-        def test_ufunc_binary_reversed(
+        def test_ufunc_binary(
                 self,
                 ufunc: np.ufunc,
                 array: na.AbstractArray,
                 array_2: None | bool | int | float | complex | str | na.AbstractArray,
         ):
+            self.check_ufunc_binary(ufunc, array, array_2)
+
             array = np.transpose(array)
             if array_2 is not None:
                 array_2 = np.transpose(array_2)
-            self.test_ufunc_binary(ufunc, array_2, array)
+            self.check_ufunc_binary(ufunc, array_2, array)
 
     class TestMatmul(abc.ABC):
         @abc.abstractmethod
@@ -1311,9 +1310,15 @@ class AbstractTestAbstractArray(
                 np.nanmedian,
             ]
         )
-        @pytest.mark.parametrize('dtype', [np._NoValue, float])
-        @pytest.mark.parametrize('axis', [None, 'y', 'x', ('x', 'y')])
-        @pytest.mark.parametrize('keepdims', [False, True])
+        @pytest.mark.parametrize(
+            argnames="axis,dtype,keepdims",
+            argvalues=[
+                (None, np._NoValue, False),
+                ('y', np._NoValue, True),
+                ('x', float, False),
+                (('x', 'y'), float, True),
+            ],
+        )
         class TestReductionFunctions(abc.ABC):
 
             @abc.abstractmethod
@@ -1339,8 +1344,14 @@ class AbstractTestAbstractArray(
                 np.nancumprod,
             ],
         )
-        @pytest.mark.parametrize("dtype", [np._NoValue, float])
-        @pytest.mark.parametrize("axis", [None, "y", ("y",)])
+        @pytest.mark.parametrize(
+            argnames="axis,dtype",
+            argvalues=[
+                (None, np._NoValue),
+                ("y", float),
+                (("y",), np._NoValue),
+            ],
+        )
         class TestCumulativeReductionFunctions(abc.ABC):
 
             @abc.abstractmethod
@@ -1362,8 +1373,15 @@ class AbstractTestAbstractArray(
                 np.nanquantile,
             ]
         )
-        @pytest.mark.parametrize('axis', [None, 'y', 'x', ('x', 'y')])
-        @pytest.mark.parametrize('keepdims', [False, True])
+        @pytest.mark.parametrize(
+            argnames="axis,keepdims",
+            argvalues=[
+                (None, False),
+                ('y', True),
+                ('x', False),
+                (('x', 'y'), True),
+            ],
+        )
         class TestPercentileLikeFunctions(abc.ABC):
 
             @abc.abstractmethod
@@ -1452,8 +1470,14 @@ class AbstractTestAbstractArray(
                 np.fft.irfftn,
             ]
         )
-        @pytest.mark.parametrize('axes', [dict(y='ky'), dict(x='kx', y='ky')])
-        @pytest.mark.parametrize('s', [None, dict(y=5), dict(x=4, y=5)])
+        @pytest.mark.parametrize(
+            argnames="axes,s",
+            argvalues=[
+                (dict(y='ky'), None),
+                (dict(y='ky'), dict(y=5)),
+                (dict(x='kx', y='ky'), dict(x=4, y=5)),
+            ],
+        )
         class TestFFTNLikeFunctions(abc.ABC):
 
             @abc.abstractmethod

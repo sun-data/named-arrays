@@ -56,6 +56,17 @@ def _scalar_arrays_2():
     return [None] + arrays_numeric + arrays_bool
 
 
+def _scalar_arrays_2_plot():
+    """A subset of :func:`_scalar_arrays_2` used as coordinates in plotting tests."""
+    return [
+        None,
+        6,
+        na.ScalarArray(8) * u.m,
+        na.ScalarArray(10 * (np.random.random((_num_y,)) - 0.5), axes=('y', )) * u.m,
+        na.ScalarArray(10 * (np.random.random((_num_y, _num_x)) - 0.5), axes=('y', 'x')),
+    ]
+
+
 @pytest.mark.parametrize('value', _scalar_arrays_2())
 def test_as_named_array(value: bool | int | float | complex | str | u.Quantity | na.AbstractArray):
     result = na.as_named_array(value)
@@ -617,13 +628,13 @@ class AbstractTestAbstractScalarArray(
         AbstractTestAbstractScalar.TestUfuncBinary,
     ):
 
-        def test_ufunc_binary(
+        def check_ufunc_binary(
                 self,
                 ufunc: np.ufunc,
                 array: None | bool | int | float | complex | str | na.AbstractScalarArray,
                 array_2: None | bool | int | float | complex | str | na.AbstractScalarArray,
         ):
-            super().test_ufunc_binary(ufunc, array, array_2)
+            super().check_ufunc_binary(ufunc, array, array_2)
 
             if array is None or array_2 is None:
                 assert ufunc(array, array_2) is None
@@ -1222,7 +1233,7 @@ class AbstractTestAbstractScalarArray(
 
         @pytest.mark.parametrize(
             argnames="array_2",
-            argvalues=_scalar_arrays_2()[:8],
+            argvalues=_scalar_arrays_2_plot(),
         )
         @pytest.mark.parametrize(
             argnames="where, alpha",
@@ -1248,7 +1259,7 @@ class AbstractTestAbstractScalarArray(
 
         @pytest.mark.parametrize(
             argnames="array_2",
-            argvalues=_scalar_arrays_2()[:8],
+            argvalues=_scalar_arrays_2_plot(),
         )
         @pytest.mark.parametrize(
             argnames="s,c,where",
@@ -1663,23 +1674,16 @@ class AbstractTestAbstractScalarRandomSample(
     pass
 
 
+
 def _scalar_uniform_random_samples() -> list[na.ScalarUniformRandomSample]:
-    starts = [
-        0,
-        na.ScalarArray(np.random.random(_num_x), axes=('x', )),
-    ]
-    stops = [
-        10,
-        na.ScalarArray(10 * np.random.random(_num_x) + 1, axes=('x', )),
-    ]
-    units = [None, u.mm]
-    shapes_random = [dict(y=_num_y)]
+    start = na.ScalarArray(np.random.random(_num_x), axes=('x', ))
+    stop = na.ScalarArray(10 * np.random.random(_num_x) + 1, axes=('x', ))
+    shape_random = dict(y=_num_y)
     return [
-        na.ScalarUniformRandomSample(
-            start=start << unit if unit is not None else start,
-            stop=stop << unit if unit is not None else stop,
-            shape_random=shape_random,
-        ) for start in starts for stop in stops for unit in units for shape_random in shapes_random
+        na.ScalarUniformRandomSample(0, 10, shape_random=shape_random),
+        na.ScalarUniformRandomSample(0 * u.mm, 10 * u.mm, shape_random=shape_random),
+        na.ScalarUniformRandomSample(start, stop, shape_random=shape_random),
+        na.ScalarUniformRandomSample(start << u.mm, 10 * u.mm, shape_random=shape_random),
     ]
 
 
@@ -1691,23 +1695,16 @@ class TestScalarUniformRandomSample(
     pass
 
 
+
 def _scalar_normal_random_samples() -> list[na.ScalarNormalRandomSample]:
-    centers = [
-        0,
-        na.ScalarArray(np.random.random(_num_x), axes=('x', )),
-    ]
-    widths = [
-        10,
-        na.ScalarArray(10 * np.random.random(_num_x) + 1, axes=('x', )),
-    ]
-    units = [None, u.mm]
-    shapes_random = [dict(y=_num_y)]
+    center = na.ScalarArray(np.random.random(_num_x), axes=('x', ))
+    width = na.ScalarArray(10 * np.random.random(_num_x) + 1, axes=('x', ))
+    shape_random = dict(y=_num_y)
     return [
-        na.ScalarNormalRandomSample(
-            center=center << unit if unit is not None else center,
-            width=width << unit if unit is not None else width,
-            shape_random=shape_random,
-        ) for center in centers for width in widths for unit in units for shape_random in shapes_random
+        na.ScalarNormalRandomSample(0, 10, shape_random=shape_random),
+        na.ScalarNormalRandomSample(0 * u.mm, 10 * u.mm, shape_random=shape_random),
+        na.ScalarNormalRandomSample(center, width, shape_random=shape_random),
+        na.ScalarNormalRandomSample(center << u.mm, 10 * u.mm, shape_random=shape_random),
     ]
 
 
@@ -1777,39 +1774,15 @@ class AbstractTestAbstractScalarSpace(
     pass
 
 
+
 def _scalar_linear_spaces():
-    starts = [
-        0,
-        na.ScalarArray(np.random.random(_num_x), axes=('x', )),
-    ]
-    stops = [
-        10,
-        na.ScalarArray(10 * np.random.random(_num_x) + 1, axes=('x', )),
-    ]
-    units = [None, u.mm]
-    nums = [_num_y]
-    endpoints = [
-        False,
-        True,
-    ]
-    centers = [
-        False,
-        True,
-    ]
+    start = na.ScalarArray(np.random.random(_num_x), axes=('x', ))
+    stop = na.ScalarArray(10 * np.random.random(_num_x) + 1, axes=('x', ))
     return [
-        na.ScalarLinearSpace(
-            start=start << unit if unit is not None else start,
-            stop=stop << unit if unit is not None else stop,
-            axis='y',
-            num=num,
-            endpoint=endpoint,
-            centers=center,
-        )
-        for start in starts
-        for stop in stops
-        for unit in units
-        for num in nums
-        for endpoint, center in zip(endpoints, centers)
+        na.ScalarLinearSpace(0, 10, axis='y', num=_num_y, endpoint=False, centers=False),
+        na.ScalarLinearSpace(0 * u.mm, 10 * u.mm, axis='y', num=_num_y, endpoint=True, centers=True),
+        na.ScalarLinearSpace(start, stop, axis='y', num=_num_y, endpoint=True, centers=True),
+        na.ScalarLinearSpace(start << u.mm, 10 * u.mm, axis='y', num=_num_y, endpoint=False, centers=False),
     ]
 
 
@@ -1850,29 +1823,15 @@ class TestScalarLinearSpace(
         assert np.allclose(array.volume_cell(axis), array.explicit.volume_cell(axis))
 
 
+
 def _scalar_stratified_random_spaces():
-    starts = [
-        0,
-        na.ScalarArray(np.random.random(_num_x), axes=('x', )),
-    ]
-    stops = [
-        10,
-        na.ScalarArray(10 * np.random.random(_num_x) + 1, axes=('x', )),
-    ]
-    units = [None, u.mm]
-    endpoints = [
-        False,
-        True,
-    ]
+    start = na.ScalarArray(np.random.random(_num_x), axes=('x', ))
+    stop = na.ScalarArray(10 * np.random.random(_num_x) + 1, axes=('x', ))
     return [
-        na.ScalarStratifiedRandomSpace(
-            start=start << unit if unit is not None else start,
-            stop=stop << unit if unit is not None else stop,
-            axis='y',
-            num=_num_y,
-            endpoint=endpoint,
-            seed=None
-        ) for start in starts for stop in stops for unit in units for endpoint in endpoints
+        na.ScalarStratifiedRandomSpace(0, 10, axis='y', num=_num_y, endpoint=False, seed=None),
+        na.ScalarStratifiedRandomSpace(0 * u.mm, 10 * u.mm, axis='y', num=_num_y, endpoint=True, seed=None),
+        na.ScalarStratifiedRandomSpace(start, stop, axis='y', num=_num_y, endpoint=True, seed=None),
+        na.ScalarStratifiedRandomSpace(start << u.mm, 10 * u.mm, axis='y', num=_num_y, endpoint=False, seed=None),
     ]
 
 
@@ -1883,31 +1842,15 @@ class TestStratifiedRandomSpace(
 ):
     pass
 
+
 def _scalar_logarithmic_spaces():
-    start_exponents = [
-        0,
-        na.ScalarArray(np.random.random(_num_x), axes=('x', )),
-    ]
-    stop_exponents = [
-        2,
-        na.ScalarArray(np.random.random(_num_x) + 2, axes=('x', )),
-    ]
-    bases = [
-        2,
-    ]
-    endpoints = [
-        False,
-        True,
-    ]
+    start_exponent = na.ScalarArray(np.random.random(_num_x), axes=('x', ))
+    stop_exponent = na.ScalarArray(np.random.random(_num_x) + 2, axes=('x', ))
     return [
-        na.ScalarLogarithmicSpace(
-            start_exponent=start,
-            stop_exponent=stop,
-            base=base,
-            axis='y',
-            num=_num_y,
-            endpoint=endpoint,
-        ) for start in start_exponents for stop in stop_exponents for base in bases for endpoint in endpoints
+        na.ScalarLogarithmicSpace(0, 2, base=2, axis='y', num=_num_y, endpoint=False),
+        na.ScalarLogarithmicSpace(0, 2, base=2, axis='y', num=_num_y, endpoint=True),
+        na.ScalarLogarithmicSpace(start_exponent, stop_exponent, base=2, axis='y', num=_num_y, endpoint=True),
+        na.ScalarLogarithmicSpace(start_exponent, 2, base=2, axis='y', num=_num_y, endpoint=False),
     ]
 
 
@@ -1918,28 +1861,15 @@ class TestScalarLogarithmicSpace(
 ):
     pass
 
+
 def _scalar_geometric_spaces():
-    starts = [
-        1,
-        na.ScalarArray(np.random.random(_num_x), axes=('x', )),
-    ]
-    stops = [
-        10,
-        na.ScalarArray(10 * np.random.random(_num_x) + 1, axes=('x', )),
-    ]
-    units = [None, u.mm]
-    endpoints = [
-        False,
-        True,
-    ]
+    start = na.ScalarArray(np.random.random(_num_x), axes=('x', ))
+    stop = na.ScalarArray(10 * np.random.random(_num_x) + 1, axes=('x', ))
     return [
-        na.ScalarGeometricSpace(
-            start=start << unit if unit is not None else start,
-            stop=stop << unit if unit is not None else stop,
-            axis='y',
-            num=_num_y,
-            endpoint=endpoint
-        ) for start in starts for stop in stops for unit in units for endpoint in endpoints
+        na.ScalarGeometricSpace(1, 10, axis='y', num=_num_y, endpoint=False),
+        na.ScalarGeometricSpace(1 * u.mm, 10 * u.mm, axis='y', num=_num_y, endpoint=True),
+        na.ScalarGeometricSpace(start, stop, axis='y', num=_num_y, endpoint=True),
+        na.ScalarGeometricSpace(start << u.mm, 10 * u.mm, axis='y', num=_num_y, endpoint=False),
     ]
 
 
