@@ -50,6 +50,12 @@ jobs:
       - name: Test with pytest
         env:
           MPLBACKEND: "agg"
+          # every xdist worker is single-threaded, otherwise the BLAS, OpenMP
+          # and Numba thread pools of the workers compete for the same cores
+          OMP_NUM_THREADS: "1"
+          OPENBLAS_NUM_THREADS: "1"
+          MKL_NUM_THREADS: "1"
+          NUMBA_NUM_THREADS: "1"
         run: |
           pip install pytest pytest-cov
           pytest --cov=. --cov-report=xml -n auto
