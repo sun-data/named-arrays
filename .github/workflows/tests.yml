@@ -56,6 +56,9 @@ jobs:
           OPENBLAS_NUM_THREADS: "1"
           MKL_NUM_THREADS: "1"
           NUMBA_NUM_THREADS: "1"
+          # the sys.monitoring core of coverage.py measures line coverage at
+          # almost no cost, whereas the default tracer slows the suite ~1.8x
+          COVERAGE_CORE: "sysmon"
         run: |
           pip install pytest pytest-cov
           pytest --cov=. --cov-report=xml -n auto --durations=25
