@@ -788,6 +788,17 @@ def imshow(
     kwargs
         An additional keyword arguments that are passed to :func:`matplotlib.pyplot.imshow`.
 
+    Notes
+    -----
+    The colors of :mod:`matplotlib` carry no unit, so `X` is drawn as bare
+    values in its own unit, and `vmin` and `vmax` are converted to that unit
+    before use.
+    `extent` may be an instance of :class:`astropy.units.Quantity`.
+    Under :func:`astropy.visualization.quantity_support` it is converted by
+    :mod:`matplotlib`, which records the unit on each axis.
+    Otherwise it is drawn as bare values in its own unit, which is how
+    :func:`matplotlib.pyplot.plot` treats coordinates.
+
     Examples
     --------
 
@@ -948,6 +959,17 @@ def pcolormesh(
         The maximum value of the data range.
     kwargs
         Additional keyword arguments accepted by `matplotlib.pyplot.pcolormesh`
+
+    Notes
+    -----
+    The coordinates may be instances of :class:`astropy.units.Quantity`.
+    Under :func:`astropy.visualization.quantity_support` they are converted
+    by :mod:`matplotlib`, which records the unit on each axis.
+    Otherwise they are drawn as bare values in their own unit, which is how
+    :func:`matplotlib.pyplot.plot` treats them.
+    The colors of :mod:`matplotlib` carry no unit, so `C` is drawn as bare
+    values in its own unit, and `vmin` and `vmax` are converted to that unit
+    before use.
 
     Examples
     --------
