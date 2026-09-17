@@ -17,24 +17,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.12", "3.13", ]
+        python-version: ["3.12", "3.13", "3.14"]
         os: [
           ubuntu-latest,
           windows-latest,
           macOS-latest,
         ]
-        # one version of Python per operating system, so that both supported
-        # versions are exercised with only three jobs. The older version is
-        # the compatibility floor, so it gets two operating systems, and the
-        # newer one goes to Windows, where the failures which are specific to
-        # one platform have shown up
-        exclude:
-          - python-version: "3.13"
-            os: ubuntu-latest
-          - python-version: "3.13"
-            os: macOS-latest
-          - python-version: "3.12"
-            os: windows-latest
     name: Python ${{ matrix.python-version }}, ${{ matrix.os }} test
     steps:
       - uses: actions/checkout@v2
