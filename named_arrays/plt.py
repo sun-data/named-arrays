@@ -1,7 +1,19 @@
-"""Wrappers around :mod:`matplotlib.pyplot` functions."""
+"""
+Wrappers around :mod:`matplotlib.pyplot` functions.
+
+The first call to a function in this module which draws, or sets a
+coordinate, enables :func:`astropy.visualization.quantity_support` for the
+rest of the session, so an :class:`astropy.units.Quantity` is converted to
+the unit of its axis, and labels the axis with it, without enabling that
+support yourself.
+The data of a mesh or an image are the exception, since the colors of
+:mod:`matplotlib` carry no unit: they are drawn as bare values in their own
+unit, and the limits of the color scale are converted to it.
+"""
 
 from __future__ import annotations
 from typing import Literal, Any, Callable, TypeVar, TYPE_CHECKING
+import functools
 import astropy.units as u
 import numpy as np
 import numpy.typing as npt
@@ -59,6 +71,32 @@ __all__ = [
     "invert_xaxis",
     "invert_yaxis",
 ]
+
+
+def _enable_quantity_support() -> None:
+    """
+    Enable :func:`astropy.visualization.quantity_support` if it is not already.
+
+    :mod:`matplotlib` converts an :class:`astropy.units.Quantity` only when a
+    converter for it is registered, and it warns when the converter an axis
+    was given is later replaced by another.
+    Every call to :func:`~astropy.visualization.quantity_support` makes a new
+    converter, so the support is enabled once and left on, rather than
+    entered around each call, so that every axis sees the same converter.
+    """
+    import matplotlib.units
+    if u.Quantity not in matplotlib.units.registry:
+        import astropy.visualization
+        astropy.visualization.quantity_support()
+
+
+def _with_quantity_support(func: Callable) -> Callable:
+    """Enable unit support for :mod:`matplotlib` before calling `func`."""
+    @functools.wraps(func)
+    def result(*args, **kwargs):
+        _enable_quantity_support()
+        return func(*args, **kwargs)
+    return result
 
 
 def subplots(
@@ -138,6 +176,7 @@ def subplots(
     return fig, axs
 
 
+@_with_quantity_support
 def plot(
         *args: na.AbstractScalar,
         ax: None | matplotlib.axes.Axes | na.ScalarArray[npt.NDArray[matplotlib.axes.Axes]] = None,
@@ -252,6 +291,7 @@ def plot(
     )
 
 
+@_with_quantity_support
 def line_collection(
         *args: na.AbstractArray,
         ax: None | matplotlib.axes.Axes | na.ScalarArray[npt.NDArray] = None,
@@ -359,6 +399,7 @@ def line_collection(
     )
 
 
+@_with_quantity_support
 def fill(
         *args: na.AbstractArray,
         ax: None | matplotlib.axes.Axes | na.ScalarArray[npt.NDArray] = None,
@@ -415,6 +456,7 @@ def fill(
     )
 
 
+@_with_quantity_support
 def stairs(
     *args: na.AbstractArray,
     ax: None | matplotlib.axes.Axes | na.ScalarArray[npt.NDArray[matplotlib.axes.Axes]] = None,
@@ -503,6 +545,7 @@ def stairs(
     )
 
 
+@_with_quantity_support
 def scatter(
         *args: na.AbstractScalar,
         s: None | na.AbstractScalarArray = None,
@@ -602,6 +645,7 @@ def scatter(
     )
 
 
+@_with_quantity_support
 def axhline(
     y: float | na.AbstractScalar = 0,
     xmin: float | na.AbstractScalar = 0,
@@ -633,6 +677,7 @@ def axhline(
     )
 
 
+@_with_quantity_support
 def axvline(
     x: float | na.AbstractScalar = 0,
     ymin: float | na.AbstractScalar = 0,
@@ -664,6 +709,7 @@ def axvline(
     )
 
 
+@_with_quantity_support
 def axhspan(
     ymin: float | na.AbstractScalar,
     ymax: float | na.AbstractScalar,
@@ -699,6 +745,7 @@ def axhspan(
     )
 
 
+@_with_quantity_support
 def axvspan(
     xmin: float | na.AbstractScalar,
     xmax: float | na.AbstractScalar,
@@ -734,6 +781,7 @@ def axvspan(
     )
 
 
+@_with_quantity_support
 def imshow(
     X: na.AbstractArray,
     *,
@@ -787,6 +835,14 @@ def imshow(
         The logical axis name of the bounding box should be ``f"{axis_x},{axis_y}``
     kwargs
         An additional keyword arguments that are passed to :func:`matplotlib.pyplot.imshow`.
+
+    Notes
+    -----
+    The colors of :mod:`matplotlib` carry no unit, so `X` is drawn as bare
+    values in its own unit, and `vmin` and `vmax` are converted to that unit
+    before use.
+    `extent` may be an instance of :class:`astropy.units.Quantity`, which is
+    converted to the unit of each axis, see :mod:`named_arrays.plt`.
 
     Examples
     --------
@@ -900,6 +956,7 @@ def imshow(
     )
 
 
+@_with_quantity_support
 def pcolormesh(
     *XY: na.AbstractArray,
     C: na.AbstractArray,
@@ -948,6 +1005,14 @@ def pcolormesh(
         The maximum value of the data range.
     kwargs
         Additional keyword arguments accepted by `matplotlib.pyplot.pcolormesh`
+
+    Notes
+    -----
+    The coordinates may be instances of :class:`astropy.units.Quantity`,
+    which are converted to the unit of each axis, see :mod:`named_arrays.plt`.
+    The colors of :mod:`matplotlib` carry no unit, so `C` is drawn as bare
+    values in its own unit, and `vmin` and `vmax` are converted to that unit
+    before use.
 
     Examples
     --------
@@ -1018,6 +1083,7 @@ def pcolormesh(
     )
 
 
+@_with_quantity_support
 def rgbmesh(
     *WXY: na.AbstractScalar | na.AbstractCartesian2dVectorArray | na.AbstractSpectralPositionalVectorArray,
     C: na.AbstractScalar,
@@ -1088,7 +1154,6 @@ def rgbmesh(
 
         import matplotlib.pyplot as plt
         import astropy.units as u
-        import astropy.visualization
         import named_arrays as na
 
         # Define a random 3d cube
@@ -1111,25 +1176,24 @@ def rgbmesh(
         y = na.linspace(-1, 1, axis="y", num=a.shape["y"]) * u.mm
 
         # Plot the colorbar
-        with astropy.visualization.quantity_support():
-            fig, axs = plt.subplots(
-                ncols=2,
-                gridspec_kw=dict(width_ratios=[.9,.1]),
-                constrained_layout=True,
-            )
-            colorbar = na.plt.rgbmesh(
-                wavelength, x, y,
-                C=a,
-                axis_wavelength="wavelength",
-                ax=axs[0],
-            );
-            na.plt.pcolormesh(
-                C=colorbar,
-                axis_rgb="wavelength",
-                ax=axs[1],
-            )
-            axs[1].yaxis.tick_right()
-            axs[1].yaxis.set_label_position("right")
+        fig, axs = plt.subplots(
+            ncols=2,
+            gridspec_kw=dict(width_ratios=[.9,.1]),
+            constrained_layout=True,
+        )
+        colorbar = na.plt.rgbmesh(
+            wavelength, x, y,
+            C=a,
+            axis_wavelength="wavelength",
+            ax=axs[0],
+        );
+        na.plt.pcolormesh(
+            C=colorbar,
+            axis_rgb="wavelength",
+            ax=axs[1],
+        )
+        axs[1].yaxis.tick_right()
+        axs[1].yaxis.set_label_position("right")
     """
 
     if len(WXY) == 0:
@@ -1201,6 +1265,7 @@ def rgbmesh(
     return colorbar
 
 
+@_with_quantity_support
 def pcolormovie(
     *TXY: na.AbstractArray,
     C: na.AbstractArray,
@@ -1269,7 +1334,6 @@ def pcolormovie(
         import matplotlib.pyplot as plt
         import IPython.display
         import astropy.units as u
-        import astropy.visualization
         import named_arrays as na
 
         # Define the size of the grid
@@ -1288,7 +1352,6 @@ def pcolormovie(
         a = na.random.uniform(-1, 1, shape_random=shape)
 
         # Plot the coordinates and values using pcolormesh
-        astropy.visualization.quantity_support()
         fig, ax = plt.subplots(constrained_layout=True)
         ani = na.plt.pcolormovie(t, x, y, C=a, axis_time="t", ax=ax);
         plt.close(fig)
@@ -1302,7 +1365,6 @@ def pcolormovie(
 
         import IPython.display
         import astropy.units as u
-        import astropy.visualization
         import named_arrays as na
 
         # Define the size of the grid
@@ -1323,7 +1385,6 @@ def pcolormovie(
         a = na.random.uniform(-1, 1, shape_random=shape)
 
         # Plot the coordinates and values using pcolormesh
-        astropy.visualization.quantity_support()
         fig, ax = na.plt.subplots(
             axis_rows="row",
             axis_cols="col",
@@ -1354,6 +1415,7 @@ def pcolormovie(
     )
 
 
+@_with_quantity_support
 def rgbmovie(
     *TWXY: na.AbstractArray,
     C: na.AbstractArray,
@@ -1439,7 +1501,6 @@ def rgbmovie(
         import matplotlib.pyplot as plt
         import IPython.display
         import astropy.units as u
-        import astropy.visualization
         import named_arrays as na
 
         # Define the size of the grid
@@ -1460,7 +1521,6 @@ def rgbmovie(
         a = na.random.uniform(-1, 1, shape_random=shape)
 
         # Plot the coordinates and values using rgbmovie()
-        astropy.visualization.quantity_support()
         fig, ax = plt.subplots(
             ncols=2,
             gridspec_kw=dict(width_ratios=[.9, .1]),
@@ -1567,6 +1627,7 @@ def rgbmovie(
     return animation, colorbar
 
 
+@_with_quantity_support
 def text(
     x: float | u.Quantity | na.AbstractScalar,
     y: float | u.Quantity | na.AbstractScalar,
@@ -1639,6 +1700,7 @@ def text(
 VectorT = TypeVar("VectorT", bound="na.AbstractVectorArray")
 
 
+@_with_quantity_support
 def annotate(
     text: str | na.AbstractScalarArray,
     xy: VectorT,
@@ -1809,6 +1871,7 @@ def get_ylabel(
     )
 
 
+@_with_quantity_support
 def set_xlim(
     left: None | float | na.AbstractScalar = None,
     right: None | float | na.AbstractScalar = None,
@@ -1855,6 +1918,7 @@ def get_xlim(
     )
 
 
+@_with_quantity_support
 def set_ylim(
     bottom: None | float | na.AbstractScalar = None,
     top: None | float | na.AbstractScalar = None,
@@ -2163,6 +2227,7 @@ def invert_yaxis(
     )
 
 
+@_with_quantity_support
 def brace_vertical(
     x: float | u.Quantity | na.AbstractScalar,
     width: float | u.Quantity | na.AbstractScalar,
@@ -2353,6 +2418,7 @@ def _facecolor(
     return result
 
 
+@_with_quantity_support
 def dimension(
     a: na.AbstractCartesian2dVectorArray,
     b: na.AbstractCartesian2dVectorArray,

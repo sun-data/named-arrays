@@ -2,10 +2,15 @@ import pytest
 import numpy as np
 import matplotlib.axes
 import matplotlib.animation
+import matplotlib.collections
+import matplotlib.image
+import matplotlib.patches
 import matplotlib.text
+import matplotlib.units
 import matplotlib.pyplot as plt
 import mpl_toolkits.mplot3d.art3d
 import astropy.units as u
+import astropy.visualization
 import named_arrays as na
 
 _num_t = 11
@@ -918,5 +923,214 @@ def test_line_collection_transformation():
 
     # the line started at -2 mm and has been moved along by ten
     assert segment[0][0] == pytest.approx(-2 + shift.to_value(u.mm))
+
+    plt.close(fig)
+
+
+def _mesh_x() -> na.ScalarArray:
+    return na.linspace(-1, 1, axis="x", num=5) * u.mm
+
+
+def _mesh_y() -> na.ScalarArray:
+    return na.linspace(-1, 1, axis="y", num=4) * u.mm
+
+
+def _mesh_c() -> na.ScalarArray:
+    """Mesh data with a physical unit."""
+    x = _mesh_x()
+    y = _mesh_y()
+    return (np.square(x / u.mm) + np.square(y / u.mm)) * u.nm
+
+
+def _mesh_c_masked() -> na.ScalarArray:
+    """Mesh data with a physical unit and a NaN, which matplotlib masks."""
+    c = _mesh_c()
+    return np.where(c < 1.5 * u.nm, c, np.nan * u.nm)
+
+
+@pytest.fixture(params=[False, True], ids=["default", "quantity_support"])
+def quantity_support(request) -> bool:
+    """
+    Run a test with and without the user having enabled unit support.
+
+    The plotting functions enable it themselves, so the outcome should be
+    the same either way, and enabling it twice should be harmless.
+    """
+    if request.param:
+        with astropy.visualization.quantity_support():
+            yield True
+    else:
+        yield False
+
+
+@pytest.mark.parametrize(
+    argnames="C",
+    argvalues=[
+        _mesh_c(),
+        _mesh_c_masked(),
+    ],
+)
+@pytest.mark.parametrize(
+    argnames="XY",
+    argvalues=[
+        (_mesh_x(), _mesh_y()),
+        (na.Cartesian2dVectorArray(_mesh_x(), _mesh_y()),),
+        (),
+    ],
+    ids=["scalars", "vector", "function"],
+)
+def test_pcolormesh_quantity(
+    quantity_support: bool,
+    XY: tuple[na.AbstractArray, ...],
+    C: na.AbstractScalarArray,
+):
+    """
+    Quantities are accepted by pcolormesh.
+
+    The coordinates label the axes with their unit, and the data are drawn
+    in their own unit.
+    """
+    if not XY:
+        C = na.FunctionArray(na.Cartesian2dVectorArray(_mesh_x(), _mesh_y()), C)
+
+    fig, ax = plt.subplots()
+
+    result = na.plt.pcolormesh(*XY, C=C, ax=ax)
+
+    assert isinstance(result, na.ScalarArray)
+    mesh = result[dict()].ndarray
+    assert isinstance(mesh, matplotlib.collections.QuadMesh)
+
+    assert ax.xaxis.units == u.mm
+    assert ax.yaxis.units == u.mm
+
+    outputs = C.outputs if isinstance(C, na.FunctionArray) else C
+    assert mesh.get_array().max() == pytest.approx(np.nanmax(outputs.value.ndarray))
+
+    plt.close(fig)
+
+
+def test_pcolormesh_vmin_vmax_quantity():
+    """The limits of the color scale are converted to the unit of the data."""
+    fig, ax = plt.subplots()
+
+    result = na.plt.pcolormesh(
+        _mesh_x(),
+        _mesh_y(),
+        C=_mesh_c(),
+        ax=ax,
+        vmin=0.5 * u.nm,
+        vmax=1e-6 * u.mm,
+    )
+
+    mesh = result[dict()].ndarray
+    assert mesh.norm.vmin == pytest.approx(0.5)
+    assert mesh.norm.vmax == pytest.approx(1)
+
+    plt.close(fig)
+
+
+@pytest.mark.parametrize(
+    argnames="C,vmin",
+    argvalues=[
+        (_mesh_c(), 1 * u.s),
+        (_mesh_c(), 1),
+        (_mesh_c().value, 1 * u.nm),
+    ],
+    ids=["wrong dimension", "missing unit", "unexpected unit"],
+)
+def test_pcolormesh_vmin_incompatible(
+    C: na.AbstractScalarArray,
+    vmin: float | u.Quantity,
+):
+    """A limit which cannot be expressed in the unit of the data is an error."""
+    fig, ax = plt.subplots()
+
+    with pytest.raises(u.UnitConversionError):
+        na.plt.pcolormesh(_mesh_x(), _mesh_y(), C=C, ax=ax, vmin=vmin)
+
+    plt.close(fig)
+
+
+def test_imshow_quantity(quantity_support: bool):
+    """The extent may be a Quantity, and the limits are converted to the data's unit."""
+    fig, ax = plt.subplots()
+
+    result = na.plt.imshow(
+        _mesh_c_masked(),
+        axis_x="x",
+        axis_y="y",
+        ax=ax,
+        vmin=0.5 * u.nm,
+        vmax=1e-6 * u.mm,
+        extent=na.ScalarArray(np.array([0, 1, 0, 1]) * u.mm, axes="x,y"),
+    )
+
+    image = result[dict()].ndarray
+    assert isinstance(image, matplotlib.image.AxesImage)
+    assert image.norm.vmin == pytest.approx(0.5)
+    assert image.norm.vmax == pytest.approx(1)
+    assert tuple(image.get_extent()) == (0, 1, 0, 1)
+
+    plt.close(fig)
+
+
+def test_stairs_quantity(quantity_support: bool):
+    """Both the edges and the values of a step plot may be Quantities."""
+    fig, ax = plt.subplots()
+
+    edges = na.linspace(0, 1, axis="x", num=6) * u.mm
+    values = na.linspace(0, 1, axis="x", num=5) * u.nm
+
+    result = na.plt.stairs(edges, values, ax=ax)
+
+    assert isinstance(result[dict()].ndarray, matplotlib.patches.StepPatch)
+    assert ax.xaxis.units == u.mm
+    assert ax.yaxis.units == u.nm
+
+    plt.close(fig)
+
+
+def test_axes_setters_quantity(quantity_support: bool):
+    """Lines, spans and limits may be given in data units."""
+    fig, ax = plt.subplots()
+
+    na.plt.axvline(1 * u.mm, ax=ax)
+    na.plt.axhline(1 * u.mm, ax=ax)
+    na.plt.axvspan(0 * u.mm, 1 * u.mm, ax=ax)
+    na.plt.axhspan(0 * u.mm, 1 * u.mm, ax=ax)
+    na.plt.set_xlim(0 * u.mm, 2 * u.mm, ax=ax)
+    na.plt.set_ylim(0 * u.mm, 3 * u.mm, ax=ax)
+
+    assert ax.get_xlim() == (0, 2)
+    assert ax.get_ylim() == (0, 3)
+    assert ax.xaxis.units == u.mm
+    assert ax.yaxis.units == u.mm
+
+    plt.close(fig)
+
+
+def test_plot_quantity_axis_units():
+    """
+    A plotted Quantity labels its axis, and later plots convert to that unit.
+
+    Unit support is enabled by the first call, without the caller asking, and
+    a later plot on the same axes is converted to the unit already recorded.
+    """
+    fig, ax = plt.subplots()
+
+    x = na.linspace(0, 1, axis="x", num=5) * u.mm
+    y = na.linspace(0, 1, axis="x", num=5) * u.nm
+
+    na.plt.plot(x, y, ax=ax)
+    assert ax.xaxis.units == u.mm
+    assert ax.yaxis.units == u.nm
+
+    line = na.plt.plot(x.to(u.m), y, ax=ax)[dict()].ndarray
+    assert line.get_xdata(orig=False).max() == pytest.approx(1)
+
+    t = na.linspace(0, 1, axis="x", num=5) * u.s
+    with pytest.raises(matplotlib.units.ConversionError):
+        na.plt.plot(t, y, ax=ax)
 
     plt.close(fig)

@@ -164,7 +164,6 @@ def colorbar(
 
         import matplotlib.pyplot as plt
         import astropy.units as u
-        import astropy.visualization
         import named_arrays as na
 
         # Define a random 3d cube
@@ -190,13 +189,12 @@ def colorbar(
         )
 
         # Plot the colorbar
-        with astropy.visualization.quantity_support():
-            fig, ax = plt.subplots()
-            na.plt.pcolormesh(
-                C=colorbar,
-                axis_rgb="wavelength",
-                ax=ax,
-            )
+        fig, ax = plt.subplots()
+        na.plt.pcolormesh(
+            C=colorbar,
+            axis_rgb="wavelength",
+            ax=ax,
+        )
     """
     return na._named_array_function(
         func=colorbar,
@@ -273,7 +271,6 @@ def rgb_and_colorbar(
 
         import matplotlib.pyplot as plt
         import astropy.units as u
-        import astropy.visualization
         import named_arrays as na
 
         # Define a random 3d cube
@@ -299,26 +296,25 @@ def rgb_and_colorbar(
         )
 
         # Plot the colorized cube along with its colorbar.
-        with astropy.visualization.quantity_support():
-            fig, axs = plt.subplots(
-                ncols=2,
-                gridspec_kw=dict(width_ratios=[.9,.1]),
-                constrained_layout=True,
-            )
-            na.plt.imshow(
-                rgb,
-                axis_x="x",
-                axis_y="y",
-                axis_rgb="wavelength",
-                ax=axs[0],
-            );
-            na.plt.pcolormesh(
-                C=colorbar,
-                axis_rgb="wavelength",
-                ax=axs[1],
-            )
-            axs[1].yaxis.tick_right()
-            axs[1].yaxis.set_label_position("right")
+        fig, axs = plt.subplots(
+            ncols=2,
+            gridspec_kw=dict(width_ratios=[.9,.1]),
+            constrained_layout=True,
+        )
+        na.plt.imshow(
+            rgb,
+            axis_x="x",
+            axis_y="y",
+            axis_rgb="wavelength",
+            ax=axs[0],
+        );
+        na.plt.pcolormesh(
+            C=colorbar,
+            axis_rgb="wavelength",
+            ax=axs[1],
+        )
+        axs[1].yaxis.tick_right()
+        axs[1].yaxis.set_label_position("right")
 
     """
     kwargs = dict(

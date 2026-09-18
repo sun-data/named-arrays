@@ -1366,6 +1366,24 @@ def plt_stairs(
     return result
 
 
+def _plt_value(
+    a: float | np.ndarray | u.Quantity,
+    unit: None | u.UnitBase,
+) -> float | np.ndarray:
+    """
+    Express `a` as a bare number in `unit`.
+
+    The colors of :mod:`matplotlib` carry no unit, so the data of a mesh or
+    an image are handed to :mod:`matplotlib` in their own unit, and the
+    limits of the color scale are converted to that unit first.
+    """
+    if unit is None:
+        unit = u.dimensionless_unscaled
+    if not isinstance(a, u.Quantity):
+        a = a << u.dimensionless_unscaled
+    return a.to_value(unit)
+
+
 @_implements(na.plt.imshow)
 def plt_imshow(
     X: na.AbstractScalarArray,
@@ -1426,17 +1444,22 @@ def plt_imshow(
     else:
         shape_X_index = shape_index
 
+    unit_X = na.unit(X)
+
     result = na.ScalarArray.empty(shape_orthogonal, dtype=object)
 
     for index in na.ndindex(shape_orthogonal):
+        X_index = X[index].ndarray_aligned(shape_X_index)
+        if unit_X is not None:
+            X_index = _plt_value(X_index, unit_X)
         result[index] = ax[index].ndarray.imshow(
-            X=X[index].ndarray_aligned(shape_X_index),
+            X=X_index,
             cmap=cmap,
             norm=norm,
             aspect=aspect[index].ndarray if aspect is not None else aspect,
             alpha=alpha[index].ndarray_aligned(shape_index) if alpha is not None else alpha,
-            vmin=vmin[index].ndarray if vmin is not None else vmin,
-            vmax=vmax[index].ndarray if vmax is not None else vmax,
+            vmin=_plt_value(vmin[index].ndarray, unit_X) if vmin is not None else vmin,
+            vmax=_plt_value(vmax[index].ndarray, unit_X) if vmax is not None else vmax,
             extent=extent[index].ndarray if extent is not None else extent,
             **kwargs,
         )
@@ -1497,16 +1520,21 @@ def pcolormesh(
     vmin = vmin.broadcast_to(shape_orthogonal) if vmin is not None else vmin
     vmax = vmax.broadcast_to(shape_orthogonal) if vmax is not None else vmax
 
+    unit_C = na.unit(C)
+
     result = na.ScalarArray.empty(shape_orthogonal, dtype=object)
 
     for index in na.ndindex(shape_orthogonal):
+        C_index = C[index].ndarray_aligned(axes_C)
+        if unit_C is not None:
+            C_index = _plt_value(C_index, unit_C)
         result[index] = ax[index].ndarray.pcolormesh(
             *[arg[index].ndarray_aligned(axes_XY) for arg in XY],
-            C[index].ndarray_aligned(axes_C),
+            C_index,
             cmap=cmap[index].ndarray if cmap is not None else cmap,
             norm=norm,
-            vmin=vmin[index].ndarray if vmin is not None else vmin,
-            vmax=vmax[index].ndarray if vmax is not None else vmax,
+            vmin=_plt_value(vmin[index].ndarray, unit_C) if vmin is not None else vmin,
+            vmax=_plt_value(vmax[index].ndarray, unit_C) if vmax is not None else vmax,
             **kwargs,
         )
 
