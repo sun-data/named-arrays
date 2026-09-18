@@ -149,6 +149,7 @@ def arange(
 
     start = scalars._normalize(start)
     stop = scalars._normalize(stop)
+    step = scalars._normalize(step)
 
     if start.size > 1:
         raise ValueError(f"`start` must have only one element, got shape {start.shape}")
@@ -156,12 +157,34 @@ def arange(
     if stop.size > 1:
         raise ValueError(f"`stop` must have only one element, got shape {stop.shape}")
 
+    if step.size > 1:
+        raise ValueError(f"`step` must have only one element, got shape {step.shape}")
+
+    start = start.ndarray
+    stop = stop.ndarray
+    step = step.ndarray
+
+    # `numpy.arange` cannot count in a physical unit, so the arguments are
+    # expressed in the unit of the first one which has one, and the result is
+    # given that unit afterwards.
+    unit = None
+    for arg in (start, stop, step):
+        unit = na.unit(arg)
+        if unit is not None:
+            break
+
+    if unit is not None:
+        start = u.Quantity(start).to_value(unit)
+        stop = u.Quantity(stop).to_value(unit)
+        step = u.Quantity(step).to_value(unit)
+
+    result = np.arange(start, stop, step)
+
+    if unit is not None:
+        result = result << unit
+
     return na.ScalarArray(
-        ndarray=np.arange(
-            start=start.ndarray,
-            stop=stop.ndarray,
-            step=step,
-        ),
+        ndarray=result,
         axes=(axis,),
     )
 

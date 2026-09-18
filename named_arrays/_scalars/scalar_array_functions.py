@@ -182,6 +182,25 @@ def array_function_sequence(
     )
 
 
+def count_nonzero_as_sum(
+        func: Callable,
+        a: na.AbstractArray,
+) -> tuple[Callable, na.AbstractArray]:
+    """
+    Express :func:`numpy.count_nonzero` as the sum of the nonzero mask.
+
+    :func:`numpy.count_nonzero` takes only `axis` and `keepdims`, and rejects
+    any other keyword before dispatching to the array, so a reduction which
+    passes `out` or `where` on to it, such as the reduction of the nominal
+    value and distribution of an uncertain array, fails.
+    The sum of the nonzero mask counts the same thing and shares the
+    interface of the other reductions.
+    """
+    if func is np.count_nonzero:
+        return np.sum, a != 0
+    return func, a
+
+
 def array_function_default(
         func: Callable,
         a: na.AbstractScalarArray,
@@ -192,6 +211,8 @@ def array_function_default(
         initial: bool | int | float | complex | u.Quantity = np._NoValue,
         where: bool | na.AbstractScalarArray = np._NoValue,
 ):
+    func, a = count_nonzero_as_sum(func, a)
+
     a = a.explicit
     shape = na.shape_broadcasted(a, where)
 

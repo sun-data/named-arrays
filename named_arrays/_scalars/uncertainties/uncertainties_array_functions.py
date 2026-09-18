@@ -123,6 +123,8 @@ def array_function_default(
         where: na.AbstractArray = np._NoValue,
 ) -> na.UncertainScalarArray:
 
+    func, a = named_arrays._scalars.scalar_array_functions.count_nonzero_as_sum(func, a)
+
     a = a.broadcasted
     shape_a = a.shape
 

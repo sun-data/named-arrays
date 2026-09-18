@@ -188,6 +188,30 @@ def test_annotate(
 
 
 @pytest.mark.parametrize(
+    argnames="x,y",
+    argvalues=[
+        (1, 2),
+        (1.0, 2.0),
+        (1 * u.mm, 2 * u.mm),
+        (na.ScalarArray(1), 2),
+    ],
+)
+def test_text_plain_coordinates(
+    x: float | u.Quantity | na.AbstractScalar,
+    y: float | u.Quantity | na.AbstractScalar,
+):
+    """The coordinates of a text need not be named arrays."""
+    fig, ax = plt.subplots()
+
+    result = na.plt.text(x, y, "foo", ax=ax)
+
+    assert isinstance(result, na.ScalarArray)
+    assert isinstance(result[dict()].ndarray, matplotlib.text.Text)
+
+    plt.close(fig)
+
+
+@pytest.mark.parametrize(
     argnames="a,b,components",
     argvalues=[
         (

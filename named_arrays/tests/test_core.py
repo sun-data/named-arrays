@@ -54,6 +54,48 @@ def test_linspace_num_scalar_array():
     assert np.all(result.y == na.linspace(0, 8, axis="y", num=4))
 
 
+@pytest.mark.parametrize(
+    argnames="start,stop,step,expected",
+    argvalues=[
+        (0, 5, 1, np.arange(0, 5, 1)),
+        (0, 5, 2, np.arange(0, 5, 2)),
+        (0 * u.mm, 5 * u.mm, 1 * u.mm, np.arange(0, 5, 1) * u.mm),
+        (0 * u.mm, 1 * u.cm, 2 * u.mm, np.arange(0, 10, 2) * u.mm),
+        (na.ScalarArray(1 * u.mm), 4 * u.mm, 1 * u.mm, np.arange(1, 4, 1) * u.mm),
+    ],
+)
+def test_arange(
+    start: float | u.Quantity | na.AbstractScalar,
+    stop: float | u.Quantity | na.AbstractScalar,
+    step: float | u.Quantity | na.AbstractScalar,
+    expected: np.ndarray | u.Quantity,
+):
+    """The sequence can have a unit, and the arguments need not share one."""
+    result = na.arange(start, stop, axis="x", step=step)
+    assert result.axes == ("x",)
+    assert result.unit == na.unit(expected)
+    assert np.all(result.ndarray == expected)
+    assert result.dtype == expected.dtype
+
+
+@pytest.mark.parametrize(
+    argnames="start,stop,step",
+    argvalues=[
+        (0, 5 * u.mm, 1),
+        (0 * u.mm, 5 * u.mm, 2),
+        (0 * u.mm, 5 * u.s, 1 * u.mm),
+    ],
+)
+def test_arange_unit_mismatch(
+    start: float | u.Quantity,
+    stop: float | u.Quantity,
+    step: float | u.Quantity,
+):
+    """An argument which cannot be expressed in the unit of the others is an error."""
+    with pytest.raises(u.UnitConversionError):
+        na.arange(start, stop, axis="x", step=step)
+
+
 @pytest.mark.parametrize(argnames='shape_1_x', argvalues=[num_x], )
 @pytest.mark.parametrize(argnames='shape_1_y', argvalues=[num_y], )
 @pytest.mark.parametrize(argnames='shape_2_x', argvalues=[None, 1, num_x], )
@@ -1198,6 +1240,22 @@ class AbstractTestAbstractArray(
             self.test_matmul(array_2, array)
 
     class TestArrayFunctions(abc.ABC):
+
+        @pytest.mark.parametrize("keepdims", [False, True])
+        def test_count_nonzero(
+                self,
+                array: na.AbstractArray,
+                keepdims: bool,
+        ):
+            """
+            :func:`numpy.count_nonzero` takes only `axis` and `keepdims`, so
+            it is not among the reductions tested below, and it should count
+            what a sum of the nonzero mask counts.
+            """
+            for axis in (None, *na.shape(array)):
+                result = np.count_nonzero(array, axis=axis, keepdims=keepdims)
+                expected = np.sum(array != 0, axis=axis, keepdims=keepdims)
+                assert np.all(result == expected)
 
         @pytest.mark.parametrize(
             argnames="func",
