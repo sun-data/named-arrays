@@ -164,6 +164,8 @@ def array_function_default(
         where: na.AbstractScalarArray | na.AbstractVectorArray = np._NoValue,
 ) -> na.AbstractExplicitVectorArray:
 
+    func, a = named_arrays._scalars.scalar_array_functions.count_nonzero_as_sum(func, a)
+
     a = a.explicit
     shape = na.shape_broadcasted(a, where)
 

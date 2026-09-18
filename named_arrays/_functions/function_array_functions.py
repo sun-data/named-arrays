@@ -2,6 +2,7 @@ from typing import Callable, Sequence
 import numpy as np
 import astropy.units as u
 import named_arrays as na
+import named_arrays._scalars.scalar_array_functions
 import named_arrays._scalars.uncertainties.uncertainties_array_functions
 
 __all__ = [
@@ -39,6 +40,8 @@ def array_function_default(
         initial: None | bool | int | float | complex | u.Quantity = np._NoValue,
         where: na.AbstractFunctionArray = np._NoValue,
 ) -> na.FunctionArray:
+
+    func, a = named_arrays._scalars.scalar_array_functions.count_nonzero_as_sum(func, a)
 
     a = a.explicit
     inputs = a.inputs

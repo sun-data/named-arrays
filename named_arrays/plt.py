@@ -1689,8 +1689,8 @@ def text(
     """
     return na._named_array_function(
         text,
-        x=x,
-        y=y,
+        x=na.as_named_array(x),
+        y=na.as_named_array(y),
         s=s,
         ax=ax,
         **kwargs,

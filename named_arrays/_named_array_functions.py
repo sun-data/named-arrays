@@ -274,7 +274,7 @@ def arange(
         start: float | complex | u.Quantity | na.AbstractArray,
         stop: float | complex | u.Quantity | na.AbstractArray,
         axis: str | na.AbstractArray,
-        step: int | na.AbstractArray = 1,
+        step: float | u.Quantity | na.AbstractArray = 1,
 ) -> na.AbstractExplicitArray:
     """
     Redefined version of :func:`numpy.arange` with an `axis` parameter.
@@ -289,6 +289,13 @@ def arange(
         name of the new sequence axis
     step
         step size between consecutive elements of the sequence
+
+    Notes
+    -----
+    The arguments may carry physical units.
+    They are expressed in the unit of the first one which has a unit, and the
+    result is given that unit, so `stop` and `step` need only be convertible
+    to it.
 
     See Also
     --------
