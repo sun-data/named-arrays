@@ -2150,6 +2150,178 @@ class AbstractTestAbstractArray(
 
             assert np.all(np.abs(result.astype(float)) == np.abs(result_expected))
 
+        @pytest.mark.parametrize("axis", ["y", "_missing"])
+        @pytest.mark.parametrize(
+            argnames="spacing",
+            argvalues=[None, "dx", "x"],
+        )
+        def test_trapezoid(
+            self,
+            array: na.AbstractArray,
+            axis: str,
+            spacing: None | str,
+        ):
+            array = array.astype(float)
+
+            if axis not in array.shape:
+                with pytest.raises(ValueError):
+                    np.trapezoid(array, axis=axis)
+                return
+
+            num = array.shape[axis]
+
+            kwargs = dict(axis=axis)
+            if spacing == "dx":
+                d = kwargs["dx"] = 2 * u.mm
+            elif spacing == "x":
+                # unevenly spaced sample points
+                x = na.linspace(0, 1, axis=axis, num=num) ** 2 * u.mm
+                kwargs["x"] = x
+                d = x[{axis: slice(1, None)}] - x[{axis: slice(None, ~0)}]
+            else:
+                d = 1
+
+            result = np.trapezoid(array, **kwargs)
+
+            left = array[{axis: slice(1, None)}]
+            right = array[{axis: slice(None, ~0)}]
+            expected = np.sum(d * (left + right) / 2, axis=axis)
+
+            assert result.type_abstract == array.type_abstract
+            assert axis not in result.shape
+            assert np.allclose(result, expected)
+
+        def test_trapezoid_requires_an_axis(self, array: na.AbstractArray):
+            # unlike `numpy`, there is no positional order to integrate along
+            with pytest.raises(ValueError, match="`axis` is required"):
+                np.trapezoid(array)
+
+        @pytest.mark.parametrize("axis", [None, "y", ("x", "y"), "_missing"])
+        @pytest.mark.parametrize("weighted", [False, True])
+        @pytest.mark.parametrize("returned", [False, True])
+        @pytest.mark.parametrize("keepdims", [False, True])
+        def test_average(
+            self,
+            array: na.AbstractArray,
+            axis: None | str | Sequence[str],
+            weighted: bool,
+            returned: bool,
+            keepdims: bool,
+        ):
+            if weighted:
+                if "y" in array.shape:
+                    weights = na.linspace(1, 2, axis="y", num=array.shape["y"])
+                else:
+                    weights = 2
+            else:
+                weights = None
+
+            kwargs = dict(
+                axis=axis,
+                weights=weights,
+                returned=returned,
+                keepdims=keepdims,
+            )
+
+            if axis is not None:
+                axes = (axis,) if isinstance(axis, str) else axis
+                if not set(axes).issubset(array.shape):
+                    with pytest.raises(ValueError):
+                        np.average(array, **kwargs)
+                    return
+
+            result = np.average(array, **kwargs)
+
+            ones = na.ScalarArray(1.0).broadcast_to(array.shape)
+            if weights is None:
+                expected = np.mean(array, axis=axis, keepdims=keepdims)
+                expected_sum_of_weights = np.sum(ones, axis=axis, keepdims=keepdims)
+            else:
+                w = weights * ones
+                expected = np.sum(array * w, axis=axis, keepdims=keepdims)
+                expected_sum_of_weights = np.sum(w, axis=axis, keepdims=keepdims)
+                expected = expected / expected_sum_of_weights
+
+            if returned:
+                result, sum_of_weights = result
+                assert sum_of_weights.type_abstract == array.type_abstract
+                assert np.allclose(sum_of_weights, expected_sum_of_weights)
+
+            assert result.type_abstract == array.type_abstract
+            assert result.shape == expected.shape
+            assert np.allclose(result, expected)
+
+        @pytest.mark.parametrize("axis", ["y", "_missing"])
+        @pytest.mark.parametrize(
+            argnames="spacing",
+            argvalues=[None, "dx", "x"],
+        )
+        def test_gradient(
+            self,
+            array: na.AbstractArray,
+            axis: str,
+            spacing: None | str,
+        ):
+            array = array.astype(float)
+
+            if axis not in array.shape:
+                with pytest.raises(ValueError):
+                    np.gradient(array, axis=axis)
+                return
+
+            num = array.shape[axis]
+
+            varargs = ()
+            if spacing == "dx":
+                h = 2 * u.mm
+                varargs = (h,)
+                x = h * na.arange(0, num, axis=axis)
+            elif spacing == "x":
+                # unevenly spaced sample points
+                x = na.linspace(0, 1, axis=axis, num=num) ** 2 * u.mm
+                varargs = (x,)
+            else:
+                x = na.arange(0, num, axis=axis)
+
+            result = np.gradient(array, *varargs, axis=axis)
+
+            # second-order central differences in the interior, which for
+            # uneven spacing weight the two neighbors by the opposite gaps, and
+            # first-order one-sided differences at the two ends
+            f = array
+            hs = x[{axis: slice(1, ~0)}] - x[{axis: slice(None, -2)}]
+            hd = x[{axis: slice(2, None)}] - x[{axis: slice(1, ~0)}]
+            interior = (
+                hs ** 2 * f[{axis: slice(2, None)}]
+                + (hd ** 2 - hs ** 2) * f[{axis: slice(1, ~0)}]
+                - hd ** 2 * f[{axis: slice(None, -2)}]
+            ) / (hs * hd * (hd + hs))
+            first = (f[{axis: slice(1, 2)}] - f[{axis: slice(0, 1)}]) / (x[{axis: slice(1, 2)}] - x[{axis: slice(0, 1)}])
+            last = (f[{axis: slice(-1, None)}] - f[{axis: slice(-2, -1)}]) / (x[{axis: slice(-1, None)}] - x[{axis: slice(-2, -1)}])
+            expected = np.concatenate([first, interior, last], axis=axis)
+
+            assert result.type_abstract == array.type_abstract
+            assert result.shape == array.shape
+            assert np.allclose(result, expected)
+
+        def test_gradient_multiple_axes(self, array: na.AbstractArray):
+            array = array.astype(float)
+            axes = tuple(ax for ax in array.shape if array.shape[ax] >= 2)
+            if not axes:
+                return
+
+            result = np.gradient(array, axis=axes)
+
+            assert isinstance(result, tuple)
+            assert len(result) == len(axes)
+            for r, ax in zip(result, axes):
+                assert np.allclose(r, np.gradient(array, axis=ax))
+
+        def test_gradient_requires_an_axis(self, array: na.AbstractArray):
+            # unlike `numpy`, there is no positional order to differentiate along
+            with pytest.raises(ValueError, match="`axis` is required"):
+                np.gradient(array)
+
         @pytest.mark.parametrize(
             argnames="a",
             argvalues=[

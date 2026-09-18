@@ -1211,6 +1211,196 @@ def diff(
     )
 
 
+def _axes_gradient(axis: None | str | Sequence[str]) -> tuple[str, ...]:
+    """The axes named by the `axis` argument of :func:`numpy.gradient`."""
+    if axis is None:
+        raise ValueError(
+            "`axis` is required, since there is no positional order to take "
+            "the gradient along. Name the axes to differentiate along."
+        )
+    return (axis,) if isinstance(axis, str) else tuple(axis)
+
+
+@implements(np.trapezoid)
+def trapezoid(
+    y: na.AbstractScalarArray,
+    x: None | na.AbstractScalarArray = None,
+    dx: float | u.Quantity | na.AbstractScalarArray = 1.0,
+    axis: None | str = None,
+) -> na.ScalarArray:
+    """
+    Integrate along the given axis using the composite trapezoidal rule.
+
+    Unlike :func:`numpy.trapezoid`, `axis` is required, since there is no
+    positional order to integrate along.
+    `x` and `dx` may have any shape which broadcasts against `y`, except that
+    `dx` may not vary along `axis`.
+    """
+    if axis is None:
+        raise ValueError(
+            "`axis` is required, since there is no positional order to "
+            "integrate along. Name the axis to integrate along."
+        )
+
+    try:
+        y = scalars._normalize(y)
+        x = scalars._normalize(x) if x is not None else None
+        dx = scalars._normalize(dx)
+    except scalars.ScalarTypeError:  # pragma: nocover
+        return NotImplemented
+
+    shape = na.shape_broadcasted(y, x, dx)
+
+    if axis not in shape:
+        raise ValueError(f"{axis=} must be a member of {tuple(shape)}")
+
+    if x is None and axis in dx.shape:
+        raise ValueError(f"`dx` may not vary along {axis=}, got shape {dx.shape}")
+
+    axes = tuple(shape)
+
+    kwargs = dict(axis=axes.index(axis))
+    if x is not None:
+        kwargs["x"] = x.ndarray_aligned(shape)
+    else:
+        kwargs["dx"] = dx.ndarray_aligned(shape)
+
+    result = np.trapezoid(
+        na.broadcast_to(y, shape).ndarray,
+        **kwargs,
+    )
+
+    return y.type_explicit(
+        ndarray=result,
+        axes=tuple(ax for ax in axes if ax != axis),
+    )
+
+
+@implements(np.average)
+def average(
+    a: na.AbstractScalarArray,
+    axis: None | str | Sequence[str] = None,
+    weights: None | na.AbstractScalarArray = None,
+    returned: bool = False,
+    *,
+    keepdims: bool = False,
+) -> na.ScalarArray | tuple[na.ScalarArray, na.ScalarArray]:
+    """
+    Compute the weighted average along the given axes.
+
+    `weights` may have any shape which broadcasts against `a`.
+    """
+    try:
+        a = scalars._normalize(a)
+        weights = scalars._normalize(weights) if weights is not None else None
+    except scalars.ScalarTypeError:  # pragma: nocover
+        return NotImplemented
+
+    shape = na.shape_broadcasted(a, weights)
+    axes = tuple(shape)
+
+    axis_normalized = axes if axis is None else (axis,) if isinstance(axis, str) else tuple(axis)
+
+    if not set(axis_normalized).issubset(axes):
+        raise ValueError(
+            f"the `axis` argument must be `None` or a subset of the broadcasted "
+            f"shape of `a` and `weights`, got {axis} for `axis`, but {shape} for `shape`"
+        )
+
+    kwargs = dict(
+        axis=tuple(axes.index(ax) for ax in axis_normalized),
+        returned=returned,
+        keepdims=keepdims,
+    )
+    if weights is not None:
+        kwargs["weights"] = na.broadcast_to(weights, shape).ndarray
+
+    result = np.average(
+        na.broadcast_to(a, shape).ndarray,
+        **kwargs,
+    )
+
+    axes_result = axes if keepdims else tuple(ax for ax in axes if ax not in axis_normalized)
+
+    if returned:
+        result, sum_of_weights = result
+        return (
+            a.type_explicit(ndarray=result, axes=axes_result),
+            a.type_explicit(ndarray=sum_of_weights, axes=axes_result),
+        )
+
+    return a.type_explicit(ndarray=result, axes=axes_result)
+
+
+@implements(np.gradient)
+def gradient(
+    f: na.AbstractScalarArray,
+    *varargs: float | u.Quantity | na.AbstractScalarArray,
+    axis: None | str | Sequence[str] = None,
+    edge_order: int = 1,
+) -> na.ScalarArray | tuple[na.ScalarArray, ...]:
+    """
+    Compute the gradient along the given axes.
+
+    Unlike :func:`numpy.gradient`, `axis` is required, since there is no
+    positional order to differentiate along.
+    A spacing in `varargs` may be a scalar or the coordinates along the
+    corresponding axis, an array with no axis other than that one.
+    A single axis gives one array and a sequence of axes a tuple of arrays,
+    one per axis, as :func:`numpy.gradient` does.
+    """
+    axes_gradient = _axes_gradient(axis)
+
+    try:
+        f = scalars._normalize(f)
+        varargs = tuple(scalars._normalize(v) for v in varargs)
+    except scalars.ScalarTypeError:  # pragma: nocover
+        return NotImplemented
+
+    shape = na.shape_broadcasted(f, *varargs)
+    axes = tuple(shape)
+
+    if not set(axes_gradient).issubset(axes):
+        raise ValueError(f"{axis=} must be a subset of {axes}")
+
+    if len(varargs) == len(axes_gradient):
+        axes_varargs = axes_gradient
+    elif len(varargs) <= 1:
+        axes_varargs = axes_gradient[:len(varargs)]
+    else:
+        raise TypeError(
+            f"expected 0, 1 or {len(axes_gradient)} spacings for {len(axes_gradient)} "
+            f"axes, got {len(varargs)}"
+        )
+
+    varargs_ndarray = []
+    for v, ax in zip(varargs, axes_varargs):
+        if set(v.shape) - {ax}:
+            raise ValueError(
+                f"a spacing must be a scalar or the coordinates along its axis, "
+                f"so it may have no axis other than `{ax}`, got shape {v.shape}"
+            )
+        varargs_ndarray.append(v.ndarray)
+
+    result = np.gradient(
+        na.broadcast_to(f, shape).ndarray,
+        *varargs_ndarray,
+        axis=tuple(axes.index(ax) for ax in axes_gradient),
+        edge_order=edge_order,
+    )
+
+    # `numpy` returns one array for one axis, whether or not it was named in
+    # a sequence
+    if len(axes_gradient) == 1:
+        result = (result,)
+
+    result = tuple(f.type_explicit(ndarray=r, axes=axes) for r in result)
+
+    if isinstance(axis, str):
+        return result[0]
+    return result
+
+
 @implements(np.strings.mod)
 def strings_mod(
     a: str | na.AbstractScalarArray,
