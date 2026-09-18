@@ -1115,6 +1115,117 @@ def diff(
     return prototype.type_explicit.from_components(result)
 
 
+@implements(np.trapezoid)
+def trapezoid(
+    y: na.AbstractVectorArray,
+    x: None | na.AbstractScalar | na.AbstractVectorArray = None,
+    dx: float | u.Quantity | na.AbstractScalar | na.AbstractVectorArray = 1.0,
+    axis: None | str = None,
+) -> na.AbstractExplicitVectorArray:
+
+    try:
+        prototype = vectors._prototype(y, x, dx)
+        y = vectors._normalize(y, prototype)
+        x = vectors._normalize(x, prototype)
+        dx = vectors._normalize(dx, prototype)
+    except vectors.VectorTypeError:  # pragma: nocover
+        return NotImplemented
+
+    components_y = y.broadcasted.components
+    components_x = x.components
+    components_dx = dx.components
+
+    result = dict()
+    for c in components_y:
+        result[c] = np.trapezoid(
+            components_y[c],
+            x=components_x[c],
+            dx=components_dx[c],
+            axis=axis,
+        )
+
+    return prototype.type_explicit.from_components(result)
+
+
+@implements(np.average)
+def average(
+    a: na.AbstractVectorArray,
+    axis: None | str | Sequence[str] = None,
+    weights: None | na.AbstractScalar | na.AbstractVectorArray = None,
+    returned: bool = False,
+    *,
+    keepdims: bool = False,
+) -> na.AbstractExplicitVectorArray | tuple[na.AbstractExplicitVectorArray, na.AbstractExplicitVectorArray]:
+
+    try:
+        prototype = vectors._prototype(a, weights)
+        a = vectors._normalize(a, prototype)
+        weights = vectors._normalize(weights, prototype)
+    except vectors.VectorTypeError:  # pragma: nocover
+        return NotImplemented
+
+    components_a = a.broadcasted.components
+    components_weights = weights.components
+
+    result = dict()
+    sum_of_weights = dict()
+    for c in components_a:
+        result[c] = np.average(
+            components_a[c],
+            axis=axis,
+            weights=components_weights[c],
+            returned=returned,
+            keepdims=keepdims,
+        )
+        if returned:
+            result[c], sum_of_weights[c] = result[c]
+
+    if returned:
+        return (
+            prototype.type_explicit.from_components(result),
+            prototype.type_explicit.from_components(sum_of_weights),
+        )
+
+    return prototype.type_explicit.from_components(result)
+
+
+@implements(np.gradient)
+def gradient(
+    f: na.AbstractVectorArray,
+    *varargs: float | u.Quantity | na.AbstractScalar | na.AbstractVectorArray,
+    axis: None | str | Sequence[str] = None,
+    edge_order: int = 1,
+) -> na.AbstractExplicitVectorArray | tuple[na.AbstractExplicitVectorArray, ...]:
+
+    try:
+        prototype = vectors._prototype(f, *varargs)
+        f = vectors._normalize(f, prototype)
+        varargs = tuple(vectors._normalize(v, prototype) for v in varargs)
+    except vectors.VectorTypeError:  # pragma: nocover
+        return NotImplemented
+
+    components_f = f.broadcasted.components
+    components_varargs = [v.components for v in varargs]
+
+    result = dict()
+    for c in components_f:
+        result[c] = np.gradient(
+            components_f[c],
+            *[components_v[c] for components_v in components_varargs],
+            axis=axis,
+            edge_order=edge_order,
+        )
+
+    if isinstance(axis, str):
+        return prototype.type_explicit.from_components(result)
+
+    num_axes = len(tuple(axis)) if axis is not None else 0
+    return tuple(
+        prototype.type_explicit.from_components({c: result[c][i] for c in result})
+        for i in range(num_axes)
+    )
+
+
 @implements(np.strings.mod)
 def strings_mod(
         a: str | na.AbstractScalar,

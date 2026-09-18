@@ -887,6 +887,38 @@ class AbstractTestAbstractFunctionArray(
             pass    # pragma: nocover
 
         @pytest.mark.skip
+        def test_trapezoid(self, array: na.AbstractArray, axis: str, spacing: None | str):
+            pass    # pragma: nocover
+
+        @pytest.mark.skip
+        def test_trapezoid_requires_an_axis(self, array: na.AbstractArray):
+            pass    # pragma: nocover
+
+        @pytest.mark.skip
+        def test_average(self, array, axis, weighted, returned, keepdims):
+            pass    # pragma: nocover
+
+        @pytest.mark.skip
+        def test_gradient(self, array: na.AbstractArray, axis: str, spacing: None | str):
+            pass    # pragma: nocover
+
+        @pytest.mark.skip
+        def test_gradient_multiple_axes(self, array: na.AbstractArray):
+            pass    # pragma: nocover
+
+        @pytest.mark.skip
+        def test_gradient_requires_an_axis(self, array: na.AbstractArray):
+            pass    # pragma: nocover
+
+        @pytest.mark.skip
+        def test_gradient_spacing_count(self, array: na.AbstractArray):
+            pass    # pragma: nocover
+
+        @pytest.mark.skip
+        def test_gradient_spacing_shape(self, array: na.AbstractArray):
+            pass    # pragma: nocover
+
+        @pytest.mark.skip
         def test_strings_mod(self, array: na.AbstractArray, a: na.AbstractArray):
             pass    # pragma: nocover
 

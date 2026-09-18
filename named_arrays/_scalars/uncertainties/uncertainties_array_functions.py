@@ -1145,6 +1145,121 @@ def diff(
     )
 
 
+@implements(np.trapezoid)
+def trapezoid(
+    y: na.AbstractUncertainScalarArray,
+    x: None | na.AbstractScalar = None,
+    dx: float | u.Quantity | na.AbstractScalar = 1.0,
+    axis: None | str = None,
+) -> na.UncertainScalarArray:
+
+    try:
+        y = uncertainties._normalize(y)
+        x = uncertainties._normalize(x)
+        dx = uncertainties._normalize(dx)
+    except uncertainties.UncertainScalarTypeError:  # pragma: nocover
+        return NotImplemented
+
+    y = y.broadcasted
+
+    return y.type_explicit(
+        nominal=np.trapezoid(
+            na.as_named_array(y.nominal),
+            x=x.nominal,
+            dx=dx.nominal,
+            axis=axis,
+        ),
+        distribution=np.trapezoid(
+            na.as_named_array(y.distribution),
+            x=x.distribution,
+            dx=dx.distribution,
+            axis=axis,
+        ),
+    )
+
+
+@implements(np.average)
+def average(
+    a: na.AbstractUncertainScalarArray,
+    axis: None | str | Sequence[str] = None,
+    weights: None | na.AbstractScalar = None,
+    returned: bool = False,
+    *,
+    keepdims: bool = False,
+) -> na.UncertainScalarArray | tuple[na.UncertainScalarArray, na.UncertainScalarArray]:
+
+    try:
+        a = uncertainties._normalize(a)
+        weights = uncertainties._normalize(weights)
+    except uncertainties.UncertainScalarTypeError:  # pragma: nocover
+        return NotImplemented
+
+    a = a.broadcasted
+
+    # every axis of the array, which does not include the distribution axis
+    if axis is None:
+        axis = tuple(a.shape)
+
+    kwargs = dict(axis=axis, returned=returned, keepdims=keepdims)
+
+    result_nominal = np.average(
+        na.as_named_array(a.nominal),
+        weights=weights.nominal,
+        **kwargs,
+    )
+    result_distribution = np.average(
+        na.as_named_array(a.distribution),
+        weights=weights.distribution,
+        **kwargs,
+    )
+
+    if returned:
+        return (
+            a.type_explicit(result_nominal[0], result_distribution[0]),
+            a.type_explicit(result_nominal[1], result_distribution[1]),
+        )
+
+    return a.type_explicit(result_nominal, result_distribution)
+
+
+@implements(np.gradient)
+def gradient(
+    f: na.AbstractUncertainScalarArray,
+    *varargs: float | u.Quantity | na.AbstractScalar,
+    axis: None | str | Sequence[str] = None,
+    edge_order: int = 1,
+) -> na.UncertainScalarArray | tuple[na.UncertainScalarArray, ...]:
+
+    try:
+        f = uncertainties._normalize(f)
+        varargs = tuple(uncertainties._normalize(v) for v in varargs)
+    except uncertainties.UncertainScalarTypeError:  # pragma: nocover
+        return NotImplemented
+
+    f = f.broadcasted
+
+    kwargs = dict(axis=axis, edge_order=edge_order)
+
+    result_nominal = np.gradient(
+        na.as_named_array(f.nominal),
+        *[v.nominal for v in varargs],
+        **kwargs,
+    )
+    result_distribution = np.gradient(
+        na.as_named_array(f.distribution),
+        *[v.distribution for v in varargs],
+        **kwargs,
+    )
+
+    if isinstance(axis, str):
+        return f.type_explicit(result_nominal, result_distribution)
+
+    return tuple(
+        f.type_explicit(n, d)
+        for n, d in zip(result_nominal, result_distribution)
+    )
+
+
 @implements(np.char.mod)
 def char_mod(
     a: str | na.AbstractScalar,
