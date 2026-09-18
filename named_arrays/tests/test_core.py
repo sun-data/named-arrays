@@ -2322,6 +2322,23 @@ class AbstractTestAbstractArray(
             with pytest.raises(ValueError, match="`axis` is required"):
                 np.gradient(array)
 
+        def test_gradient_spacing_count(self, array: na.AbstractArray):
+            # one spacing per axis, or one for all of them, but never more
+            axes = tuple(array.shape)
+            if not axes:
+                return
+            spacings = (1,) * (len(axes) + 1)
+            with pytest.raises(TypeError, match="spacings"):
+                np.gradient(array, *spacings, axis=axes)
+
+        def test_gradient_spacing_shape(self, array: na.AbstractArray):
+            # coordinates may vary only along the axis they are the spacing of
+            if "y" not in array.shape:
+                return
+            spacing = na.ScalarArray(np.ones((array.shape["y"], 2)), axes=("y", "_other"))
+            with pytest.raises(ValueError, match="no axis other than"):
+                np.gradient(array, spacing, axis="y")
+
         @pytest.mark.parametrize(
             argnames="a",
             argvalues=[
