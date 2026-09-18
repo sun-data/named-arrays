@@ -268,7 +268,6 @@ class Translation(
 
         import matplotlib.pyplot as plt
         import astropy.units as u
-        import astropy.visualization
         import named_arrays as na
 
         vector = na.Cartesian2dVectorArray(
@@ -285,12 +284,11 @@ class Translation(
 
         square_transformed = transformation(square)
 
-        with astropy.visualization.quantity_support():
-            plt.figure();
-            plt.gca().set_aspect("equal");
-            na.plt.plot(square, label="original");
-            na.plt.plot(square_transformed, label="translated");
-            plt.legend();
+        plt.figure();
+        plt.gca().set_aspect("equal");
+        na.plt.plot(square, label="original");
+        na.plt.plot(square_transformed, label="translated");
+        plt.legend();
 
     |
 
@@ -307,12 +305,11 @@ class Translation(
 
         square_transformed_2 = transformation_2(square)
 
-        with astropy.visualization.quantity_support():
-            plt.figure();
-            plt.gca().set_aspect("equal");
-            na.plt.plot(square, label="original");
-            na.plt.plot(square_transformed_2, axis="vertex", label="translated");
-            plt.legend();
+        plt.figure();
+        plt.gca().set_aspect("equal");
+        na.plt.plot(square, label="original");
+        na.plt.plot(square_transformed_2, axis="vertex", label="translated");
+        plt.legend();
     """
 
     vector: VectorT = _required()
@@ -410,7 +407,6 @@ class LinearTransformation(
 
         import matplotlib.pyplot as plt
         import astropy.units as u
-        import astropy.visualization
         import named_arrays as na
 
         angle = 53 * u.deg
@@ -425,12 +421,11 @@ class LinearTransformation(
 
         square_transformed = transformation(square)
 
-        with astropy.visualization.quantity_support():
-            plt.figure();
-            plt.gca().set_aspect("equal");
-            na.plt.plot(square, label="original");
-            na.plt.plot(square_transformed, label="rotated");
-            plt.legend();
+        plt.figure();
+        plt.gca().set_aspect("equal");
+        na.plt.plot(square, label="original");
+        na.plt.plot(square_transformed, label="rotated");
+        plt.legend();
 
     |
 
@@ -445,12 +440,11 @@ class LinearTransformation(
 
         square_transformed_2 = transformation_2(square)
 
-        with astropy.visualization.quantity_support():
-            plt.figure();
-            plt.gca().set_aspect("equal");
-            na.plt.plot(square, label="original");
-            na.plt.plot(square_transformed_2, axis="vertex", label="rotated");
-            plt.legend();
+        plt.figure();
+        plt.gca().set_aspect("equal");
+        na.plt.plot(square, label="original");
+        na.plt.plot(square_transformed_2, axis="vertex", label="rotated");
+        plt.legend();
     """
     matrix: MatrixT = _required()
 

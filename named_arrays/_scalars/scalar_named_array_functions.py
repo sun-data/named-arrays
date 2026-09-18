@@ -1354,8 +1354,8 @@ def plt_stairs(
 
     for index in na.ndindex(shape_orthogonal):
         if where[index]:
-            values_index = _plt_coordinate(values[index].ndarray)
-            edges_index = _plt_coordinate(edges[index].ndarray) if edges is not None else edges
+            values_index = values[index].ndarray
+            edges_index = edges[index].ndarray if edges is not None else edges
             kwargs_index = {k: kwargs[k][index].ndarray for k in kwargs}
             result[index] = ax[index].ndarray.stairs(
                 values=values_index,
@@ -1364,31 +1364,6 @@ def plt_stairs(
             )
 
     return result
-
-
-def _plt_coordinate(
-    a: float | np.ndarray | u.Quantity,
-) -> float | np.ndarray | u.Quantity:
-    """
-    Prepare a coordinate for :mod:`matplotlib`.
-
-    :mod:`matplotlib` converts a :class:`astropy.units.Quantity` only when a
-    converter for it is registered, which is what
-    :func:`astropy.visualization.quantity_support` does, and it then records
-    the unit on the axis.
-    Without a converter, :meth:`matplotlib.axes.Axes.plot` quietly treats a
-    :class:`~astropy.units.Quantity` as its bare value, but the methods which
-    do arithmetic on their coordinates, such as
-    :meth:`matplotlib.axes.Axes.pcolormesh`, fail instead.
-    This function gives every wrapper the behavior of
-    :meth:`~matplotlib.axes.Axes.plot` by stripping the unit when there is
-    no converter to handle it.
-    """
-    if isinstance(a, u.Quantity):
-        import matplotlib.units
-        if matplotlib.units.registry.get_converter(a) is None:
-            return a.value
-    return a
 
 
 def _plt_value(
@@ -1485,7 +1460,7 @@ def plt_imshow(
             alpha=alpha[index].ndarray_aligned(shape_index) if alpha is not None else alpha,
             vmin=_plt_value(vmin[index].ndarray, unit_X) if vmin is not None else vmin,
             vmax=_plt_value(vmax[index].ndarray, unit_X) if vmax is not None else vmax,
-            extent=_plt_coordinate(extent[index].ndarray) if extent is not None else extent,
+            extent=extent[index].ndarray if extent is not None else extent,
             **kwargs,
         )
 
@@ -1554,7 +1529,7 @@ def pcolormesh(
         if unit_C is not None:
             C_index = _plt_value(C_index, unit_C)
         result[index] = ax[index].ndarray.pcolormesh(
-            *[_plt_coordinate(arg[index].ndarray_aligned(axes_XY)) for arg in XY],
+            *[arg[index].ndarray_aligned(axes_XY) for arg in XY],
             C_index,
             cmap=cmap[index].ndarray if cmap is not None else cmap,
             norm=norm,
@@ -1734,8 +1709,8 @@ def plt_axes_setter(
     result = ax.type_explicit.empty(shape=ax.shape, dtype=object)
 
     for index in na.ndindex(shape):
-        args_index = [_plt_coordinate(arg[index].ndarray) for arg in args]
-        kwargs_index = {k: _plt_coordinate(kwargs[k][index].ndarray) for k in kwargs}
+        args_index = [arg[index].ndarray for arg in args]
+        kwargs_index = {k: kwargs[k][index].ndarray for k in kwargs}
         r = getattr(ax[index].ndarray, method.__name__)(*args_index, **kwargs_index)
         result[index] = r
 

@@ -6,6 +6,7 @@ import matplotlib.collections
 import matplotlib.image
 import matplotlib.patches
 import matplotlib.text
+import matplotlib.units
 import matplotlib.pyplot as plt
 import mpl_toolkits.mplot3d.art3d
 import astropy.units as u
@@ -947,19 +948,19 @@ def _mesh_c_masked() -> na.ScalarArray:
     return np.where(c < 1.5 * u.nm, c, np.nan * u.nm)
 
 
-@pytest.fixture(params=[False, True], ids=["bare", "quantity_support"])
+@pytest.fixture(params=[False, True], ids=["default", "quantity_support"])
 def quantity_support(request) -> bool:
-    """Run a test with and without astropy's unit converter registered."""
+    """
+    Run a test with and without the user having enabled unit support.
+
+    The plotting functions enable it themselves, so the outcome should be
+    the same either way, and enabling it twice should be harmless.
+    """
     if request.param:
         with astropy.visualization.quantity_support():
             yield True
     else:
         yield False
-
-
-def _axis_unit(quantity_support: bool) -> None | u.UnitBase:
-    """The unit matplotlib should record on an axis given a Quantity in mm."""
-    return u.mm if quantity_support else None
 
 
 @pytest.mark.parametrize(
@@ -984,10 +985,10 @@ def test_pcolormesh_quantity(
     C: na.AbstractScalarArray,
 ):
     """
-    Quantities are accepted by pcolormesh with or without quantity_support.
+    Quantities are accepted by pcolormesh.
 
-    The coordinates keep their unit when matplotlib can convert them, and the
-    data are drawn in their own unit either way.
+    The coordinates label the axes with their unit, and the data are drawn
+    in their own unit.
     """
     if not XY:
         C = na.FunctionArray(na.Cartesian2dVectorArray(_mesh_x(), _mesh_y()), C)
@@ -1000,8 +1001,8 @@ def test_pcolormesh_quantity(
     mesh = result[dict()].ndarray
     assert isinstance(mesh, matplotlib.collections.QuadMesh)
 
-    assert ax.xaxis.units == _axis_unit(quantity_support)
-    assert ax.yaxis.units == _axis_unit(quantity_support)
+    assert ax.xaxis.units == u.mm
+    assert ax.yaxis.units == u.mm
 
     outputs = C.outputs if isinstance(C, na.FunctionArray) else C
     assert mesh.get_array().max() == pytest.approx(np.nanmax(outputs.value.ndarray))
@@ -1084,7 +1085,8 @@ def test_stairs_quantity(quantity_support: bool):
     result = na.plt.stairs(edges, values, ax=ax)
 
     assert isinstance(result[dict()].ndarray, matplotlib.patches.StepPatch)
-    assert ax.xaxis.units == _axis_unit(quantity_support)
+    assert ax.xaxis.units == u.mm
+    assert ax.yaxis.units == u.nm
 
     plt.close(fig)
 
@@ -1102,5 +1104,33 @@ def test_axes_setters_quantity(quantity_support: bool):
 
     assert ax.get_xlim() == (0, 2)
     assert ax.get_ylim() == (0, 3)
+    assert ax.xaxis.units == u.mm
+    assert ax.yaxis.units == u.mm
+
+    plt.close(fig)
+
+
+def test_plot_quantity_axis_units():
+    """
+    A plotted Quantity labels its axis, and later plots convert to that unit.
+
+    Unit support is enabled by the first call, without the caller asking, and
+    a later plot on the same axes is converted to the unit already recorded.
+    """
+    fig, ax = plt.subplots()
+
+    x = na.linspace(0, 1, axis="x", num=5) * u.mm
+    y = na.linspace(0, 1, axis="x", num=5) * u.nm
+
+    na.plt.plot(x, y, ax=ax)
+    assert ax.xaxis.units == u.mm
+    assert ax.yaxis.units == u.nm
+
+    line = na.plt.plot(x.to(u.m), y, ax=ax)[dict()].ndarray
+    assert line.get_xdata(orig=False).max() == pytest.approx(1)
+
+    t = na.linspace(0, 1, axis="x", num=5) * u.s
+    with pytest.raises(matplotlib.units.ConversionError):
+        na.plt.plot(t, y, ax=ax)
 
     plt.close(fig)
