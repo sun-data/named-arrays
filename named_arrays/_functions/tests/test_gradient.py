@@ -20,7 +20,7 @@ _fixtures = (
 
 def _axis_and_component(
     array: na.AbstractFunctionArray,
-) -> None | tuple[str, None | str]:
+) -> tuple[str, None | str]:
     """
     An axis to differentiate along and the variable to differentiate against.
 
@@ -30,15 +30,13 @@ def _axis_and_component(
     inputs = array.inputs
 
     if not isinstance(inputs, na.AbstractVectorArray):
-        for axis in na.shape(inputs):
-            return axis, None
-        return None
+        return next(iter(na.shape(inputs))), None
 
-    for component, value in inputs.explicit.components.items():
-        for axis in na.shape(value):
-            return axis, component
-
-    return None
+    return next(
+        (axis, component)
+        for component, value in inputs.explicit.components.items()
+        for axis in na.shape(value)
+    )
 
 
 @pytest.mark.parametrize("array", _fixtures)
@@ -46,10 +44,7 @@ def test_gradient_shape_contract(array: na.AbstractFunctionArray):
     """The inputs are untouched and the outputs keep their shape."""
     array = array.explicit
 
-    axis_and_component = _axis_and_component(array)
-    if axis_and_component is None:
-        pytest.skip("this fixture has no axis to differentiate along")
-    axis, component = axis_and_component
+    axis, component = _axis_and_component(array)
 
     result = array.gradient(axis, component=component)
 
@@ -189,6 +184,27 @@ def test_gradient_component_required():
 
     with pytest.raises(ValueError, match="must be a scalar"):
         np.gradient(f, axis="x")
+
+
+def test_gradient_constant_outputs():
+    """
+    Outputs which do not vary along the axis are broadcast against it.
+
+    The derivative of a constant is zero, and it is zero at every point along
+    the axis rather than at the single point the outputs were stored at.
+    """
+    num = 5
+    f = na.FunctionArray(
+        inputs=na.linspace(0, 2, axis="x", num=num) * u.nm,
+        outputs=na.ScalarArray(3.0) * u.ph,
+    )
+
+    assert "x" not in na.shape(f.outputs)
+
+    result = f.gradient("x")
+
+    assert result.outputs.shape == {"x": num}
+    assert np.allclose(result.outputs, 0 * u.ph / u.nm)
 
 
 def test_gradient_distorted_grid():
