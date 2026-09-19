@@ -392,6 +392,45 @@ def copyto(
         dst.outputs = src.outputs
 
 
+@_implements(np.gradient)
+def gradient(
+    f: na.AbstractFunctionArray,
+    *varargs: float | u.Quantity | na.AbstractArray,
+    axis: None | str | Sequence[str] = None,
+    edge_order: int = 1,
+) -> na.FunctionArray | tuple[na.FunctionArray, ...]:
+    """
+    Differentiate the outputs of a function array against its inputs.
+
+    Forwards to :meth:`named_arrays.AbstractFunctionArray.gradient`, which
+    takes the component of the inputs to differentiate against, where this
+    function always uses the inputs themselves.
+    """
+    if varargs:
+        raise ValueError(
+            f"the spacing of a function array is given by its inputs, so a "
+            f"spacing argument does not apply, got {len(varargs)} of them"
+        )
+
+    if axis is None:
+        raise ValueError(
+            "`axis` is required, since there is no positional order to "
+            "differentiate along. Name the axes to differentiate along."
+        )
+
+    axes = (axis,) if isinstance(axis, str) else tuple(axis)
+
+    result = tuple(
+        f.gradient(axis=ax, edge_order=edge_order)
+        for ax in axes
+    )
+
+    if isinstance(axis, str):
+        return result[0]
+
+    return result
+
+
 @_implements(np.transpose)
 def tranpose(
         a: na.AbstractFunctionArray,

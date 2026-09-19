@@ -907,10 +907,6 @@ class AbstractTestAbstractFunctionArray(
             pass    # pragma: nocover
 
         @pytest.mark.skip
-        def test_gradient_requires_an_axis(self, array: na.AbstractArray):
-            pass    # pragma: nocover
-
-        @pytest.mark.skip
         def test_gradient_spacing_count(self, array: na.AbstractArray):
             pass    # pragma: nocover
 
