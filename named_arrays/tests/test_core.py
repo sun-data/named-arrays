@@ -2364,13 +2364,39 @@ class AbstractTestAbstractArray(
             with pytest.raises(TypeError, match="spacings"):
                 np.gradient(array, *spacings, axis=axes)
 
-        def test_gradient_spacing_shape(self, array: na.AbstractArray):
-            # coordinates may vary only along the axis they are the spacing of
-            if "y" not in array.shape:
+        def test_gradient_spacing_varying(self, array: na.AbstractArray):
+            # a spacing may vary along axes other than its own, which is what
+            # a distorted grid gives. `numpy.gradient` cannot express that, so
+            # the differences are taken one element at a time instead, and
+            # must agree with the evenly spaced case they generalize
+            axis = "y"
+            if axis not in array.shape:
                 return
-            spacing = na.ScalarArray(np.ones((array.shape["y"], 2)), axes=("y", "_other"))
-            with pytest.raises(ValueError, match="no axis other than"):
-                np.gradient(array, spacing, axis="y")
+
+            array = array.astype(float)
+            num = array.shape[axis]
+
+            index = na.arange(0, num, axis=axis)
+
+            # each row of `_other` is stretched by a different amount, so
+            # the derivative differs from row to row and an implementation
+            # which looked at only one of them could not pass
+            scales = (1.0, 2.0)
+            scale = na.ScalarArray(np.array(scales), axes=("_other",))
+
+            result = np.gradient(array, scale * index * u.mm, axis=axis)
+
+            assert result.type_abstract == array.type_abstract
+            assert "_other" in na.shape(result)
+
+            for i, s in enumerate(scales):
+                expected = np.gradient(array, s * index * u.mm, axis=axis)
+                assert np.allclose(result[{"_other": i}], expected)
+
+            # a spacing carrying no axis of its own is an ordinary constant
+            # gap, which may still differ from one row of `_other` to the next
+            gap = na.ScalarArray(np.array(scales), axes=("_other",)) * u.mm
+            assert np.allclose(np.gradient(array, gap, axis=axis), result)
 
         @pytest.mark.parametrize(
             argnames="a",

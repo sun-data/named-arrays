@@ -7,6 +7,7 @@ import dataclasses
 import numpy as np
 import astropy.units as u
 import named_arrays as na
+import named_arrays._core_array_functions as _core_array_functions
 import itertools
 
 __all__ = [
@@ -636,77 +637,16 @@ class AbstractFunctionArray(
         if axis in self.axes_vertex:
             x = x.cell_centers(axis)
 
-        # the gaps, their squares, and their product all overflow in a narrow
-        # integer type, which would corrupt the interior silently, so an
-        # integer variable is promoted first, as :func:`numpy.gradient` does
-        if np.issubdtype(x.dtype, np.integer):
-            x = x.astype(float)
-
-        shape_x = na.shape(x)
-
-        if axis not in shape_x:
-            raise ValueError(
-                f"the differentiation variable does not vary along {axis=}, "
-                f"so the derivative against it is undefined there. The "
-                f"variable has shape {shape_x}."
-            )
-
-        num = shape_x[axis]
-
-        if num < edge_order + 1:
-            raise ValueError(
-                f"at least {edge_order + 1} points are required along {axis=} "
-                f"for {edge_order=}, got {num}"
-            )
-
-        shape_outputs = na.shape(outputs)
-        if shape_outputs.get(axis, 1) != num:
-            outputs = na.broadcast_to(
-                array=outputs,
-                shape=na.broadcast_shapes(shape_outputs, {axis: num}),
-            )
-
-        def _slice(a: na.AbstractArray, s: slice) -> na.AbstractArray:
-            return a[{axis: s}]
-
-        # second-order central differences in the interior, which for uneven
-        # spacing weight each neighbor by the gap on the opposite side
-        gap_behind = _slice(x, slice(1, ~0)) - _slice(x, slice(None, -2))
-        gap_ahead = _slice(x, slice(2, None)) - _slice(x, slice(1, ~0))
-        interior = (
-            np.square(gap_behind) * _slice(outputs, slice(2, None))
-            + (np.square(gap_ahead) - np.square(gap_behind)) * _slice(outputs, slice(1, ~0))
-            - np.square(gap_ahead) * _slice(outputs, slice(None, -2))
-        ) / (gap_behind * gap_ahead * (gap_ahead + gap_behind))
-
-        if edge_order == 1:
-            first = (
-                _slice(outputs, slice(1, 2)) - _slice(outputs, slice(0, 1))
-            ) / (_slice(x, slice(1, 2)) - _slice(x, slice(0, 1)))
-            last = (
-                _slice(outputs, slice(-1, None)) - _slice(outputs, slice(-2, -1))
-            ) / (_slice(x, slice(-1, None)) - _slice(x, slice(-2, -1)))
-        else:
-            d1 = _slice(x, slice(1, 2)) - _slice(x, slice(0, 1))
-            d2 = _slice(x, slice(2, 3)) - _slice(x, slice(1, 2))
-            first = (
-                -(2 * d1 + d2) / (d1 * (d1 + d2)) * _slice(outputs, slice(0, 1))
-                + (d1 + d2) / (d1 * d2) * _slice(outputs, slice(1, 2))
-                - d1 / (d2 * (d1 + d2)) * _slice(outputs, slice(2, 3))
-            )
-            d1 = _slice(x, slice(-2, -1)) - _slice(x, slice(-3, -2))
-            d2 = _slice(x, slice(-1, None)) - _slice(x, slice(-2, -1))
-            last = (
-                d2 / (d1 * (d1 + d2)) * _slice(outputs, slice(-3, -2))
-                - (d2 + d1) / (d1 * d2) * _slice(outputs, slice(-2, -1))
-                + (2 * d2 + d1) / (d2 * (d1 + d2)) * _slice(outputs, slice(-1, None))
-            )
-
         return self.replace(
             # a container of its own, so that the result is not the source's
             # inputs under another name, as every neighboring operation gives
             inputs=inputs.copy_shallow(),
-            outputs=np.concatenate([first, interior, last], axis=axis),
+            outputs=_core_array_functions._gradient(
+                f=outputs,
+                x=x,
+                axis=axis,
+                edge_order=edge_order,
+            ),
         )
 
     def to_string_array(

@@ -915,7 +915,7 @@ class AbstractTestAbstractFunctionArray(
             pass    # pragma: nocover
 
         @pytest.mark.skip
-        def test_gradient_spacing_shape(self, array: na.AbstractArray):
+        def test_gradient_spacing_varying(self, array: na.AbstractArray):
             pass    # pragma: nocover
 
         @pytest.mark.skip

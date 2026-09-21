@@ -300,3 +300,151 @@ def roll(
         index[ax] = (na.arange(0, num, axis=ax) - sh) % num
 
     return a[index]
+
+
+def _coordinates(
+    spacing: na.AbstractArray,
+    axis: str,
+    num: int,
+) -> na.AbstractArray:
+    """
+    The coordinates along `axis` described by a spacing argument.
+
+    :func:`numpy.gradient` reads a spacing either as the coordinates
+    themselves, when it runs the length of the axis, or as the constant gap
+    between them otherwise. This applies the same rule.
+    """
+    length = na.shape(spacing).get(axis, None)
+
+    if length is None:
+        return spacing * na.arange(0, num, axis=axis)
+
+    if length != num:
+        raise ValueError(
+            f"a spacing which runs along `{axis}` gives the coordinates "
+            f"there, so it needs one value per sample, {num}, got {length}"
+        )
+
+    return spacing
+
+
+def _promoted(a: na.AbstractArray) -> na.AbstractArray:
+    """
+    An integer array as floating point, and anything else unchanged.
+
+    A vector has no one dtype, so each of its components is promoted on its
+    own, which leaves a vector of mixed precision as it was found.
+    """
+    if isinstance(a, na.AbstractVectorArray):
+        a = a.explicit
+        return a.type_explicit.from_components({
+            c: _promoted(v) for c, v in a.components.items()
+        })
+
+    if np.issubdtype(na.get_dtype(a), np.integer):
+        return a.astype(float)
+
+    return a
+
+
+def _gradient(
+    f: na.AbstractArray,
+    x: na.AbstractArray,
+    axis: str,
+    edge_order: int = 1,
+) -> na.AbstractExplicitArray:
+    """
+    Differentiate `f` with respect to `x` along `axis`, one element at a time.
+
+    The interior uses second-order central differences, weighting each
+    neighbor by the gap on the opposite side so that unevenly spaced samples
+    are handled, and the two ends use one-sided differences of order
+    `edge_order`.
+
+    :func:`numpy.gradient` takes the coordinates along an axis as a
+    one-dimensional array, so it cannot express a coordinate which varies
+    along any other axis. That is what a distorted grid gives, and what the
+    distribution of an uncertain coordinate always is, since it carries the
+    distribution axis. Differencing elementwise removes the restriction, at
+    the cost of a few temporary arrays, and agrees with
+    :func:`numpy.gradient` wherever both apply.
+
+    Parameters
+    ----------
+    f
+        The values to differentiate.
+    x
+        The coordinates to differentiate against, which must be a scalar and
+        must vary along `axis`.
+    axis
+        The axis to differentiate along.
+    edge_order
+        The order of the one-sided differences at the two ends, 1 or 2.
+    """
+    if edge_order not in (1, 2):
+        raise ValueError(f"{edge_order=} must be either 1 or 2")
+
+    # the differences below overflow in a narrow integer type, which would
+    # corrupt the result without any warning, so both sides are promoted
+    # first, as :func:`numpy.gradient` promotes its values and its distances
+    x = _promoted(x)
+    f = _promoted(f)
+
+    shape_x = na.shape(x)
+
+    if axis not in shape_x:
+        raise ValueError(
+            f"the differentiation variable does not vary along {axis=}, so "
+            f"the derivative against it is undefined there. The variable has "
+            f"shape {shape_x}."
+        )
+
+    num = shape_x[axis]
+
+    if num < edge_order + 1:
+        raise ValueError(
+            f"at least {edge_order + 1} points are required along {axis=} "
+            f"for {edge_order=}, got {num}"
+        )
+
+    shape_f = na.shape(f)
+    if shape_f.get(axis, 1) != num:
+        f = na.broadcast_to(f, na.broadcast_shapes(shape_f, {axis: num}))
+
+    def _slice(a: na.AbstractArray, s: slice) -> na.AbstractArray:
+        return a[{axis: s}]
+
+    # second-order central differences in the interior, which for uneven
+    # spacing weight each neighbor by the gap on the opposite side
+    gap_behind = _slice(x, slice(1, ~0)) - _slice(x, slice(None, -2))
+    gap_ahead = _slice(x, slice(2, None)) - _slice(x, slice(1, ~0))
+    interior = (
+        np.square(gap_behind) * _slice(f, slice(2, None))
+        + (np.square(gap_ahead) - np.square(gap_behind)) * _slice(f, slice(1, ~0))
+        - np.square(gap_ahead) * _slice(f, slice(None, -2))
+    ) / (gap_behind * gap_ahead * (gap_ahead + gap_behind))
+
+    if edge_order == 1:
+        first = (
+            _slice(f, slice(1, 2)) - _slice(f, slice(0, 1))
+        ) / (_slice(x, slice(1, 2)) - _slice(x, slice(0, 1)))
+        last = (
+            _slice(f, slice(-1, None)) - _slice(f, slice(-2, -1))
+        ) / (_slice(x, slice(-1, None)) - _slice(x, slice(-2, -1)))
+    else:
+        d1 = _slice(x, slice(1, 2)) - _slice(x, slice(0, 1))
+        d2 = _slice(x, slice(2, 3)) - _slice(x, slice(1, 2))
+        first = (
+            -(2 * d1 + d2) / (d1 * (d1 + d2)) * _slice(f, slice(0, 1))
+            + (d1 + d2) / (d1 * d2) * _slice(f, slice(1, 2))
+            - d1 / (d2 * (d1 + d2)) * _slice(f, slice(2, 3))
+        )
+        d1 = _slice(x, slice(-2, -1)) - _slice(x, slice(-3, -2))
+        d2 = _slice(x, slice(-1, None)) - _slice(x, slice(-2, -1))
+        last = (
+            d2 / (d1 * (d1 + d2)) * _slice(f, slice(-3, -2))
+            - (d2 + d1) / (d1 * d2) * _slice(f, slice(-2, -1))
+            + (2 * d2 + d1) / (d2 * (d1 + d2)) * _slice(f, slice(-1, None))
+        )
+
+    return np.concatenate([first, interior, last], axis=axis)

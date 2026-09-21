@@ -1879,3 +1879,91 @@ class TestScalarGeometricSpace(
     tests.test_core.AbstractTestAbstractGeometricSpace,
 ):
     pass
+
+
+def _gradient_fixture() -> na.ScalarArray:
+    """A two-dimensional array to differentiate in the tests below."""
+    return na.ScalarArray(np.arange(20.0).reshape(4, 5), axes=("y", "x"))
+
+
+def test_gradient_lone_spacing_must_be_constant_along_the_axes():
+    """
+    A lone spacing stands for every axis only where it is constant along them.
+
+    One which runs along a gradient axis gives the coordinates there and says
+    nothing about the others, so it cannot be repeated for all of them. This
+    is the rule :func:`numpy.gradient` applies to a spacing of more than one
+    dimension, written in terms of axis names.
+    """
+    f = _gradient_fixture()
+    coordinates = na.arange(0, 4, axis="y") * u.mm
+
+    # one axis, where the spacing is that axis's own coordinates
+    assert na.shape(np.gradient(f, coordinates, axis="y")) == na.shape(f)
+
+    with pytest.raises(TypeError, match="constant along each of them"):
+        np.gradient(f, coordinates, axis=("y", "x"))
+
+
+def test_gradient_lone_spacing_constant_along_the_axes():
+    """A gap carrying no gradient axis may stand for all of them."""
+    f = _gradient_fixture()
+
+    # a constant gap which differs from one row of `_other` to the next, so
+    # it cannot be expressed as the single number `numpy.gradient` takes
+    gap = na.ScalarArray(np.array([1.0, 2.0]), axes=("_other",)) * u.mm
+
+    result = np.gradient(f, gap, axis=("y", "x"))
+
+    assert len(result) == 2
+    for r, ax in zip(result, ("y", "x")):
+        for i, g in enumerate((1.0, 2.0)):
+            expected = np.gradient(f, g * u.mm, axis=ax)
+            assert np.allclose(r[{"_other": i}], expected)
+
+
+@pytest.mark.parametrize(
+    argnames="spacings",
+    argvalues=[
+        (),
+        (na.ScalarArray(np.array([1.0, 1.0]), axes=("_other",)) * u.mm,),
+    ],
+    ids=["no spacing", "varying spacing"],
+)
+def test_gradient_repeated_axis(spacings: tuple):
+    """Naming an axis twice is refused, however the spacing is given."""
+    f = _gradient_fixture()
+
+    with pytest.raises(ValueError, match="must not name the same axis twice"):
+        np.gradient(f, *spacings, axis=("y", "y"))
+
+
+def test_gradient_integer_values():
+    """
+    Integer values are promoted, so that the differences do not overflow.
+
+    A narrow integer type wraps around silently, which would corrupt the
+    one-sided differences at the two ends without any warning.
+    """
+    values = np.array([0, 100, -100, 120], dtype=np.int8)
+    f = na.ScalarArray(values, axes=("y",))
+
+    # a gap varying along another axis, which forces the elementwise path
+    gap = na.ScalarArray(np.array([1.0, 1.0]), axes=("_other",)) * u.mm
+
+    result = np.gradient(f, gap, axis="y")
+    expected = np.gradient(values.astype(float), 1.0)
+
+    assert np.allclose(result[{"_other": 0}].ndarray.to_value(1 / u.mm), expected)
+
+
+def test_gradient_spacing_wrong_length():
+    """Coordinates along an axis need one value for each sample there."""
+    f = _gradient_fixture()
+
+    # length one along `y`, which broadcasts against `f` but cannot be the
+    # coordinates of its four samples
+    coordinates = na.ScalarArray(np.ones((2, 1)), axes=("_other", "y")) * u.mm
+
+    with pytest.raises(ValueError, match="one value per sample"):
+        np.gradient(f, coordinates, axis="y")

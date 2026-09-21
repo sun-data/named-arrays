@@ -1311,27 +1311,13 @@ def test_trapezoid_uncertain_coordinates():
     assert np.allclose(result.distribution, 80 * u.nm * u.ph)
 
 
-@pytest.mark.xfail(
-    reason=(
-        "`numpy.gradient` cannot take a coordinate which varies along an axis "
-        "other than the one being differentiated along, and the distribution "
-        "of an uncertain coordinate always carries the distribution axis, so "
-        "the scalar implementation rejects it. `numpy.trapezoid` accepts the "
-        "same coordinate, so the two disagree."
-    ),
-    raises=ValueError,
-    strict=True,
-)
 def test_gradient_uncertain_coordinates():
     """
     The distribution is differentiated against the distribution of the coordinates.
 
     This is the counterpart to the trapezoid case: a coordinate with its own
     uncertainty gives a derivative whose distribution is divided by the
-    spacing of that distribution. Once this passes, the marker comes off and
-    the result should be ``1 ph / nm`` in the nominal value and, since the
-    distribution is spread over ten times the interval, ``0.1 ph / nm``
-    throughout its distribution.
+    spacing of that distribution.
     """
     axis = "x"
     num = 5
@@ -1344,4 +1330,9 @@ def test_gradient_uncertain_coordinates():
         ).broadcast_to({"_distribution": _num_distribution, axis: num}) * u.ph,
     )
 
-    np.gradient(y, x, axis=axis)
+    result = np.gradient(y, x, axis=axis)
+
+    # unit spacing in the nominal value, and ten times that in the
+    # distribution, so its derivative is a tenth of the nominal one
+    assert np.allclose(result.nominal, 1 * u.ph / u.nm)
+    assert np.allclose(result.distribution, 0.1 * u.ph / u.nm)
