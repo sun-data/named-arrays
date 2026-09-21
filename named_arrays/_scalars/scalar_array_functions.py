@@ -3,6 +3,7 @@ from typing import Sequence, Callable, Type
 import numpy as np
 import astropy.units as u
 import named_arrays as na
+import named_arrays._core_array_functions as _core_array_functions
 from . import scalars
 
 __all__ = [
@@ -1345,9 +1346,15 @@ def gradient(
     Unlike :func:`numpy.gradient`, `axis` is required, since there is no
     positional order to differentiate along.
     A spacing in `varargs` may be a scalar or the coordinates along the
-    corresponding axis, an array with no axis other than that one.
+    corresponding axis.
     A single axis gives one array and a sequence of axes a tuple of arrays,
     one per axis, as :func:`numpy.gradient` does.
+
+    Unlike :func:`numpy.gradient`, a spacing may vary along axes other than
+    the one it belongs to, which is what a distorted grid gives, and what the
+    distribution of an uncertain coordinate always is. The differences are
+    then taken one element at a time rather than by :func:`numpy.gradient`,
+    which is slower but gives the same answer where both apply.
     """
     axes_gradient = _axes_gradient(axis)
 
@@ -1373,28 +1380,39 @@ def gradient(
             f"axes, got {len(varargs)}"
         )
 
-    varargs_ndarray = []
-    for v, ax in zip(varargs, axes_varargs):
-        if set(v.shape) - {ax}:
-            raise ValueError(
-                f"a spacing must be a scalar or the coordinates along its axis, "
-                f"so it may have no axis other than `{ax}`, got shape {v.shape}"
+    # `numpy.gradient` wants the coordinates along an axis as a
+    # one-dimensional array, so a spacing which varies along any other axis
+    # has to be differenced one element at a time instead
+    elementwise = any(set(v.shape) - {ax} for v, ax in zip(varargs, axes_varargs))
+
+    if elementwise:
+        result = tuple(
+            _core_array_functions._gradient(
+                f=f,
+                x=_core_array_functions._coordinates(
+                    spacing=varargs[i] if len(varargs) == len(axes_gradient) else varargs[0],
+                    axis=ax,
+                    num=shape[ax],
+                ),
+                axis=ax,
+                edge_order=edge_order,
             )
-        varargs_ndarray.append(v.ndarray)
+            for i, ax in enumerate(axes_gradient)
+        )
+    else:
+        result = np.gradient(
+            na.broadcast_to(f, shape).ndarray,
+            *[v.ndarray for v in varargs],
+            axis=tuple(axes.index(ax) for ax in axes_gradient),
+            edge_order=edge_order,
+        )
 
-    result = np.gradient(
-        na.broadcast_to(f, shape).ndarray,
-        *varargs_ndarray,
-        axis=tuple(axes.index(ax) for ax in axes_gradient),
-        edge_order=edge_order,
-    )
+        # `numpy` returns one array for one axis, whether or not it was named
+        # in a sequence
+        if len(axes_gradient) == 1:
+            result = (result,)
 
-    # `numpy` returns one array for one axis, whether or not it was named in
-    # a sequence
-    if len(axes_gradient) == 1:
-        result = (result,)
-
-    result = tuple(f.type_explicit(ndarray=r, axes=axes) for r in result)
+        result = tuple(f.type_explicit(ndarray=r, axes=axes) for r in result)
 
     if isinstance(axis, str):
         return result[0]

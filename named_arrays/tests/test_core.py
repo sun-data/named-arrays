@@ -2364,13 +2364,37 @@ class AbstractTestAbstractArray(
             with pytest.raises(TypeError, match="spacings"):
                 np.gradient(array, *spacings, axis=axes)
 
-        def test_gradient_spacing_shape(self, array: na.AbstractArray):
-            # coordinates may vary only along the axis they are the spacing of
-            if "y" not in array.shape:
+        def test_gradient_spacing_varying(self, array: na.AbstractArray):
+            # a spacing may vary along axes other than its own, which is what
+            # a distorted grid gives. `numpy.gradient` cannot express that, so
+            # the differences are taken one element at a time instead, and
+            # must agree with the evenly spaced case they generalize
+            axis = "y"
+            if axis not in array.shape:
                 return
-            spacing = na.ScalarArray(np.ones((array.shape["y"], 2)), axes=("y", "_other"))
-            with pytest.raises(ValueError, match="no axis other than"):
-                np.gradient(array, spacing, axis="y")
+
+            array = array.astype(float)
+            num = array.shape[axis]
+
+            index = na.arange(0, num, axis=axis)
+            offset = na.ScalarArray(np.array([0.0, 10.0]), axes=("_other",))
+
+            # the same grid on both rows of `_other`, only shifted, so the
+            # derivative along `axis` is the same on each
+            coordinates = index * u.mm + offset * u.mm
+
+            result = np.gradient(array, coordinates, axis=axis)
+            expected = np.gradient(array, index * u.mm, axis=axis)
+
+            # a spacing carrying no axis of its own is an ordinary constant
+            # gap, which may still vary from one row of `_other` to the next
+            gap = na.ScalarArray(np.array([1.0, 1.0]), axes=("_other",)) * u.mm
+            assert np.allclose(np.gradient(array, gap, axis=axis), expected)
+
+            assert result.type_abstract == array.type_abstract
+            assert "_other" in na.shape(result)
+            for i in range(2):
+                assert np.allclose(result[{"_other": i}], expected)
 
         @pytest.mark.parametrize(
             argnames="a",
