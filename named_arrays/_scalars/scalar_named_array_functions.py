@@ -2418,6 +2418,17 @@ def regridding_regrid_from_weights(
         axis_output=tuple(tuple(shape_values_output).index(a) for a in axis_output),
     )
 
+    # weights built from a `weights_input` with a unit carry that unit, and
+    # the resampling puts it on the result; the unit of the values multiplies
+    # it rather than replacing it
+    if isinstance(result, u.Quantity):
+        unit_result = result.unit
+        result = result.value
+        if unit_values is None:
+            unit_values = unit_result
+        else:
+            unit_values = unit_result * unit_values
+
     result = na.ScalarArray(
         ndarray=result,
         axes=tuple(shape_values_output),
