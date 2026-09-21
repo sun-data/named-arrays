@@ -895,11 +895,15 @@ class AbstractTestAbstractFunctionArray(
             pass    # pragma: nocover
 
         @pytest.mark.skip
+        def test_trapezoid_spacing_may_not_vary_along_axis(self, array: na.AbstractArray):
+            pass    # pragma: nocover
+
+        @pytest.mark.skip
         def test_average(self, array, axis, weighted, returned, keepdims):
             pass    # pragma: nocover
 
         @pytest.mark.skip
-        def test_gradient(self, array: na.AbstractArray, axis: str, spacing: None | str):
+        def test_gradient(self, array: na.AbstractArray, axis: str, spacing: None | str, edge_order: int):
             pass    # pragma: nocover
 
         @pytest.mark.skip

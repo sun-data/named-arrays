@@ -2196,6 +2196,17 @@ class AbstractTestAbstractArray(
             with pytest.raises(ValueError, match="`axis` is required"):
                 np.trapezoid(array)
 
+        def test_trapezoid_spacing_may_not_vary_along_axis(self, array: na.AbstractArray):
+            # a single `dx` describes the whole axis, so one which varies
+            # along that axis is a different thing entirely: the coordinates,
+            # which belong in `x`
+            axis = "y"
+            if axis not in array.shape:
+                return
+            dx = na.linspace(1, 2, axis=axis, num=array.shape[axis]) * u.mm
+            with pytest.raises(ValueError, match="may not vary along"):
+                np.trapezoid(array, dx=dx, axis=axis)
+
         @pytest.mark.parametrize("axis", [None, "y", ("x", "y"), "_missing"])
         @pytest.mark.parametrize("weighted", [False, True])
         @pytest.mark.parametrize("returned", [False, True])
@@ -2256,11 +2267,13 @@ class AbstractTestAbstractArray(
             argnames="spacing",
             argvalues=[None, "dx", "x"],
         )
+        @pytest.mark.parametrize("edge_order", [1, 2])
         def test_gradient(
             self,
             array: na.AbstractArray,
             axis: str,
             spacing: None | str,
+            edge_order: int,
         ):
             array = array.astype(float)
 
@@ -2283,11 +2296,10 @@ class AbstractTestAbstractArray(
             else:
                 x = na.arange(0, num, axis=axis)
 
-            result = np.gradient(array, *varargs, axis=axis)
+            result = np.gradient(array, *varargs, axis=axis, edge_order=edge_order)
 
             # second-order central differences in the interior, which for
-            # uneven spacing weight the two neighbors by the opposite gaps, and
-            # first-order one-sided differences at the two ends
+            # uneven spacing weight the two neighbors by the opposite gaps
             f = array
             hs = x[{axis: slice(1, ~0)}] - x[{axis: slice(None, -2)}]
             hd = x[{axis: slice(2, None)}] - x[{axis: slice(1, ~0)}]
@@ -2296,8 +2308,29 @@ class AbstractTestAbstractArray(
                 + (hd ** 2 - hs ** 2) * f[{axis: slice(1, ~0)}]
                 - hd ** 2 * f[{axis: slice(None, -2)}]
             ) / (hs * hd * (hd + hs))
-            first = (f[{axis: slice(1, 2)}] - f[{axis: slice(0, 1)}]) / (x[{axis: slice(1, 2)}] - x[{axis: slice(0, 1)}])
-            last = (f[{axis: slice(-1, None)}] - f[{axis: slice(-2, -1)}]) / (x[{axis: slice(-1, None)}] - x[{axis: slice(-2, -1)}])
+
+            if edge_order == 1:
+                # one-sided differences at the two ends
+                first = (f[{axis: slice(1, 2)}] - f[{axis: slice(0, 1)}]) / (x[{axis: slice(1, 2)}] - x[{axis: slice(0, 1)}])
+                last = (f[{axis: slice(-1, None)}] - f[{axis: slice(-2, -1)}]) / (x[{axis: slice(-1, None)}] - x[{axis: slice(-2, -1)}])
+            else:
+                # the quadratic through the three points nearest each end,
+                # differentiated at the end itself
+                d1 = x[{axis: slice(1, 2)}] - x[{axis: slice(0, 1)}]
+                d2 = x[{axis: slice(2, 3)}] - x[{axis: slice(1, 2)}]
+                first = (
+                    -(2 * d1 + d2) / (d1 * (d1 + d2)) * f[{axis: slice(0, 1)}]
+                    + (d1 + d2) / (d1 * d2) * f[{axis: slice(1, 2)}]
+                    - d1 / (d2 * (d1 + d2)) * f[{axis: slice(2, 3)}]
+                )
+                d1 = x[{axis: slice(-2, -1)}] - x[{axis: slice(-3, -2)}]
+                d2 = x[{axis: slice(-1, None)}] - x[{axis: slice(-2, -1)}]
+                last = (
+                    d2 / (d1 * (d1 + d2)) * f[{axis: slice(-3, -2)}]
+                    - (d2 + d1) / (d1 * d2) * f[{axis: slice(-2, -1)}]
+                    + (2 * d2 + d1) / (d2 * (d1 + d2)) * f[{axis: slice(-1, None)}]
+                )
+
             expected = np.concatenate([first, interior, last], axis=axis)
 
             assert result.type_abstract == array.type_abstract
