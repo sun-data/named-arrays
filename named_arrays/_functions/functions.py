@@ -517,6 +517,198 @@ class AbstractFunctionArray(
             outputs=outputs,
         )
 
+    def gradient(
+        self,
+        axis: str,
+        component: None | str = None,
+        edge_order: int = 1,
+    ) -> FunctionArray:
+        """
+        Differentiate the outputs with respect to the inputs along ``axis``.
+
+        This is the counterpart to :meth:`integrate`: where that one sums the
+        outputs against a measure computed from the inputs, this one divides
+        the difference of the outputs by the difference of the inputs.
+
+        The result has the same inputs as this array, and its outputs are the
+        derivative, so the units of the result are those of the outputs
+        divided by those of the differentiation variable.
+
+        * If ``component`` is :obj:`None`, the inputs themselves are the
+          differentiation variable, and they must be a scalar.
+        * If ``component`` is a :class:`str`, that named sub-element of the
+          inputs is the variable, and it must be a scalar.
+
+        A center axis, where the inputs are samples, differentiates the
+        outputs against those samples directly.
+        A vertex axis, where the inputs are bin edges and so has one more
+        input than output, differentiates against the cell centers, which is
+        where the outputs live.
+
+        Parameters
+        ----------
+        axis
+            The logical axis to differentiate along.
+        component
+            The named input sub-element which is the differentiation variable.
+            If :obj:`None`, the inputs themselves are the variable.
+        edge_order
+            The order of the one-sided differences used at the two ends of
+            ``axis``, either 1 or 2.
+            The interior always uses second-order central differences.
+
+        Raises
+        ------
+        ValueError
+            If ``axis`` is not an axis of this array, if the differentiation
+            variable is not a scalar or does not vary along ``axis``, or if
+            there are too few points along ``axis`` for the given
+            ``edge_order``.
+
+        See Also
+        --------
+        :meth:`integrate` : The counterpart of this method, which sums the
+            outputs against the inputs rather than dividing by them.
+        :func:`numpy.gradient` : The :mod:`numpy` function this method backs.
+
+        Notes
+        -----
+        Unlike :func:`numpy.gradient`, the differentiation variable may vary
+        along axes other than ``axis``, which is what a distorted grid gives,
+        since the differences are taken elementwise.
+
+        Examples
+        --------
+
+        Differentiate a parabola, whose derivative is a straight line.
+
+        Second-order edges are asked for, since the first-order ones of the
+        default are inexact wherever the function curves.
+
+        .. jupyter-execute::
+
+            import numpy as np
+            import astropy.units as u
+            import named_arrays as na
+
+            x = na.linspace(0, 2, axis="x", num=5) * u.mm
+
+            f = na.FunctionArray(
+                inputs=x,
+                outputs=np.square(x / u.mm) * u.ph,
+            )
+
+            f.gradient("x", edge_order=2)
+        """
+
+        self = self.explicit
+        inputs = self.inputs
+        outputs = self.outputs
+
+        if not isinstance(axis, str):
+            raise TypeError(
+                f"`axis` must be the name of a single axis, got {axis!r}. "
+                f"Differentiating along several axes gives one result per "
+                f"axis, so use `numpy.gradient` for that."
+            )
+
+        if axis not in self.axes:
+            raise ValueError(f"{axis=} must be a member of {self.axes}")
+
+        if edge_order not in (1, 2):
+            raise ValueError(f"{edge_order=} must be either 1 or 2")
+
+        if component is None:
+            x = inputs
+        else:
+            x = inputs.components[component]
+
+        if not isinstance(x, na.AbstractScalar):
+            raise ValueError(
+                f"the differentiation variable must be a scalar, got "
+                f"{x.type_abstract}. Name the component to differentiate "
+                f"against using the `component` argument."
+            )
+
+        # where the inputs are bin edges there is one more of them than there
+        # are outputs, so the variable is taken at the cell centers, which is
+        # where the outputs live
+        if axis in self.axes_vertex:
+            x = x.cell_centers(axis)
+
+        # the gaps, their squares, and their product all overflow in a narrow
+        # integer type, which would corrupt the interior silently, so an
+        # integer variable is promoted first, as :func:`numpy.gradient` does
+        if np.issubdtype(x.dtype, np.integer):
+            x = x.astype(float)
+
+        shape_x = na.shape(x)
+
+        if axis not in shape_x:
+            raise ValueError(
+                f"the differentiation variable does not vary along {axis=}, "
+                f"so the derivative against it is undefined there. The "
+                f"variable has shape {shape_x}."
+            )
+
+        num = shape_x[axis]
+
+        if num < edge_order + 1:
+            raise ValueError(
+                f"at least {edge_order + 1} points are required along {axis=} "
+                f"for {edge_order=}, got {num}"
+            )
+
+        shape_outputs = na.shape(outputs)
+        if shape_outputs.get(axis, 1) != num:
+            outputs = na.broadcast_to(
+                array=outputs,
+                shape=na.broadcast_shapes(shape_outputs, {axis: num}),
+            )
+
+        def _slice(a: na.AbstractArray, s: slice) -> na.AbstractArray:
+            return a[{axis: s}]
+
+        # second-order central differences in the interior, which for uneven
+        # spacing weight each neighbor by the gap on the opposite side
+        gap_behind = _slice(x, slice(1, ~0)) - _slice(x, slice(None, -2))
+        gap_ahead = _slice(x, slice(2, None)) - _slice(x, slice(1, ~0))
+        interior = (
+            np.square(gap_behind) * _slice(outputs, slice(2, None))
+            + (np.square(gap_ahead) - np.square(gap_behind)) * _slice(outputs, slice(1, ~0))
+            - np.square(gap_ahead) * _slice(outputs, slice(None, -2))
+        ) / (gap_behind * gap_ahead * (gap_ahead + gap_behind))
+
+        if edge_order == 1:
+            first = (
+                _slice(outputs, slice(1, 2)) - _slice(outputs, slice(0, 1))
+            ) / (_slice(x, slice(1, 2)) - _slice(x, slice(0, 1)))
+            last = (
+                _slice(outputs, slice(-1, None)) - _slice(outputs, slice(-2, -1))
+            ) / (_slice(x, slice(-1, None)) - _slice(x, slice(-2, -1)))
+        else:
+            d1 = _slice(x, slice(1, 2)) - _slice(x, slice(0, 1))
+            d2 = _slice(x, slice(2, 3)) - _slice(x, slice(1, 2))
+            first = (
+                -(2 * d1 + d2) / (d1 * (d1 + d2)) * _slice(outputs, slice(0, 1))
+                + (d1 + d2) / (d1 * d2) * _slice(outputs, slice(1, 2))
+                - d1 / (d2 * (d1 + d2)) * _slice(outputs, slice(2, 3))
+            )
+            d1 = _slice(x, slice(-2, -1)) - _slice(x, slice(-3, -2))
+            d2 = _slice(x, slice(-1, None)) - _slice(x, slice(-2, -1))
+            last = (
+                d2 / (d1 * (d1 + d2)) * _slice(outputs, slice(-3, -2))
+                - (d2 + d1) / (d1 * d2) * _slice(outputs, slice(-2, -1))
+                + (2 * d2 + d1) / (d2 * (d1 + d2)) * _slice(outputs, slice(-1, None))
+            )
+
+        return self.replace(
+            # a container of its own, so that the result is not the source's
+            # inputs under another name, as every neighboring operation gives
+            inputs=inputs.copy_shallow(),
+            outputs=np.concatenate([first, interior, last], axis=axis),
+        )
+
     def to_string_array(
         self,
         format_value: str = "%.2f",
