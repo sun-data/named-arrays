@@ -1268,3 +1268,81 @@ def test_interp_axis_uncertain_xp_extra_axis():
     result = na.interp(x, uncertain(xp), uncertain(fp), axis=axis)
 
     assert na.shape(result) == {axis: 5, "channel": 3}
+
+
+def _uncertain_coordinates(axis: str, num: int) -> na.UncertainScalarArray:
+    """A coordinate whose distribution is ten times its nominal value."""
+    nominal = na.ScalarArray(np.arange(num, dtype=float), axes=(axis,)) * u.nm
+    return na.UncertainScalarArray(
+        nominal=nominal,
+        distribution=10 * nominal.add_axes("_distribution").broadcast_to(
+            {"_distribution": _num_distribution, axis: num},
+        ),
+    )
+
+
+def test_trapezoid_uncertain_coordinates():
+    """
+    The distribution is integrated against the distribution of the coordinates.
+
+    A coordinate carries its own uncertainty, so the nominal value and each
+    sample of the distribution are integrated over their own abscissa. Using
+    the nominal coordinates for both would silently discard the uncertainty
+    in the sample spacing.
+    """
+    axis = "x"
+    num = 5
+
+    x = _uncertain_coordinates(axis, num)
+    y = na.UncertainScalarArray(
+        nominal=na.ScalarArray(np.arange(num, dtype=float), axes=(axis,)) * u.ph,
+        distribution=na.ScalarArray(np.arange(num, dtype=float), axes=(axis,)).add_axes(
+            "_distribution"
+        ).broadcast_to({"_distribution": _num_distribution, axis: num}) * u.ph,
+    )
+
+    result = np.trapezoid(y, x=x, axis=axis)
+
+    # the nominal integrand and abscissa give the ordinary trapezoid sum
+    assert np.allclose(result.nominal, 8 * u.nm * u.ph)
+
+    # the distribution is spread over ten times the interval, so its integral
+    # is ten times the nominal one rather than equal to it
+    assert np.allclose(result.distribution, 80 * u.nm * u.ph)
+
+
+@pytest.mark.xfail(
+    reason=(
+        "`numpy.gradient` cannot take a coordinate which varies along an axis "
+        "other than the one being differentiated along, and the distribution "
+        "of an uncertain coordinate always carries the distribution axis, so "
+        "the scalar implementation rejects it. `numpy.trapezoid` accepts the "
+        "same coordinate, so the two disagree."
+    ),
+    raises=ValueError,
+    strict=True,
+)
+def test_gradient_uncertain_coordinates():
+    """
+    The distribution is differentiated against the distribution of the coordinates.
+
+    This is the counterpart to the trapezoid case: a coordinate with its own
+    uncertainty gives a derivative whose distribution is divided by the
+    spacing of that distribution.
+    """
+    axis = "x"
+    num = 5
+
+    x = _uncertain_coordinates(axis, num)
+    y = na.UncertainScalarArray(
+        nominal=na.ScalarArray(np.arange(num, dtype=float), axes=(axis,)) * u.ph,
+        distribution=na.ScalarArray(np.arange(num, dtype=float), axes=(axis,)).add_axes(
+            "_distribution"
+        ).broadcast_to({"_distribution": _num_distribution, axis: num}) * u.ph,
+    )
+
+    result = np.gradient(y, x, axis=axis)
+
+    # unit spacing in the nominal, ten times that in the distribution
+    assert np.allclose(result.nominal, 1 * u.ph / u.nm)
+    assert np.allclose(result.distribution, 0.1 * u.ph / u.nm)
