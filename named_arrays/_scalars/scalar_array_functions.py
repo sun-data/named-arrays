@@ -1370,10 +1370,26 @@ def gradient(
     if not set(axes_gradient).issubset(axes):
         raise ValueError(f"{axis=} must be a subset of {axes}")
 
+    if len(set(axes_gradient)) != len(axes_gradient):
+        raise ValueError(f"{axis=} must not name the same axis twice")
+
+    # one spacing for each axis. A lone spacing stands for every axis, as in
+    # `numpy`, but only where it is constant along all of them: one which
+    # runs along a gradient axis gives the coordinates there and says
+    # nothing about the others
     if len(varargs) == len(axes_gradient):
-        axes_varargs = axes_gradient
-    elif len(varargs) <= 1:
-        axes_varargs = axes_gradient[:len(varargs)]
+        spacings = varargs
+    elif len(varargs) == 1:
+        varying = set(varargs[0].shape) & set(axes_gradient)
+        if varying and len(axes_gradient) > 1:
+            raise TypeError(
+                f"a lone spacing stands for every axis only where it is "
+                f"constant along each of them, but this one runs along "
+                f"{sorted(varying)}. Give one spacing per axis instead."
+            )
+        spacings = varargs * len(axes_gradient)
+    elif not varargs:
+        spacings = ()
     else:
         raise TypeError(
             f"expected 0, 1 or {len(axes_gradient)} spacings for {len(axes_gradient)} "
@@ -1383,21 +1399,26 @@ def gradient(
     # `numpy.gradient` wants the coordinates along an axis as a
     # one-dimensional array, so a spacing which varies along any other axis
     # has to be differenced one element at a time instead
-    elementwise = any(set(v.shape) - {ax} for v, ax in zip(varargs, axes_varargs))
+    elementwise = any(set(s.shape) - {ax} for s, ax in zip(spacings, axes_gradient))
 
     if elementwise:
+        # each result carries the axes of every spacing, as the `numpy`
+        # branch below gives them, so that the tuple is not ragged
         result = tuple(
-            _core_array_functions._gradient(
-                f=f,
-                x=_core_array_functions._coordinates(
-                    spacing=varargs[i] if len(varargs) == len(axes_gradient) else varargs[0],
+            na.broadcast_to(
+                array=_core_array_functions._gradient(
+                    f=f,
+                    x=_core_array_functions._coordinates(
+                        spacing=s,
+                        axis=ax,
+                        num=shape[ax],
+                    ),
                     axis=ax,
-                    num=shape[ax],
+                    edge_order=edge_order,
                 ),
-                axis=ax,
-                edge_order=edge_order,
+                shape=shape,
             )
-            for i, ax in enumerate(axes_gradient)
+            for s, ax in zip(spacings, axes_gradient)
         )
     else:
         result = np.gradient(

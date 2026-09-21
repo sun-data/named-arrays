@@ -314,10 +314,37 @@ def _coordinates(
     themselves, when it runs the length of the axis, or as the constant gap
     between them otherwise. This applies the same rule.
     """
-    if na.shape(spacing).get(axis, None) == num:
-        return spacing
+    length = na.shape(spacing).get(axis, None)
 
-    return spacing * na.arange(0, num, axis=axis)
+    if length is None:
+        return spacing * na.arange(0, num, axis=axis)
+
+    if length != num:
+        raise ValueError(
+            f"a spacing which runs along `{axis}` gives the coordinates "
+            f"there, so it needs one value per sample, {num}, got {length}"
+        )
+
+    return spacing
+
+
+def _promoted(a: na.AbstractArray) -> na.AbstractArray:
+    """
+    An integer array as floating point, and anything else unchanged.
+
+    A vector has no one dtype, so each of its components is promoted on its
+    own, which leaves a vector of mixed precision as it was found.
+    """
+    if isinstance(a, na.AbstractVectorArray):
+        a = a.explicit
+        return a.type_explicit.from_components({
+            c: _promoted(v) for c, v in a.components.items()
+        })
+
+    if np.issubdtype(na.get_dtype(a), np.integer):
+        return a.astype(float)
+
+    return a
 
 
 def _gradient(
@@ -357,12 +384,11 @@ def _gradient(
     if edge_order not in (1, 2):
         raise ValueError(f"{edge_order=} must be either 1 or 2")
 
-    # the gaps, their squares, and their product all overflow in a narrow
-    # integer type, which would corrupt the interior of the result without
-    # any warning, so an integer variable is promoted first, as
-    # :func:`numpy.gradient` does
-    if np.issubdtype(x.dtype, np.integer):
-        x = x.astype(float)
+    # the differences below overflow in a narrow integer type, which would
+    # corrupt the result without any warning, so both sides are promoted
+    # first, as :func:`numpy.gradient` promotes its values and its distances
+    x = _promoted(x)
+    f = _promoted(f)
 
     shape_x = na.shape(x)
 

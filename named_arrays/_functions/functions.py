@@ -577,8 +577,6 @@ class AbstractFunctionArray(
         Unlike :func:`numpy.gradient`, the differentiation variable may vary
         along axes other than ``axis``, which is what a distorted grid gives,
         since the differences are taken elementwise.
-        The scalar arrays share that machinery, and fall back to it whenever
-        their spacing varies the same way.
 
         Examples
         --------
@@ -617,6 +615,9 @@ class AbstractFunctionArray(
 
         if axis not in self.axes:
             raise ValueError(f"{axis=} must be a member of {self.axes}")
+
+        if edge_order not in (1, 2):
+            raise ValueError(f"{edge_order=} must be either 1 or 2")
 
         if component is None:
             x = inputs

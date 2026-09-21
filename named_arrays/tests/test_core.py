@@ -2377,24 +2377,26 @@ class AbstractTestAbstractArray(
             num = array.shape[axis]
 
             index = na.arange(0, num, axis=axis)
-            offset = na.ScalarArray(np.array([0.0, 10.0]), axes=("_other",))
 
-            # the same grid on both rows of `_other`, only shifted, so the
-            # derivative along `axis` is the same on each
-            coordinates = index * u.mm + offset * u.mm
+            # each row of `_other` is stretched by a different amount, so
+            # the derivative differs from row to row and an implementation
+            # which looked at only one of them could not pass
+            scales = (1.0, 2.0)
+            scale = na.ScalarArray(np.array(scales), axes=("_other",))
 
-            result = np.gradient(array, coordinates, axis=axis)
-            expected = np.gradient(array, index * u.mm, axis=axis)
-
-            # a spacing carrying no axis of its own is an ordinary constant
-            # gap, which may still vary from one row of `_other` to the next
-            gap = na.ScalarArray(np.array([1.0, 1.0]), axes=("_other",)) * u.mm
-            assert np.allclose(np.gradient(array, gap, axis=axis), expected)
+            result = np.gradient(array, scale * index * u.mm, axis=axis)
 
             assert result.type_abstract == array.type_abstract
             assert "_other" in na.shape(result)
-            for i in range(2):
+
+            for i, s in enumerate(scales):
+                expected = np.gradient(array, s * index * u.mm, axis=axis)
                 assert np.allclose(result[{"_other": i}], expected)
+
+            # a spacing carrying no axis of its own is an ordinary constant
+            # gap, which may still differ from one row of `_other` to the next
+            gap = na.ScalarArray(np.array(scales), axes=("_other",)) * u.mm
+            assert np.allclose(np.gradient(array, gap, axis=axis), result)
 
         @pytest.mark.parametrize(
             argnames="a",
