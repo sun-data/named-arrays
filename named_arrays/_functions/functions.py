@@ -567,7 +567,8 @@ class AbstractFunctionArray(
 
         See Also
         --------
-        :meth:`integrate` : The inverse operation.
+        :meth:`integrate` : The counterpart of this method, which sums the
+            outputs against the inputs rather than dividing by them.
         :func:`numpy.gradient` : The :mod:`numpy` function this method backs.
 
         Notes
@@ -580,6 +581,9 @@ class AbstractFunctionArray(
         --------
 
         Differentiate a parabola, whose derivative is a straight line.
+
+        Second-order edges are asked for, since the first-order ones of the
+        default are inexact wherever the function curves.
 
         .. jupyter-execute::
 
@@ -594,12 +598,19 @@ class AbstractFunctionArray(
                 outputs=np.square(x / u.mm) * u.ph,
             )
 
-            f.gradient("x")
+            f.gradient("x", edge_order=2)
         """
 
         self = self.explicit
         inputs = self.inputs
         outputs = self.outputs
+
+        if not isinstance(axis, str):
+            raise TypeError(
+                f"`axis` must be the name of a single axis, got {axis!r}. "
+                f"Differentiating along several axes gives one result per "
+                f"axis, so use `numpy.gradient` for that."
+            )
 
         if axis not in self.axes:
             raise ValueError(f"{axis=} must be a member of {self.axes}")
@@ -624,6 +635,12 @@ class AbstractFunctionArray(
         # where the outputs live
         if axis in self.axes_vertex:
             x = x.cell_centers(axis)
+
+        # the gaps, their squares, and their product all overflow in a narrow
+        # integer type, which would corrupt the interior silently, so an
+        # integer variable is promoted first, as :func:`numpy.gradient` does
+        if np.issubdtype(x.dtype, np.integer):
+            x = x.astype(float)
 
         shape_x = na.shape(x)
 
@@ -686,7 +703,9 @@ class AbstractFunctionArray(
             )
 
         return self.replace(
-            inputs=inputs,
+            # a container of its own, so that the result is not the source's
+            # inputs under another name, as every neighboring operation gives
+            inputs=inputs.copy_shallow(),
             outputs=np.concatenate([first, interior, last], axis=axis),
         )
 

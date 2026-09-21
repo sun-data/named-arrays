@@ -186,7 +186,19 @@ def test_gradient_component_required():
         np.gradient(f, axis="x")
 
 
-def test_gradient_constant_outputs():
+@pytest.mark.parametrize(
+    argnames="outputs",
+    argvalues=[
+        # the axis is absent, so slicing it is a no-op and the arithmetic
+        # would broadcast on its own
+        na.ScalarArray(3.0) * u.ph,
+        # the axis is present with length one, where slicing gives an empty
+        # array and only the explicit broadcast saves it
+        na.ScalarArray(np.array([3.0]), axes=("x",)) * u.ph,
+    ],
+    ids=["absent", "length one"],
+)
+def test_gradient_constant_outputs(outputs: na.AbstractScalar):
     """
     Outputs which do not vary along the axis are broadcast against it.
 
@@ -196,15 +208,91 @@ def test_gradient_constant_outputs():
     num = 5
     f = na.FunctionArray(
         inputs=na.linspace(0, 2, axis="x", num=num) * u.nm,
-        outputs=na.ScalarArray(3.0) * u.ph,
+        outputs=outputs,
     )
 
-    assert "x" not in na.shape(f.outputs)
+    assert na.shape(f.outputs).get("x", 1) != num
 
     result = f.gradient("x")
 
     assert result.outputs.shape == {"x": num}
     assert np.allclose(result.outputs, 0 * u.ph / u.nm)
+
+
+@pytest.mark.parametrize(
+    argnames="dtype",
+    argvalues=[np.int32, np.int64, np.uint16],
+)
+def test_gradient_integer_coordinates(dtype: type):
+    """
+    An integer coordinate is differentiated in floating point.
+
+    The gaps, their squares, and their product overflow in a narrow integer
+    type, which would corrupt the interior of the result without any warning,
+    so the variable is promoted first, as :func:`numpy.gradient` does.
+    """
+    # descending for the unsigned case, where a wrapped subtraction would
+    # flip the sign of the whole derivative rather than only disturb it
+    gap = 2000
+    if np.issubdtype(dtype, np.unsignedinteger):
+        x = (np.arange(3, -1, -1) * gap).astype(dtype)
+    else:
+        x = (np.arange(4) * gap).astype(dtype)
+
+    outputs = np.array([0.0, 1.0, 4.0, 9.0])
+
+    f = na.FunctionArray(
+        inputs=na.ScalarArray(x, axes=("x",)),
+        outputs=na.ScalarArray(outputs, axes=("x",)),
+    )
+
+    result = f.gradient("x")
+    expected = np.gradient(outputs, x.astype(float))
+
+    assert np.allclose(result.outputs.ndarray, expected)
+
+
+def test_gradient_float32_coordinates_keep_their_dtype():
+    """Only an integer variable is promoted, so a narrow float is left alone."""
+    x = na.ScalarArray(np.arange(4, dtype=np.float32), axes=("x",))
+    f = na.FunctionArray(inputs=x, outputs=x)
+
+    assert f.gradient("x").outputs.dtype == np.float32
+
+
+def test_gradient_axis_must_be_one_name():
+    """
+    A sequence of axes belongs to :func:`numpy.gradient`, not to the method.
+
+    Differentiating along several axes gives one result per axis, where this
+    method returns a single array, so a sequence is refused rather than
+    quietly treated as a name.
+    """
+    x = na.linspace(0, 2, axis="x", num=5) * u.nm
+    f = na.FunctionArray(inputs=x, outputs=x)
+
+    with pytest.raises(TypeError, match="must be the name of a single axis"):
+        f.gradient(("x",))
+
+    # the same call through numpy is the supported spelling
+    assert isinstance(np.gradient(f, axis=("x",)), tuple)
+
+
+def test_gradient_result_has_its_own_inputs():
+    """
+    The result is not the source's inputs under another name.
+
+    The inputs are unchanged by the derivative, but handing back the very
+    same object would let a write through one reach the other, which no
+    neighboring operation does.
+    """
+    x = na.ScalarArray(np.arange(5.0), axes=("x",)) * u.nm
+    f = na.FunctionArray(inputs=x, outputs=na.ScalarArray(np.arange(5.0), axes=("x",)) * u.ph)
+
+    result = f.gradient("x")
+
+    assert result.inputs is not f.inputs
+    assert np.all(result.inputs == f.inputs)
 
 
 def test_gradient_distorted_grid():
