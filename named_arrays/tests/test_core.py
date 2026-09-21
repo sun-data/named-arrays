@@ -2284,9 +2284,6 @@ class AbstractTestAbstractArray(
 
             num = array.shape[axis]
 
-            if num < edge_order + 1:
-                return
-
             varargs = ()
             if spacing == "dx":
                 h = 2 * u.mm

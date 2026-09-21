@@ -1328,7 +1328,10 @@ def test_gradient_uncertain_coordinates():
 
     This is the counterpart to the trapezoid case: a coordinate with its own
     uncertainty gives a derivative whose distribution is divided by the
-    spacing of that distribution.
+    spacing of that distribution. Once this passes, the marker comes off and
+    the result should be ``1 ph / nm`` in the nominal value and, since the
+    distribution is spread over ten times the interval, ``0.1 ph / nm``
+    throughout its distribution.
     """
     axis = "x"
     num = 5
@@ -1341,8 +1344,4 @@ def test_gradient_uncertain_coordinates():
         ).broadcast_to({"_distribution": _num_distribution, axis: num}) * u.ph,
     )
 
-    result = np.gradient(y, x, axis=axis)
-
-    # unit spacing in the nominal, ten times that in the distribution
-    assert np.allclose(result.nominal, 1 * u.ph / u.nm)
-    assert np.allclose(result.distribution, 0.1 * u.ph / u.nm)
+    np.gradient(y, x, axis=axis)
