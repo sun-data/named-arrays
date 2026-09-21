@@ -433,6 +433,50 @@ def test_regrid_from_weights_quantity():
     assert np.all(na.value(result) == result_plain)
 
 
+def test_regrid_from_weights_quantity_weights():
+    """
+    Weights built from a ``weights_input`` with a unit carry that unit onto
+    the result, multiplied by the unit of the values, and a dimensionless
+    ``weights_input`` leaves the unit of the values alone.
+    """
+    kwargs = dict(
+        coordinates_input=na.Cartesian2dVectorArray(x, y),
+        coordinates_output=na.Cartesian2dVectorArray(
+            x=1.1 * x + 0.01, y=1.2 * y + 0.01
+        ),
+        axis_input=("x", "y"),
+        axis_output=("x", "y"),
+        method="conservative",
+    )
+    values = na.random.normal(0, 1, shape_random=shape_centers)
+    weights_input = na.random.uniform(0.5, 1.5, shape_random=shape_centers)
+    result_plain = na.regridding.regrid_from_weights(
+        *na.regridding.weights(weights_input=weights_input, **kwargs),
+        values_input=values,
+    )
+    for unit_weights, unit_expected in (
+        (u.dimensionless_unscaled, u.erg),
+        (u.mm, u.erg * u.mm),
+    ):
+        result = na.regridding.regrid_from_weights(
+            *na.regridding.weights(
+                weights_input=weights_input * unit_weights,
+                **kwargs,
+            ),
+            values_input=values * u.erg,
+        )
+        assert na.unit(result) == unit_expected
+        assert np.allclose(na.value(result), result_plain)
+
+    # values without a unit take the unit of the weights alone
+    result = na.regridding.regrid_from_weights(
+        *na.regridding.weights(weights_input=weights_input * u.mm, **kwargs),
+        values_input=values,
+    )
+    assert na.unit(result) == u.mm
+    assert np.allclose(na.value(result), result_plain)
+
+
 def test_weights_device_host():
     """The host is the default device, so asking for it changes nothing."""
     kwargs = dict(
