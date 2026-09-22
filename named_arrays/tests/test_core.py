@@ -2642,6 +2642,91 @@ class AbstractTestAbstractArray(
 
                 assert np.allclose(result, slope * array)
 
+        class TestSearchsorted:
+            """
+            The contract of :func:`named_arrays.searchsorted` and
+            :func:`named_arrays.digitize`, which every array type shares.
+
+            The grid is the one :class:`TestInterp` interpolates on, so every
+            value of every fixture lies inside it, and the resulting indices
+            are interior ones.
+            """
+
+            @classmethod
+            def _grid(cls, array: na.AbstractArray) -> na.AbstractArray:
+                result = na.linspace(-100, 100, axis="search", num=11)
+                unit_array = na.unit(array)
+                if unit_array is not None:
+                    result = result * unit_array
+                return result
+
+            def test_searchsorted_counts_the_grid_below(
+                self,
+                array: na.AbstractArray,
+            ):
+                """
+                The insertion point of a value is the number of grid points
+                which sort before it, counting the equal ones on the right
+                side but not on the left.
+
+                Counting is the definition of the answer, and an independent
+                oracle: it sweeps the whole grid where
+                :func:`numpy.searchsorted` bisects it. It also says something
+                for a value outside the grid, where reading the grid at the
+                returned index would run off the end.
+                """
+                grid = self._grid(array)
+
+                left = na.searchsorted(grid, array, axis="search", side="left")
+                right = na.searchsorted(grid, array, axis="search", side="right")
+
+                assert na.shape(left) == na.shape(array)
+                assert np.all(left == np.sum(grid < array, axis="search"))
+                assert np.all(right == np.sum(grid <= array, axis="search"))
+
+            def test_searchsorted_side(
+                self,
+                array: na.AbstractArray,
+            ):
+                """
+                The two sides bracket a run of equal values, so the right side
+                never lands before the left one.
+                """
+                grid = self._grid(array)
+
+                left = na.searchsorted(grid, array, axis="search", side="left")
+                right = na.searchsorted(grid, array, axis="search", side="right")
+
+                assert np.all(left <= right)
+
+            def test_digitize_is_searchsorted_from_the_right(
+                self,
+                array: na.AbstractArray,
+            ):
+                """
+                For increasing bins :func:`numpy.digitize` is
+                :func:`numpy.searchsorted` on the other side, which is how
+                :mod:`numpy` itself implements it.
+                """
+                grid = self._grid(array)
+
+                result = na.digitize(array, grid, axis="search")
+                expected = na.searchsorted(grid, array, axis="search", side="right")
+
+                assert np.all(result == expected)
+
+            def test_digitize_right(
+                self,
+                array: na.AbstractArray,
+            ):
+                """Closing the bins on the right never moves a value later."""
+                grid = self._grid(array)
+
+                left = na.digitize(array, grid, axis="search", right=False)
+                right = na.digitize(array, grid, axis="search", right=True)
+
+                assert np.all(right <= left)
+
         @pytest.mark.parametrize(
             argnames="min,max",
             argvalues=[

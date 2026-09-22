@@ -310,6 +310,175 @@ def interp(
     return result
 
 
+def _axis_sorted(
+    a: na.AbstractScalarArray,
+    axis: None | str,
+    name: str,
+) -> str:
+    """
+    The axis of `a` which it is sorted along, defaulting to its only axis.
+
+    Parameters
+    ----------
+    a
+        The sorted array.
+    axis
+        The axis named by the caller, or :obj:`None` to take the only one.
+    name
+        The name of `a` in the signature of the caller, for the error.
+    """
+    if axis is None:
+        if a.ndim != 1:
+            raise ValueError(
+                f"if `axis` is `None`, `{name}` must have only one axis, "
+                f"got {a.axes}"
+            )
+        return next(iter(a.shape))
+
+    if axis not in a.shape:
+        raise ValueError(f"{axis=} must be a member of `{name}`'s axes, {a.axes}")
+
+    return axis
+
+
+@_implements(na.searchsorted)
+def searchsorted(
+    a: na.AbstractScalarArray,
+    v: float | u.Quantity | na.AbstractScalarArray,
+    axis: None | str = None,
+    side: Literal["left", "right"] = "left",
+    sorter: None | na.AbstractScalarArray = None,
+) -> na.ScalarArray:
+    try:
+        a = scalars._normalize(a)
+        v = scalars._normalize(v)
+        sorter = scalars._normalize(sorter) if sorter is not None else sorter
+    except na.ScalarTypeError:
+        return NotImplemented
+
+    axis = _axis_sorted(a, axis, name="a")
+
+    # every axis of `a` except the sorted one is a batch axis, searched
+    # independently of the rest, which `numpy.searchsorted` cannot do at all
+    shape = na.shape_broadcasted(
+        a[{axis: 0}],
+        sorter[{axis: 0}] if sorter is not None else None,
+    )
+
+    a = na.broadcast_to(a, na.broadcast_shapes(a.shape, shape))
+    v = na.broadcast_to(v, na.broadcast_shapes(v.shape, shape))
+    if sorter is not None:
+        sorter = na.broadcast_to(sorter, na.broadcast_shapes(sorter.shape, shape))
+
+    result = np.empty_like(v.value, dtype=np.intp)
+
+    for index in na.ndindex(shape):
+        v_index = v[index]
+        result[index] = result.type_explicit(
+            ndarray=np.searchsorted(
+                a=a[index].ndarray,
+                v=v_index.ndarray,
+                side=side,
+                sorter=sorter[index].ndarray if sorter is not None else None,
+            ),
+            axes=v_index.axes,
+        )
+
+    return result
+
+
+@_implements(na.digitize)
+def digitize(
+    x: float | u.Quantity | na.AbstractScalarArray,
+    bins: na.AbstractScalarArray,
+    axis: None | str = None,
+    right: bool = False,
+) -> na.ScalarArray:
+    try:
+        x = scalars._normalize(x)
+        bins = scalars._normalize(bins)
+    except na.ScalarTypeError:
+        return NotImplemented
+
+    axis = _axis_sorted(bins, axis, name="bins")
+
+    shape = na.shape_broadcasted(bins[{axis: 0}])
+
+    bins = na.broadcast_to(bins, na.broadcast_shapes(bins.shape, shape))
+    x = na.broadcast_to(x, na.broadcast_shapes(x.shape, shape))
+
+    result = np.empty_like(x.value, dtype=np.intp)
+
+    for index in na.ndindex(shape):
+        x_index = x[index]
+        result[index] = result.type_explicit(
+            ndarray=np.digitize(
+                x=x_index.ndarray,
+                bins=bins[index].ndarray,
+                right=right,
+            ),
+            axes=x_index.axes,
+        )
+
+    return result
+
+
+@_implements(na.unique)
+def unique(
+    a: na.AbstractScalarArray,
+    axis_new: str,
+    return_inverse: bool = False,
+    return_counts: bool = False,
+    equal_nan: bool = True,
+) -> na.ScalarArray | tuple[na.ScalarArray, ...]:
+    try:
+        a = scalars._normalize(a)
+    except na.ScalarTypeError:  # pragma: nocover
+        return NotImplemented
+
+    if axis_new in a.shape:
+        raise ValueError(
+            f"{axis_new=} is the new axis of the distinct values, so it must "
+            f"not be an axis of `a` already, {a.axes}"
+        )
+
+    result = np.unique(
+        a.ndarray,
+        return_inverse=return_inverse,
+        return_counts=return_counts,
+        equal_nan=equal_nan,
+    )
+
+    if not (return_inverse or return_counts):
+        result = (result,)
+
+    values = a.type_explicit(
+        ndarray=result[0],
+        axes=(axis_new,),
+    )
+
+    extra = []
+    if return_inverse:
+        extra.append(
+            na.ScalarArray(
+                ndarray=result[1],
+                axes=a.axes,
+            )
+        )
+    if return_counts:
+        extra.append(
+            na.ScalarArray(
+                ndarray=result[-1],
+                axes=(axis_new,),
+            )
+        )
+
+    if extra:
+        return (values, *extra)
+
+    return values
+
+
 @_implements(na.histogram)
 def histogram(
     a: na.AbstractScalarArray,

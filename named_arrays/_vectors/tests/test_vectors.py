@@ -848,3 +848,99 @@ class AbstractTestAbstractWcsVector(
         for k in result:
             assert isinstance(k, str)
             assert isinstance(result[k], int)
+
+
+def test_searchsorted_sorter_per_component():
+    """
+    Each component is searched through its own permutation, so a sorter is
+    taken apart component by component like every other argument.
+    """
+    a = na.Cartesian2dVectorArray(
+        x=na.ScalarArray(np.array([3.0, 1.0, 2.0, 0.0]) * u.mm, axes=("w",)),
+        y=na.ScalarArray(np.array([30.0, 10.0, 20.0, 0.0]) * u.mm, axes=("w",)),
+    )
+    sorter = na.Cartesian2dVectorArray(
+        x=na.ScalarArray(np.argsort(a.x.ndarray), axes=("w",)),
+        y=na.ScalarArray(np.argsort(a.y.ndarray), axes=("w",)),
+    )
+    v = na.ScalarArray(
+        ndarray=np.array([0.5, 1.5, 2.5]) * u.mm,
+        axes=("line",),
+    )
+
+    result = na.searchsorted(a, v, axis="w", sorter=sorter)
+
+    assert isinstance(result, na.AbstractCartesian2dVectorArray)
+
+    for c in ("x", "y"):
+        expected = np.searchsorted(
+            a.components[c].ndarray,
+            v.ndarray,
+            sorter=sorter.components[c].ndarray,
+        )
+        assert np.all(result.components[c].ndarray == expected)
+
+    # the two components are spread differently, so this really is per
+    # component and not one answer copied across both
+    assert np.any(result.x.ndarray != result.y.ndarray)
+
+
+def _grid_shared() -> na.ScalarArray:
+    """One grid, of no particular component, for the mixed-type tests."""
+    return na.ScalarArray(
+        ndarray=np.array([0.0, 1.0, 2.0, 3.0]) * u.mm,
+        axes=("w",),
+    )
+
+
+def _values_2d() -> na.Cartesian2dVectorArray:
+    return na.Cartesian2dVectorArray(
+        x=na.ScalarArray(np.array([1.5]) * u.mm, axes=("line",)),
+        y=na.ScalarArray(np.array([2.5]) * u.mm, axes=("line",)),
+    )
+
+
+def test_searchsorted_scalar_grid_and_vector_values():
+    """
+    A grid shared by every component, which is the scalar implementation
+    declining the vector values and this one taking them.
+    """
+    result = na.searchsorted(_grid_shared(), _values_2d(), axis="w")
+
+    assert np.all(result.x.ndarray == 2)
+    assert np.all(result.y.ndarray == 3)
+
+
+def test_digitize_scalar_bins_and_vector_values():
+    """The same sharing, for bins rather than a grid."""
+    result = na.digitize(_values_2d(), _grid_shared(), axis="w")
+
+    assert np.all(result.x.ndarray == 2)
+    assert np.all(result.y.ndarray == 3)
+
+
+def test_searchsorted_mixed_vector_types():
+    """
+    Two different kinds of vector have no components in common, so neither
+    one's implementation can take the pair and the dispatch runs out.
+    """
+    a = na.Cartesian2dVectorArray(
+        x=_grid_shared(),
+        y=_grid_shared(),
+    )
+    v = na.Cartesian3dVectorArray(x=1 * u.mm, y=1 * u.mm, z=1 * u.mm)
+
+    with pytest.raises(TypeError, match="returned `NotImplemented`"):
+        na.searchsorted(a, v, axis="w")
+
+
+def test_digitize_mixed_vector_types():
+    """The same, for bins rather than a grid."""
+    bins = na.Cartesian2dVectorArray(
+        x=_grid_shared(),
+        y=_grid_shared(),
+    )
+    x = na.Cartesian3dVectorArray(x=1 * u.mm, y=1 * u.mm, z=1 * u.mm)
+
+    with pytest.raises(TypeError, match="returned `NotImplemented`"):
+        na.digitize(x, bins, axis="w")

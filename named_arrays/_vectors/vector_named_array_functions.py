@@ -278,6 +278,76 @@ def interp(
     return result
 
 
+@_implements(na.searchsorted)
+def searchsorted(
+    a: na.AbstractScalar | na.AbstractVectorArray,
+    v: float | u.Quantity | na.AbstractScalar | na.AbstractVectorArray,
+    axis: None | str = None,
+    side: Literal["left", "right"] = "left",
+    sorter: None | na.AbstractScalar | na.AbstractVectorArray = None,
+) -> na.AbstractVectorArray:
+    try:
+        prototype = vectors._prototype(a, v, sorter)
+        a = vectors._normalize(a, prototype)
+        v = vectors._normalize(v, prototype)
+        sorter = vectors._normalize(sorter, prototype) if sorter is not None else None
+    except na.VectorTypeError:
+        return NotImplemented
+
+    components_a = a.components
+    components_v = v.components
+    components_sorter = sorter.components if sorter is not None else None
+
+    # a component may be a vector itself, which the dispatcher brings back
+    # here, so the nesting is handled by the recursion rather than by
+    # flattening: `cartesian_nd` cannot flatten the scalar which a grid shared
+    # by every component normalizes to
+    components = {
+        c: na.searchsorted(
+            a=components_a[c],
+            v=components_v[c],
+            axis=axis,
+            side=side,
+            sorter=(
+                components_sorter[c] if components_sorter is not None else None
+            ),
+        )
+        for c in components_v
+    }
+
+    return prototype.type_explicit.from_components(components)
+
+
+@_implements(na.digitize)
+def digitize(
+    x: float | u.Quantity | na.AbstractScalar | na.AbstractVectorArray,
+    bins: na.AbstractScalar | na.AbstractVectorArray,
+    axis: None | str = None,
+    right: bool = False,
+) -> na.AbstractVectorArray:
+    try:
+        prototype = vectors._prototype(x, bins)
+        x = vectors._normalize(x, prototype)
+        bins = vectors._normalize(bins, prototype)
+    except na.VectorTypeError:
+        return NotImplemented
+
+    components_x = x.components
+    components_bins = bins.components
+
+    components = {
+        c: na.digitize(
+            x=components_x[c],
+            bins=components_bins[c],
+            axis=axis,
+            right=right,
+        )
+        for c in components_x
+    }
+
+    return prototype.type_explicit.from_components(components)
+
+
 @_implements(na.histogram)
 def histogram(
     a: na.AbstractVectorArray,

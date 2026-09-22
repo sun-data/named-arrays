@@ -197,6 +197,68 @@ def interp(
     return result
 
 
+@_implements(na.searchsorted)
+def searchsorted(
+    a: na.AbstractScalar,
+    v: float | u.Quantity | na.AbstractScalar,
+    axis: None | str = None,
+    side: Literal["left", "right"] = "left",
+    sorter: None | na.AbstractScalar = None,
+) -> na.UncertainScalarArray:
+    try:
+        a = uncertainties._normalize(a)
+        v = uncertainties._normalize(v)
+        sorter = uncertainties._normalize(sorter)
+    except na.UncertainScalarTypeError:
+        return NotImplemented
+
+    return a.type_explicit(
+        nominal=na.searchsorted(
+            a=a.nominal,
+            v=v.nominal,
+            axis=axis,
+            side=side,
+            sorter=sorter.nominal,
+        ),
+        distribution=na.searchsorted(
+            a=a.distribution,
+            v=v.distribution,
+            axis=axis,
+            side=side,
+            sorter=sorter.distribution,
+        ),
+    )
+
+
+@_implements(na.digitize)
+def digitize(
+    x: float | u.Quantity | na.AbstractScalar,
+    bins: na.AbstractScalar,
+    axis: None | str = None,
+    right: bool = False,
+) -> na.UncertainScalarArray:
+    try:
+        x = uncertainties._normalize(x)
+        bins = uncertainties._normalize(bins)
+    except na.UncertainScalarTypeError:
+        return NotImplemented
+
+    return x.type_explicit(
+        nominal=na.digitize(
+            x=x.nominal,
+            bins=bins.nominal,
+            axis=axis,
+            right=right,
+        ),
+        distribution=na.digitize(
+            x=x.distribution,
+            bins=bins.distribution,
+            axis=axis,
+            right=right,
+        ),
+    )
+
+
 @_implements(na.histogram)
 def histogram(
     a: na.AbstractScalar,
