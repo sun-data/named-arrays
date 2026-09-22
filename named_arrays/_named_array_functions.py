@@ -28,6 +28,9 @@ __all__ = [
     "mean_trimmed",
     "take_along_axis",
     "interp",
+    "searchsorted",
+    "digitize",
+    "unique",
     "histogram",
     "histogram2d",
     "histogramdd",
@@ -1225,6 +1228,244 @@ def interp(
         left=left,
         right=right,
         period=period,
+    )
+
+
+def searchsorted(
+    a: na.AbstractArray,
+    v: float | u.Quantity | na.AbstractArray,
+    axis: None | str = None,
+    side: Literal["left", "right"] = "left",
+    sorter: None | na.AbstractArray = None,
+) -> na.AbstractArray:
+    """
+    Thin wrapper around :func:`numpy.searchsorted`.
+
+    Find the index along ``axis`` where each element of ``v`` would have to be
+    inserted to leave ``a`` sorted.
+
+    This function adds an ``axis`` argument, which lets ``a`` carry axes
+    besides the one it is sorted along, where :func:`numpy.searchsorted` takes
+    a one-dimensional ``a`` only. Those other axes are batch axes, and each is
+    searched independently of the rest.
+
+    Parameters
+    ----------
+    a
+        The sorted array to search.
+        It must be increasing along ``axis``, which is not checked, exactly as
+        :func:`numpy.searchsorted` does not check it.
+    v
+        The values to find the insertion points of.
+    axis
+        The logical axis along which ``a`` is sorted.
+        If :obj:`None`, ``a`` must have exactly one axis.
+    side
+        Which end of a run of equal values to return the index of.
+        ``"left"`` gives the first such index and ``"right"`` the one past the
+        last.
+    sorter
+        The indices along ``axis`` which sort ``a``, as :func:`numpy.argsort`
+        returns them.
+        If :obj:`None`, ``a`` is taken to be sorted already.
+
+    Returns
+    -------
+        The indices into ``axis``, carrying the axes of ``v`` broadcast
+        against the batch axes of ``a``.
+
+    See Also
+    --------
+    :func:`numpy.searchsorted` : The function this one wraps.
+    :func:`digitize` : Which bin each value falls into, on the same machinery.
+
+    Examples
+    --------
+
+    Find where two spectral lines fall in a wavelength grid.
+
+    .. jupyter-execute::
+
+        import numpy as np
+        import astropy.units as u
+        import named_arrays as na
+
+        grid = na.linspace(100, 200, axis="wavelength", num=6) * u.AA
+
+        line = na.ScalarArray(
+            ndarray=np.array([117, 185]) * u.AA,
+            axes=("line",),
+        )
+
+        na.searchsorted(grid, line, axis="wavelength")
+    """
+    return _named_array_function(
+        func=searchsorted,
+        a=a,
+        v=v,
+        axis=axis,
+        side=side,
+        sorter=sorter,
+    )
+
+
+def digitize(
+    x: float | u.Quantity | na.AbstractArray,
+    bins: na.AbstractArray,
+    axis: None | str = None,
+    right: bool = False,
+) -> na.AbstractArray:
+    """
+    Thin wrapper around :func:`numpy.digitize`.
+
+    Find the index of the bin along ``axis`` which each element of ``x``
+    falls into.
+
+    This function adds an ``axis`` argument, which lets ``bins`` carry axes
+    besides the one it is monotonic along, where :func:`numpy.digitize` takes
+    one-dimensional ``bins`` only. Those other axes are batch axes, and each
+    is binned independently of the rest.
+
+    Parameters
+    ----------
+    x
+        The values to bin.
+    bins
+        The edges of the bins, monotonic along ``axis``.
+        They may increase or decrease, as :func:`numpy.digitize` allows.
+    axis
+        The logical axis along which ``bins`` is monotonic.
+        If :obj:`None`, ``bins`` must have exactly one axis.
+    right
+        Whether each bin includes its right edge instead of its left.
+
+    Returns
+    -------
+        The index of the bin each value falls into, carrying the axes of ``x``
+        broadcast against the batch axes of ``bins``.
+        An index of zero means the value falls below every bin, and an index
+        of the number of edges means it falls above every bin.
+
+    See Also
+    --------
+    :func:`numpy.digitize` : The function this one wraps.
+    :func:`searchsorted` : The insertion point of each value.
+    :func:`histogram` : The number of values in each bin.
+
+    Examples
+    --------
+
+    Find which wavelength bin each of two spectral lines falls into.
+
+    .. jupyter-execute::
+
+        import numpy as np
+        import astropy.units as u
+        import named_arrays as na
+
+        edges = na.linspace(100, 200, axis="wavelength", num=6) * u.AA
+
+        line = na.ScalarArray(
+            ndarray=np.array([117, 185]) * u.AA,
+            axes=("line",),
+        )
+
+        na.digitize(line, edges, axis="wavelength")
+    """
+    return _named_array_function(
+        func=digitize,
+        x=x,
+        bins=bins,
+        axis=axis,
+        right=right,
+    )
+
+
+def unique(
+    a: na.AbstractArray,
+    axis_new: str,
+    return_inverse: bool = False,
+    return_counts: bool = False,
+    equal_nan: bool = True,
+) -> na.AbstractArray | tuple[na.AbstractArray, ...]:
+    """
+    Thin wrapper around :func:`numpy.unique`.
+
+    Gather the distinct values of an array, in increasing order, along a new
+    axis.
+
+    Every axis of ``a`` is consumed, since which values repeat is a question
+    about the array as a whole, and the answer has no length known in advance.
+    The new axis is named by ``axis_new``, which is why this function takes
+    that name instead of the ``axis`` every other function here takes.
+
+    The ``return_index`` argument of :func:`numpy.unique` has no counterpart,
+    since it indexes the flattened array, and a flat index means nothing to an
+    array whose axes are named.
+
+    Only scalars support this function, where
+    :func:`named_arrays.searchsorted` and :func:`named_arrays.digitize` also
+    accept uncertain scalars and vectors. How many distinct values there are
+    is a property of the values themselves, so the samples of an uncertain
+    array, or the components of a vector, would each give a different number
+    of them, and the result would have no single length to put on
+    ``axis_new``.
+
+    Parameters
+    ----------
+    a
+        The array to find the distinct values of.
+    axis_new
+        The name of the new axis along which to gather them.
+    return_inverse
+        Whether to also return, for each element of ``a``, the index along
+        ``axis_new`` of the distinct value it is equal to.
+        That array carries the axes of ``a``.
+    return_counts
+        Whether to also return how many times each distinct value appears.
+    equal_nan
+        Whether to collapse the NaNs of ``a`` into a single NaN.
+
+    Returns
+    -------
+        The distinct values, or a tuple of them and whichever of the inverse
+        and the counts were asked for, in that order.
+
+    See Also
+    --------
+    :func:`numpy.unique` : The function this one wraps.
+
+    Examples
+    --------
+
+    Find the distinct wavelengths of a grid which repeats itself.
+
+    .. jupyter-execute::
+
+        import numpy as np
+        import astropy.units as u
+        import named_arrays as na
+
+        a = na.ScalarArray(
+            ndarray=np.array([[100, 200, 200], [300, 100, 200]]) * u.AA,
+            axes=("x", "y"),
+        )
+
+        na.unique(a, axis_new="wavelength")
+
+    Count how often each of them appears.
+
+    .. jupyter-execute::
+
+        na.unique(a, axis_new="wavelength", return_counts=True)
+    """
+    return _named_array_function(
+        func=unique,
+        a=a,
+        axis_new=axis_new,
+        return_inverse=return_inverse,
+        return_counts=return_counts,
+        equal_nan=equal_nan,
     )
 
 

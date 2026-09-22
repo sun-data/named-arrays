@@ -938,6 +938,17 @@ class AbstractTestAbstractFunctionArray(
         ):
             pass
 
+        @pytest.mark.skip
+        class TestSearchsorted(
+            named_arrays.tests.test_core.AbstractTestAbstractArray.TestNamedArrayFunctions.TestSearchsorted,
+        ):
+            """
+            A function array sorts along neither its inputs nor its outputs in
+            particular, so which of the two to search is ambiguous, and
+            :func:`named_arrays.interp` is left out for the same reason.
+            Search the inputs or the outputs directly instead.
+            """
+
         @pytest.mark.parametrize(
             argnames="bins",
             argvalues=[

@@ -1336,3 +1336,123 @@ def test_gradient_uncertain_coordinates():
     # distribution, so its derivative is a tenth of the nominal one
     assert np.allclose(result.nominal, 1 * u.ph / u.nm)
     assert np.allclose(result.distribution, 0.1 * u.ph / u.nm)
+
+
+def test_searchsorted_uncertain_grid():
+    """
+    Every sample of the distribution is searched in its own grid, so the index
+    of one value can differ from sample to sample.
+
+    The grid is shifted by an uncertain offset rather than jittered point by
+    point, which keeps every sample sorted, as searching requires.
+    """
+    grid = na.linspace(0, 10, axis="w", num=11) * u.mm
+
+    offset = na.NormalUncertainScalarArray(
+        nominal=0 * u.mm,
+        width=3 * u.mm,
+        num_distribution=11,
+        seed=7,
+    )
+
+    v = na.ScalarArray(
+        ndarray=np.array([5.0]) * u.mm,
+        axes=("line",),
+    )
+
+    result = na.searchsorted(grid + offset, v, axis="w")
+
+    assert isinstance(result, na.AbstractUncertainScalarArray)
+
+    # the nominal grid is the unshifted one
+    assert np.all(result.nominal == na.searchsorted(grid, v, axis="w"))
+
+    # and a shifted grid does not give the nominal answer for every sample
+    assert np.any(result.distribution.ndarray != result.nominal.ndarray)
+
+    # each sample counts the points of its own grid which fall below the value
+    expected = np.sum((grid + offset) < v, axis="w")
+    assert np.all(result == expected)
+
+
+def test_searchsorted_uncertain_grid_and_vector_values():
+    """
+    An uncertain grid searched by vector values, which is the uncertain
+    implementation declining the vector and the vector one taking it, with
+    uncertain components.
+    """
+    grid = na.linspace(0, 10, axis="w", num=11) * u.mm
+
+    grid = grid + na.NormalUncertainScalarArray(
+        nominal=0 * u.mm,
+        width=1 * u.mm,
+        num_distribution=5,
+        seed=3,
+    )
+
+    v = na.Cartesian2dVectorArray(
+        x=na.ScalarArray(np.array([2.5]) * u.mm, axes=("line",)),
+        y=na.ScalarArray(np.array([7.5]) * u.mm, axes=("line",)),
+    )
+
+    result = na.searchsorted(grid, v, axis="w")
+
+    assert isinstance(result, na.AbstractCartesian2dVectorArray)
+    assert isinstance(result.x, na.AbstractUncertainScalarArray)
+    assert np.all(result.x == np.sum(grid < v.x, axis="w"))
+    assert np.all(result.y == np.sum(grid < v.y, axis="w"))
+
+
+def test_digitize_uncertain_bins_and_vector_values():
+    """The same handover, for bins rather than a grid."""
+    bins = na.linspace(0, 10, axis="w", num=11) * u.mm
+
+    bins = bins + na.NormalUncertainScalarArray(
+        nominal=0 * u.mm,
+        width=1 * u.mm,
+        num_distribution=5,
+        seed=3,
+    )
+
+    x = na.Cartesian2dVectorArray(
+        x=na.ScalarArray(np.array([2.5]) * u.mm, axes=("line",)),
+        y=na.ScalarArray(np.array([7.5]) * u.mm, axes=("line",)),
+    )
+
+    result = na.digitize(x, bins, axis="w")
+
+    assert isinstance(result.x, na.AbstractUncertainScalarArray)
+    assert np.all(result.x == np.sum(bins <= x.x, axis="w"))
+    assert np.all(result.y == np.sum(bins <= x.y, axis="w"))
+
+
+def test_digitize_uncertain_values_and_vector_bins():
+    """
+    The handover the other way round: uncertain values binned by a vector of
+    bins, where it is the uncertain implementation which declines.
+
+    Which implementation is tried first follows the order of the arguments, so
+    this is a different path through the dispatcher than
+    :func:`test_digitize_uncertain_bins_and_vector_values` takes, not the same
+    one written twice.
+    """
+    x = na.linspace(0, 10, axis="line", num=5) * u.mm
+
+    x = x + na.NormalUncertainScalarArray(
+        nominal=0 * u.mm,
+        width=1 * u.mm,
+        num_distribution=5,
+        seed=4,
+    )
+
+    bins = na.Cartesian2dVectorArray(
+        x=na.ScalarArray(np.array([0.0, 5.0, 10.0]) * u.mm, axes=("w",)),
+        y=na.ScalarArray(np.array([0.0, 2.0, 4.0]) * u.mm, axes=("w",)),
+    )
+
+    result = na.digitize(x, bins, axis="w")
+
+    assert isinstance(result, na.AbstractCartesian2dVectorArray)
+    assert isinstance(result.x, na.AbstractUncertainScalarArray)
+    assert np.all(result.x == np.sum(bins.x <= x, axis="w"))
+    assert np.all(result.y == np.sum(bins.y <= x, axis="w"))

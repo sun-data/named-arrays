@@ -1967,3 +1967,279 @@ def test_gradient_spacing_wrong_length():
 
     with pytest.raises(ValueError, match="one value per sample"):
         np.gradient(f, coordinates, axis="y")
+
+
+def _grid_searchsorted() -> na.ScalarArray:
+    """A grid of four wavelengths, sorted, for the searching tests."""
+    return na.ScalarArray(
+        ndarray=np.array([0.0, 1.0, 2.0, 3.0]) * u.mm,
+        axes=("w",),
+    )
+
+
+def test_searchsorted_matches_numpy():
+    """One grid and one set of values is exactly what numpy already does."""
+    a = _grid_searchsorted()
+    v = na.ScalarArray(
+        ndarray=np.array([-1.0, 0.0, 1.5, 3.0, 9.0]) * u.mm,
+        axes=("line",),
+    )
+
+    for side in ("left", "right"):
+        result = na.searchsorted(a, v, axis="w", side=side)
+        expected = np.searchsorted(a.ndarray, v.ndarray, side=side)
+        assert result.axes == ("line",)
+        assert np.all(result.ndarray == expected)
+
+
+def test_searchsorted_batch_axes():
+    """
+    Every axis of `a` but the sorted one is searched independently, which
+    :func:`numpy.searchsorted` cannot do at all, so the oracle is a loop over
+    the batch.
+    """
+    a = na.ScalarArray(
+        ndarray=np.array([[0.0, 1.0, 2.0, 3.0], [10.0, 20.0, 30.0, 40.0]]) * u.mm,
+        axes=("batch", "w"),
+    )
+    v = na.ScalarArray(
+        ndarray=np.array([1.5, 25.0]) * u.mm,
+        axes=("line",),
+    )
+
+    result = na.searchsorted(a, v, axis="w")
+
+    assert na.shape(result) == dict(batch=2, line=2)
+
+    for b in range(a.shape["batch"]):
+        expected = np.searchsorted(a.ndarray[b], v.ndarray)
+        assert np.all(result[dict(batch=b)].ndarray == expected)
+
+
+def test_searchsorted_converts_units():
+    """The values are converted into the unit of the grid, not compared raw."""
+    a = _grid_searchsorted()
+    v = na.ScalarArray(
+        ndarray=np.array([1500.0]) * u.um,
+        axes=("line",),
+    )
+
+    result = na.searchsorted(a, v, axis="w")
+
+    assert np.all(result.ndarray == 2)
+
+
+def test_searchsorted_sorter():
+    """An unsorted grid is searched through the permutation which sorts it."""
+    a = na.ScalarArray(
+        ndarray=np.array([3.0, 1.0, 2.0, 0.0]) * u.mm,
+        axes=("w",),
+    )
+    sorter = na.ScalarArray(
+        ndarray=np.argsort(a.ndarray),
+        axes=("w",),
+    )
+    v = na.ScalarArray(
+        ndarray=np.array([0.5, 1.5, 2.5]) * u.mm,
+        axes=("line",),
+    )
+
+    result = na.searchsorted(a, v, axis="w", sorter=sorter)
+    expected = np.searchsorted(a.ndarray, v.ndarray, sorter=sorter.ndarray)
+
+    assert np.all(result.ndarray == expected)
+
+    # it is the answer the sorted grid gives
+    sorted_a = na.ScalarArray(np.sort(a.ndarray), axes=("w",))
+    assert np.all(result == na.searchsorted(sorted_a, v, axis="w"))
+
+    # and not the one the unsorted grid gives, so the sorter is really used
+    assert np.any(result.ndarray != na.searchsorted(a, v, axis="w").ndarray)
+
+
+def test_searchsorted_axis_none_needs_one_axis():
+    """With no axis named, there has to be only one to choose."""
+    a = na.ScalarArray(np.zeros((2, 4)) * u.mm, axes=("batch", "w"))
+
+    with pytest.raises(ValueError, match="`a` must have only one axis"):
+        na.searchsorted(a, 0 * u.mm)
+
+
+def test_searchsorted_axis_must_be_an_axis():
+    """A named axis has to be one the grid actually has."""
+    a = _grid_searchsorted()
+
+    with pytest.raises(ValueError, match="must be a member of `a`"):
+        na.searchsorted(a, 0 * u.mm, axis="not_an_axis")
+
+
+def test_digitize_matches_numpy():
+    """Both senses of `right`, against numpy on the same one-axis data."""
+    bins = _grid_searchsorted()
+    x = na.ScalarArray(
+        ndarray=np.array([-1.0, 0.0, 1.5, 3.0, 9.0]) * u.mm,
+        axes=("line",),
+    )
+
+    for right in (False, True):
+        result = na.digitize(x, bins, axis="w", right=right)
+        expected = np.digitize(x.ndarray, bins.ndarray, right=right)
+        assert np.all(result.ndarray == expected)
+
+
+def test_digitize_decreasing_bins():
+    """
+    :func:`numpy.digitize` takes bins which decrease as well as increase, and
+    so does this, where :func:`named_arrays.searchsorted` does not.
+    """
+    bins = na.ScalarArray(
+        ndarray=np.array([3.0, 2.0, 1.0, 0.0]) * u.mm,
+        axes=("w",),
+    )
+    x = na.ScalarArray(
+        ndarray=np.array([1.5]) * u.mm,
+        axes=("line",),
+    )
+
+    result = na.digitize(x, bins, axis="w")
+    expected = np.digitize(x.ndarray, bins.ndarray)
+
+    assert np.all(result.ndarray == expected)
+
+
+def test_digitize_batch_axes():
+    """Each set of bins is used on its own, as `searchsorted` does."""
+    bins = na.ScalarArray(
+        ndarray=np.array([[0.0, 1.0, 2.0, 3.0], [10.0, 20.0, 30.0, 40.0]]) * u.mm,
+        axes=("batch", "w"),
+    )
+    x = na.ScalarArray(
+        ndarray=np.array([1.5, 25.0]) * u.mm,
+        axes=("line",),
+    )
+
+    result = na.digitize(x, bins, axis="w")
+
+    assert na.shape(result) == dict(batch=2, line=2)
+
+    for b in range(bins.shape["batch"]):
+        expected = np.digitize(x.ndarray, bins.ndarray[b])
+        assert np.all(result[dict(batch=b)].ndarray == expected)
+
+
+def test_digitize_axis_none_needs_one_axis():
+    """The error names `bins`, since that is the argument at fault here."""
+    bins = na.ScalarArray(np.zeros((2, 4)) * u.mm, axes=("batch", "w"))
+
+    with pytest.raises(ValueError, match="`bins` must have only one axis"):
+        na.digitize(0 * u.mm, bins)
+
+
+def test_unique_matches_numpy():
+    """The distinct values, in increasing order, along the new axis."""
+    a = na.ScalarArray(
+        ndarray=np.array([[100.0, 200.0, 200.0], [300.0, 100.0, 200.0]]) * u.AA,
+        axes=("x", "y"),
+    )
+
+    result = na.unique(a, axis_new="wavelength")
+
+    assert result.axes == ("wavelength",)
+    assert np.all(result.ndarray == np.unique(a.ndarray))
+
+
+def test_unique_counts():
+    """How often each distinct value appears, along the same new axis."""
+    a = na.ScalarArray(
+        ndarray=np.array([[100.0, 200.0, 200.0], [300.0, 100.0, 200.0]]) * u.AA,
+        axes=("x", "y"),
+    )
+
+    values, counts = na.unique(a, axis_new="wavelength", return_counts=True)
+
+    assert counts.axes == ("wavelength",)
+    assert np.all(counts.ndarray == np.array([2, 3, 1]))
+    assert counts.ndarray.sum() == a.ndarray.size
+    assert np.all(values.ndarray == np.unique(a.ndarray))
+
+
+def test_unique_inverse_rebuilds_the_array():
+    """
+    The inverse keeps the axes of the array, so gathering the distinct values
+    with it gives the array back.
+    """
+    a = na.ScalarArray(
+        ndarray=np.array([[100.0, 200.0, 200.0], [300.0, 100.0, 200.0]]) * u.AA,
+        axes=("x", "y"),
+    )
+
+    values, inverse = na.unique(a, axis_new="wavelength", return_inverse=True)
+
+    assert inverse.axes == a.axes
+    assert np.all(values[dict(wavelength=inverse)] == a)
+
+
+def test_unique_inverse_and_counts():
+    """Both extras come back in the order the signature lists them."""
+    a = na.ScalarArray(
+        ndarray=np.array([100.0, 200.0, 200.0]) * u.AA,
+        axes=("x",),
+    )
+
+    values, inverse, counts = na.unique(
+        a,
+        axis_new="wavelength",
+        return_inverse=True,
+        return_counts=True,
+    )
+
+    assert np.all(values.ndarray == np.array([100.0, 200.0]) * u.AA)
+    assert np.all(inverse.ndarray == np.array([0, 1, 1]))
+    assert np.all(counts.ndarray == np.array([1, 2]))
+
+
+def test_unique_equal_nan():
+    """The NaNs collapse into one, or stay apart, as numpy does it."""
+    a = na.ScalarArray(
+        ndarray=np.array([1.0, np.nan, np.nan]) * u.AA,
+        axes=("x",),
+    )
+
+    collapsed = na.unique(a, axis_new="wavelength", equal_nan=True)
+    apart = na.unique(a, axis_new="wavelength", equal_nan=False)
+
+    assert collapsed.shape == dict(wavelength=2)
+    assert apart.shape == dict(wavelength=3)
+
+
+def test_unique_axis_new_must_be_new():
+    """The new axis cannot be one the array already has."""
+    a = na.ScalarArray(
+        ndarray=np.array([1.0, 2.0]) * u.AA,
+        axes=("x",),
+    )
+
+    with pytest.raises(ValueError, match="must not be an axis of `a` already"):
+        na.unique(a, axis_new="x")
+
+
+def test_searchsorted_axis_none_uses_the_only_axis():
+    """With one axis there is nothing to choose, and naming it changes nothing."""
+    a = _grid_searchsorted()
+    v = na.ScalarArray(
+        ndarray=np.array([1.5]) * u.mm,
+        axes=("line",),
+    )
+
+    assert np.all(na.searchsorted(a, v) == na.searchsorted(a, v, axis="w"))
+
+
+def test_digitize_axis_none_uses_the_only_axis():
+    """The same default, for the bins rather than the grid."""
+    bins = _grid_searchsorted()
+    x = na.ScalarArray(
+        ndarray=np.array([1.5]) * u.mm,
+        axes=("line",),
+    )
+
+    assert np.all(na.digitize(x, bins) == na.digitize(x, bins, axis="w"))
