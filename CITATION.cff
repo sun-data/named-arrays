@@ -1,0 +1,23 @@
+cff-version: 1.2.0
+message: "If you use named-arrays in your research, please cite it using these metadata."
+type: software
+title: named-arrays
+abstract: >-
+  Numpy arrays with labeled axes, similar to xarray but with support for
+  uncertainties.
+authors:
+  - family-names: Smart
+    given-names: Roy T.
+    orcid: "https://orcid.org/0000-0002-9997-5515"
+  - family-names: Parker
+    given-names: Jacob D.
+    orcid: "https://orcid.org/0000-0001-8732-8284"
+repository-code: "https://github.com/sun-data/named-arrays"
+url: "https://named-arrays.readthedocs.io"
+license: BSD-3-Clause
+keywords:
+  - named tensor
+  - labeled arrays
+  - NumPy
+  - Astropy
+  - uncertainty propagation
