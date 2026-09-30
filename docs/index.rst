@@ -199,6 +199,28 @@ array type supports.
     functions
 
 
+Citation
+========
+
+If you use :mod:`named_arrays` in your research, please cite it.
+The citation metadata is kept in
+`CITATION.cff <https://github.com/sun-data/named-arrays/blob/main/CITATION.cff>`_,
+which the "Cite this repository" button on the
+`GitHub page <https://github.com/sun-data/named-arrays>`_
+can export as BibTeX or APA.
+Please include the version of :mod:`named_arrays` that you used,
+which is given by ``importlib.metadata.version("named-arrays")``.
+
+.. code-block:: bibtex
+
+    @software{named-arrays,
+      author = {Smart, Roy T. and Parker, Jacob D.},
+      title = {named-arrays},
+      version = {X.Y.Z},
+      url = {https://github.com/sun-data/named-arrays},
+    }
+
+
 API Reference
 =============
 

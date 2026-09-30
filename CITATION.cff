@@ -1,0 +1,30 @@
+cff-version: 1.2.0
+message: "If you use named-arrays in your research, please cite it using these metadata."
+type: software
+title: named-arrays
+abstract: >-
+  named-arrays is a Python implementation of a named tensor, an n-dimensional
+  array whose axes are identified only by name. Arrays broadcast against each
+  other by matching axis names, so singleton dimensions are never needed, and
+  most of the NumPy API accepts axis names in place of indices. Values can
+  carry physical units through astropy.units, and uncertain arrays propagate
+  their uncertainty through every operation. The array types extend from
+  scalars to vectors, matrices, and discrete functions, with support for
+  plotting, random sampling, resampling onto curvilinear grids, and
+  optimization.
+authors:
+  - family-names: Smart
+    given-names: Roy T.
+    orcid: "https://orcid.org/0000-0002-9997-5515"
+  - family-names: Parker
+    given-names: Jacob D.
+    orcid: "https://orcid.org/0000-0001-8732-8284"
+repository-code: "https://github.com/sun-data/named-arrays"
+url: "https://named-arrays.readthedocs.io"
+license: BSD-3-Clause
+keywords:
+  - named tensor
+  - labeled arrays
+  - NumPy
+  - Astropy
+  - uncertainty propagation

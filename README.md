@@ -188,6 +188,23 @@ area = np.pi * np.square(radius)
 area.nominal, np.std(area.distribution, axis="_distribution")
 ```
 
+## Citation
+
+If you use named-arrays in your research, please cite it.
+The citation metadata is kept in [`CITATION.cff`](https://github.com/sun-data/named-arrays/blob/main/CITATION.cff),
+which the "Cite this repository" button on GitHub can export as BibTeX or APA.
+Please include the version of named-arrays that you used,
+which is given by `importlib.metadata.version("named-arrays")`.
+
+```bibtex
+@software{named-arrays,
+  author = {Smart, Roy T. and Parker, Jacob D.},
+  title = {named-arrays},
+  version = {X.Y.Z},
+  url = {https://github.com/sun-data/named-arrays},
+}
+```
+
 ## Development
 
 Install the package in editable mode along with its test dependencies, and run the test suite using [pytest](https://docs.pytest.org):
