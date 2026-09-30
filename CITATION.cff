@@ -3,8 +3,15 @@ message: "If you use named-arrays in your research, please cite it using these m
 type: software
 title: named-arrays
 abstract: >-
-  Numpy arrays with labeled axes, similar to xarray but with support for
-  uncertainties.
+  named-arrays is a Python implementation of a named tensor, an n-dimensional
+  array whose axes are identified only by name. Arrays broadcast against each
+  other by matching axis names, so singleton dimensions are never needed, and
+  most of the NumPy API accepts axis names in place of indices. Values can
+  carry physical units through astropy.units, and uncertain arrays propagate
+  their uncertainty through every operation. The array types extend from
+  scalars to vectors, matrices, and discrete functions, with support for
+  plotting, random sampling, resampling onto curvilinear grids, and
+  optimization.
 authors:
   - family-names: Smart
     given-names: Roy T.
