@@ -29,6 +29,7 @@ def argpercentile(
     a
         The all-positive array on which to compute the percentile.
         If `a` contains negatives, the result is undefined.
+        If `a` is zero everywhere along `axis`, the result is NaN.
     q
         The percentile(s) to compute.
     axis
@@ -65,7 +66,10 @@ def argpercentile(
     y0 = cs[i0]
     y1 = cs[i1]
 
-    x = (y - y0) / (y1 - y0) * (x1 - x0) + x0
+    # if `a` is zero everywhere along `axis`, it has no percentiles,
+    # and this expression evaluates to 0 / 0 = NaN.
+    with np.errstate(invalid="ignore"):
+        x = (y - y0) / (y1 - y0) * (x1 - x0) + x0
 
     return {axis: x}
 
@@ -87,6 +91,7 @@ def percentile(
     f
         The probability mass function to compute the percentile of.
         Does `not` need to be normalized.
+        If `f` is zero everywhere along `axis`, the result is NaN.
     q
         The percentile(s) to compute.
     axis
@@ -134,6 +139,7 @@ def median(
     f
         The probability mass function to compute the percentile of.
         Does `not` need to be normalized.
+        If `f` is zero everywhere along `axis`, the result is NaN.
     axis
         The logical axis corresponding to changing `x`.
     """
@@ -161,6 +167,7 @@ def iqr(
     f
         The probability mass function to compute the percentile of.
         Does `not` need to be normalized.
+        If `f` is zero everywhere along `axis`, the result is NaN.
     axis
         The logical axis corresponding to changing `x`.
     """
