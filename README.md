@@ -5,6 +5,7 @@
 [![Ruff](https://github.com/sun-data/named-arrays/actions/workflows/ruff.yml/badge.svg?branch=main)](https://github.com/sun-data/named-arrays/actions/workflows/ruff.yml)
 [![Documentation Status](https://readthedocs.org/projects/named-arrays/badge/?version=latest)](https://named-arrays.readthedocs.io/en/latest/?badge=latest)
 [![PyPI version](https://badge.fury.io/py/named-arrays.svg)](https://badge.fury.io/py/named-arrays)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23072813.svg)](https://doi.org/10.5281/zenodo.23072813)
 
 `named-arrays` is an implementation of a [named tensor](https://nlp.seas.harvard.edu/NamedTensor), which assigns a name to each axis of an n-dimensional array such as a numpy array.
 
@@ -193,14 +194,23 @@ area.nominal, np.std(area.distribution, axis="_distribution")
 If you use named-arrays in your research, please cite it.
 The citation metadata is kept in [`CITATION.cff`](https://github.com/sun-data/named-arrays/blob/main/CITATION.cff),
 which the "Cite this repository" button on GitHub can export as BibTeX or APA.
+
+Every release of named-arrays is archived on Zenodo with its own DOI.
+The concept DOI, [10.5281/zenodo.23072813](https://doi.org/10.5281/zenodo.23072813),
+always resolves to the latest version,
+and the Zenodo page lists the DOI of every version.
 Please include the version of named-arrays that you used,
 which is given by `importlib.metadata.version("named-arrays")`.
+The BibTeX entry below uses the concept DOI.
+To cite a specific version instead,
+replace `doi` with the DOI of that version.
 
 ```bibtex
 @software{named-arrays,
   author = {Smart, Roy T. and Parker, Jacob D.},
   title = {named-arrays},
   version = {X.Y.Z},
+  doi = {10.5281/zenodo.23072813},
   url = {https://github.com/sun-data/named-arrays},
 }
 ```
