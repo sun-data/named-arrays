@@ -20,7 +20,8 @@ classifiers = [
     "Programming Language :: Python :: 3.14",
 ]
 dependencies = [
-    "numpy>2",
+    # numpy 2.4 fixed weighted percentiles reduced over more than one axis
+    "numpy>=2.4",
     "numexpr",
     "matplotlib",
     "scipy",
