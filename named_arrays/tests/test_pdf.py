@@ -1,3 +1,4 @@
+import warnings
 import numpy as np
 from typing import Sequence
 import pytest
@@ -220,6 +221,29 @@ def test_median(
     )
 
     assert np.allclose(result, result_expected)
+
+
+@pytest.mark.parametrize(
+    argnames="func",
+    argvalues=[
+        na.pdf.median,
+        na.pdf.iqr,
+    ],
+)
+def test_zero_mass(func):
+    """
+    A probability mass function which is zero everywhere has no percentiles,
+    so the result should be NaN, without warning about the division by zero.
+    """
+    x = na.linspace(-1, 1, axis="x", num=4)
+    f = na.ScalarArray(np.array([[1, 1, 1], [0, 0, 0]]), axes=("y", "x"))
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", RuntimeWarning)
+        result = func(x=x, f=f, axis="x")
+
+    assert np.all(np.isfinite(result[dict(y=0)]))
+    assert np.all(np.isnan(result[dict(y=1)]))
 
 
 @pytest.mark.parametrize(
