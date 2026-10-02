@@ -553,15 +553,22 @@ grid_lattice = na.Cartesian2dVectorLinearSpace(
 )
 """A uniform lattice of vertices, larger than `grid_rotated`."""
 
-weights_rotated = na.regridding.weights(
-    coordinates_input=grid_rotated,
-    coordinates_output=grid_lattice,
-    axis_input=("x", "y"),
-    axis_output=("x_new", "y_new"),
-    method="conservative",
-)
+axis_rotated = ("x_new", "y_new")
+"""The resampled output axes of `weights_rotated`."""
 
 values_rotated = na.random.uniform(0, 1, shape_random=dict(channel=2, x=16, y=16), seed=1)
+
+
+@pytest.fixture(scope="module")
+def weights_rotated() -> tuple[na.AbstractScalar, dict[str, int], dict[str, int]]:
+    """Weights which rotate `grid_rotated` onto `grid_lattice`."""
+    return na.regridding.weights(
+        coordinates_input=grid_rotated,
+        coordinates_output=grid_lattice,
+        axis_input=("x", "y"),
+        axis_output=axis_rotated,
+        method="conservative",
+    )
 
 
 def _shift(a: na.ScalarArray, axis: str, offset: int) -> na.ScalarArray:
@@ -579,10 +586,14 @@ def _convolve_reference(
     image: na.ScalarArray,
     kernel: na.FunctionArray,
     axis: tuple[str, ...],
+    axis_kernel: tuple[str, ...],
 ) -> na.ScalarArray:
     """
     Convolve an image with a kernel by shifting it once for each element of
     the kernel, independently of how `convolve_weights` builds its stencil.
+
+    The components of the offsets act along `axis`, in order, and the kernel
+    itself runs along `axis_kernel`.
     """
     offsets = kernel.inputs
     if isinstance(offsets, na.AbstractVectorArray):
@@ -590,13 +601,14 @@ def _convolve_reference(
     else:
         components = [offsets]
     components = [na.as_named_array(na.value(c)) for c in components]
-    shape_kernel = na.broadcast_shapes(*[c.shape for c in components])
 
     result = 0 * image
-    for index in na.ndindex(shape_kernel):
+    for index in na.ndindex({a: kernel.outputs.shape[a] for a in axis_kernel}):
         contribution = image * kernel.outputs[index]
         for a, c in zip(axis, components):
-            contribution = _shift(contribution, a, int(np.rint(c[index].ndarray)))
+            offset = np.unique(c[index].ndarray)
+            assert offset.size == 1
+            contribution = _shift(contribution, a, int(np.rint(offset[0])))
         result = result + contribution
     return result
 
@@ -618,36 +630,55 @@ def _kernel(
 
 kx = na.arange(-1, 2, axis="kernel_x")
 ky = na.arange(-2, 3, axis="kernel_y")
+axis_kernel = ("kernel_x", "kernel_y")
+
+
+def _image(
+    weights: tuple[na.AbstractScalar, dict[str, int], dict[str, int]],
+) -> na.ScalarArray:
+    """The test values, resampled by `weights`."""
+    return na.regridding.regrid_from_weights(*weights, values_input=values_rotated)
 
 
 @pytest.mark.parametrize(
-    argnames="kernel,axis_output",
+    argnames="kernel,axis_output,axis",
     argvalues=[
-        (_kernel(kx, ky), ("x_new", "y_new")),
-        (_kernel(kx, ky), None),
-        (_kernel(kx, ky), ("y_new", "x_new")),
-        (_kernel(na.arange(0, 3, axis="kernel_x"), na.arange(-1, 1, axis="kernel_y")), None),
-        (_kernel(kx * u.pix, ky * u.pix), None),
-        (_kernel(na.linspace(-1, 1, axis="kernel_x", num=3), ky), None),
-        (_kernel(kx, ky, dict(channel=2)), None),
-        (_kernel(kx, ky, dict(x_new=24)), None),
-        (_kernel(kx, ky, dict(channel=2, y_new=22)), None),
+        (_kernel(kx, ky), axis_rotated, axis_rotated),
+        (_kernel(kx, ky), ("y_new", "x_new"), ("y_new", "x_new")),
+        (
+            na.FunctionArray(
+                inputs=na.CartesianNdVectorArray(dict(y_new=ky, x_new=kx)),
+                outputs=_kernel(kx, ky).outputs,
+            ),
+            None,
+            ("y_new", "x_new"),
+        ),
+        (_kernel(na.arange(0, 3, axis="kernel_x"), na.arange(-1, 1, axis="kernel_y")), axis_rotated, axis_rotated),
+        (_kernel(kx * u.pix, ky * u.pix), axis_rotated, axis_rotated),
+        (_kernel(na.linspace(-1, 1, axis="kernel_x", num=3), ky), axis_rotated, axis_rotated),
+        (_kernel(kx, ky, dict(channel=2)), axis_rotated, axis_rotated),
+        (_kernel(kx, ky, dict(x_new=24)), axis_rotated, axis_rotated),
+        (_kernel(kx, ky, dict(channel=2, y_new=22)), axis_rotated, axis_rotated),
+        (_kernel(kx, ky, dict(channel=1)), "x_new y_new".split(), axis_rotated),
     ],
     ids=[
         "centered",
-        "axes inferred",
         "axes reversed",
+        "components named",
         "uncentered",
         "pixels",
         "float offsets",
         "per channel",
         "varying along x",
         "per channel varying along y",
+        "length one",
     ],
 )
 def test_convolve_weights(
+    weights_rotated: tuple[na.AbstractScalar, dict[str, int], dict[str, int]],
     kernel: na.FunctionArray,
     axis_output: None | tuple[str, ...],
+    axis: tuple[str, ...],
 ) -> None:
     """Convolving the weights is the same as convolving what they produce."""
     result = na.regridding.convolve_weights(
@@ -662,14 +693,29 @@ def test_convolve_weights(
 
     actual = na.regridding.regrid_from_weights(*result, values_input=values_rotated)
     expected = _convolve_reference(
-        image=na.regridding.regrid_from_weights(
-            *weights_rotated,
-            values_input=values_rotated,
-        ),
+        image=_image(weights_rotated),
         kernel=kernel,
-        axis=axis_output or ("x_new", "y_new"),
+        axis=axis,
+        axis_kernel=axis_kernel,
     )
 
+    assert np.allclose(actual, expected, rtol=1e-12, atol=1e-15)
+
+
+def test_convolve_weights_percent(
+    weights_rotated: tuple[na.AbstractScalar, dict[str, int], dict[str, int]],
+) -> None:
+    """A kernel in a dimensionless unit other than one is scaled to one."""
+    kernel = _kernel(kx, ky)
+
+    result = na.regridding.convolve_weights(
+        weights_rotated,
+        na.FunctionArray(kernel.inputs, 100 * kernel.outputs * u.percent),
+        axis_output=axis_rotated,
+    )
+
+    actual = na.regridding.regrid_from_weights(*result, values_input=values_rotated)
+    expected = _convolve_reference(_image(weights_rotated), kernel, axis_rotated, axis_kernel)
     assert np.allclose(actual, expected, rtol=1e-12, atol=1e-15)
 
 
@@ -684,52 +730,75 @@ def test_convolve_weights_1d() -> None:
     )
     values = na.random.uniform(0, 1, shape_random=dict(x=20), seed=3)
 
-    result = na.regridding.convolve_weights(weights, kernel)
+    for axis_output in (None, "x_new"):
 
-    actual = na.regridding.regrid_from_weights(*result, values_input=values)
-    expected = _convolve_reference(
-        image=na.regridding.regrid_from_weights(*weights, values_input=values),
-        kernel=kernel,
-        axis=("x_new",),
+        result = na.regridding.convolve_weights(weights, kernel, axis_output=axis_output)
+
+        actual = na.regridding.regrid_from_weights(*result, values_input=values)
+        expected = _convolve_reference(
+            image=na.regridding.regrid_from_weights(*weights, values_input=values),
+            kernel=kernel,
+            axis=("x_new",),
+            axis_kernel=("kernel",),
+        )
+        assert np.allclose(actual, expected, rtol=1e-12, atol=1e-15)
+
+
+@pytest.mark.parametrize("stacked", [False, True])
+def test_convolve_weights_new_axis(
+    weights_rotated: tuple[na.AbstractScalar, dict[str, int], dict[str, int]],
+    stacked: bool,
+) -> None:
+    """
+    A kernel which varies along an axis the weights lack adds that axis,
+    whether only its outputs vary along it, or its offsets are repeated along
+    it too, as stacking a kernel for each element repeats them.
+    """
+    kernels = [_kernel(kx, ky, seed=seed) for seed in (5, 6, 7)]
+    kernel = np.stack(kernels, axis="wavelength")
+    if not stacked:
+        kernel = kernel.replace(inputs=kernels[0].inputs)
+
+    result = na.regridding.convolve_weights(
+        weights_rotated,
+        kernel,
+        axis_output=axis_rotated,
     )
-    assert np.allclose(actual, expected, rtol=1e-12, atol=1e-15)
-
-
-def test_convolve_weights_new_axis() -> None:
-    """A kernel which varies along an axis the weights lack adds that axis."""
-    kernel = _kernel(kx, ky, dict(wavelength=3))
-
-    result = na.regridding.convolve_weights(weights_rotated, kernel)
 
     assert result[0].shape == dict(channel=2, wavelength=3)
-    assert result[1] == weights_rotated[1] | dict(wavelength=3)
-    assert result[2] == weights_rotated[2] | dict(wavelength=3)
+    assert list(result[1]) == ["channel", "wavelength", "x", "y"]
+    assert list(result[2]) == ["channel", "wavelength", "x_new", "y_new"]
 
     actual = na.regridding.regrid_from_weights(*result, values_input=values_rotated)
-    expected = _convolve_reference(
-        image=na.regridding.regrid_from_weights(
-            *weights_rotated,
-            values_input=values_rotated,
-        ),
-        kernel=kernel,
-        axis=("x_new", "y_new"),
-    )
-    assert np.allclose(actual, expected, rtol=1e-12, atol=1e-15)
+    for w, kernel_w in enumerate(kernels):
+        expected = _convolve_reference(
+            image=_image(weights_rotated),
+            kernel=kernel_w,
+            axis=axis_rotated,
+            axis_kernel=axis_kernel,
+        )
+        assert np.allclose(actual[dict(wavelength=w)], expected, rtol=1e-12, atol=1e-15)
 
 
-def test_convolve_weights_transpose() -> None:
+def test_convolve_weights_transpose(
+    weights_rotated: tuple[na.AbstractScalar, dict[str, int], dict[str, int]],
+) -> None:
     """
     The conservative transpose of the convolved weights is their adjoint:
     the input and output cells have the same area here, so the inner
     products of the forward and the transposed operation agree.
     """
-    result = na.regridding.convolve_weights(weights_rotated, _kernel(kx, ky))
+    result = na.regridding.convolve_weights(
+        weights_rotated,
+        _kernel(kx, ky),
+        axis_output=axis_rotated,
+    )
     transposed = na.regridding.transpose_weights_conservative(
         weights=result,
         coordinates_input=grid_rotated,
         coordinates_output=grid_lattice,
         axis_input=("x", "y"),
-        axis_output=("x_new", "y_new"),
+        axis_output=axis_rotated,
     )
 
     image = na.random.uniform(0, 1, shape_random=dict(channel=2, x_new=24, y_new=22), seed=4)
@@ -738,36 +807,89 @@ def test_convolve_weights_transpose() -> None:
     backward = na.regridding.regrid_from_weights(*transposed, values_input=image)
 
     assert np.allclose(
-        (forward * image).sum(("x_new", "y_new")),
+        (forward * image).sum(axis_rotated),
         (values_rotated * backward).sum(("x", "y")),
         rtol=1e-12,
     )
 
 
+def test_convolve_weights_transpose_weights_input() -> None:
+    """
+    Weights built with `weights_input`, convolved with a kernel which adds
+    an axis, transpose with the same `weights_input`.
+    """
+    weights_input = na.random.uniform(0.5, 1, shape_random=dict(x=16, y=16), seed=8)
+    kwargs: dict[str, Any] = dict(
+        coordinates_input=grid_rotated,
+        coordinates_output=grid_lattice,
+        axis_input=("x", "y"),
+        axis_output=axis_rotated,
+    )
+    weights = na.regridding.weights(
+        method="conservative",
+        weights_input=weights_input,
+        **kwargs,
+    )
+
+    result = na.regridding.convolve_weights(
+        weights,
+        _kernel(kx, ky, dict(wavelength=3)),
+        axis_output=axis_rotated,
+    )
+    transposed = na.regridding.transpose_weights_conservative(
+        result,
+        weights_input=weights_input,
+        **kwargs,
+    )
+
+    assert transposed[0].shape == dict(channel=2, wavelength=3)
+
+    image = na.random.uniform(0, 1, shape_random=dict(x_new=24, y_new=22), seed=9)
+    backward = na.regridding.regrid_from_weights(*transposed, values_input=image)
+    assert backward.shape == dict(channel=2, wavelength=3, x=16, y=16)
+
+
 @pytest.mark.parametrize(
     argnames="kernel,axis_output,error",
     argvalues=[
-        (_kernel(kx + 0.5, ky), None, ValueError),
-        (_kernel(kx * u.mm, ky * u.mm), None, ValueError),
-        (na.FunctionArray(na.Cartesian2dVectorArray(kx, ky), _kernel(kx, ky).outputs * u.mm), None, ValueError),
-        (na.FunctionArray(kx, na.ScalarArray.ones(dict(kernel_x=3))), None, ValueError),
+        (_kernel(kx + 0.5, ky), axis_rotated, ValueError),
+        (_kernel(na.ScalarArray(np.array([-1, 0, np.inf]), "kernel_x"), ky), axis_rotated, ValueError),
+        (_kernel(kx * u.mm, ky * u.mm), axis_rotated, ValueError),
+        (na.FunctionArray(na.Cartesian2dVectorArray(kx, ky), _kernel(kx, ky).outputs * u.mm), axis_rotated, ValueError),
+        (na.FunctionArray(kx, na.ScalarArray.ones(dict(kernel_x=3))), axis_rotated, ValueError),
         (_kernel(kx, ky), ("x_new", "z_new"), ValueError),
-        (_kernel(na.arange(-1, 2, axis="x_new"), ky), None, ValueError),
-        (na.ScalarArray.ones(dict(kernel_x=3)), None, TypeError),
+        (_kernel(kx, ky), ("x_new", "channel"), ValueError),
+        (_kernel(kx, ky), ("x_new", "x_new"), ValueError),
+        (_kernel(kx, ky), "x_new", ValueError),
+        (_kernel(kx, ky), None, ValueError),
+        (_kernel(na.arange(-1, 2, axis="x_new"), ky), axis_rotated, ValueError),
+        (_kernel(kx, ky, dict(x=16)), axis_rotated, ValueError),
+        (_kernel(na.ScalarArray(np.array([0, 0, 1]), "kernel_x"), na.ScalarArray(np.zeros(3), "kernel_x")), axis_rotated, ValueError),
+        (na.FunctionArray(na.Cartesian2dVectorArray(kx, ky), na.UncertainScalarArray(_kernel(kx, ky).outputs, 0.1)), axis_rotated, TypeError),
+        (na.ScalarArray.ones(dict(kernel_x=3)), axis_rotated, TypeError),
     ],
     ids=[
         "fractional offsets",
+        "infinite offsets",
         "offsets in mm",
         "kernel in mm",
         "too few components",
         "unknown axis",
-        "kernel axis is an output axis",
+        "orthogonal axis",
+        "duplicate axis",
+        "too few axes",
+        "unnamed components without axis_output",
+        "offsets along an output axis",
+        "varying along an input axis",
+        "duplicate offsets",
+        "uncertain",
         "not a function",
     ],
 )
 def test_convolve_weights_errors(
+    weights_rotated: tuple[na.AbstractScalar, dict[str, int], dict[str, int]],
     kernel: Any,
-    axis_output: None | tuple[str, ...],
+    axis_output: None | str | tuple[str, ...],
     error: type[Exception],
 ) -> None:
     with pytest.raises(error):
@@ -778,7 +900,9 @@ def test_convolve_weights_errors(
     not _cuda_available(),
     reason="a CUDA device is needed to build weights on one",
 )
-def test_convolve_weights_device_cuda() -> None:  # pragma: nocover
+def test_convolve_weights_device_cuda(
+    weights_rotated: tuple[na.AbstractScalar, dict[str, int], dict[str, int]],
+) -> None:  # pragma: nocover
     """Weights on a device are convolved there, to the same result as the host."""
     import warnings
 
@@ -791,28 +915,20 @@ def test_convolve_weights_device_cuda() -> None:  # pragma: nocover
         coordinates_input=grid_rotated,
         coordinates_output=grid_lattice,
         axis_input=("x", "y"),
-        axis_output=("x_new", "y_new"),
+        axis_output=axis_rotated,
         method="conservative",
         device="cuda",
     )
     kernel = _kernel(kx, ky, dict(channel=2))
 
-    result = na.regridding.convolve_weights(weights, kernel)
+    result = na.regridding.convolve_weights(weights, kernel, axis_output=axis_rotated)
 
     device = na.regridding.regrid_from_weights(*result, values_input=values_rotated)
     device = na.ScalarArray(np.asarray(device.ndarray.copy_to_host()), axes=device.axes)
     expected = _convolve_reference(
-        image=na.regridding.regrid_from_weights(
-            *na.regridding.weights(
-                coordinates_input=grid_rotated,
-                coordinates_output=grid_lattice,
-                axis_input=("x", "y"),
-                axis_output=("x_new", "y_new"),
-                method="conservative",
-            ),
-            values_input=values_rotated,
-        ),
+        image=_image(weights_rotated),
         kernel=kernel,
-        axis=("x_new", "y_new"),
+        axis=axis_rotated,
+        axis_kernel=axis_kernel,
     )
     assert np.allclose(device, expected, rtol=1e-10, atol=1e-12)

@@ -449,40 +449,58 @@ def convolve_weights(
     kernel
         The kernel, as a function of the offset from the cell the light
         lands in, in cells.
+
         ``kernel.inputs`` holds the offsets, a vector with one component for
-        each of `axis_output`, in the same order, or a scalar if there is
-        only one.  The offsets must be whole numbers of cells, either
-        dimensionless or in pixels, and their axes are the axes of the
-        kernel itself, which must not be axes of the output grid.
-        ``kernel.outputs`` is the fraction of the light which lands at each
-        offset, and must be dimensionless.
-        Any other axes it has are broadcast against the output grid, so the
-        kernel may be different for each wavelength, say, or may vary across
-        the output grid, in which case it is indexed by the cell the light
-        lands in before it is spread.
-        The offsets do not have to be centered or contiguous: cells the
-        kernel does not list receive nothing.
+        each resampled output axis, or a scalar if there is only one.  Each
+        component acts along the output axis it is named after, if every
+        component is named after one (as in a
+        :class:`~named_arrays.CartesianNdVectorArray`), or else along the
+        output axis at the same position in `axis_output`.  The offsets must
+        be finite whole numbers of cells, either dimensionless or in pixels,
+        and no offset may appear twice.  They need be neither centered nor
+        contiguous: cells the kernel does not list receive nothing.
+
+        The axes the offsets vary along are the axes of the kernel itself,
+        and must not be axes of the output grid.  ``kernel.outputs``, which
+        must be dimensionless and without uncertainty, is the fraction of
+        the light which lands at each offset.  Any other axes, of either the
+        offsets or the outputs, are broadcast by name: an axis the weights
+        are an array over, such as wavelength, gives a kernel for each of
+        its elements, and an axis the weights lack is added to them.  An
+        output axis gives a kernel which varies across the output grid, and
+        which is indexed by the cell the light lands in before it is spread,
+        which is how a kernel which varies across the field is expressed.
+        The kernel cannot vary along a resampled input axis.
     axis_output
         The resampled axes of the output grid, which the components of
-        ``kernel.inputs`` act along.
-        If :obj:`None` (the default), the axes of the output grid which the
-        weights are not an array over are used, in the order of the output
-        grid, as :func:`regrid_from_weights` does.
+        ``kernel.inputs`` act along, in the same order.
+        If :obj:`None` (the default), they are the axes of the output grid
+        which the weights are not an array over, as
+        :func:`regrid_from_weights` infers them, and the components of
+        ``kernel.inputs`` then have to be named after them unless there is
+        only one.
 
     Returns
     -------
-    The convolved weights.
+    The convolved weights, with the orthogonal axes first in both shapes, as
+    :func:`weights` returns them.
     If the kernel varies along an axis the weights are not an array over,
     the weights and both shapes gain that axis.
 
     Raises
     ------
+    TypeError
+        If `kernel` is not a :class:`~named_arrays.AbstractFunctionArray`,
+        or if its inputs or outputs are not scalars, or vectors of scalars,
+        without uncertainty.
     ValueError
-        If the offsets are not whole numbers of cells, if either the offsets
-        or the kernel have an unsuitable unit, if the number of components
-        of ``kernel.inputs`` differs from the number of axes in
-        `axis_output`, or if an axis of the kernel is also an axis of the
-        output grid.
+        If the offsets are not finite whole numbers of cells, or list an
+        offset twice; if either the offsets or the kernel have an unsuitable
+        unit; if `axis_output` does not name the resampled output axes of the
+        weights, or is needed and not given; if the number of components of
+        ``kernel.inputs`` differs from the number of resampled axes; or if
+        the kernel varies along a resampled input axis, or its offsets along
+        an axis of the output grid.
 
     See Also
     --------

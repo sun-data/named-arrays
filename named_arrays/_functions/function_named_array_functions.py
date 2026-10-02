@@ -447,98 +447,152 @@ def regridding_convolve_weights(
 
     shape_weights = weights.shape
 
-    # the resampled axes are inferred as `regrid_from_weights` infers them
-    if axis_output is None:
-        axis_output = tuple(a for a in shape_output if a not in shape_weights)
-    elif isinstance(axis_output, str):
-        axis_output = (axis_output,)
-    axis_output = tuple(axis_output)
+    # the resampled axes of the grids are the ones the weights are not an
+    # array over, as `regrid_from_weights` infers them
     axis_input = tuple(a for a in shape_input if a not in shape_weights)
 
-    for axis in axis_output:
-        if axis not in shape_output:
-            raise ValueError(
-                f"{axis!r} in axis_output={axis_output} is not an axis of the "
-                f"output grid, {shape_output}"
-            )
+    if axis_output is None:
+        resampled = tuple(a for a in shape_output if a not in shape_weights)
+    else:
+        if isinstance(axis_output, str):
+            axis_output = (axis_output,)
+        resampled = tuple(axis_output)
+        if len(set(resampled)) != len(resampled):
+            raise ValueError(f"axis_output={resampled} names an axis twice")
+        for axis in resampled:
+            if axis not in shape_output:
+                raise ValueError(
+                    f"{axis!r} in axis_output={resampled} is not an axis of the "
+                    f"output grid, {shape_output}"
+                )
+            if axis in shape_weights:
+                raise ValueError(
+                    f"{axis!r} in axis_output={resampled} is an orthogonal axis "
+                    f"of the weights, which are an array over {shape_weights}"
+                )
+
+    if len(resampled) != len(axis_input):
+        raise ValueError(
+            f"the weights resample the {len(axis_input)} input axes "
+            f"{axis_input}, but axis_output={resampled} names "
+            f"{len(resampled)} output axes"
+        )
 
     kernel = kernel.explicit
 
     offsets = kernel.inputs
     if isinstance(offsets, na.AbstractVectorArray):
-        components = list(offsets.cartesian_nd.components.values())
+        components = dict(offsets.cartesian_nd.components)
     else:
-        components = [offsets]
-    components = [_offsets_cells(na.as_named_array(c)) for c in components]
-
-    if len(components) != len(axis_output):
-        raise ValueError(
-            f"the offsets of the kernel have {len(components)} components, "
-            f"but axis_output={axis_output} has {len(axis_output)} axes"
-        )
+        components = {None: offsets}
+    components = {k: na.as_named_array(c) for k, c in components.items()}
 
     values = na.as_named_array(kernel.outputs)
+
+    for array in (values, *components.values()):
+        if not isinstance(array, na.AbstractScalarArray):
+            raise TypeError(
+                f"the inputs and outputs of the kernel must be scalars or "
+                f"vectors of scalars without uncertainty, got {type(array)}"
+            )
+
+    if len(components) != len(resampled):
+        raise ValueError(
+            f"the offsets of the kernel have {len(components)} components, "
+            f"but the weights resample {len(resampled)} output axes, {resampled}"
+        )
+
+    # the output axis each component of the offsets acts along: the one it is
+    # named after, if every component is named after one, or else the one at
+    # the same position in `axis_output`, which then has to be given
+    if set(components) == set(resampled):
+        component_of = {a: a for a in resampled}
+    elif axis_output is None and len(components) > 1:
+        raise ValueError(
+            f"the components of the kernel's offsets, {tuple(components)}, are "
+            f"not named after the resampled output axes, {resampled}, so "
+            f"axis_output has to be given to say which axis each acts along"
+        )
+    else:
+        component_of = dict(zip(resampled, components))
+
+    components = {k: _offsets_cells(c) for k, c in components.items()}
+
     unit = na.unit(values)
     if unit is not None:
         if not unit.is_equivalent(u.dimensionless_unscaled):
             raise ValueError(f"the kernel must be dimensionless, got {unit}")
         values = values.to(u.dimensionless_unscaled).value
 
-    # the axes of the kernel itself are the axes of its offsets
-    shape_kernel = na.broadcast_shapes(*[c.shape for c in components])
+    # the axes of the kernel itself are the axes the offsets vary along; any
+    # other axis of the offsets is broadcast like the other axes of `values`
+    shape_offsets = na.broadcast_shapes(*[c.shape for c in components.values()])
+    offsets_full = {
+        k: np.asarray(
+            c.broadcast_to(shape_offsets).ndarray_aligned(shape_offsets),
+            dtype=float,
+        )
+        for k, c in components.items()
+    }
+    for offset in offsets_full.values():
+        if not np.all(np.isfinite(offset)):
+            raise ValueError(f"the offsets of the kernel must be finite, got {offset}")
+    shape_kernel = {
+        a: n
+        for i, (a, n) in enumerate(shape_offsets.items())
+        if any(np.any(np.diff(o, axis=i) != 0) for o in offsets_full.values())
+    }
+    index_kernel = tuple(
+        slice(None) if a in shape_kernel else 0 for a in shape_offsets
+    )
+
     for axis in shape_kernel:
         if axis in shape_output:
             raise ValueError(
-                f"the axis {axis!r} of the kernel's offsets is also an axis of "
-                f"the output grid, {shape_output}"
+                f"the offsets of the kernel vary along {axis!r}, which is an "
+                f"axis of the output grid, {shape_output}"
             )
 
-    # any other axes of the kernel are broadcast against the output grid
-    shape_extra = {a: n for a, n in values.shape.items() if a not in shape_kernel}
-
-    offsets_cells = []
-    for c in components:
-        offset = c.broadcast_to(shape_kernel).ndarray_aligned(shape_kernel)
-        offset = np.asarray(offset, dtype=float).reshape(-1)
+    offsets_cells = dict()
+    for k, offset in offsets_full.items():
+        offset = offset[index_kernel].reshape(-1)
         offset_rounded = np.rint(offset)
         if not np.allclose(offset, offset_rounded, rtol=0, atol=1e-6):
             raise ValueError(
                 f"the offsets of the kernel must be whole numbers of cells, "
                 f"got {offset}"
             )
-        offsets_cells.append(offset_rounded.astype(np.int64))
+        offsets_cells[k] = offset_rounded.astype(np.int64)
 
-    shape_values = shape_extra | shape_kernel
-    values = values.broadcast_to(shape_values).ndarray_aligned(shape_values)
-    values = np.asarray(values, dtype=float)
-    values = values.reshape(tuple(shape_extra.values()) + (-1,))
+    offsets_stacked = np.stack(list(offsets_cells.values()), axis=~0)
+    if len(np.unique(offsets_stacked, axis=0)) != len(offsets_stacked):
+        raise ValueError(
+            "the kernel lists an offset more than once; a kernel which varies "
+            "along another axis should not have offsets which vary along it"
+        )
 
-    # scatter the kernel into a dense stencil centered on zero offset, so the
-    # offsets need be neither centered nor contiguous
-    half = [int(np.abs(o).max(initial=0)) for o in offsets_cells]
-    stencil = np.zeros(tuple(2 * h + 1 for h in half) + tuple(shape_extra.values()))
-    np.add.at(
-        stencil,
-        tuple(o + h for o, h in zip(offsets_cells, half)),
-        np.moveaxis(values, ~0, 0),
-    )
+    # an axis of length one carries no variation, so it is not one to add
+    for axis, num in values.shape.items():
+        if num == 1 and axis not in shape_kernel:
+            values = values[{axis: 0}]
 
-    # name the axes of the stencil, one for each output axis it acts along,
-    # longer than any axis of the grids or the kernel so they cannot collide
-    length = max(len(a) for a in tuple(shape_output) + tuple(shape_extra))
-    axis_stencil = {a: "_" * (length + 1) + str(i) for i, a in enumerate(axis_output)}
-    stencil = na.ScalarArray(
-        ndarray=stencil,
-        axes=tuple(axis_stencil.values()) + tuple(shape_extra),
-    )
+    shape_extra = {a: n for a, n in values.shape.items() if a not in shape_kernel}
+
+    for axis in shape_extra:
+        if axis in axis_input and axis not in resampled:
+            raise ValueError(
+                f"the kernel varies along {axis!r}, a resampled axis of the "
+                f"input grid; a kernel which varies across the field varies "
+                f"along the output axes, {resampled}, instead"
+            )
 
     # broadcast the orthogonal axes of the weights against those of the
     # grids and of the kernel, so that the kernel may add one
     shape_orthogonal = na.broadcast_shapes(
         shape_weights,
-        {a: n for a, n in shape_output.items() if a not in axis_output},
+        {a: n for a, n in shape_output.items() if a not in resampled},
         {a: n for a, n in shape_input.items() if a not in axis_input},
-        {a: n for a, n in shape_extra.items() if a not in axis_output},
+        {a: n for a, n in shape_extra.items() if a not in resampled},
     )
     axes_orthogonal = tuple(shape_orthogonal)
     num_orthogonal = len(axes_orthogonal)
@@ -546,30 +600,45 @@ def regridding_convolve_weights(
     # lay both grids out with the orthogonal axes first and the resampled
     # axes after them, in the order the flat indices of the weights address
     # them, which is their order in the shapes the weights were built with
-    axes_output = tuple(a for a in shape_output if a in axis_output)
-    axes_input = axis_input
+    axes_output = tuple(a for a in shape_output if a in resampled)
+
+    # the kernel is built directly in the layout `regridding.convolve_weights`
+    # takes: its orthogonal axes, its resampled axes, and then the stencil,
+    # with one axis for each resampled axis, in the same order
+    values = values.broadcast_to(shape_extra | shape_kernel)
+    values = values.ndarray_aligned(axes_orthogonal + axes_output + tuple(shape_kernel))
+    values = np.asarray(values, dtype=float)
+    shape_lead = values.shape[: num_orthogonal + len(axes_output)]
+    values = values.reshape(shape_lead + (-1,))
+
+    # scatter the kernel into a dense stencil centered on zero offset, so the
+    # offsets need be neither centered nor contiguous
+    half = {
+        a: int(np.abs(offsets_cells[component_of[a]]).max(initial=0))
+        for a in axes_output
+    }
+    stencil = np.zeros(shape_lead + tuple(2 * half[a] + 1 for a in axes_output))
+    index_stencil = tuple(offsets_cells[component_of[a]] + half[a] for a in axes_output)
+    stencil[(Ellipsis,) + index_stencil] = values
 
     weights_ndarray = weights.broadcast_to(shape_orthogonal)
     weights_ndarray = weights_ndarray.ndarray_aligned(axes_orthogonal)
 
-    kernel_ndarray = stencil.ndarray_aligned(
-        axes_orthogonal + axes_output + tuple(axis_stencil[a] for a in axes_output)
-    )
-
     result, _, _ = regridding.convolve_weights(
         weights=(
             weights_ndarray,
-            tuple(shape_orthogonal.values()) + tuple(shape_input[a] for a in axes_input),
+            tuple(shape_orthogonal.values()) + tuple(shape_input[a] for a in axis_input),
             tuple(shape_orthogonal.values()) + tuple(shape_output[a] for a in axes_output),
         ),
-        kernel=kernel_ndarray,
-        axis_input=tuple(range(num_orthogonal, num_orthogonal + len(axes_input))),
+        kernel=stencil,
+        axis_input=tuple(range(num_orthogonal, num_orthogonal + len(axis_input))),
         axis_output=tuple(range(num_orthogonal, num_orthogonal + len(axes_output))),
     )
 
     result = na.ScalarArray(result, axes_orthogonal)
 
-    shape_input = na.broadcast_shapes(shape_input, shape_orthogonal)
-    shape_output = na.broadcast_shapes(shape_output, shape_orthogonal)
+    # the orthogonal axes come first, as `weights` returns them
+    shape_input = na.broadcast_shapes(shape_orthogonal, shape_input)
+    shape_output = na.broadcast_shapes(shape_orthogonal, shape_output)
 
     return result, shape_input, shape_output
