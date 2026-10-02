@@ -682,12 +682,22 @@ def test_convolve_weights_percent(
     assert np.allclose(actual, expected, rtol=1e-12, atol=1e-15)
 
 
-def test_convolve_weights_1d() -> None:
-    """A kernel with one axis convolves one-dimensional weights."""
+@pytest.mark.parametrize(
+    argnames="kernel",
+    argvalues=[
+        na.ScalarArray(np.array([0.25, 0.5, 0.25]), axes="kernel"),
+        _kernel(dict(kernel=25)),
+    ],
+    ids=["narrow", "wider than the grid"],
+)
+def test_convolve_weights_1d(kernel: na.ScalarArray) -> None:
+    """
+    A kernel with one axis convolves one-dimensional weights, including one
+    wide enough to spread some of the light entirely off the output grid.
+    """
     x_in = na.linspace(-1, 1, axis="x", num=21)
     x_out = na.linspace(-1.1, 1.1, axis="x_new", num=12)
     weights = na.regridding.weights(x_in, x_out, method="conservative")
-    kernel = na.ScalarArray(np.array([0.25, 0.5, 0.25]), axes="kernel")
     axis = dict(x_new="kernel")
     values = na.random.uniform(0, 1, shape_random=dict(x=20), seed=3)
 
