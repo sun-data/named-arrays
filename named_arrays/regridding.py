@@ -15,6 +15,7 @@ __all__ = [
     "regrid_from_weights",
     "transpose_weights",
     "transpose_weights_conservative",
+    "convolve_weights",
 ]
 
 _seed_default = 42
@@ -421,4 +422,188 @@ def transpose_weights_conservative(
         axis_input=axis_input,
         axis_output=axis_output,
         weights_input=weights_input,
+    )
+
+
+def convolve_weights(
+    weights: tuple[na.AbstractScalar, dict[str, int], dict[str, int]],
+    kernel: na.AbstractScalar,
+    axis: dict[str, str],
+) -> tuple[na.AbstractScalar, dict[str, int], dict[str, int]]:
+    r"""
+    Convolve the output of a set of weights with a kernel, such as a
+    point-spread function.
+
+    If the weights computed by :func:`weights` are the sparse matrix
+    :math:`W`, this computes :math:`P W`, where :math:`P` spreads whatever
+    lands in each output cell over the cells around it.  Applying the
+    result with :func:`regrid_from_weights` resamples and blurs in one step,
+    and :func:`transpose_weights_conservative` transposes the whole
+    operation.
+
+    This is the named-axis form of :func:`regridding.convolve_weights`.
+
+    Parameters
+    ----------
+    weights
+        Weights computed by :func:`weights`.
+    kernel
+        The kernel: the fraction of the light landing in a cell which
+        reaches each of the cells around it.
+        It must be dimensionless, finite, and without uncertainty.
+
+        The axes named in `axis` are the axes of the kernel itself.
+        Along an axis of length :math:`n`, the element at index
+        :math:`\lfloor n / 2 \rfloor` is the cell the light lands in, which
+        is where :func:`named_arrays.convolve` and
+        :func:`scipy.ndimage.convolve` place the center.
+
+        Every other axis is broadcast by name, as in any other operation:
+
+        * an axis the weights are an array over, such as a wavelength or a
+          channel, gives a different kernel for each of its elements;
+        * a resampled axis of the output grid gives a kernel which varies
+          across the grid, indexed by the cell the light lands in, which is
+          how a kernel which varies across the field is expressed;
+        * any other axis is added to the weights and to both shapes, so the
+          weights become a set for each of its elements.
+
+        The kernel cannot vary along a resampled axis of the input grid
+        unless that axis is also one of the output grid, in which case it is
+        the output grid's axis.
+    axis
+        A dict mapping each resampled axis of the output grid to convolve
+        along onto the kernel axis which runs along it, such as
+        ``dict(sensor_x="kernel_x", sensor_y="kernel_y")``.
+        A resampled axis left out is not convolved along.
+        The axes of the kernel itself have to be named differently from the
+        axes of the grids.
+
+    Returns
+    -------
+    The convolved weights, with the orthogonal axes first in both shapes, as
+    :func:`weights` returns them.
+
+    Raises
+    ------
+    TypeError
+        If `kernel` is not a scalar without uncertainty, or `axis` is not a
+        dict.
+    ValueError
+        If `axis` names an axis which is not a resampled output axis, or a
+        kernel axis which the kernel lacks, which is empty, which is also an
+        axis of the grids, or which runs along two output axes; if the kernel
+        is not dimensionless or not finite; if it varies along a resampled
+        input axis, or along an output axis with a different number of cells;
+        or if its other axes cannot be broadcast against the weights.
+
+    See Also
+    --------
+    :func:`regridding.convolve_weights`: The equivalent function for
+    instances of :class:`numpy.ndarray`, which describes the algorithm.
+
+    Notes
+    -----
+    The kernel acts on cells, so for a point-spread function it should be
+    the point-spread function convolved with a cell twice, once for the cell
+    the light lands in and once for the cell it is collected in.
+
+    A kernel held as a :class:`~named_arrays.FunctionArray` of the offsets of
+    its elements can be passed as its ``outputs`` only if the offsets along
+    each axis run from :math:`-\lfloor n / 2 \rfloor`, so that the element
+    at index :math:`\lfloor n / 2 \rfloor` is the one at zero offset.
+    Otherwise the result is shifted by the difference.
+
+    Examples
+    --------
+
+    Rotate an array onto a new grid, and blur it with a Gaussian kernel in
+    the same set of weights.
+
+    .. jupyter-execute::
+
+        import numpy as np
+        import matplotlib.pyplot as plt
+        import astropy.units as u
+        import named_arrays as na
+
+        # Define a grid of vertices, and rotate it
+        coordinates_input = na.Cartesian2dVectorLinearSpace(
+            start=-4,
+            stop=4,
+            axis=na.Cartesian2dVectorArray("x", "y"),
+            num=17,
+        ).explicit
+        coordinates_input = na.Cartesian2dRotationMatrixArray(20 * u.deg) @ coordinates_input
+
+        # Define a uniform output grid
+        coordinates_output = na.Cartesian2dVectorLinearSpace(
+            start=-6,
+            stop=6,
+            axis=na.Cartesian2dVectorArray("x_new", "y_new"),
+            num=25,
+        )
+
+        # Define an array of values with two bright cells
+        values_input = na.ScalarArray.zeros(dict(x=16, y=16))
+        values_input[dict(x=4, y=4)] = 1
+        values_input[dict(x=10, y=8)] = 1
+
+        # Save the weights which rotate the input array onto the output grid
+        weights = na.regridding.weights(
+            coordinates_input=coordinates_input,
+            coordinates_output=coordinates_output,
+            method="conservative",
+        )
+
+        # Define a Gaussian kernel, five cells across
+        offset_x = na.arange(-2, 3, axis="kernel_x")
+        offset_y = na.arange(-2, 3, axis="kernel_y")
+        kernel = np.exp(-(np.square(offset_x) + np.square(offset_y)) / 2)
+        kernel = kernel / kernel.sum()
+
+        # Blur the output of the weights with the kernel
+        weights_blurred = na.regridding.convolve_weights(
+            weights=weights,
+            kernel=kernel,
+            axis=dict(x_new="kernel_x", y_new="kernel_y"),
+        )
+
+        # Apply both sets of weights
+        values_rotated = na.regridding.regrid_from_weights(
+            *weights,
+            values_input=values_input,
+        )
+        values_blurred = na.regridding.regrid_from_weights(
+            *weights_blurred,
+            values_input=values_input,
+        )
+
+        # Plot the original, rotated, and blurred arrays
+        fig, ax = plt.subplots(
+            ncols=3,
+            sharex=True,
+            sharey=True,
+            figsize=(9, 3.4),
+            constrained_layout=True,
+        )
+        na.plt.pcolormesh(coordinates_input, C=values_input, ax=ax[0])
+        na.plt.pcolormesh(coordinates_output, C=values_rotated, ax=ax[1])
+        na.plt.pcolormesh(coordinates_output, C=values_blurred, ax=ax[2])
+        ax[0].set_title(f"original, total {values_input.sum().ndarray:.2f}")
+        ax[1].set_title(f"rotated, total {values_rotated.sum().ndarray:.2f}")
+        ax[2].set_title(f"rotated and blurred, total {values_blurred.sum().ndarray:.2f}")
+        for a in ax:
+            a.set_aspect("equal")
+    """
+
+    weights, shape_input, shape_output = weights
+
+    return na._named_array_function(
+        func=convolve_weights,
+        weights=weights,
+        shape_input=shape_input,
+        shape_output=shape_output,
+        kernel=kernel,
+        axis=axis,
     )
