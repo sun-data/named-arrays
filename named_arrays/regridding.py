@@ -427,7 +427,7 @@ def transpose_weights_conservative(
 
 def convolve_weights(
     weights: tuple[na.AbstractScalar, dict[str, int], dict[str, int]],
-    kernel: na.AbstractScalarArray,
+    kernel: na.AbstractScalar,
     axis: dict[str, str],
 ) -> tuple[na.AbstractScalar, dict[str, int], dict[str, int]]:
     r"""
@@ -458,7 +458,7 @@ def convolve_weights(
         is where :func:`named_arrays.convolve` and
         :func:`scipy.ndimage.convolve` place the center.
 
-        Every other axis is broadcast by name:
+        Every other axis is broadcast by name, as in any other operation:
 
         * an axis the weights are an array over, such as a wavelength or a
           channel, gives a different kernel for each of its elements;
@@ -468,11 +468,13 @@ def convolve_weights(
         * any other axis is added to the weights and to both shapes, so the
           weights become a set for each of its elements.
 
-        An axis of length one is ignored, and the kernel cannot vary along a
-        resampled axis of the input grid.
+        The kernel cannot vary along a resampled axis of the input grid
+        unless that axis is also one of the output grid, in which case it is
+        the output grid's axis.
     axis
-        Which axis of the kernel runs along which resampled axis of the output
-        grid, such as ``dict(sensor_x="kernel_x", sensor_y="kernel_y")``.
+        A dict mapping each resampled axis of the output grid to convolve
+        along onto the kernel axis which runs along it, such as
+        ``dict(sensor_x="kernel_x", sensor_y="kernel_y")``.
         A resampled axis left out is not convolved along.
         The axes of the kernel itself have to be named differently from the
         axes of the grids.
@@ -485,14 +487,15 @@ def convolve_weights(
     Raises
     ------
     TypeError
-        If `kernel` is not a scalar without uncertainty, such as a
-        :class:`~named_arrays.FunctionArray`, whose outputs are what to pass.
+        If `kernel` is not a scalar without uncertainty, or `axis` is not a
+        dict.
     ValueError
         If `axis` names an axis which is not a resampled output axis, or a
         kernel axis which the kernel lacks, which is empty, which is also an
         axis of the grids, or which runs along two output axes; if the kernel
-        is not dimensionless or not finite; or if it varies along a resampled
-        input axis, or along an output axis with a different number of cells.
+        is not dimensionless or not finite; if it varies along a resampled
+        input axis, or along an output axis with a different number of cells;
+        or if its other axes cannot be broadcast against the weights.
 
     See Also
     --------
@@ -503,9 +506,13 @@ def convolve_weights(
     -----
     The kernel acts on cells, so for a point-spread function it should be
     the point-spread function convolved with a cell twice, once for the cell
-    the light lands in and once for the cell it is collected in.  That is
-    what :func:`optika.sensors.kernel_diffusion` returns: pass its
-    ``outputs``, mapping the sensor axes onto the axes it was given.
+    the light lands in and once for the cell it is collected in.
+
+    A kernel held as a :class:`~named_arrays.FunctionArray` of the offsets of
+    its elements can be passed as its ``outputs`` only if the offsets along
+    each axis run from :math:`-\lfloor n / 2 \rfloor`, so that the element
+    at index :math:`\lfloor n / 2 \rfloor` is the one at zero offset.
+    Otherwise the result is shifted by the difference.
 
     Examples
     --------
@@ -591,16 +598,6 @@ def convolve_weights(
     """
 
     weights, shape_input, shape_output = weights
-
-    if isinstance(kernel, na.AbstractFunctionArray):
-        raise TypeError(
-            "the kernel must be a scalar; for a `FunctionArray`, such as the "
-            "one `optika.sensors.kernel_diffusion()` returns, pass its `outputs`"
-        )
-    if not isinstance(kernel, na.AbstractScalarArray):
-        raise TypeError(
-            f"the kernel must be a scalar without uncertainty, got {type(kernel)}"
-        )
 
     return na._named_array_function(
         func=convolve_weights,
