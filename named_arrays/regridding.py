@@ -427,14 +427,13 @@ def transpose_weights_conservative(
 
 def convolve_weights(
     weights: tuple[na.AbstractScalar, dict[str, int], dict[str, int]],
-    kernel: na.AbstractFunctionArray,
-    axis_output: None | str | Sequence[str] = None,
+    kernel: na.AbstractScalarArray,
+    axis: dict[str, str],
 ) -> tuple[na.AbstractScalar, dict[str, int], dict[str, int]]:
     r"""
     Convolve the output of a set of weights with a kernel, such as a
     point-spread function.
 
-    This is a thin wrapper around :func:`regridding.convolve_weights`.
     If the weights computed by :func:`weights` are the sparse matrix
     :math:`W`, this computes :math:`P W`, where :math:`P` spreads whatever
     lands in each output cell over the cells around it.  Applying the
@@ -442,70 +441,71 @@ def convolve_weights(
     and :func:`transpose_weights_conservative` transposes the whole
     operation.
 
+    This is the named-axis form of :func:`regridding.convolve_weights`.
+
     Parameters
     ----------
     weights
         Weights computed by :func:`weights`.
     kernel
-        The kernel, as a function of the offset from the cell the light
-        lands in, in cells.
+        The kernel: the fraction of the light landing in a cell which
+        reaches each of the cells around it.
+        It must be dimensionless, finite, and without uncertainty.
 
-        ``kernel.inputs`` holds the offsets, a vector with one component for
-        each resampled output axis, or a scalar if there is only one.  Each
-        component acts along the output axis it is named after, if every
-        component is named after one (as in a
-        :class:`~named_arrays.CartesianNdVectorArray`), or else along the
-        output axis at the same position in `axis_output`.  The offsets must
-        be finite whole numbers of cells, either dimensionless or in pixels,
-        and no offset may appear twice.  They need be neither centered nor
-        contiguous: cells the kernel does not list receive nothing.
+        The axes named in `axis` are the axes of the kernel itself.
+        Along an axis of length :math:`n`, the element at index
+        :math:`\lfloor n / 2 \rfloor` is the cell the light lands in, which
+        is where :func:`named_arrays.convolve` and
+        :func:`scipy.ndimage.convolve` place the center.
 
-        The axes the offsets vary along are the axes of the kernel itself,
-        and must not be axes of the output grid.  ``kernel.outputs``, which
-        must be dimensionless and without uncertainty, is the fraction of
-        the light which lands at each offset.  Any other axes, of either the
-        offsets or the outputs, are broadcast by name: an axis the weights
-        are an array over, such as wavelength, gives a kernel for each of
-        its elements, and an axis the weights lack is added to them.  An
-        output axis gives a kernel which varies across the output grid, and
-        which is indexed by the cell the light lands in before it is spread,
-        which is how a kernel which varies across the field is expressed.
-        The kernel cannot vary along a resampled input axis.
-    axis_output
-        The resampled axes of the output grid, which the components of
-        ``kernel.inputs`` act along, in the same order.
-        If :obj:`None` (the default), they are the axes of the output grid
-        which the weights are not an array over, as
-        :func:`regrid_from_weights` infers them, and the components of
-        ``kernel.inputs`` then have to be named after them unless there is
-        only one.
+        Every other axis is broadcast by name:
+
+        * an axis the weights are an array over, such as a wavelength or a
+          channel, gives a different kernel for each of its elements;
+        * a resampled axis of the output grid gives a kernel which varies
+          across the grid, indexed by the cell the light lands in, which is
+          how a kernel which varies across the field is expressed;
+        * any other axis is added to the weights and to both shapes, so the
+          weights become a set for each of its elements.
+
+        An axis of length one is ignored, and the kernel cannot vary along a
+        resampled axis of the input grid.
+    axis
+        Which axis of the kernel runs along which resampled axis of the output
+        grid, such as ``dict(sensor_x="kernel_x", sensor_y="kernel_y")``.
+        A resampled axis left out is not convolved along.
+        The axes of the kernel itself have to be named differently from the
+        axes of the grids.
 
     Returns
     -------
     The convolved weights, with the orthogonal axes first in both shapes, as
     :func:`weights` returns them.
-    If the kernel varies along an axis the weights are not an array over,
-    the weights and both shapes gain that axis.
 
     Raises
     ------
     TypeError
-        If `kernel` is not a :class:`~named_arrays.AbstractFunctionArray`,
-        or if its inputs or outputs are not scalars, or vectors of scalars,
-        without uncertainty.
+        If `kernel` is not a scalar without uncertainty, such as a
+        :class:`~named_arrays.FunctionArray`, whose outputs are what to pass.
     ValueError
-        If the offsets are not finite whole numbers of cells, or list an
-        offset twice; if either the offsets or the kernel have an unsuitable
-        unit; if `axis_output` does not name the resampled output axes of the
-        weights, or is needed and not given; if the number of components of
-        ``kernel.inputs`` differs from the number of resampled axes; or if
-        the kernel varies along a resampled input axis, or its offsets along
-        an axis of the output grid.
+        If `axis` names an axis which is not a resampled output axis, or a
+        kernel axis which the kernel lacks, which is empty, which is also an
+        axis of the grids, or which runs along two output axes; if the kernel
+        is not dimensionless or not finite; or if it varies along a resampled
+        input axis, or along an output axis with a different number of cells.
 
     See Also
     --------
     :func:`regridding.convolve_weights`: The equivalent function for
     instances of :class:`numpy.ndarray`, which describes the algorithm.
+
+    Notes
+    -----
+    The kernel acts on cells, so for a point-spread function it should be
+    the point-spread function convolved with a cell twice, once for the cell
+    the light lands in and once for the cell it is collected in.  That is
+    what :func:`optika.sensors.kernel_diffusion` returns: pass its
+    ``outputs``, mapping the sensor axes onto the axes it was given.
 
     Examples
     --------
@@ -550,21 +550,16 @@ def convolve_weights(
         )
 
         # Define a Gaussian kernel, five cells across
-        offset = na.Cartesian2dVectorArray(
-            x=na.arange(-2, 3, axis="kernel_x"),
-            y=na.arange(-2, 3, axis="kernel_y"),
-        )
-        gaussian = np.exp(-np.square(offset.length) / 2)
-        kernel = na.FunctionArray(
-            inputs=offset,
-            outputs=gaussian / gaussian.sum(),
-        )
+        offset_x = na.arange(-2, 3, axis="kernel_x")
+        offset_y = na.arange(-2, 3, axis="kernel_y")
+        kernel = np.exp(-(np.square(offset_x) + np.square(offset_y)) / 2)
+        kernel = kernel / kernel.sum()
 
         # Blur the output of the weights with the kernel
         weights_blurred = na.regridding.convolve_weights(
             weights=weights,
             kernel=kernel,
-            axis_output=("x_new", "y_new"),
+            axis=dict(x_new="kernel_x", y_new="kernel_y"),
         )
 
         # Apply both sets of weights
@@ -597,10 +592,14 @@ def convolve_weights(
 
     weights, shape_input, shape_output = weights
 
-    if not isinstance(kernel, na.AbstractFunctionArray):
+    if isinstance(kernel, na.AbstractFunctionArray):
         raise TypeError(
-            f"the kernel must be an instance of `named_arrays.AbstractFunctionArray`, "
-            f"whose inputs are the offsets of its elements, got {type(kernel)}"
+            "the kernel must be a scalar; for a `FunctionArray`, such as the "
+            "one `optika.sensors.kernel_diffusion()` returns, pass its `outputs`"
+        )
+    if not isinstance(kernel, na.AbstractScalarArray):
+        raise TypeError(
+            f"the kernel must be a scalar without uncertainty, got {type(kernel)}"
         )
 
     return na._named_array_function(
@@ -609,5 +608,5 @@ def convolve_weights(
         shape_input=shape_input,
         shape_output=shape_output,
         kernel=kernel,
-        axis_output=axis_output,
+        axis=axis,
     )

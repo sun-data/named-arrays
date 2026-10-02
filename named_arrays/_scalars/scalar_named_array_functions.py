@@ -2651,6 +2651,121 @@ def regridding_transpose_weights_conservative(
         weights_input=weights_input,
     )
 
+
+@_implements(na.regridding.convolve_weights)
+def regridding_convolve_weights(
+    weights: na.AbstractScalar,
+    shape_input: dict[str, int],
+    shape_output: dict[str, int],
+    kernel: na.AbstractScalar,
+    axis: dict[str, str],
+) -> tuple[na.ScalarArray, dict[str, int], dict[str, int]]:
+
+    import regridding
+
+    try:
+        weights = scalars._normalize(weights)
+        kernel = scalars._normalize(kernel)
+    except scalars.ScalarTypeError:  # pragma: nocover
+        return NotImplemented
+
+    shape_weights = weights.shape
+
+    # the resampled axes are the ones the weights are not an array over, as
+    # `regrid_from_weights` infers them
+    axis_input = tuple(a for a in shape_input if a not in shape_weights)
+    axis_output = tuple(a for a in shape_output if a not in shape_weights)
+
+    axes_grid = set(shape_input) | set(shape_output)
+    for axis_grid, axis_kernel in axis.items():
+        if axis_grid not in axis_output:
+            raise ValueError(
+                f"{axis_grid!r} is not a resampled axis of the output grid, "
+                f"{axis_output}"
+            )
+        if axis_kernel not in kernel.shape:
+            raise ValueError(
+                f"the kernel has no axis {axis_kernel!r} to run along "
+                f"{axis_grid!r}; its axes are {tuple(kernel.shape)}"
+            )
+        if axis_kernel in axes_grid:
+            raise ValueError(
+                f"the kernel axis {axis_kernel!r} is also an axis of the grids; "
+                f"give the axes of the kernel itself names of their own"
+            )
+        if kernel.shape[axis_kernel] == 0:
+            raise ValueError(f"the kernel axis {axis_kernel!r} is empty")
+    if len(set(axis.values())) != len(axis):
+        raise ValueError(f"{axis=} maps two output axes to the same kernel axis")
+
+    unit = na.unit(kernel)
+    if unit is not None:
+        if not unit.is_equivalent(u.dimensionless_unscaled):
+            raise ValueError(f"the kernel must be dimensionless, got {unit}")
+        kernel = kernel.to(u.dimensionless_unscaled).value
+
+    if not np.all(np.isfinite(kernel.ndarray)):
+        raise ValueError("the kernel must be finite")
+
+    # every other axis of the kernel is broadcast by name; one of length one
+    # carries no variation, so it is not one to add to the weights
+    length_one = {a: 0 for a, n in kernel.shape.items() if n == 1}
+    kernel = kernel[{a: i for a, i in length_one.items() if a not in axis.values()}]
+    shape_extra = {a: n for a, n in kernel.shape.items() if a not in axis.values()}
+
+    for axis_extra, num in shape_extra.items():
+        if axis_extra in axis_output and num != shape_output[axis_extra]:
+            raise ValueError(
+                f"the kernel varies along {axis_extra!r} with {num} elements, "
+                f"but the output grid has {shape_output[axis_extra]}"
+            )
+        if axis_extra in axis_input and axis_extra not in axis_output:
+            raise ValueError(
+                f"the kernel varies along {axis_extra!r}, a resampled axis of the "
+                f"input grid; a kernel which varies across the field varies "
+                f"along the output axes, {axis_output}, instead"
+            )
+
+    shape_orthogonal = na.broadcast_shapes(
+        shape_weights,
+        {a: n for a, n in shape_extra.items() if a not in axis_output},
+    )
+    axes_orthogonal = tuple(shape_orthogonal)
+    num_orthogonal = len(axes_orthogonal)
+
+    # `regridding.convolve_weights` takes the kernel with its orthogonal axes,
+    # then its resampled axes, then one stencil axis for each resampled axis,
+    # all in the order of the grids; an axis the kernel does not act along
+    # gets a stencil of length one
+    stencil = tuple(axis[a] for a in axis_output if a in axis)
+    kernel_ndarray = kernel.ndarray_aligned(axes_orthogonal + axis_output + stencil)
+    for i, a in enumerate(axis_output):
+        if a not in axis:
+            position = num_orthogonal + len(axis_output) + i
+            kernel_ndarray = np.expand_dims(kernel_ndarray, position)
+
+    weights_ndarray = weights.broadcast_to(shape_orthogonal).ndarray_aligned(axes_orthogonal)
+
+    result, _, _ = regridding.convolve_weights(
+        weights=(
+            weights_ndarray,
+            tuple(shape_orthogonal.values()) + tuple(shape_input[a] for a in axis_input),
+            tuple(shape_orthogonal.values()) + tuple(shape_output[a] for a in axis_output),
+        ),
+        kernel=kernel_ndarray,
+        axis_input=tuple(range(num_orthogonal, num_orthogonal + len(axis_input))),
+        axis_output=tuple(range(num_orthogonal, num_orthogonal + len(axis_output))),
+    )
+
+    result = na.ScalarArray(result, axes_orthogonal)
+
+    # the orthogonal axes come first, as `weights` returns them
+    shape_input = na.broadcast_shapes(shape_orthogonal, shape_input)
+    shape_output = na.broadcast_shapes(shape_orthogonal, shape_output)
+
+    return result, shape_input, shape_output
+
+
 @_implements(na.despike)
 def despike(
     array: na.AbstractScalarArray,
