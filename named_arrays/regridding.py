@@ -15,6 +15,7 @@ __all__ = [
     "regrid_from_weights",
     "transpose_weights",
     "transpose_weights_conservative",
+    "convolve_weights",
 ]
 
 _seed_default = 42
@@ -421,4 +422,174 @@ def transpose_weights_conservative(
         axis_input=axis_input,
         axis_output=axis_output,
         weights_input=weights_input,
+    )
+
+
+def convolve_weights(
+    weights: tuple[na.AbstractScalar, dict[str, int], dict[str, int]],
+    kernel: na.AbstractFunctionArray,
+    axis_output: None | str | Sequence[str] = None,
+) -> tuple[na.AbstractScalar, dict[str, int], dict[str, int]]:
+    r"""
+    Convolve the output of a set of weights with a kernel, such as a
+    point-spread function.
+
+    This is a thin wrapper around :func:`regridding.convolve_weights`.
+    If the weights computed by :func:`weights` are the sparse matrix
+    :math:`W`, this computes :math:`P W`, where :math:`P` spreads whatever
+    lands in each output cell over the cells around it.  Applying the
+    result with :func:`regrid_from_weights` resamples and blurs in one step,
+    and :func:`transpose_weights_conservative` transposes the whole
+    operation.
+
+    Parameters
+    ----------
+    weights
+        Weights computed by :func:`weights`.
+    kernel
+        The kernel, as a function of the offset from the cell the light
+        lands in, in cells.
+        ``kernel.inputs`` holds the offsets, a vector with one component for
+        each of `axis_output`, in the same order, or a scalar if there is
+        only one.  The offsets must be whole numbers of cells, either
+        dimensionless or in pixels, and their axes are the axes of the
+        kernel itself, which must not be axes of the output grid.
+        ``kernel.outputs`` is the fraction of the light which lands at each
+        offset, and must be dimensionless.
+        Any other axes it has are broadcast against the output grid, so the
+        kernel may be different for each wavelength, say, or may vary across
+        the output grid, in which case it is indexed by the cell the light
+        lands in before it is spread.
+        The offsets do not have to be centered or contiguous: cells the
+        kernel does not list receive nothing.
+    axis_output
+        The resampled axes of the output grid, which the components of
+        ``kernel.inputs`` act along.
+        If :obj:`None` (the default), the axes of the output grid which the
+        weights are not an array over are used, in the order of the output
+        grid, as :func:`regrid_from_weights` does.
+
+    Returns
+    -------
+    The convolved weights.
+    If the kernel varies along an axis the weights are not an array over,
+    the weights and both shapes gain that axis.
+
+    Raises
+    ------
+    ValueError
+        If the offsets are not whole numbers of cells, if either the offsets
+        or the kernel have an unsuitable unit, if the number of components
+        of ``kernel.inputs`` differs from the number of axes in
+        `axis_output`, or if an axis of the kernel is also an axis of the
+        output grid.
+
+    See Also
+    --------
+    :func:`regridding.convolve_weights`: The equivalent function for
+    instances of :class:`numpy.ndarray`, which describes the algorithm.
+
+    Examples
+    --------
+
+    Rotate an array onto a new grid, and blur it with a Gaussian kernel in
+    the same set of weights.
+
+    .. jupyter-execute::
+
+        import numpy as np
+        import matplotlib.pyplot as plt
+        import astropy.units as u
+        import named_arrays as na
+
+        # Define a grid of vertices, and rotate it
+        coordinates_input = na.Cartesian2dVectorLinearSpace(
+            start=-4,
+            stop=4,
+            axis=na.Cartesian2dVectorArray("x", "y"),
+            num=17,
+        ).explicit
+        coordinates_input = na.Cartesian2dRotationMatrixArray(20 * u.deg) @ coordinates_input
+
+        # Define a uniform output grid
+        coordinates_output = na.Cartesian2dVectorLinearSpace(
+            start=-6,
+            stop=6,
+            axis=na.Cartesian2dVectorArray("x_new", "y_new"),
+            num=25,
+        )
+
+        # Define an array of values with two bright cells
+        values_input = na.ScalarArray.zeros(dict(x=16, y=16))
+        values_input[dict(x=4, y=4)] = 1
+        values_input[dict(x=10, y=8)] = 1
+
+        # Save the weights which rotate the input array onto the output grid
+        weights = na.regridding.weights(
+            coordinates_input=coordinates_input,
+            coordinates_output=coordinates_output,
+            method="conservative",
+        )
+
+        # Define a Gaussian kernel, five cells across
+        offset = na.Cartesian2dVectorArray(
+            x=na.arange(-2, 3, axis="kernel_x"),
+            y=na.arange(-2, 3, axis="kernel_y"),
+        )
+        gaussian = np.exp(-np.square(offset.length) / 2)
+        kernel = na.FunctionArray(
+            inputs=offset,
+            outputs=gaussian / gaussian.sum(),
+        )
+
+        # Blur the output of the weights with the kernel
+        weights_blurred = na.regridding.convolve_weights(
+            weights=weights,
+            kernel=kernel,
+            axis_output=("x_new", "y_new"),
+        )
+
+        # Apply both sets of weights
+        values_rotated = na.regridding.regrid_from_weights(
+            *weights,
+            values_input=values_input,
+        )
+        values_blurred = na.regridding.regrid_from_weights(
+            *weights_blurred,
+            values_input=values_input,
+        )
+
+        # Plot the original, rotated, and blurred arrays
+        fig, ax = plt.subplots(
+            ncols=3,
+            sharex=True,
+            sharey=True,
+            figsize=(9, 3.4),
+            constrained_layout=True,
+        )
+        na.plt.pcolormesh(coordinates_input, C=values_input, ax=ax[0])
+        na.plt.pcolormesh(coordinates_output, C=values_rotated, ax=ax[1])
+        na.plt.pcolormesh(coordinates_output, C=values_blurred, ax=ax[2])
+        ax[0].set_title(f"original, total {values_input.sum().ndarray:.2f}")
+        ax[1].set_title(f"rotated, total {values_rotated.sum().ndarray:.2f}")
+        ax[2].set_title(f"rotated and blurred, total {values_blurred.sum().ndarray:.2f}")
+        for a in ax:
+            a.set_aspect("equal")
+    """
+
+    weights, shape_input, shape_output = weights
+
+    if not isinstance(kernel, na.AbstractFunctionArray):
+        raise TypeError(
+            f"the kernel must be an instance of `named_arrays.AbstractFunctionArray`, "
+            f"whose inputs are the offsets of its elements, got {type(kernel)}"
+        )
+
+    return na._named_array_function(
+        func=convolve_weights,
+        weights=weights,
+        shape_input=shape_input,
+        shape_output=shape_output,
+        kernel=kernel,
+        axis_output=axis_output,
     )

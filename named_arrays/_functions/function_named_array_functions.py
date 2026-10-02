@@ -407,3 +407,169 @@ def despike(
     )
 
     return result
+
+
+def _offsets_cells(offset: na.AbstractScalar) -> na.AbstractScalar:
+    """
+    Express the offsets of a kernel as plain numbers of cells.
+
+    Parameters
+    ----------
+    offset
+        One component of the offsets, either dimensionless or in pixels.
+    """
+    unit = na.unit(offset)
+    if unit is None:
+        return offset
+    for unit_cells in (u.pix, u.dimensionless_unscaled):
+        if unit.is_equivalent(unit_cells):
+            return offset.to(unit_cells).value
+    raise ValueError(
+        f"the offsets of the kernel must be dimensionless or in pixels, got {unit}"
+    )
+
+
+@_implements(na.regridding.convolve_weights)
+def regridding_convolve_weights(
+    weights: na.AbstractScalar,
+    shape_input: dict[str, int],
+    shape_output: dict[str, int],
+    kernel: na.AbstractFunctionArray,
+    axis_output: None | str | Sequence[str] = None,
+) -> tuple[na.ScalarArray, dict[str, int], dict[str, int]]:
+
+    import regridding
+
+    weights = na.as_named_array(weights)
+    if not isinstance(weights, na.AbstractScalarArray):  # pragma: nocover
+        return NotImplemented
+    weights = weights.explicit
+
+    shape_weights = weights.shape
+
+    # the resampled axes are inferred as `regrid_from_weights` infers them
+    if axis_output is None:
+        axis_output = tuple(a for a in shape_output if a not in shape_weights)
+    elif isinstance(axis_output, str):
+        axis_output = (axis_output,)
+    axis_output = tuple(axis_output)
+    axis_input = tuple(a for a in shape_input if a not in shape_weights)
+
+    for axis in axis_output:
+        if axis not in shape_output:
+            raise ValueError(
+                f"{axis!r} in axis_output={axis_output} is not an axis of the "
+                f"output grid, {shape_output}"
+            )
+
+    kernel = kernel.explicit
+
+    offsets = kernel.inputs
+    if isinstance(offsets, na.AbstractVectorArray):
+        components = list(offsets.cartesian_nd.components.values())
+    else:
+        components = [offsets]
+    components = [_offsets_cells(na.as_named_array(c)) for c in components]
+
+    if len(components) != len(axis_output):
+        raise ValueError(
+            f"the offsets of the kernel have {len(components)} components, "
+            f"but axis_output={axis_output} has {len(axis_output)} axes"
+        )
+
+    values = na.as_named_array(kernel.outputs)
+    unit = na.unit(values)
+    if unit is not None:
+        if not unit.is_equivalent(u.dimensionless_unscaled):
+            raise ValueError(f"the kernel must be dimensionless, got {unit}")
+        values = values.to(u.dimensionless_unscaled).value
+
+    # the axes of the kernel itself are the axes of its offsets
+    shape_kernel = na.broadcast_shapes(*[c.shape for c in components])
+    for axis in shape_kernel:
+        if axis in shape_output:
+            raise ValueError(
+                f"the axis {axis!r} of the kernel's offsets is also an axis of "
+                f"the output grid, {shape_output}"
+            )
+
+    # any other axes of the kernel are broadcast against the output grid
+    shape_extra = {a: n for a, n in values.shape.items() if a not in shape_kernel}
+
+    offsets_cells = []
+    for c in components:
+        offset = c.broadcast_to(shape_kernel).ndarray_aligned(shape_kernel)
+        offset = np.asarray(offset, dtype=float).reshape(-1)
+        offset_rounded = np.rint(offset)
+        if not np.allclose(offset, offset_rounded, rtol=0, atol=1e-6):
+            raise ValueError(
+                f"the offsets of the kernel must be whole numbers of cells, "
+                f"got {offset}"
+            )
+        offsets_cells.append(offset_rounded.astype(np.int64))
+
+    shape_values = shape_extra | shape_kernel
+    values = values.broadcast_to(shape_values).ndarray_aligned(shape_values)
+    values = np.asarray(values, dtype=float)
+    values = values.reshape(tuple(shape_extra.values()) + (-1,))
+
+    # scatter the kernel into a dense stencil centered on zero offset, so the
+    # offsets need be neither centered nor contiguous
+    half = [int(np.abs(o).max(initial=0)) for o in offsets_cells]
+    stencil = np.zeros(tuple(2 * h + 1 for h in half) + tuple(shape_extra.values()))
+    np.add.at(
+        stencil,
+        tuple(o + h for o, h in zip(offsets_cells, half)),
+        np.moveaxis(values, ~0, 0),
+    )
+
+    # name the axes of the stencil, one for each output axis it acts along,
+    # longer than any axis of the grids or the kernel so they cannot collide
+    length = max(len(a) for a in tuple(shape_output) + tuple(shape_extra))
+    axis_stencil = {a: "_" * (length + 1) + str(i) for i, a in enumerate(axis_output)}
+    stencil = na.ScalarArray(
+        ndarray=stencil,
+        axes=tuple(axis_stencil.values()) + tuple(shape_extra),
+    )
+
+    # broadcast the orthogonal axes of the weights against those of the
+    # grids and of the kernel, so that the kernel may add one
+    shape_orthogonal = na.broadcast_shapes(
+        shape_weights,
+        {a: n for a, n in shape_output.items() if a not in axis_output},
+        {a: n for a, n in shape_input.items() if a not in axis_input},
+        {a: n for a, n in shape_extra.items() if a not in axis_output},
+    )
+    axes_orthogonal = tuple(shape_orthogonal)
+    num_orthogonal = len(axes_orthogonal)
+
+    # lay both grids out with the orthogonal axes first and the resampled
+    # axes after them, in the order the flat indices of the weights address
+    # them, which is their order in the shapes the weights were built with
+    axes_output = tuple(a for a in shape_output if a in axis_output)
+    axes_input = axis_input
+
+    weights_ndarray = weights.broadcast_to(shape_orthogonal)
+    weights_ndarray = weights_ndarray.ndarray_aligned(axes_orthogonal)
+
+    kernel_ndarray = stencil.ndarray_aligned(
+        axes_orthogonal + axes_output + tuple(axis_stencil[a] for a in axes_output)
+    )
+
+    result, _, _ = regridding.convolve_weights(
+        weights=(
+            weights_ndarray,
+            tuple(shape_orthogonal.values()) + tuple(shape_input[a] for a in axes_input),
+            tuple(shape_orthogonal.values()) + tuple(shape_output[a] for a in axes_output),
+        ),
+        kernel=kernel_ndarray,
+        axis_input=tuple(range(num_orthogonal, num_orthogonal + len(axes_input))),
+        axis_output=tuple(range(num_orthogonal, num_orthogonal + len(axes_output))),
+    )
+
+    result = na.ScalarArray(result, axes_orthogonal)
+
+    shape_input = na.broadcast_shapes(shape_input, shape_orthogonal)
+    shape_output = na.broadcast_shapes(shape_output, shape_orthogonal)
+
+    return result, shape_input, shape_output
