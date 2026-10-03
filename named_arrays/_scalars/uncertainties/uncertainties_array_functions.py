@@ -699,7 +699,7 @@ def sort(
     # The nominal value and every sample are sorted independently, so the
     # sort must never reach across the distribution axis.
     if axis is None:
-        axis = tuple(a.shape)
+        axis = na.axis_normalized(a, axis)
         if not axis:
             return a
 
@@ -720,7 +720,7 @@ def argsort(
     a = a.broadcasted
 
     if axis is None:
-        axis = tuple(a.shape)
+        axis = na.axis_normalized(a, axis)
         if not axis:
             return dict()
 

@@ -185,7 +185,8 @@ class AbstractTestAbstractUncertainScalarArray(
 
             if isinstance(item, na.AbstractUncertainScalarArray):
                 # Every element selected by the nominal value or by any sample
-                # is kept, and is NaN in the realizations which did not select it.
+                # is kept, and is NaN, or False for boolean arrays, in the
+                # realizations which did not select it.
                 axis = na.UncertainScalarArray.axis_distribution
                 union = item.nominal | np.any(item.distribution, axis=axis)
                 array_broadcasted = array.broadcasted
@@ -193,16 +194,27 @@ class AbstractTestAbstractUncertainScalarArray(
                     na.get_dtype(array_broadcasted.nominal),
                     na.get_dtype(array_broadcasted.distribution),
                 )
-                if np.any(item.distribution != item.nominal) and not np.issubdtype(dtype, np.inexact):
-                    with pytest.raises(ValueError, match="`item` selects different elements"):
-                        array[item]
-                    return
+                inexact = np.issubdtype(dtype, np.inexact)
+                if np.issubdtype(dtype, np.bool_):
+                    fill = False
+                elif inexact:
+                    fill = np.nan
+                else:
+                    if np.any(item.distribution != item.nominal):
+                        with pytest.raises(ValueError, match="`item` selects different elements"):
+                            array[item]
+                        return
+                    # every sample agrees, so no element is filled
+                    fill = 0
                 result = array[item]
                 result_expected = na.UncertainScalarArray(
-                    nominal=np.where(item.nominal, array_broadcasted.nominal, np.nan)[union],
-                    distribution=np.where(item.distribution, array_broadcasted.distribution, np.nan)[union],
+                    nominal=np.where(item.nominal, array_broadcasted.nominal, fill)[union],
+                    distribution=np.where(item.distribution, array_broadcasted.distribution, fill)[union],
                 )
-                assert np.all((result == result_expected) | (np.isnan(result) & np.isnan(result_expected)))
+                equal = result == result_expected
+                if inexact:
+                    equal = equal | (np.isnan(result) & np.isnan(result_expected))
+                assert np.all(equal)
                 return
             else:
                 item_nominal = item_distribution = item
@@ -258,6 +270,31 @@ class AbstractTestAbstractUncertainScalarArray(
         array = na.broadcast_to(array, na.broadcast_shapes(array.shape, item.shape)).astype(int)
         with pytest.raises(ValueError, match="`item` selects different elements"):
             array[item]
+
+    def test__getitem__uncertain_item_bool(self, array: na.AbstractUncertainScalarArray):
+        # Boolean arrays cannot hold NaN, so a sample which did not select an
+        # element holds False there instead
+        index = na.ScalarArrayRange(0, _num_y, axis="y")
+        index_distribution = na.ScalarArrayRange(0, _num_distribution, axis=array.axis_distribution)
+        item = na.UncertainScalarArray(
+            nominal=index % 2 == 0,
+            distribution=(index + index_distribution) % 2 == 0,
+        )
+        array = na.broadcast_to(array, na.broadcast_shapes(array.shape, item.shape))
+        array = array > array.mean()
+        union = item.nominal | np.any(item.distribution, axis=array.axis_distribution)
+        result = array[item]
+        assert na.get_dtype(result.nominal) == np.dtype(bool)
+        assert na.get_dtype(result.distribution) == np.dtype(bool)
+        assert np.all(result == np.where(item, array, False)[union])
+
+    def test__getitem__uncertain_item_dtype(self, array: na.AbstractUncertainScalarArray):
+        # The NaN which fill the elements a sample did not select keep the
+        # precision of the array
+        array = array.astype(np.float32)
+        result = array[array > array.mean()]
+        assert na.get_dtype(result.nominal) == np.float32
+        assert na.get_dtype(result.distribution) == np.float32
 
     def test__getitem__reversed_uncertain_indices(self, array: na.AbstractUncertainScalarArray):
         # Indexing a plain array with indices which differ between samples,
@@ -1057,6 +1094,32 @@ class TestUncertainScalarArray(
         result_expected = np.where(item, value, result)
         result[item] = value
         assert np.all(result == result_expected)
+
+    def test__setitem__uncertain_item_no_samples(self, array: na.UncertainScalarArray):
+        # Each sample of a varying mask changes different elements, so a
+        # distribution without a sample axis receives one
+        nominal = na.broadcast_to(array, array.shape).astype(float).nominal
+        result = na.UncertainScalarArray(nominal.copy(), nominal.copy())
+        item = array > array.mean()
+        result_expected = np.where(item, 0, result)
+        result[item] = 0
+        assert np.all(result == result_expected)
+
+    def test__setitem__plain_uncertain_item(self, array: na.UncertainScalarArray):
+        # An array without a distribution cannot store a different selection
+        # for each sample, so it refuses an uncertain mask instead of ignoring it
+        result = na.as_named_array(na.broadcast_to(array, array.shape).astype(float).nominal).copy()
+        with pytest.raises(TypeError, match="convert this array to an uncertain array"):
+            result[array > array.mean()] = 0
+
+    def test__setitem__argsort(self, array: na.UncertainScalarArray):
+        # Assigning the sorted values of each sample through that sample's own
+        # sorting indices puts every value back where it was
+        shape = na.broadcast_shapes(array.shape, dict(y=_num_y))
+        array = na.broadcast_to(array, shape).astype(float).copy()
+        result = array.copy()
+        result[np.argsort(result, axis="y")] = np.sort(result, axis="y")
+        assert np.all(result == array)
 
     def test__setitem__uncertain_item_round_trip(self, array: na.UncertainScalarArray):
         # The NaN which `result[item]` puts in the elements a sample did not
