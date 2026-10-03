@@ -1930,7 +1930,19 @@ class AbstractTestAbstractArray(
             #
             # else:
             mask = array > array.mean()
-            result = array[np.nonzero(mask)]
+            try:
+                indices = np.nonzero(mask)
+            except ValueError as e:
+                # An uncertain mask which selects different elements in
+                # different samples has no single set of indices, which the
+                # uncertain scalar tests check precisely. The correspondence
+                # below still holds for the nominal value, where every mask is
+                # certain.
+                assert str(e).startswith("the nonzero elements of `a` differ")
+                array = na.nominal(array.broadcasted)
+                mask = array > array.mean()
+                indices = np.nonzero(mask)
+            result = array[indices]
             result_expected = array[mask]
             assert np.all(result == result_expected)
 

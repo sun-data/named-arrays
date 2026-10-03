@@ -64,6 +64,35 @@ def _normalize(a: float | u.Quantity | na.AbstractScalarArray) -> na.AbstractSca
     return result
 
 
+def _gather_unnamed_axes(
+    item: dict[str, Any],
+    item_advanced: dict[str, Any],
+    shape: dict[str, int],
+) -> None:
+    """
+    Index along every axis of an array which an index array varies along,
+    but which the item does not name.
+
+    An index array which varies along such an axis, like the indices of each
+    sample returned by :func:`numpy.argsort` for an uncertain array, picks out
+    different elements at each position along it. Indexing that axis with its
+    own positions gathers along it, instead of repeating it in the result.
+
+    Parameters
+    ----------
+    item
+        The item used to index the array, updated in place.
+    item_advanced
+        The integer and array-valued entries of `item`, updated in place.
+    shape
+        The shape of the indexed array.
+    """
+    for axis in na.shape_broadcasted(*item_advanced.values()):
+        if axis in shape and axis not in item:
+            index = na.ScalarArrayRange(start=0, stop=shape[axis], axis=axis)
+            item[axis] = item_advanced[axis] = index
+
+
 def as_named_array(value: bool | int | float | complex | str | u.Quantity | na.AbstractArray):
     """
     Cast the argument to an instance of :class:`named_arrays.AbstractArray`.
@@ -460,6 +489,8 @@ class AbstractScalarArray(
                         return NotImplemented
                 elif np.issubdtype(type(item_axis), np.integer):
                     item_advanced[axis] = item_axis
+
+            _gather_unnamed_axes(item, item_advanced, self.shape)
 
             shape_advanced = na.shape_broadcasted(*item_advanced.values())
 
@@ -1360,6 +1391,9 @@ class ScalarArray(
                 elif isinstance(item_axis, int):
                     item_advanced[axis] = item_axis
 
+            item = dict(item)
+            _gather_unnamed_axes(item, item_advanced, shape_self)
+
             shape_advanced = na.shape_broadcasted(*item_advanced.values())
 
             axes_basic = tuple(ax for ax in shape_self if ax not in item_advanced)
@@ -1379,6 +1413,14 @@ class ScalarArray(
                 value = value.ndarray
 
             self.ndarray_aligned(axes_self)[tuple(index)] = value
+
+        else:
+            raise TypeError(
+                f"`item` must be an instance of `{AbstractScalarArray.__name__}` or `{dict.__name__}`, "
+                f"got `{type(item)}`. "
+                "An uncertain `item` selects different elements in each sample, which an array without "
+                "a distribution cannot store, so convert this array to an uncertain array first."
+            )
 
 
 @dataclasses.dataclass(eq=False, repr=False)
