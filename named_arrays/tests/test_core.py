@@ -1063,6 +1063,23 @@ class AbstractTestAbstractArray(
     ):
         pass
 
+    def test__getitem__gathers_unnamed_axes(self, array: na.AbstractArray):
+        # An index which varies along an axis of the array that the item
+        # does not name, like the indices returned by `numpy.argsort()`,
+        # gathers along that axis instead of repeating it
+        shape = array.shape
+        if len(shape) < 2:
+            return
+        axis, axis_other = tuple(shape)[:2]
+        index = na.ScalarArray(
+            ndarray=np.random.default_rng(0).integers(0, shape[axis], size=(shape[axis], shape[axis_other])),
+            axes=(axis, axis_other),
+        )
+        result = array[{axis: index}]
+        for i in range(shape[axis_other]):
+            item = {axis_other: i}
+            assert np.all(result[item] == array[item][{axis: index[item]}])
+
     def test_isel(self, array: na.AbstractArray):
         shape = array.shape
         if not shape:
@@ -3318,6 +3335,26 @@ class AbstractTestAbstractExplicitArray(
             assert np.all(result[item].outputs == value.outputs)
         else:
             assert np.all(result[item] == value)
+
+    def test__setitem__gathers_unnamed_axes(self, array: na.AbstractArray):
+        # Assigning through an index which varies along an axis that the item
+        # does not name scatters along that axis, so values assigned through
+        # a different permutation at each position come back out through it
+        shape = array.shape
+        if len(shape) < 2:
+            return
+        axis, axis_other = tuple(shape)[:2]
+        index = na.ScalarArray(
+            ndarray=np.random.default_rng(0).permuted(
+                np.broadcast_to(np.arange(shape[axis]), (shape[axis_other], shape[axis])),
+                axis=~0,
+            ),
+            axes=(axis_other, axis),
+        )
+        array = na.broadcast_to(array, shape)
+        result = array.copy()
+        result[{axis: index}] = array
+        assert np.all(result[{axis: index}] == array)
 
 
 class AbstractTestAbstractExplicitArrayCreation(

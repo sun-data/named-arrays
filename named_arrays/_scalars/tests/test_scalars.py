@@ -2245,27 +2245,7 @@ def test_digitize_axis_none_uses_the_only_axis():
     assert np.all(na.digitize(x, bins) == na.digitize(x, bins, axis="w"))
 
 
-def _array_gather():
-    rng = np.random.default_rng(0)
-    return na.ScalarArray(rng.normal(size=(_num_x, _num_y)), axes=("x", "y"))
-
-
-def test_getitem_gathers_unnamed_axes():
-    """An index which varies along an axis it does not name, like the indices
-    returned by :func:`numpy.argsort`, gathers along that axis instead of
-    repeating it."""
-    a = _array_gather()
-    index = np.argsort(a, axis="x")["x"]
-
-    assert np.all(a[dict(x=index)] == np.sort(a, axis="x"))
-
-
-def test_setitem_gathers_unnamed_axes():
-    """Assigning through the same index scatters along that axis, so the
-    sorted values return to where they were."""
-    a = _array_gather()
-    index = np.argsort(a, axis="x")["x"]
-    result = a.copy()
-    result[dict(x=index)] = np.sort(a, axis="x")
-
-    assert np.all(result == a)
+def test_setitem_invalid_item():
+    a = na.ScalarArray(np.zeros((_num_x, _num_y)), axes=("x", "y"))
+    with pytest.raises(TypeError, match="`item` must be an instance of"):
+        a[(0, 1)] = 1

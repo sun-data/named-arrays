@@ -729,8 +729,17 @@ class AbstractExplicitVectorArray(
         else:
             components_value = {c: value for c in components_self}
 
+        from named_arrays._scalars.uncertainties import uncertainties
+
         for c in components_self:
-            components_self[c][components_item[c]] = components_value[c]
+            component = components_self[c]
+            if isinstance(component, na.ScalarArray) and uncertainties._varies(components_item[c]):
+                # A component without a distribution cannot store a selection
+                # which differs between samples, so it is replaced by an
+                # uncertain copy of itself.
+                component = na.UncertainScalarArray(component, component.copy())
+                components_self[c] = component
+            component[components_item[c]] = components_value[c]
 
 
 @dataclasses.dataclass(eq=False, repr=False)

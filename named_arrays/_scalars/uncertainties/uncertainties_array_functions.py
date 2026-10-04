@@ -927,9 +927,10 @@ def nonzero(a: na.AbstractUncertainScalarArray) -> dict[str, na.AbstractScalarAr
         raise ValueError(
             "the nonzero elements of `a` differ between its nominal value and the samples of its "
             "distribution, so they cannot be described by a single set of indices. "
-            "Index with the boolean array `a != 0` instead, which fills the elements a sample "
-            "did not select with NaN, or use `numpy.nonzero(a.nominal)` to select using only "
-            "the nominal value."
+            "Use the boolean array `a != 0` instead, with `numpy.where()`, or as an index, "
+            "which fills the elements a sample did not select with NaN and so needs "
+            "a floating-point array, or use `numpy.nonzero(a.nominal)` to select using "
+            "only the nominal value."
         )
 
     return np.nonzero(union)

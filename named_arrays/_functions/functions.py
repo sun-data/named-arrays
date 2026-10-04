@@ -1467,7 +1467,17 @@ class FunctionArray(
             value_inputs = None
             value_outputs = value
 
+        from named_arrays._scalars.uncertainties import uncertainties
+
+        # Inputs or outputs without a distribution cannot store a selection
+        # which differs between samples, so they are replaced by an uncertain
+        # copy of themselves.
+        if isinstance(self.outputs, na.ScalarArray) and uncertainties._varies(item_outputs):
+            self.outputs = na.UncertainScalarArray(self.outputs, self.outputs.copy())
+
         if value_inputs is not None and assign_inputs:
+            if isinstance(self.inputs, na.ScalarArray) and uncertainties._varies(item_inputs):
+                self.inputs = na.UncertainScalarArray(self.inputs, self.inputs.copy())
             self.inputs[item_inputs] = value_inputs
 
         self.outputs[item_outputs] = value_outputs

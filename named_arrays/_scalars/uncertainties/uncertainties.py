@@ -97,35 +97,82 @@ def _mask_union(
     mask_nominal = na.as_named_array(mask.nominal)
     mask_distribution = na.as_named_array(mask.distribution)
 
-    if axis in mask_distribution.shape:
-        mask_any = np.any(mask_distribution, axis=axis)
-        mask_all = np.all(mask_distribution, axis=axis)
-        # The samples disagree with each other, or agree with each other but
-        # not with the nominal value.
-        varies = bool(np.any(mask_any != mask_all)) or bool(np.any(mask_nominal != mask_any))
-    else:
-        mask_any = mask_distribution
-        varies = bool(np.any(mask_nominal != mask_any))
+    varies = _varies(mask)
 
-    union = mask_nominal | mask_any
+    if axis in mask_distribution.shape:
+        mask_distribution = np.any(mask_distribution, axis=axis)
+
+    union = mask_nominal | mask_distribution
 
     return union, varies
 
 
-def _fill_unselected(dtype: np.dtype) -> bool | np.ndarray:
+def _varies(item: Any) -> bool:
+    """
+    Whether an item used to index an array selects different elements in
+    the nominal value and in the samples of the distribution.
+
+    Parameters
+    ----------
+    item
+        A boolean mask, an array of indices, or a :class:`dict` of indices
+        along each axis.
+    """
+    if isinstance(item, dict):
+        return any(_varies(item[axis]) for axis in item)
+    if isinstance(item, AbstractUncertainScalarArray):
+        item = item.explicit
+        nominal = na.as_named_array(item.nominal)
+        distribution = na.as_named_array(item.distribution)
+        return bool(np.any(distribution != nominal))
+    return False
+
+
+def _certain(item: AbstractUncertainScalarArray) -> na.AbstractScalarArray:
+    """
+    The plain array which selects the same elements as an uncertain item,
+    for indexing an array without a distribution.
+
+    Parameters
+    ----------
+    item
+        A boolean mask or an array of indices which selects the same
+        elements in its nominal value and in every sample of its
+        distribution.
+    """
+    if _varies(item):
+        raise TypeError(
+            "`item` selects different elements in the nominal value and in the samples of its "
+            "distribution, which an array without a distribution cannot store, so convert "
+            "this array to an uncertain array first, or index with `item.nominal` to select "
+            "using only the nominal value."
+        )
+    item = item.explicit
+    return na.broadcast_to(na.as_named_array(item.nominal), item.shape)
+
+
+def _fill_unselected(
+    dtype: np.dtype,
+    dtype_other: np.dtype,
+) -> bool | np.ndarray:
     """
     The value of the elements which a sample of an uncertain mask did not
-    select, for an array with the given data type.
+    select, for the nominal value or the distribution of an array.
 
     Parameters
     ----------
     dtype
-        The data type of the indexed array.
+        The data type of the indexed nominal value or distribution.
+    dtype_other
+        The data type of the other one, so that an integer nominal value of
+        a floating-point distribution can be filled with NaN.
     """
     if np.issubdtype(dtype, np.bool_):
         return False
     if np.issubdtype(dtype, np.inexact):
         return np.array(np.nan, dtype=dtype)
+    if np.issubdtype(dtype, np.integer) and np.issubdtype(dtype_other, np.inexact):
+        return np.array(np.nan, dtype=np.result_type(dtype, dtype_other))
     raise ValueError(
         "`item` selects different elements in the nominal value and in the samples of its "
         "distribution, so the elements which a sample did not select are filled with NaN, "
@@ -442,13 +489,10 @@ class AbstractUncertainScalarArray(
                 # elements has no fixed-shape representation otherwise.
                 union, varies = _mask_union(item)
                 if varies:
-                    # The nominal value and the distribution share a fill
-                    # value, so an integer nominal value of a floating-point
-                    # distribution can still be filled.
-                    fill = _fill_unselected(np.result_type(
-                        na.get_dtype(nominal),
-                        na.get_dtype(distribution),
-                    ))
+                    dtype_nominal = na.get_dtype(nominal)
+                    dtype_distribution = na.get_dtype(distribution)
+                    fill_nominal = _fill_unselected(dtype_nominal, dtype_distribution)
+                    fill_distribution = _fill_unselected(dtype_distribution, dtype_nominal)
                     mask_varying = item
                 item_nominal = item_distribution = union
             elif isinstance(item, na.AbstractScalarArray):
@@ -512,8 +556,8 @@ class AbstractUncertainScalarArray(
         if mask_varying is not None:
             mask = mask_varying[union]
             result = UncertainScalarArray(
-                nominal=np.where(mask.nominal, result.nominal, fill),
-                distribution=np.where(mask.distribution, result.distribution, fill),
+                nominal=np.where(mask.nominal, result.nominal, fill_nominal),
+                distribution=np.where(mask.distribution, result.distribution, fill_distribution),
             )
 
         return result
@@ -526,6 +570,16 @@ class AbstractUncertainScalarArray(
         if isinstance(array, AbstractUncertainScalarArray):
             pass
         elif isinstance(array, na.AbstractScalarArray):
+            if isinstance(item, AbstractUncertainScalarArray) and _varies(item):
+                if not np.issubdtype(na.get_dtype(array), np.inexact):
+                    # An array without a distribution has the same values in
+                    # every sample, so elements which a sample did not select
+                    # are left in place where they cannot be filled with NaN,
+                    # such as the integer components of a vector or the
+                    # labels of a function's inputs. The arrays which this
+                    # one accompanies mark those elements instead.
+                    union, _ = _mask_union(item.explicit)
+                    return array[union]
             if isinstance(item, dict) and self.axis_distribution in item:
                 num_distribution = item[self.axis_distribution].distribution.max().ndarray + 1
             else:
@@ -779,9 +833,14 @@ class UncertainScalarArray(
 
     A realization which selects nothing holds only NaN, so reductions like
     :func:`numpy.nanmean` warn about an empty slice for it.
-    Boolean arrays hold False instead of NaN, and arrays which can hold
-    neither, such as integer arrays, raise an error, as does
-    :func:`numpy.nonzero`, since such a mask has no single set of indices.
+    Boolean arrays hold False instead of NaN.
+    Uncertain arrays which can hold neither, such as integer arrays, raise an
+    error, as does :func:`numpy.nonzero`, since such a mask has no single set
+    of indices.
+    Arrays without a distribution which can hold neither, like the integer
+    component of a vector or the labels of a function's inputs, keep every
+    selected element and stay certain, since the uncertain arrays which they
+    accompany mark the elements a realization did not select.
     To select using only the nominal value of the mask, index with
     ``x[(x > 0).nominal]``.
 
@@ -796,6 +855,14 @@ class UncertainScalarArray(
 
     and the NaN values returned by indexing are never written back, so an update like
     ``y[m] = -y[m]`` changes each realization correctly.
+    If the nominal value or the distribution cannot store the result, because
+    it does not vary along an axis of the mask or the distribution has no
+    sample axis, both are replaced by broadcasted copies, so other arrays
+    which share them are left unchanged.
+    An array without a distribution cannot store a selection which differs
+    between samples, so assigning to one through such a mask raises an error,
+    except that a vector or function replaces its components, inputs, or
+    outputs which have no distribution with uncertain copies.
 
     Similarly, :func:`numpy.sort` sorts the nominal value and each sample
     separately, and :func:`numpy.argsort` returns indices which differ between
@@ -1082,16 +1149,6 @@ class UncertainScalarArray(
                 union, varies = _mask_union(item)
                 if varies:
                     value = np.where(item[union], value, self[union])
-                    # Each sample now receives its own values, which needs a
-                    # distribution which stores every sample separately.
-                    axis = self.axis_distribution
-                    shape_value = na.shape(value.distribution)
-                    shape = na.broadcast_shapes(
-                        self.shape_distribution,
-                        {axis: shape_value[axis]} if axis in shape_value else {},
-                    )
-                    if na.shape(self.distribution) != shape:
-                        self.distribution = na.broadcast_to(self.distribution, shape).copy()
                 item_nominal = item_distribution = union
             elif isinstance(item, na.AbstractScalarArray):
                 item_nominal = item_distribution = item
@@ -1101,6 +1158,10 @@ class UncertainScalarArray(
                     f"it must be an instance of `{na.AbstractScalar.__name__}`, "
                     f"got `{type(item)}`"
                 )
+
+            axes_item = set(item.shape)
+            items_distribution = [item_distribution]
+
         elif isinstance(item, dict):
 
             if not set(item).issubset(shape_self):
@@ -1128,6 +1189,11 @@ class UncertainScalarArray(
                 else:
                     item_nominal[axis] = item_distribution[axis] = item_axis
 
+            # An index array which varies along an axis of this array also
+            # indexes along that axis.
+            axes_item = set(item).union(*(na.shape(item[axis]) for axis in item))
+            items_distribution = list(item_distribution.values())
+
         else:
             raise TypeError(
                 f"`item` must be an instance of `{na.AbstractArray.__name__}` or {dict.__name__}, "
@@ -1148,6 +1214,31 @@ class UncertainScalarArray(
                 )
         else:
             value_nominal = value_distribution = value
+
+        # The nominal value and the distribution need every axis which the
+        # assignment indexes or the value varies along, and the distribution
+        # needs a sample axis if the indices or the value differ between
+        # samples, as they do where an uncertain mask varies.
+        axis_distribution = self.axis_distribution
+        axes = axes_item.union(na.shape(value_nominal), na.shape(value_distribution))
+        shape = {ax: shape_self[ax] for ax in shape_self if ax in axes}
+        shape_nominal = na.shape(self.nominal)
+        shape_nominal_new = na.broadcast_shapes(shape_nominal, shape)
+        for a in [value_distribution, *items_distribution]:
+            shape_a = na.shape(a)
+            if axis_distribution in shape_a:
+                shape = na.broadcast_shapes(shape, {axis_distribution: shape_a[axis_distribution]})
+        shape_distribution = na.shape(self.distribution)
+        shape_distribution_new = na.broadcast_shapes(shape_distribution, shape)
+
+        if shape_nominal_new != shape_nominal or shape_distribution_new != shape_distribution:
+            # Replace both, rather than only the one which needs to grow, so
+            # that an array which shares them keeps a consistent nominal value
+            # and distribution.
+            nominal = na.as_named_array(self.nominal)
+            distribution = na.as_named_array(self.distribution)
+            self.nominal = na.broadcast_to(nominal, shape_nominal_new).copy()
+            self.distribution = na.broadcast_to(distribution, shape_distribution_new).copy()
 
         self.nominal[item_nominal] = value_nominal
         self.distribution[item_distribution] = value_distribution
