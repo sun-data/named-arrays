@@ -4,6 +4,7 @@ from typing import Self
 import abc
 import dataclasses
 import copy
+import functools
 import secrets
 from types import NotImplementedType
 import numpy as np
@@ -96,6 +97,41 @@ def _required() -> Any:
     sentinel is not a value of the field's declared type.
     """
     return dataclasses.MISSING
+
+
+def _array_function_handlers(
+    categories: Sequence[tuple[Collection[Callable], Callable]],
+) -> dict[Callable, Callable]:
+    """
+    Map each :mod:`numpy` function in `categories` to the handler of its category.
+
+    Each family of arrays groups the :mod:`numpy` functions it supports into
+    categories which share a handler, so that ``__array_function__`` can find
+    the handler with one dictionary lookup instead of testing the categories
+    one after another.
+    A function in more than one category goes to the first of them.
+
+    Parameters
+    ----------
+    categories
+        A sequence of ``(functions, handler)`` pairs,
+        where each handler is called as ``handler(func, *args, **kwargs)``.
+    """
+    result = dict()
+    for functions, handler in categories:
+        for func in functions:
+            result.setdefault(func, handler)
+    return result
+
+
+@functools.cache
+def _handled_functions_core() -> dict[Callable, Callable]:
+    """
+    The ``HANDLED_FUNCTIONS`` of :mod:`named_arrays._core_array_functions`,
+    imported on first use since that module imports this one.
+    """
+    from . import _core_array_functions
+    return _core_array_functions.HANDLED_FUNCTIONS
 
 
 AxisT = TypeVar("AxisT", bound="str | AbstractArray", covariant=True)
@@ -1337,10 +1373,10 @@ class AbstractArray(
         """
         Method to override the behavior of numpy's array functions.
         """
-        from . import _core_array_functions
+        handled = _handled_functions_core()
 
-        if func in _core_array_functions.HANDLED_FUNCTIONS:
-            return _core_array_functions.HANDLED_FUNCTIONS[func](*args, **kwargs)
+        if func in handled:
+            return handled[func](*args, **kwargs)
 
         return NotImplemented
 

@@ -4,10 +4,11 @@ from typing import Self
 
 import abc
 import dataclasses
+import functools
 import numpy as np
 import astropy.units as u
 import named_arrays as na
-from named_arrays._core import _required
+from named_arrays._core import _required, _array_function_handlers
 
 __all__ = [
     "nominal",
@@ -138,6 +139,37 @@ def nominal(
         })
     else:
         return a
+
+
+@functools.cache
+def _array_function_dispatch() -> tuple[dict[Callable, Callable], dict[Callable, Callable]]:
+    """
+    The handlers of the :mod:`numpy` functions which uncertain arrays support,
+    built on first use since
+    :mod:`named_arrays._scalars.uncertainties.uncertainties_array_functions`
+    imports this module.
+
+    Returns
+    -------
+    A dictionary mapping each function in a category of
+    :mod:`~named_arrays._scalars.uncertainties.uncertainties_array_functions`
+    to the handler of that category, and the ``HANDLED_FUNCTIONS`` of that module.
+    """
+    from . import uncertainties_array_functions as f
+    handlers = _array_function_handlers([
+        (f.SINGLE_ARG_FUNCTIONS, f.array_functions_single_arg),
+        (f.ARRAY_CREATION_LIKE_FUNCTIONS, f.array_function_array_creation_like),
+        (f.SEQUENCE_FUNCTIONS, f.array_function_sequence),
+        (f.DEFAULT_FUNCTIONS, f.array_function_default),
+        (f.CUMULATIVE_REDUCE_FUNCTIONS, f.array_function_cumulative_reduce),
+        (f.PERCENTILE_LIKE_FUNCTIONS, f.array_function_percentile_like),
+        (f.ARG_REDUCE_FUNCTIONS, f.array_function_arg_reduce),
+        (f.FFT_LIKE_FUNCTIONS, f.array_function_fft_like),
+        (f.FFTN_LIKE_FUNCTIONS, f.array_function_fftn_like),
+        (f.EMATH_FUNCTIONS, f.array_function_emath),
+        (f.STACK_LIKE_FUNCTIONS, f.array_function_stack_like),
+    ])
+    return handlers, f.HANDLED_FUNCTIONS
 
 
 @dataclasses.dataclass(eq=False, repr=False)
@@ -569,43 +601,13 @@ class AbstractUncertainScalarArray(
         if result is not NotImplemented:
             return result
 
-        from . import uncertainties_array_functions
+        handlers, handled = _array_function_dispatch()
 
-        if func in uncertainties_array_functions.SINGLE_ARG_FUNCTIONS:
-            return uncertainties_array_functions.array_functions_single_arg(func, *args, **kwargs)
+        if func in handlers:
+            return handlers[func](func, *args, **kwargs)
 
-        if func in uncertainties_array_functions.ARRAY_CREATION_LIKE_FUNCTIONS:
-            return uncertainties_array_functions.array_function_array_creation_like(func, *args, **kwargs)
-
-        if func in uncertainties_array_functions.SEQUENCE_FUNCTIONS:
-            return uncertainties_array_functions.array_function_sequence(func, *args, **kwargs)
-
-        if func in uncertainties_array_functions.DEFAULT_FUNCTIONS:
-            return uncertainties_array_functions.array_function_default(func, *args, **kwargs)
-
-        if func in uncertainties_array_functions.CUMULATIVE_REDUCE_FUNCTIONS:
-            return uncertainties_array_functions.array_function_cumulative_reduce(func, *args, **kwargs)
-
-        if func in uncertainties_array_functions.PERCENTILE_LIKE_FUNCTIONS:
-            return uncertainties_array_functions.array_function_percentile_like(func, *args, **kwargs)
-
-        if func in uncertainties_array_functions.ARG_REDUCE_FUNCTIONS:
-            return uncertainties_array_functions.array_function_arg_reduce(func, *args, **kwargs)
-
-        if func in uncertainties_array_functions.FFT_LIKE_FUNCTIONS:
-            return uncertainties_array_functions.array_function_fft_like(func, *args, **kwargs)
-
-        if func in uncertainties_array_functions.FFTN_LIKE_FUNCTIONS:
-            return uncertainties_array_functions.array_function_fftn_like(func, *args, **kwargs)
-
-        if func in uncertainties_array_functions.EMATH_FUNCTIONS:
-            return uncertainties_array_functions.array_function_emath(func, *args, **kwargs)
-
-        if func in uncertainties_array_functions.STACK_LIKE_FUNCTIONS:
-            return uncertainties_array_functions.array_function_stack_like(func, *args, **kwargs)
-
-        if func in uncertainties_array_functions.HANDLED_FUNCTIONS:
-            return uncertainties_array_functions.HANDLED_FUNCTIONS[func](*args, **kwargs)
+        if func in handled:
+            return handled[func](*args, **kwargs)
 
         return NotImplemented
 

@@ -3,6 +3,7 @@ from typing import Mapping, TYPE_CHECKING, TypeVar, Generic, ClassVar, Type, Seq
 from typing import Self
 import abc
 import dataclasses
+import functools
 import numpy as np
 import numpy.typing as npt
 import astropy.units as u
@@ -81,6 +82,36 @@ def as_named_array(value: bool | int | float | complex | str | u.Quantity | na.A
         return ScalarArray(value)
     else:
         return value
+
+
+@functools.cache
+def _array_function_dispatch() -> tuple[dict[Callable, Callable], dict[Callable, Callable]]:
+    """
+    The handlers of the :mod:`numpy` functions which scalar arrays support,
+    built on first use since :mod:`named_arrays._scalars.scalar_array_functions`
+    imports this module.
+
+    Returns
+    -------
+    A dictionary mapping each function in a category of
+    :mod:`~named_arrays._scalars.scalar_array_functions` to the handler of that
+    category, and the ``HANDLED_FUNCTIONS`` of that module.
+    """
+    from named_arrays._core import _array_function_handlers
+    from . import scalar_array_functions as f
+    handlers = _array_function_handlers([
+        (f.SINGLE_ARG_FUNCTIONS, f.array_function_single_arg),
+        (f.ARRAY_CREATION_LIKE_FUNCTIONS, f.array_function_array_creation_like),
+        (f.SEQUENCE_FUNCTIONS, f.array_function_sequence),
+        (f.DEFAULT_FUNCTIONS, f.array_function_default),
+        (f.CUMULATIVE_REDUCE_FUNCTIONS, f.array_function_cumulative_reduce),
+        (f.PERCENTILE_LIKE_FUNCTIONS, f.array_function_percentile_like),
+        (f.ARG_REDUCE_FUNCTIONS, f.array_function_arg_reduce),
+        (f.FFT_LIKE_FUNCTIONS, f.array_function_fft_like),
+        (f.FFTN_LIKE_FUNCTIONS, f.array_function_fftn_like),
+        (f.EMATH_FUNCTIONS, f.array_function_emath),
+    ])
+    return handlers, f.HANDLED_FUNCTIONS
 
 
 @dataclasses.dataclass(eq=False, repr=False)
@@ -306,20 +337,26 @@ class AbstractScalarArray(
         if axes == axes_self:
             return ndarray
 
-        ndim_missing = len(axes) - ndarray.ndim
-        value = ndarray[(...,) + ndim_missing * (np.newaxis,)]
-        source = []
         destination = []
-        for axis_index, axis_name in enumerate(axes_self):
-            source.append(axis_index)
+        for axis_name in axes_self:
             if axis_name not in axes:
                 raise ValueError(
                     f"`axes` is missing axes present in the input array. "
                     f"`axes` is {axes} but `self.axes` is {self.axes}"
                 )
             destination.append(axes.index(axis_name))
-        value = np.moveaxis(value, source=source, destination=destination)
-        return value
+
+        # Put the axes of this array in the order they have in `axes`,
+        # then insert a unit-length axis for each axis this array doesn't have.
+        # This avoids :func:`numpy.moveaxis`, whose argument normalization
+        # costs more than the rest of this method for a small array.
+        destination_sorted = sorted(destination)
+        if destination != destination_sorted:
+            ndarray = ndarray.transpose(sorted(range(len(destination)), key=destination.__getitem__))
+        shape = [1] * len(axes)
+        for index, size in zip(destination_sorted, ndarray.shape):
+            shape[index] = size
+        return ndarray.reshape(shape)
 
     def add_axes(self: Self, axes: str | Sequence[str]) -> ScalarArray:
         if isinstance(axes, str):
@@ -418,19 +455,25 @@ class AbstractScalarArray(
                 raise ValueError(
                     f"the axes in item, {item.axes}, must be a subset of the axes in the array, {self.axes}")
 
-            value = np.moveaxis(
-                a=self.ndarray,
-                source=[self.axes.index(axis) for axis in item.axes],
-                destination=np.arange(len(item.axes)),
-            )
+            # Skip :func:`numpy.moveaxis` when it would not move anything,
+            # unless it is needed to convert a Python scalar to an array.
+            value = self.ndarray
+            source = [self.axes.index(axis) for axis in item.axes]
+            destination = list(range(len(item.axes)))
+            if source != destination or not isinstance(value, np.ndarray):
+                value = np.moveaxis(value, source=source, destination=destination)
 
             if item.shape:
                 axis_new = item.axes_flattened
             else:
                 axis_new = "boolean"
 
+            value = value[item.ndarray]
+            if value.ndim != 1:
+                value = np.moveaxis(value, 0, ~0)
+
             return ScalarArray(
-                ndarray=np.moveaxis(value[item.ndarray], 0, ~0),
+                ndarray=value,
                 axes=tuple(axis for axis in self.axes if axis not in item.axes) + (axis_new, )
             )
 
@@ -463,11 +506,17 @@ class AbstractScalarArray(
 
             shape_advanced = na.shape_broadcasted(*item_advanced.values())
 
-            ndarray_organized = np.moveaxis(
-                self.ndarray,
-                source=tuple(axes.index(ax) for ax in item_advanced),
-                destination=tuple(range(len(item_advanced))),
-            )
+            # `item` names at least one axis of this array here,
+            # so :attr:`ndarray` is an array and indexing it needs no conversion.
+            ndarray_organized = self.ndarray
+            source = tuple(axes.index(ax) for ax in item_advanced)
+            destination = tuple(range(len(item_advanced)))
+            if source != destination:
+                ndarray_organized = np.moveaxis(
+                    ndarray_organized,
+                    source=source,
+                    destination=destination,
+                )
 
             axes_basic = tuple(ax for ax in axes if ax not in item_advanced)
             axes_self = tuple(item_advanced) + axes_basic
@@ -534,6 +583,25 @@ class AbstractScalarArray(
             *inputs,
             **kwargs,
     ) -> None | ScalarArray | tuple[ScalarArray, ...]:
+
+        # A fast path for the most common case, a plain call of a ufunc
+        # whose array operands are all instances of :class:`ScalarArray`.
+        if method == "__call__" and not kwargs and ufunc is not np.matmul:
+            shapes = []
+            for inp in inputs:
+                if type(inp) is ScalarArray:
+                    shapes.append(inp.shape)
+                elif inp is None or isinstance(inp, na.AbstractArray):
+                    break
+            else:
+                axes = tuple(na.broadcast_shapes(*shapes))
+                result_ndarray = ufunc(*[
+                    inp.ndarray_aligned(axes) if type(inp) is ScalarArray else inp
+                    for inp in inputs
+                ])
+                if ufunc.nout == 1:
+                    return ScalarArray(result_ndarray, axes=axes)
+                return tuple(ScalarArray(r, axes=axes) for r in result_ndarray)
 
         result = super().__array_ufunc__(
             ufunc,
@@ -624,40 +692,13 @@ class AbstractScalarArray(
         if result is not NotImplemented:
             return result
 
-        from . import scalar_array_functions
+        handlers, handled = _array_function_dispatch()
 
-        if func in scalar_array_functions.SINGLE_ARG_FUNCTIONS:
-            return scalar_array_functions.array_function_single_arg(func, *args, **kwargs)
+        if func in handlers:
+            return handlers[func](func, *args, **kwargs)
 
-        if func in scalar_array_functions.ARRAY_CREATION_LIKE_FUNCTIONS:
-            return scalar_array_functions.array_function_array_creation_like(func, *args, **kwargs)
-
-        if func in scalar_array_functions.SEQUENCE_FUNCTIONS:
-            return scalar_array_functions.array_function_sequence(func, *args, **kwargs)
-
-        if func in scalar_array_functions.DEFAULT_FUNCTIONS:
-            return scalar_array_functions.array_function_default(func, *args, **kwargs)
-
-        if func in scalar_array_functions.CUMULATIVE_REDUCE_FUNCTIONS:
-            return scalar_array_functions.array_function_cumulative_reduce(func, *args, **kwargs)
-
-        if func in scalar_array_functions.PERCENTILE_LIKE_FUNCTIONS:
-            return scalar_array_functions.array_function_percentile_like(func, *args, **kwargs)
-
-        if func in scalar_array_functions.ARG_REDUCE_FUNCTIONS:
-            return scalar_array_functions.array_function_arg_reduce(func, *args, **kwargs)
-
-        if func in scalar_array_functions.FFT_LIKE_FUNCTIONS:
-            return scalar_array_functions.array_function_fft_like(func, *args, **kwargs)
-
-        if func in scalar_array_functions.FFTN_LIKE_FUNCTIONS:
-            return scalar_array_functions.array_function_fftn_like(func, *args, **kwargs)
-
-        if func in scalar_array_functions.EMATH_FUNCTIONS:
-            return scalar_array_functions.array_function_emath(func, *args, **kwargs)
-
-        if func in scalar_array_functions.HANDLED_FUNCTIONS:
-            return scalar_array_functions.HANDLED_FUNCTIONS[func](*args, **kwargs)
+        if func in handled:
+            return handled[func](*args, **kwargs)
 
         return NotImplemented
 
