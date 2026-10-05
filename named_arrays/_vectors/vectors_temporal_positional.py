@@ -87,6 +87,7 @@ class ExplicitTemporalWcsPositionalVectorArray(
     na.AbstractWcsVector,
 ):
     time: na.AbstractExplicitScalarArray = _required()
+    timedelta: na.ArrayLike = dataclasses.field(default=0, kw_only=True)
     crval: na.AbstractPositionalVectorArray = _required()
     crpix: na.CartesianNdVectorArray[na.AbstractExplicitScalarArray] = _required()
     cdelt: na.AbstractPositionalVectorArray = _required()
@@ -95,4 +96,4 @@ class ExplicitTemporalWcsPositionalVectorArray(
 
     @property
     def _components_explicit(self) -> dict[str, na.ArrayLike]:
-        return dict(time=self.time)
+        return dict(time=self.time, timedelta=self.timedelta)

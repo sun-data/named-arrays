@@ -59,6 +59,7 @@ class ExplicitTemporalWcsDopplerPositionalVectorArray(
     na.AbstractWcsVector,
 ):
     time: na.AbstractExplicitScalarArray = _required()
+    timedelta: na.ArrayLike = dataclasses.field(default=0, kw_only=True)
     wavelength_rest: na.AbstractExplicitScalarArray = _required()
     crval: na.SpectralPositionalVectorArray[
         na.Cartesian2dVectorArray[na.AbstractExplicitScalarArray, na.AbstractExplicitScalarArray],
@@ -82,5 +83,6 @@ class ExplicitTemporalWcsDopplerPositionalVectorArray(
     def _components_explicit(self) -> dict[str, na.ArrayLike]:
         return dict(
             time=self.time,
+            timedelta=self.timedelta,
             wavelength_rest=self.wavelength_rest,
         )

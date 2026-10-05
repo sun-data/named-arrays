@@ -94,6 +94,7 @@ class ExplicitTemporalSpectralWcsPositionalVectorArray(
     na.AbstractWcsVector,
 ):
     time: na.AbstractExplicitScalarArray = _required()
+    timedelta: na.ArrayLike = dataclasses.field(default=0, kw_only=True)
     wavelength: na.AbstractExplicitScalarArray = _required()
     crval: na.SpectralPositionalVectorArray[
         na.Cartesian2dVectorArray[na.AbstractExplicitScalarArray, na.AbstractExplicitScalarArray],
@@ -111,6 +112,7 @@ class ExplicitTemporalSpectralWcsPositionalVectorArray(
     def _components_explicit(self) -> dict[str, na.ArrayLike]:
         return dict(
             time=self.time,
+            timedelta=self.timedelta,
             wavelength=self.wavelength,
         )
 
@@ -121,6 +123,7 @@ class ExplicitTemporalWcsSpectralPositionalVectorArray(
     na.AbstractWcsVector,
 ):
     time: na.AbstractExplicitScalarArray = _required()
+    timedelta: na.ArrayLike = dataclasses.field(default=0, kw_only=True)
     crval: na.SpectralPositionalVectorArray[
         na.Cartesian2dVectorArray[na.AbstractExplicitScalarArray, na.AbstractExplicitScalarArray],
         na.AbstractExplicitScalarArray,
@@ -135,4 +138,4 @@ class ExplicitTemporalWcsSpectralPositionalVectorArray(
 
     @property
     def _components_explicit(self) -> dict[str, na.ArrayLike]:
-        return dict(time=self.time)
+        return dict(time=self.time, timedelta=self.timedelta)

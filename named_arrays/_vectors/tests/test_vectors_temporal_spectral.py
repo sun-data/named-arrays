@@ -22,6 +22,7 @@ def _temporal_spectral_arrays() -> (
         ),
         na.TemporalSpectralVectorArray(
             time=na.linspace(0, 10, axis="y", num=_num_y) * u.s,
+            timedelta=na.linspace(1, 2, axis="y", num=_num_y) * u.s,
             wavelength=na.linspace(400, 600, axis="y", num=_num_y) * u.nm,
         ),
     ]
@@ -204,6 +205,7 @@ class TestTemporalSpectralVectorLinearSpace(
     argvalues=[
         na.ExplicitTemporalWcsSpectralVectorArray(
             time=10 * u.s,
+            timedelta=2 * u.s,
             crval=na.SpectralVectorArray(
                 wavelength=500 * u.nm,
             ),

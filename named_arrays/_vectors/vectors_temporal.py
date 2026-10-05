@@ -29,6 +29,18 @@ class AbstractTemporalVectorArray(
         """
 
     @property
+    @abc.abstractmethod
+    def timedelta(self) -> na.ArrayLike:
+        """
+        The duration of each sample, such as the exposure time of an image.
+
+        Together with :attr:`time`, this is the interval of time that each
+        sample spans.
+        Since it is a component of the vector, it is indexed, broadcast,
+        and stacked along with :attr:`time`.
+        """
+
+    @property
     def type_abstract(self) -> Type[na.AbstractArray]:
         return AbstractTemporalVectorArray
 
@@ -48,6 +60,9 @@ class TemporalVectorArray(
     Generic[TimeT],
 ):
     time: TimeT = 0
+    # keyword-only, so that it doesn't shift the positional arguments of the
+    # components that subclasses add after `time`
+    timedelta: na.ArrayLike = dataclasses.field(default=0, kw_only=True)
 
 
 @dataclasses.dataclass(eq=False, repr=False)
@@ -59,6 +74,10 @@ class AbstractImplicitTemporalVectorArray(
     @property
     def time(self) -> na.ArrayLike:
         return self.explicit.time
+
+    @property
+    def timedelta(self) -> na.ArrayLike:
+        return self.explicit.timedelta
 
 
 @dataclasses.dataclass(eq=False, repr=False)

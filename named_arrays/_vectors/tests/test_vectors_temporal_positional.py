@@ -22,6 +22,7 @@ def _temporal_positional_arrays() -> (
         ),
         na.TemporalPositionalVectorArray(
             time=na.linspace(0, 10, axis="y", num=_num_y) * u.s,
+            timedelta=na.linspace(1, 2, axis="y", num=_num_y) * u.s,
             position=na.Cartesian2dVectorLinearSpace(
                 1, 2, axis="y", num=_num_y
             ).explicit
@@ -210,6 +211,7 @@ class TestTemporalPositionalVectorLinearSpace(
     argvalues=[
         na.ExplicitTemporalWcsPositionalVectorArray(
             time=10 * u.s,
+            timedelta=2 * u.s,
             crval=na.PositionalVectorArray(
                 position=na.Cartesian2dVectorArray(1, 1) * u.deg,
             ),

@@ -23,6 +23,7 @@ def _temporal_spectral_positional_arrays() -> (
         ),
         na.TemporalSpectralPositionalVectorArray(
             time=na.linspace(0, 10, axis="y", num=_num_y) * u.s,
+            timedelta=na.linspace(1, 2, axis="y", num=_num_y) * u.s,
             wavelength=na.linspace(400, 600, axis="y", num=_num_y) * u.nm,
             position=na.Cartesian2dVectorLinearSpace(
                 1, 2, axis="y", num=_num_y
@@ -214,6 +215,7 @@ class TestTemporalSpectralPositionalVectorLinearSpace(
     argvalues=[
         na.ExplicitTemporalSpectralWcsPositionalVectorArray(
             time=10 * u.s,
+            timedelta=2 * u.s,
             wavelength=500 * u.nm,
             crval=na.PositionalVectorArray(
                 position=na.Cartesian2dVectorArray(1, 1) * u.deg,
@@ -249,6 +251,7 @@ class TestExplicitTemporalSpectralWcsPositionalVectorArray(
     argvalues=[
         na.ExplicitTemporalWcsSpectralPositionalVectorArray(
             time=10 * u.s,
+            timedelta=2 * u.s,
             crval=na.SpectralPositionalVectorArray(
                 wavelength=500 * u.nm,
                 position=na.Cartesian2dVectorArray(1, 1) * u.deg,

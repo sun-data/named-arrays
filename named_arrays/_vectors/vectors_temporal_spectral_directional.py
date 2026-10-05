@@ -93,6 +93,7 @@ class ExplicitTemporalWcsSpectralDirectionalVectorArray(
     na.AbstractWcsVector,
 ):
     time: na.AbstractExplicitScalarArray = _required()
+    timedelta: na.ArrayLike = dataclasses.field(default=0, kw_only=True)
     crval: AbstractTemporalSpectralDirectionalVectorArray = _required()
     crpix: na.CartesianNdVectorArray[na.AbstractExplicitScalarArray] = _required()
     cdelt: AbstractTemporalSpectralDirectionalVectorArray = _required()
@@ -101,4 +102,4 @@ class ExplicitTemporalWcsSpectralDirectionalVectorArray(
 
     @property
     def _components_explicit(self) -> dict[str, na.ArrayLike]:
-        return dict(time=self.time)
+        return dict(time=self.time, timedelta=self.timedelta)

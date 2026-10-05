@@ -3,6 +3,7 @@ import pytest
 import numpy as np
 import astropy.units as u
 import named_arrays as na
+from . import test_vectors
 from ..cartesian.tests import test_vectors_cartesian
 
 _num_x = test_vectors_cartesian._num_x
@@ -17,6 +18,7 @@ def _temporal_doppler_positional_arrays() -> (
     return [
         na.TemporalDopplerPositionalVectorArray(
             time=10 * u.s,
+            timedelta=2 * u.s,
             wavelength=500 * u.nm,
             wavelength_rest=500 * u.nm,
             position=na.Cartesian2dVectorArray(1, 2) * u.mm,
@@ -155,5 +157,45 @@ class TestTemporalDopplerPositionalVectorArray(
 class AbstractTestAbstractImplicitTemporalDopplerPositionalVectorArray(
     AbstractTestAbstractTemporalDopplerPositionalVectorArray,
     test_vectors_cartesian.AbstractTestAbstractImplicitCartesianVectorArray,
+):
+    pass
+
+
+@pytest.mark.parametrize(
+    argnames="array",
+    argvalues=[
+        na.ExplicitTemporalWcsDopplerPositionalVectorArray(
+            time=10 * u.s,
+            timedelta=2 * u.s,
+            wavelength_rest=500 * u.nm,
+            crval=na.SpectralPositionalVectorArray(
+                wavelength=500 * u.nm,
+                position=na.Cartesian2dVectorArray(1, 1) * u.deg,
+            ),
+            crpix=na.CartesianNdVectorArray(
+                dict(
+                    wavelength=1,
+                    x=2,
+                    y=3,
+                )
+            ),
+            cdelt=na.SpectralPositionalVectorArray(
+                wavelength=1 * u.nm,
+                position=na.Cartesian2dVectorArray(1, 1) * u.arcsec,
+            ),
+            pc=na.SpectralPositionalMatrixArray(
+                wavelength=na.CartesianNdVectorArray(dict(wavelength=1, x=0, y=0)),
+                position=na.Cartesian2dMatrixArray(
+                    x=na.CartesianNdVectorArray(dict(wavelength=0, x=1, y=0)),
+                    y=na.CartesianNdVectorArray(dict(wavelength=0, x=0, y=1)),
+                ),
+            ),
+            shape_wcs=dict(wavelength=5, x=_num_x, y=_num_y),
+        ),
+    ],
+)
+class TestExplicitTemporalWcsDopplerPositionalVectorArray(
+    AbstractTestAbstractImplicitTemporalDopplerPositionalVectorArray,
+    test_vectors.AbstractTestAbstractWcsVector,
 ):
     pass

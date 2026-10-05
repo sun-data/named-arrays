@@ -25,6 +25,13 @@ class AbstractTemporalMatrixArray(
         """
 
     @property
+    @abc.abstractmethod
+    def timedelta(self) -> na.AbstractVectorArray:
+        """
+        The component of the matrix corresponding to the duration of each sample.
+        """
+
+    @property
     def type_abstract(self) -> Type[AbstractTemporalMatrixArray]:
         return AbstractTemporalMatrixArray
 

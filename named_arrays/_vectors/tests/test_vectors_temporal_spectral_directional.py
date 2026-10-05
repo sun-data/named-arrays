@@ -23,6 +23,7 @@ def _temporal_spectral_directional_arrays() -> (
         ),
         na.TemporalSpectralDirectionalVectorArray(
             time=na.linspace(0, 10, axis="y", num=_num_y) * u.s,
+            timedelta=na.linspace(1, 2, axis="y", num=_num_y) * u.s,
             wavelength=na.linspace(400, 600, axis="y", num=_num_y) * u.nm,
             direction=na.Cartesian2dVectorLinearSpace(
                 1, 2, axis="y", num=_num_y
@@ -214,6 +215,7 @@ class TestTemporalSpectralDirectionalVectorLinearSpace(
     argvalues=[
         na.ExplicitTemporalWcsSpectralDirectionalVectorArray(
             time=10 * u.s,
+            timedelta=2 * u.s,
             crval=na.SpectralDirectionalVectorArray(
                 wavelength=500 * u.nm,
                 direction=na.Cartesian2dVectorArray(1, 1) * u.deg,

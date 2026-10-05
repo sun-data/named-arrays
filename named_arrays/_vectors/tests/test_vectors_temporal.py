@@ -14,15 +14,21 @@ _num_distribution = test_vectors._num_distribution
 
 def _temporal_arrays() -> list[na.TemporalVectorArray]:
     return [
-        na.TemporalVectorArray(time=1 * u.s),
-        na.TemporalVectorArray(time=na.ScalarLinearSpace(1, 2, axis="y", num=_num_y).explicit * u.s),
+        na.TemporalVectorArray(time=1 * u.s, timedelta=2 * u.s),
+        na.TemporalVectorArray(
+            time=na.ScalarLinearSpace(1, 2, axis="y", num=_num_y).explicit * u.s,
+            timedelta=na.ScalarLinearSpace(3, 4, axis="y", num=_num_y).explicit * u.s,
+        ),
     ]
 
 
 def _temporal_arrays_2() -> list[na.TemporalVectorArray]:
     return [
-        na.TemporalVectorArray(time=3 * u.s),
-        na.TemporalVectorArray(time=na.NormalUncertainScalarArray(3, width=1) * u.s),
+        na.TemporalVectorArray(time=3 * u.s, timedelta=4 * u.s),
+        na.TemporalVectorArray(
+            time=na.NormalUncertainScalarArray(3, width=1) * u.s,
+            timedelta=na.NormalUncertainScalarArray(4, width=1) * u.s,
+        ),
     ]
 
 
@@ -39,6 +45,10 @@ class AbstractTestAbstractTemporalVectorArray(
 ):
     def test_time(self, array: na.AbstractTemporalVectorArray):
         assert isinstance(na.as_named_array(array.time), (na.AbstractScalar, na.AbstractVectorArray))
+
+    def test_timedelta(self, array: na.AbstractTemporalVectorArray):
+        assert isinstance(na.as_named_array(array.timedelta), (na.AbstractScalar, na.AbstractVectorArray))
+        assert "timedelta" in array.explicit.components
 
     @pytest.mark.parametrize(
         argnames='item',
@@ -172,3 +182,39 @@ class TestTemporalVectorlinearSpace(
     test_vectors_cartesian.AbstractTestAbstractCartesianVectorLinearSpace,
 ):
     pass
+
+
+def test_timedelta_default():
+    a = na.TemporalVectorArray(time=1 * u.s)
+    assert a.timedelta == 0
+
+
+def test_timedelta_keyword_only():
+    # the positional arguments of the subclasses are the same as before
+    # `timedelta` was added
+    position = na.Cartesian2dVectorArray(1, 2) * u.mm
+    a = na.TemporalSpectralPositionalVectorArray(1 * u.s, 500 * u.nm, position)
+    assert a.time == 1 * u.s
+    assert a.wavelength == 500 * u.nm
+    assert np.all(a.position == position)
+    assert a.timedelta == 0
+
+
+def test_timedelta_function_array():
+    # the exposure time of each image follows the images through indexing,
+    # masking and concatenation
+    timedelta = na.ScalarArray([1, 2, 3, 4] * u.s, axes="t")
+    a = na.FunctionArray(
+        inputs=na.TemporalSpectralVectorArray(
+            time=na.linspace(0, 30, axis="t", num=4) * u.s,
+            wavelength=500 * u.nm,
+            timedelta=timedelta,
+        ),
+        outputs=na.ScalarArray([10, 20, 30, 40] * u.DN, axes="t"),
+    )
+    assert np.all(a[dict(t=2)].inputs.timedelta == 3 * u.s)
+    assert np.all(a[dict(t=slice(1, 3))].inputs.timedelta == timedelta[dict(t=slice(1, 3))])
+    b = na.concatenate([a, a], axis="t")
+    assert np.all(b.inputs.timedelta == na.concatenate([timedelta, timedelta], axis="t"))
+    rate = a.outputs / a.inputs.timedelta
+    assert np.all(rate == 10 * u.DN / u.s)
