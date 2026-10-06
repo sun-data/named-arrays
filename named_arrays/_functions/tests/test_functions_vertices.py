@@ -151,6 +151,8 @@ class AbstractTestAbstractFunctionArrayVertices(
             dict(y=slice(3, 1)),
             dict(y=slice(-10, None, -1)),
             dict(x=-1, y=slice(None, None, -1)),
+            dict(y=slice(1, 2, 3)),
+            dict(y=slice(None, None, -10)),
             dict(y=slice(None, None, 2)),
             dict(y=_num_y),
             dict(y=-_num_y - 1),
@@ -346,13 +348,17 @@ class TestFunctionArrayVertices(
         (slice(5, 2), [], [5]),
         (slice(20, None), [], [10]),
         (slice(-20, None, -1), [], [0]),
+        # a step other than 1 or -1 which selects at most one cell
+        (slice(0, 1, 2), [0], [0, 1]),
+        (slice(9, 8, -5), [9], [10, 9]),
+        (slice(3, 3, 2), [], [3]),
     ],
 )
 def test__getitem__vertex_axis(
     item: int | slice,
     cells: list[int],
     vertices: list[int],
-):
+) -> None:
     """
     Indexing the cells along a vertex axis keeps the vertices which bound
     them, however the index is written.
@@ -370,18 +376,19 @@ def test__getitem__vertex_axis(
 
 
 @pytest.mark.parametrize(
-    argnames="item,error",
+    argnames="item,error,match",
     argvalues=[
-        (slice(0, 10, 2), ValueError),
-        (slice(None, None, -2), ValueError),
-        (10, IndexError),
-        (-11, IndexError),
+        (slice(0, 10, 2), ValueError, "must have a step of 1 or -1"),
+        (slice(None, None, -2), ValueError, "must have a step of 1 or -1"),
+        (10, IndexError, "out of bounds"),
+        (-11, IndexError, "out of bounds"),
     ],
 )
 def test__getitem__vertex_axis_error(
     item: int | slice,
     error: type[Exception],
-):
+    match: str,
+) -> None:
     """
     A slice whose cells do not share vertices, or an integer past the last
     cell, raises an error rather than returning inputs that do not bound the
@@ -391,8 +398,48 @@ def test__getitem__vertex_axis_error(
         inputs=na.linspace(0, 10, axis="x", num=11),
         outputs=na.arange(0, 10, axis="x"),
     )
-    with pytest.raises(error):
+    with pytest.raises(error, match=match):
         f[dict(x=item)]
+
+
+@pytest.mark.parametrize(
+    argnames="item",
+    argvalues=[
+        3,
+        -1,
+        slice(-3, None),
+        slice(2, -3),
+        slice(5, 1, -1),
+    ],
+)
+@pytest.mark.parametrize("scalar", [False, True])
+def test__setitem__vertex_axis(
+    item: int | slice,
+    scalar: bool,
+) -> None:
+    """
+    Assigning to the cells along a vertex axis selects the same cells as
+    indexing, so that a function indexed by an item can be assigned back to
+    that item.
+    """
+    def function() -> na.FunctionArray:
+        return na.FunctionArray(
+            inputs=na.linspace(0, 10, axis="x", num=11),
+            outputs=na.arange(0, 10, axis="x").astype(float),
+        )
+
+    f = function()
+    if scalar:
+        value = 100
+    else:
+        value = 2 * function()[dict(x=item)]
+    f[dict(x=item)] = value
+
+    expected = np.arange(10, dtype=float)
+    cells = np.arange(10)[item]
+    expected[cells] = 100 if scalar else 2 * expected[cells]
+    assert f.outputs.ndarray.tolist() == expected.tolist()
+    assert f.inputs.ndarray.tolist() == np.linspace(0, 10, num=11).tolist()
 
 
 @pytest.mark.parametrize("type_array", [na.FunctionArray])

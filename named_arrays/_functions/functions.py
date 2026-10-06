@@ -56,7 +56,12 @@ def _item_vertex(
     """
     if isinstance(item, slice):
         cells = range(num)[item]
-        if cells.step not in (1, -1):
+        if len(cells) <= 1:
+            # The step of a selection of at most one cell does not change
+            # which cells it selects, only their direction.
+            step = 1 if cells.step > 0 else -1
+            cells = range(cells.start, cells.start + step * len(cells), step)
+        elif cells.step not in (1, -1):
             raise ValueError(
                 f"A slice along the vertex axis {axis!r} must have a step of "
                 f"1 or -1, got {item}, since cells which are not adjacent "
@@ -1380,6 +1385,8 @@ class FunctionArray(
 
         elif isinstance(item, dict):
 
+            axes_vertex = self.axes_vertex
+
             item_inputs = dict()
             item_outputs = dict()
             for ax in item:
@@ -1387,6 +1394,16 @@ class FunctionArray(
                 if isinstance(item_ax, na.AbstractFunctionArray):
                     item_inputs[ax] = item_ax.inputs
                     item_outputs[ax] = item_ax.outputs
+                elif ax in axes_vertex and (
+                    isinstance(item_ax, slice) or np.issubdtype(type(item_ax), np.integer)
+                ):
+                    # the same cells and vertices that indexing selects,
+                    # so that ``a[item] = a[item]`` leaves `a` unchanged
+                    item_outputs[ax], item_inputs[ax] = _item_vertex(
+                        item=item_ax,
+                        num=self.outputs.shape[ax],
+                        axis=ax,
+                    )
                 else:
                     item_inputs[ax] = item_outputs[ax] = item_ax
         else:

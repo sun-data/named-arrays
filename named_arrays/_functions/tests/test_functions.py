@@ -269,29 +269,37 @@ class AbstractTestAbstractFunctionArray(
                         if ax in array.outputs.shape:
                             item_outputs[ax] = item_ax
                     if ax in array.axes_vertex:
-                        # The cells selected, normalized as Python normalizes
-                        # an index of a range, and the vertices which bound
-                        # them, gathered with integer arrays rather than with
-                        # slices like the implementation.
+                        # The cells selected, found by indexing with numpy
+                        # rather than with the normalization of the
+                        # implementation, and the vertices which bound them,
+                        # gathered with integer arrays.
                         num = array.outputs.shape[ax]
-                        if isinstance(item_ax, slice):
-                            cells = range(num)[item_ax]
-                            if cells.step not in (1, -1):
-                                with pytest.raises(ValueError, match="must have a step of 1 or -1"):
-                                    array[item]
-                                return
+                        try:
+                            cells = np.atleast_1d(np.arange(num)[item_ax])
+                        except IndexError:
+                            with pytest.raises(IndexError, match="out of bounds"):
+                                array[item]
+                            return
+                        step = 1
+                        if isinstance(item_ax, slice) and item_ax.step is not None:
+                            step = item_ax.step
+                        if len(cells) > 1 and abs(step) != 1:
+                            with pytest.raises(ValueError, match="must have a step of 1 or -1"):
+                                array[item]
+                            return
+                        if len(cells) == 0:
+                            # Which vertex an empty selection keeps is
+                            # checked by `test__getitem__vertex_axis`.
+                            result = array[item]
+                            assert result.outputs.shape[ax] == 0
+                            assert result.inputs.shape[ax] == 1
+                            return
+                        if step > 0:
+                            vertices = np.append(cells, cells[-1] + 1)
                         else:
-                            if not -num <= item_ax < num:
-                                with pytest.raises(IndexError, match="out of bounds"):
-                                    array[item]
-                                return
-                            cells = range(item_ax % num, item_ax % num + 1)
-                        if cells.step == 1:
-                            vertices = range(cells.start, cells.start + len(cells) + 1)
-                        else:
-                            vertices = range(cells.start + 1, cells.start - len(cells), -1)
-                        item_outputs[ax] = na.ScalarArray(np.array(cells, dtype=int), axes=ax)
-                        item_inputs[ax] = na.ScalarArray(np.array(vertices, dtype=int), axes=ax)
+                            vertices = np.append(cells + 1, cells[-1])
+                        item_outputs[ax] = na.ScalarArray(cells, axes=ax)
+                        item_inputs[ax] = na.ScalarArray(vertices, axes=ax)
 
         result = array[item]
 
