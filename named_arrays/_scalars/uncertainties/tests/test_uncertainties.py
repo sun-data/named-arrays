@@ -210,6 +210,8 @@ class AbstractTestAbstractUncertainScalarArray(
                     center=na.ScalarLinearSpace(0, 1, axis='y', num=_num_y),
                     width=0.1,
                     shape_random={na.UncertainScalarArray.axis_distribution: _num_distribution},
+                    # a seed for which the samples select different elements
+                    seed=2,
                 )
             ) > 0.5,
         ]
@@ -240,11 +242,12 @@ class AbstractTestAbstractUncertainScalarArray(
                 fill_nominal = _fill_unselected(dtype_nominal, dtype_distribution)
                 fill_distribution = _fill_unselected(dtype_distribution, dtype_nominal)
                 if fill_nominal is None or fill_distribution is None:
-                    # Integer arrays are only parametrized here with masks
-                    # whose samples agree, so no element is filled.
-                    # `test__getitem__uncertain_item_integer` tests a mask
-                    # which varies.
-                    fill_nominal = fill_distribution = 0
+                    # The uncertain mask parametrized here is seeded so that
+                    # its samples select different elements, which an integer
+                    # array cannot represent.
+                    with pytest.raises(ValueError, match="`item` selects different elements"):
+                        array[item]
+                    return
                 result = array[item]
                 result_expected = na.UncertainScalarArray(
                     nominal=np.where(item.nominal, array_broadcasted.nominal, fill_nominal)[union],
