@@ -465,25 +465,49 @@ def test__setitem__vertex_axis_error() -> None:
         f[dict(x=10)] = 100
 
 
-def test__setitem__center_axis() -> None:
+def test__setitem__outputs_axis() -> None:
     """
-    An axis of the outputs which the inputs do not have is only applied to the
-    outputs, as it is for indexing.
+    Assigning a function to an axis of the outputs which the inputs do not
+    have raises an error rather than overwriting every vertex with the inputs
+    of the value.
     """
     f = na.FunctionArray(
-        inputs=na.linspace(0, 1, axis="y", num=4),
-        outputs=na.ScalarArray.zeros(dict(x=3, y=4)),
+        inputs=na.linspace(0, 10, axis="x", num=11),
+        outputs=na.ScalarArray.zeros(dict(x=10, z=3)),
     )
-    f[dict(x=0, y=1)] = na.FunctionArray(
-        inputs=na.ScalarArray(9.0),
-        outputs=na.ScalarArray(7.0),
+    value = na.FunctionArray(
+        inputs=na.ScalarArray(5.0),
+        outputs=na.ScalarArray(1.0),
     )
-    expected_inputs = np.linspace(0, 1, num=4)
-    expected_inputs[1] = 9
-    expected_outputs = np.zeros((3, 4))
-    expected_outputs[0, 1] = 7
-    assert f.inputs.ndarray.tolist() == expected_inputs.tolist()
-    assert f.outputs.ndarray.tolist() == expected_outputs.tolist()
+    with pytest.raises(ValueError, match="must be a subset"):
+        f[dict(z=0)] = value
+    assert f.inputs.ndarray.tolist() == np.linspace(0, 10, num=11).tolist()
+
+
+def test__setitem__mask_vertex() -> None:
+    """
+    A mask of the cells of a function with a vertex axis assigns only the
+    outputs, like any other item along a vertex axis.
+    """
+    f = _function_vertex()
+    mask = na.FunctionArray(f.inputs, f.outputs > 4)
+    f[mask] = na.FunctionArray(
+        inputs=na.ScalarArray(5.0),
+        outputs=na.ScalarArray(100.0),
+    )
+    expected = np.arange(10, dtype=float)
+    expected[expected > 4] = 100
+    assert f.outputs.ndarray.tolist() == expected.tolist()
+    assert f.inputs.ndarray.tolist() == np.linspace(0, 10, num=11).tolist()
+
+
+def test__setitem__inputs_scalar() -> None:
+    """
+    A function whose inputs are not an array can still be assigned to.
+    """
+    f = na.FunctionArray(outputs=na.ScalarArray(np.zeros(3), axes="x"))
+    f[dict(x=0)] = 1
+    assert f.outputs.ndarray.tolist() == [1, 0, 0]
 
 
 @pytest.mark.parametrize("type_array", [na.FunctionArray])

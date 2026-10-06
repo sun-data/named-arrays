@@ -28,6 +28,42 @@ class InputValueError(ValueError):
     """
 
 
+def _is_vertex(
+    axis: str,
+    shape_inputs: dict[str, int],
+    shape_outputs: dict[str, int],
+) -> bool:
+    """
+    Whether an axis of a function array is a vertex axis, along which the
+    inputs are the edges of the cells of the outputs, rather than a center
+    axis.
+
+    Parameters
+    ----------
+    axis
+        The name of the axis.
+    shape_inputs
+        The shape of the inputs of the function array.
+    shape_outputs
+        The shape of the outputs of the function array.
+    """
+    if axis in shape_inputs and axis in shape_outputs:
+        num_inputs = shape_inputs[axis]
+        num_outputs = shape_outputs[axis]
+        if num_inputs == num_outputs + 1:
+            return True
+        if num_inputs != num_outputs and 1 not in (num_inputs, num_outputs):
+            raise ValueError(
+                f"output dimension, "
+                f"self.outputs.shape[{axis}]={num_outputs},"
+                f"must either match input dimension,"
+                f"self.inputs.shape[{axis}]={num_inputs},"
+                f"(representing bin centers) "
+                "or exceed by one (representing bin vertices)."
+            )
+    return False
+
+
 def _item_vertex(
     item: int | np.integer | slice,
     num: int,
@@ -145,35 +181,12 @@ class AbstractFunctionArray(
         """
         Return keys corresponding to all input axes representing bin centers
         """
-        axes_center = tuple()
-        input_shape = self.inputs.shape
-        output_shape = self.outputs.shape
-
-        for axis in self.axes:
-            if axis in input_shape:
-                if axis in output_shape:
-                    if input_shape[axis] == output_shape[axis]:
-                        axes_center += (axis,)
-                    else:
-                        if input_shape[axis] == output_shape[axis] + 1:
-                            pass
-                        elif output_shape[axis] == 1 or input_shape[axis] == 1:
-                            axes_center += (axis,)
-                        else:
-                            raise ValueError(
-                                f"output dimension, "
-                                f"self.outputs.shape[{axis}]={output_shape[axis]},"
-                                f"must either match input dimension,"
-                                f"self.inputs.shape[{axis}]={input_shape[axis]},"
-                                f"(representing bin centers) "
-                                "or exceed by one (representing bin vertices)."
-                            )
-                else:
-                    axes_center += (axis,)
-            else:
-                axes_center += (axis,)
-
-        return axes_center
+        shape_inputs = self.inputs.shape
+        shape_outputs = self.outputs.shape
+        return tuple(
+            axis for axis in self.axes
+            if not _is_vertex(axis, shape_inputs, shape_outputs)
+        )
 
     @property
     def axes_vertex(self) -> tuple(str):
@@ -1371,16 +1384,15 @@ class FunctionArray(
             value: float | u.Quantity | na.FunctionArray,
     ):
 
-        shape_inputs = self.inputs.shape
-        shape_outputs = self.outputs.shape
+        shape_inputs = na.shape(self.inputs)
+        shape_outputs = na.shape(self.outputs)
 
         def is_vertex(axis: str) -> bool:
-            # the same test as `axes_vertex`, for a single axis
-            if axis in shape_inputs and axis in shape_outputs:
-                return shape_inputs[axis] == shape_outputs[axis] + 1
-            return False
+            return _is_vertex(axis, shape_inputs, shape_outputs)
 
-        # Whether the inputs can be assigned the inputs of `value`
+        # Whether the inputs can be assigned the inputs of `value`.
+        # Only the cells are assigned along a vertex axis, since `value`
+        # cannot say where their vertices are.
         assign_inputs = True
 
         if isinstance(item, na.AbstractFunctionArray):
@@ -1389,6 +1401,10 @@ class FunctionArray(
 
             item_inputs = item.outputs
             item_outputs = item.outputs
+
+            # the mask selects cells, which are not the vertices
+            if any(is_vertex(ax) for ax in shape_inputs):
+                assign_inputs = False
 
         elif isinstance(item, dict):
 
@@ -1400,10 +1416,8 @@ class FunctionArray(
                     item_inputs[ax] = item_ax.inputs
                     item_outputs[ax] = item_ax.outputs
                 elif is_vertex(ax):
-                    # Only the cells are assigned along a vertex axis, since
-                    # `value` cannot say where their vertices are. An integer
-                    # keeps the axis, as it does for indexing, so that
-                    # ``a[item] = a[item]`` leaves `a` unchanged.
+                    # An integer keeps the axis, as it does for indexing,
+                    # so that ``a[item] = a[item]`` leaves `a` unchanged.
                     if np.issubdtype(type(item_ax), np.integer):
                         item_ax, _ = _item_vertex(
                             item=item_ax,
@@ -1413,13 +1427,7 @@ class FunctionArray(
                     item_outputs[ax] = item_ax
                     assign_inputs = False
                 else:
-                    # As for indexing, an axis of only one of the arrays is
-                    # only applied to that array. An axis which neither has
-                    # is given to both, which raise an error for it.
-                    if ax in shape_inputs or ax not in shape_outputs:
-                        item_inputs[ax] = item_ax
-                    if ax in shape_outputs or ax not in shape_inputs:
-                        item_outputs[ax] = item_ax
+                    item_inputs[ax] = item_outputs[ax] = item_ax
         else:
             raise TypeError(
                 f"`item` must be an instance of `{dict.__name__}`, or `{na.AbstractFunctionArray.__name__}`, "
@@ -1432,7 +1440,7 @@ class FunctionArray(
                 value_outputs = value.outputs
 
                 # maybe this should only set to None vertex axes only
-                for ax in value_inputs.shape:
+                for ax in na.shape(value_inputs):
                     if is_vertex(ax):
                         value_inputs = None
 

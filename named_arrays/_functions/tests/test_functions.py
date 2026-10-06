@@ -256,7 +256,6 @@ class AbstractTestAbstractFunctionArray(
         elif isinstance(item, dict):
             item_inputs = dict()
             item_outputs = dict()
-            empty = False
             for ax in item:
                 item_ax = item[ax]
                 if isinstance(item_ax, na.AbstractFunctionArray):
@@ -289,11 +288,11 @@ class AbstractTestAbstractFunctionArray(
                                 array[item]
                             return
                         if len(cells) == 0:
-                            # An empty selection keeps one vertex, and which
-                            # one is checked by `test__getitem__vertex_axis`,
-                            # so any vertex gives the expected shape here.
-                            empty = True
-                            vertices = np.array([0])
+                            # An empty selection keeps the vertex where it
+                            # starts, which is pinned down for every kind of
+                            # slice by `test__getitem__vertex_axis`.
+                            start = range(num)[item_ax].start
+                            vertices = np.array([start if step > 0 else start + 1])
                         elif step > 0:
                             vertices = np.append(cells, cells[-1] + 1)
                         else:
@@ -301,17 +300,15 @@ class AbstractTestAbstractFunctionArray(
                         item_outputs[ax] = na.ScalarArray(cells, axes=ax)
                         item_inputs[ax] = na.ScalarArray(vertices, axes=ax)
 
-            if empty:
-                # There are no values to compare, but every axis is indexed.
-                result = array[item]
-                assert result.inputs.shape == array.inputs[item_inputs].shape
-                assert result.outputs.shape == array.outputs[item_outputs].shape
-                return
-
         result = array[item]
 
-        assert np.all(result.inputs == array.inputs[item_inputs])
-        assert np.all(result.outputs == array.outputs[item_outputs])
+        expected_inputs = array.inputs[item_inputs]
+        expected_outputs = array.outputs[item_outputs]
+        if isinstance(item, dict):
+            assert result.inputs.shape == expected_inputs.shape
+            assert result.outputs.shape == expected_outputs.shape
+        assert np.all(result.inputs == expected_inputs)
+        assert np.all(result.outputs == expected_outputs)
 
     def test__bool__(self, array: na.AbstractFunctionArray):
         if array.shape or array.unit is not None:
