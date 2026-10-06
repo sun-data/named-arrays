@@ -538,10 +538,23 @@ def reshape(
         )
 
     a = a.broadcasted
+    shape_old = a.shape
 
-    return a.type_explicit(
+    def reshape_field(v: na.AbstractArray) -> na.AbstractArray:
+        if not set(v.shape).issubset(shape_old):
+            raise ValueError(
+                f"a field with axes {tuple(v.shape)} cannot be reshaped along "
+                f"with an array with axes {tuple(shape_old)}, since the "
+                f"reshape does not account for {set(v.shape) - set(shape_old)}"
+            )
+        # a reshape flattens the elements in the order of the axes, so the
+        # field is put in the same shape and order as the outputs first
+        return np.reshape(na.broadcast_to(v, shape_old), shape)
+
+    return a.replace(
         inputs=np.reshape(a.inputs, shape),
-        outputs=np.reshape(a.outputs, shape)
+        outputs=np.reshape(a.outputs, shape),
+        **_fields.apply(a, reshape_field, axes=tuple(shape_old)),
     )
 
 

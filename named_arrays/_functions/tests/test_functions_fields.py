@@ -191,6 +191,35 @@ def test_combine_axes():
     assert np.all(result.timedelta == images.timedelta.combine_axes(("t", "w"), "tw"))
 
 
+class TestReshape:
+
+    def test_reshape(self):
+        images = _images_center()
+        # stored in the other order, which must not change which image each
+        # exposure time belongs to
+        images = images.replace(timedelta=np.transpose(images.timedelta, axes=("w", "t")))
+        result = np.reshape(images, dict(tw=_num_t * _num_w))
+        assert isinstance(result, _Images)
+        assert result.label == images.label
+        assert result.timedelta.shape == dict(tw=_num_t * _num_w)
+        # in `_images`, the exposure time of each image is one more than its
+        # first output divided by the number of pixels
+        expected = result.outputs.to_value(u.DN) / _num_x + 1
+        assert np.all(result.timedelta.to_value(u.s) == expected)
+
+    def test_reshape_constant(self):
+        images = _images_center().replace(timedelta=na.ScalarArray(5 * u.s))
+        result = np.reshape(images, dict(tw=_num_t * _num_w))
+        assert result.timedelta is images.timedelta
+
+    def test_reshape_outside_axis(self):
+        images = _images_center()
+        timedelta = images.timedelta.add_axes("line")
+        images = images.replace(timedelta=timedelta)
+        with pytest.raises(ValueError, match="cannot be reshaped"):
+            np.reshape(images, dict(tw=_num_t * _num_w))
+
+
 class TestSetitem:
 
     def test_setitem(self):

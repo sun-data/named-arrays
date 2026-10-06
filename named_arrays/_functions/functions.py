@@ -1218,7 +1218,8 @@ class FunctionArray(
 
     * Indexing, :func:`numpy.stack`, :func:`numpy.concatenate`,
       :func:`numpy.moveaxis`, :func:`numpy.repeat`,
-      :func:`numpy.take_along_axis`, :meth:`combine_axes`, and assigning
+      :func:`numpy.take_along_axis`, :func:`numpy.reshape`,
+      :meth:`combine_axes`, and assigning
       another array of the subclass with ``__setitem__``, do to the field what
       they do to the outputs, along the axes which the field has.
     * The operations which keep the shape of the function pass the field on
