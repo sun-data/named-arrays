@@ -8,6 +8,7 @@ import numpy as np
 import astropy.units as u
 import named_arrays as na
 import named_arrays._core_array_functions as _core_array_functions
+from named_arrays._functions import _fields
 import itertools
 
 __all__ = [
@@ -252,9 +253,14 @@ class AbstractFunctionArray(
         inputs = na.broadcast_to(inputs, inputs_shape_broadcasted)
         outputs = na.broadcast_to(outputs, outputs_shape_broadcasted)
 
+        def combine(v: na.AbstractArray) -> na.AbstractArray:
+            v = na.broadcast_to(v, v.shape | {ax: shape[ax] for ax in axes})
+            return v.combine_axes(axes=axes, axis_new=axis_new)
+
         return self.replace(
             inputs=inputs.combine_axes(axes=axes, axis_new=axis_new),
             outputs=outputs.combine_axes(axes=axes, axis_new=axis_new),
+            **_fields.apply(self, combine, axes=axes),
         )
 
     def __call__(
@@ -518,6 +524,8 @@ class AbstractFunctionArray(
         if not set(axis).issubset(self.axes):
             raise ValueError(f"axes {set(axis) - set(self.axes)} not in {self.axes}")
 
+        _fields.check_reduction(self, axis, operation="integration")
+
         axes_vertex = self.axes_vertex
         inputs = self.inputs
         outputs = self.outputs
@@ -718,6 +726,13 @@ class AbstractFunctionArray(
             inputs = na.broadcast_to(inputs, na.broadcast_shapes(inputs.shape, shape_item_inputs))
             outputs = na.broadcast_to(outputs, na.broadcast_shapes(outputs.shape, shape_item_outputs))
 
+            # the fields are selected the same way as the outputs, so they
+            # are broadcast against the item first
+            fields = _fields.apply(
+                array,
+                lambda v: na.broadcast_to(v, na.broadcast_shapes(v.shape, shape_item_outputs))[item_outputs],
+            )
+
         elif isinstance(item, dict):
 
             # ignore axes that are not present in this function array, so that
@@ -758,12 +773,22 @@ class AbstractFunctionArray(
                         else:
                             return NotImplemented
 
+            # the fields are indexed like the outputs, and ignore the axes
+            # which they do not have
+            item_fields = {
+                ax: item[ax].outputs if isinstance(item[ax], na.AbstractFunctionArray)
+                else item_outputs.get(ax, item[ax])
+                for ax in item
+            }
+            fields = _fields.apply(array, lambda v: v[item_fields])
+
         else:
             return NotImplemented
 
         return array.replace(
             inputs=inputs[item_inputs],
             outputs=outputs[item_outputs],
+            **fields,
         )
 
     def _getitem_reversed(
@@ -1186,6 +1211,64 @@ class FunctionArray(
     :attr:`inputs` represents the inputs (or independent variables) of the
     function, and :attr:`outputs` represents the outputs (or dependent variables) of
     the function.
+
+    A subclass can add fields of its own, such as the exposure time of each
+    image of an observation. Every such field whose value is a named array is
+    treated as sampled along the axes of the function:
+
+    * Indexing, :func:`numpy.stack`, :func:`numpy.concatenate`,
+      :func:`numpy.moveaxis`, :func:`numpy.repeat`,
+      :func:`numpy.take_along_axis`, :meth:`combine_axes`, and assigning
+      another array of the subclass with ``__setitem__``, do to the field what
+      they do to the outputs, along the axes which the field has.
+    * The operations which keep the shape of the function pass the field on
+      unchanged, as do the reductions which keep the reduced axes (the default
+      for a function array).
+    * A reduction which removes an axis that the field varies along (one with
+      ``keepdims=False``, :func:`numpy.percentile`, or :meth:`integrate`)
+      raises an error, since whether the field should be summed, averaged, or
+      dropped depends on what it is. Reduce the field first, for example with
+      :func:`dataclasses.replace`.
+
+    Fields whose values are not named arrays, such as strings or models of an
+    instrument, are passed on unchanged by every operation.
+
+    Examples
+    --------
+
+    The exposure time of each of a sequence of images follows the images when
+    they are indexed.
+
+    .. jupyter-execute::
+
+        import dataclasses
+        import numpy as np
+        import astropy.units as u
+        import named_arrays as na
+
+        @dataclasses.dataclass(eq=False, repr=False)
+        class Images(na.FunctionArray):
+            timedelta: na.AbstractScalar = 0 * u.s
+
+        images = Images(
+            inputs=na.linspace(0, 30, axis="time", num=4) * u.s,
+            outputs=na.ScalarArray(np.arange(4.0), axes="time") * u.DN,
+            timedelta=na.ScalarArray(np.array([1, 2, 3, 4]) * u.s, axes="time"),
+        )
+
+        images[dict(time=slice(1, 3))].timedelta
+
+    Co-adding the images removes the axis of time, so the exposure times are
+    added up first.
+
+    .. jupyter-execute::
+
+        total = np.sum(
+            dataclasses.replace(images, timedelta=images.timedelta.sum("time")),
+            axis="time",
+            keepdims=False,
+        )
+        total.outputs / total.timedelta
     """
     inputs: InputsT = 0
     """The inputs of the function."""
@@ -1370,6 +1453,37 @@ class FunctionArray(
             self.inputs[item_inputs] = value_inputs
 
         self.outputs[item_outputs] = value_outputs
+
+        if isinstance(value, na.AbstractFunctionArray) and isinstance(item, dict):
+            self._setitem_fields(item_outputs, value)
+
+    def _setitem_fields(
+            self,
+            item: dict[str, int | slice | na.AbstractArray],
+            value: na.AbstractFunctionArray,
+    ) -> None:
+        """
+        Write the named-array fields of `value` into those of this array,
+        along the axes of `item` which each field has.
+        """
+        for name in _fields.names(self):
+            value_field = getattr(value, name, None)
+            if not isinstance(value_field, na.AbstractArray):
+                continue
+            field = getattr(self, name)
+            index = {ax: item[ax] for ax in item if ax in field.shape}
+            missing = [ax for ax in item if ax not in field.shape and ax in self.shape]
+            if missing and not np.all(field[index] == value_field):
+                raise ValueError(
+                    f"`{name}` does not vary along {missing}, so it cannot hold "
+                    f"a different value for only the elements being set. "
+                    f"Broadcast it along {missing} first."
+                )
+            # most operations pass a field on without copying it, so it may
+            # be shared with other arrays, which must not change too
+            field = na.explicit(field).copy()
+            field[index] = value_field
+            setattr(self, name, field)
 
 
 @dataclasses.dataclass(eq=False, repr=False)

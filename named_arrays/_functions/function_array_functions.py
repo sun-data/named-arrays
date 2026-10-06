@@ -4,6 +4,7 @@ import astropy.units as u
 import named_arrays as na
 import named_arrays._scalars.scalar_array_functions
 import named_arrays._scalars.uncertainties.uncertainties_array_functions
+from named_arrays._functions import _fields
 
 __all__ = [
     "DEFAULT_FUNCTIONS",
@@ -100,6 +101,12 @@ def array_function_default(
         else:
             inputs_result = inputs
     else:
+        _fields.check_reduction(
+            a=a,
+            axis=axis_normalized,
+            operation=f"{func.__name__} with keepdims=False",
+            hint=" Or keep the axes with keepdims=True.",
+        )
         inputs = inputs.cell_centers(axis=set(axis_normalized)-set(a.axes_center))
         shape_inputs = na.shape_broadcasted(inputs, inputs_where)
         inputs_result = np.mean(
@@ -239,6 +246,12 @@ def array_function_percentile_like(
         else:
             inputs_result = inputs
     else:
+        _fields.check_reduction(
+            a=a,
+            axis=axis_normalized,
+            operation=f"{func.__name__} with keepdims=False",
+            hint=" Or keep the axes with keepdims=True.",
+        )
         inputs_result = np.mean(
             a=na.broadcast_to(inputs, shape_inputs),
             axis=[ax for ax in shape_inputs if ax in axis_normalized],
@@ -317,6 +330,13 @@ def array_function_stack_like(
     arrays_inputs = tuple(array.inputs for array in arrays)
     arrays_outputs = tuple(array.outputs for array in arrays)
 
+    fields = _fields.stack_like(
+        func=func,
+        arrays=arrays,
+        axis=axis,
+        shapes=[array.shape for array in arrays],
+    )
+
     if out is None:
         inputs_out = outputs_out = out
     else:
@@ -341,10 +361,13 @@ def array_function_stack_like(
         result = arrays[0].replace(
             inputs=inputs_result,
             outputs=outputs_result,
+            **fields,
         )
     else:
         out.inputs = inputs_result
         out.outputs = outputs_result
+        for name in fields:
+            setattr(out, name, fields[name])
         result = out
 
     return result
@@ -479,7 +502,16 @@ def moveaxis(
     source_inputs, destination_inputs = tuple(tuple(i) for i in zip(*source_destination_inputs))
     source_outputs, destination_outputs = tuple(tuple(i) for i in zip(*source_destination_outputs))
 
+    def move(v: na.AbstractArray) -> na.AbstractArray:
+        pairs = [(src, dest) for src, dest in zip(source, destination) if src in v.shape]
+        return np.moveaxis(
+            a=v,
+            source=tuple(src for src, _ in pairs),
+            destination=tuple(dest for _, dest in pairs),
+        )
+
     return a.replace(
+        **_fields.apply(a, move, axes=source),
         inputs=np.moveaxis(
             a=a.inputs,
             source=source_inputs,
@@ -542,6 +574,11 @@ def take_along_axis(
     return arr.replace(
         inputs=np.take_along_axis(inputs, indices, axis=axis),
         outputs=np.take_along_axis(outputs, indices, axis=axis),
+        **_fields.apply(
+            arr,
+            lambda v: np.take_along_axis(v, indices, axis=axis),
+            axes=(axis,),
+        ),
     )
 
 
@@ -715,6 +752,11 @@ def repeat(
     a = a.broadcasted
 
     return a.replace(
+        **_fields.apply(
+            a,
+            lambda v: np.repeat(a=v, repeats=repeats, axis=axis),
+            axes=(axis,),
+        ),
         inputs=np.repeat(
             a=a.inputs,
             repeats=repeats,
