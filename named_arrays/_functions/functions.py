@@ -696,7 +696,10 @@ class AbstractFunctionArray(
             item: Mapping[str, int | slice | na.AbstractArray] | na.AbstractArray | na.AbstractFunctionArray,
     ) -> FunctionArray:
 
-        array = self.explicit
+        # The inputs and outputs index themselves, rather than being made
+        # explicit first, so that implicit inputs which can be indexed without
+        # computing every coordinate, like a WCS vector, stay implicit.
+        array = self
         inputs = array.inputs
         outputs = array.outputs
 
@@ -726,6 +729,9 @@ class AbstractFunctionArray(
             # array that lacks the axis being selected is left untouched)
             item = {ax: item[ax] for ax in item if ax in array.axes}
 
+            axes_center = array.axes_center
+            axes_vertex = array.axes_vertex
+
             item_inputs = dict()
             item_outputs = dict()
             for ax in item:
@@ -734,14 +740,12 @@ class AbstractFunctionArray(
                     item_inputs[ax] = item_ax.inputs
                     item_outputs[ax] = item_ax.outputs
                 else:
-                    axes_center = array.axes_center
                     if ax in axes_center:
                         #can't assume center ax is in both outputs and inputs
                         if ax in inputs.shape:
                             item_inputs[ax] = item_ax
                         if ax in outputs.shape:
                             item_outputs[ax] = item_ax
-                    axes_vertex = array.axes_vertex
                     if ax in axes_vertex:
                         if np.issubdtype(type(item_ax), np.integer):
                             item_outputs[ax] = slice(item_ax, item_ax + 1)

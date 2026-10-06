@@ -849,6 +849,42 @@ class AbstractTestAbstractWcsVector(
             assert isinstance(k, str)
             assert isinstance(result[k], int)
 
+    def test_shape(self, array: na.AbstractWcsVector):
+        super().test_shape(array)
+        explicit = array.explicit
+        assert array.shape == explicit.shape
+        assert array.axes == explicit.axes
+        assert array.ndim == explicit.ndim
+        assert array.size == explicit.size
+
+    @pytest.mark.parametrize(
+        argnames="item,lazy",
+        argvalues=[
+            (dict(x=slice(1, None)), True),
+            (dict(x=slice(None, -1), y=slice(1, 3)), True),
+            (dict(y=slice(-2, None, 1)), True),
+            (dict(x=slice(2, 1)), True),
+            (dict(z=0), True),
+            (dict(x=0), False),
+            (dict(y=slice(None, None, 2)), False),
+            (dict(x=slice(None, None, -1)), False),
+        ],
+    )
+    def test__getitem__wcs(
+        self,
+        array: na.AbstractWcsVector,
+        item: dict[str, int | slice],
+        lazy: bool,
+    ):
+        result = array[item]
+        expected = array.explicit[item]
+        if lazy:
+            assert type(result) is type(array)
+        else:
+            assert isinstance(result, na.AbstractExplicitVectorArray)
+        assert result.shape == expected.shape
+        assert np.all(result.explicit == expected)
+
 
 def test_searchsorted_sorter_per_component():
     """
