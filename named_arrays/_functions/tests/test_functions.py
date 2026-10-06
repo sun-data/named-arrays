@@ -256,6 +256,7 @@ class AbstractTestAbstractFunctionArray(
         elif isinstance(item, dict):
             item_inputs = dict()
             item_outputs = dict()
+            empty = False
             for ax in item:
                 item_ax = item[ax]
                 if isinstance(item_ax, na.AbstractFunctionArray):
@@ -288,18 +289,24 @@ class AbstractTestAbstractFunctionArray(
                                 array[item]
                             return
                         if len(cells) == 0:
-                            # Which vertex an empty selection keeps is
-                            # checked by `test__getitem__vertex_axis`.
-                            result = array[item]
-                            assert result.outputs.shape[ax] == 0
-                            assert result.inputs.shape[ax] == 1
-                            return
-                        if step > 0:
+                            # An empty selection keeps one vertex, and which
+                            # one is checked by `test__getitem__vertex_axis`,
+                            # so any vertex gives the expected shape here.
+                            empty = True
+                            vertices = np.array([0])
+                        elif step > 0:
                             vertices = np.append(cells, cells[-1] + 1)
                         else:
                             vertices = np.append(cells + 1, cells[-1])
                         item_outputs[ax] = na.ScalarArray(cells, axes=ax)
                         item_inputs[ax] = na.ScalarArray(vertices, axes=ax)
+
+            if empty:
+                # There are no values to compare, but every axis is indexed.
+                result = array[item]
+                assert result.inputs.shape == array.inputs[item_inputs].shape
+                assert result.outputs.shape == array.outputs[item_outputs].shape
+                return
 
         result = array[item]
 
