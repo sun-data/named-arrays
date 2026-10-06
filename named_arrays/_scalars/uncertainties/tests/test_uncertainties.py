@@ -1911,9 +1911,123 @@ def test_reduce_plain_uncertain_where(func: Callable):
     b = na.as_named_array(a.nominal) > 0
     where = a > 0
     result = func(b, axis="x", where=where)
-    result_expected = func(na.UncertainScalarArray(b, b), axis="x", where=where)
     assert isinstance(result, na.UncertainScalarArray)
-    assert np.all(result == result_expected)
+    assert np.all(result == _reduce_per_sample(func, b, axis="x", where=where))
+
+
+def _reduce_per_sample(
+    func: Callable,
+    a: na.ScalarArray,
+    axis: str,
+    where: na.UncertainScalarArray,
+) -> na.UncertainScalarArray:
+    """
+    Reduce a plain array over the selection of the nominal value of an
+    uncertain `where`, and over the selection of each of its samples, one at
+    a time with a plain `where`.
+    """
+    axis_distribution = where.axis_distribution
+    distribution = na.as_named_array(where.distribution)
+    return na.UncertainScalarArray(
+        nominal=func(a, axis=axis, where=na.as_named_array(where.nominal)),
+        distribution=na.stack(
+            arrays=[
+                func(a, axis=axis, where=distribution[{axis_distribution: i}])
+                for i in range(distribution.shape[axis_distribution])
+            ],
+            axis=axis_distribution,
+        ),
+    )
+
+
+def test_reduce_one_sample_uncertain_where():
+    # A distribution with a single sample is broadcast along the samples of
+    # an uncertain `where`, like a distribution without a sample axis
+    a = _array_xy()
+    nominal = na.as_named_array(a.nominal)
+    array = na.UncertainScalarArray(nominal, nominal.add_axes(a.axis_distribution))
+    where = a > 0
+    result = np.sum(array, axis="x", where=where)
+    assert np.all(result == _reduce_per_sample(np.sum, nominal, axis="x", where=where))
+
+
+def test_reduce_plain_agreeing_where():
+    # An uncertain `where` whose samples all agree with its nominal value
+    # leaves the reduction of an array without a distribution certain,
+    # just like indexing with it
+    a = _array_xy()
+    nominal = na.as_named_array(a.nominal)
+    mask = nominal > 0
+    shape_distribution = {**mask.shape, a.axis_distribution: _num_distribution}
+    where = na.UncertainScalarArray(mask, na.broadcast_to(mask, shape_distribution))
+    result = np.sum(nominal, axis="x", where=where)
+    assert isinstance(result, na.ScalarArray)
+    assert np.all(result == np.sum(nominal, axis="x", where=mask))
+
+
+def test_reduce_plain_uncertain_where_out():
+    # A plain `out` cannot hold a result which differs between samples
+    a = _array_xy()
+    nominal = na.as_named_array(a.nominal)
+    out = na.ScalarArray(np.zeros(_num_y), axes="y")
+    with pytest.raises(ValueError, match="`out` must be an instance of `UncertainScalarArray`"):
+        np.sum(nominal, axis="x", where=a > 0, out=out)
+
+
+def test_getitem_plain_uncertain_indices_no_samples():
+    # Indices which differ from their nominal value but have no sample axis
+    # give a result without a sample axis
+    array = na.ScalarArray(np.array([10., 20, 30, 40]), axes="t")
+    index = na.UncertainScalarArray(
+        nominal=na.ScalarArray(np.array([0, 1, 2, 3]), axes="t"),
+        distribution=na.ScalarArray(np.array([3, 2, 1, 0]), axes="t"),
+    )
+    result = array[dict(t=index)]
+    assert na.shape(result.distribution) == dict(t=4)
+    assert np.all(result.nominal == array)
+    assert np.all(result.distribution.ndarray == [40, 30, 20, 10])
+
+
+def test_getitem_plain_agreeing_indices():
+    # Uncertain indices whose samples all agree with their nominal value
+    # leave an array without a distribution certain, so the selection can be
+    # assigned back through them
+    a = _array_xy()
+    array = na.as_named_array(a.nominal).copy()
+    index_nominal = np.argsort(array, axis="x")["x"]
+    shape_distribution = {**index_nominal.shape, a.axis_distribution: _num_distribution}
+    index = na.UncertainScalarArray(index_nominal, na.broadcast_to(index_nominal, shape_distribution))
+    result = array[dict(x=index)]
+    assert isinstance(result, na.ScalarArray)
+    assert np.all(result == array[dict(x=index_nominal)])
+    expected = array.copy()
+    array[dict(x=index)] = result
+    assert np.all(array == expected)
+
+
+def test_vector_setitem_shared_component():
+    # Components which are the same plain array are replaced by separate
+    # uncertain copies, and the plain array itself is never written to
+    x = na.ScalarArray(np.array([1., 2, 3]), axes="t")
+    vector = na.Cartesian2dVectorArray(x, x)
+    vector[dict(t=0)] = na.Cartesian2dVectorArray(
+        x=na.UncertainScalarArray(5., 6.),
+        y=na.UncertainScalarArray(7., 8.),
+    )
+    assert np.all(x.ndarray == [1, 2, 3])
+    assert np.all(vector.x[dict(t=0)] == na.UncertainScalarArray(5., 6.))
+    assert np.all(vector.y[dict(t=0)] == na.UncertainScalarArray(7., 8.))
+
+
+def test_vector_setitem_failure_leaves_component():
+    # An assignment which fails leaves a component which would have been
+    # replaced by an uncertain copy untouched
+    x = na.ScalarArray(np.array([1., 2, 3]), axes="t")
+    vector = na.Cartesian2dVectorArray(x, 0)
+    with pytest.raises(TypeError):
+        vector[dict(t=0)] = na.UncertainScalarArray(5., 6.)
+    assert vector.x is x
+    assert np.all(x.ndarray == [1, 2, 3])
 
 
 def test_function_setitem_failure():
