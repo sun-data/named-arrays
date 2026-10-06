@@ -1,4 +1,5 @@
 from typing import TypeVar
+import math
 import numpy as np
 import astropy.units as u
 import named_arrays as na
@@ -91,13 +92,18 @@ def point_in_polygon(
 
 
 def _point_in_polygon_quantity(
-    x: u.Quantity,
-    y: u.Quantity,
-    vertices_x: u.Quantity,
-    vertices_y: u.Quantity,
+    x: float | np.ndarray | u.Quantity,
+    y: float | np.ndarray | u.Quantity,
+    vertices_x: np.ndarray | u.Quantity,
+    vertices_y: np.ndarray | u.Quantity,
 ) -> np.ndarray:
     """
     Check if a given point is inside or on the boundary of a polygon.
+
+    Each point is tested against the polygon it shares its other axes with.
+    The polygons are never broadcast against the points, since a copy of
+    every vertex for every point would take memory in proportion to both.
+    Instead, each point is given the index of its polygon.
 
     Parameters
     ----------
@@ -108,9 +114,11 @@ def _point_in_polygon_quantity(
     vertices_x
         The :math:`x`-coordinates of the polygon's vertices.
         The last axis should represent the different vertices of the polygon.
+        The other axes should broadcast against the test points.
     vertices_y
         The :math:`y`-coordinates of the polygon's vertices.
         The last axis should represent the different vertices of the polygon.
+        The other axes should broadcast against the test points.
     """
     from . import _point_in_polygon_numba
 
@@ -122,25 +130,28 @@ def _point_in_polygon_quantity(
             vertices_x = vertices_x.to_value(unit)
             vertices_y = vertices_y.to_value(unit)
 
-    shape_points = np.broadcast(x, y).shape
-    shape_vertices = np.broadcast(vertices_x, vertices_y).shape
+    shape_vertices = np.broadcast_shapes(np.shape(vertices_x), np.shape(vertices_y))
+    vertices_x = np.broadcast_to(vertices_x, shape_vertices)
+    vertices_y = np.broadcast_to(vertices_y, shape_vertices)
 
-    num_vertices = shape_vertices[~0]
+    *shape_polygons, num_vertices = shape_vertices
+    shape_polygons = tuple(shape_polygons)
+    num_polygons = math.prod(shape_polygons)
 
-    shape_points = np.broadcast_shapes(shape_points, shape_vertices[:~0])
-    shape_vertices = shape_points + (num_vertices,)
+    shape_points = np.broadcast_shapes(np.shape(x), np.shape(y), shape_polygons)
+
+    polygon = np.arange(num_polygons).reshape(shape_polygons)
 
     x = np.broadcast_to(x, shape_points)
     y = np.broadcast_to(y, shape_points)
-
-    vertices_x = np.broadcast_to(vertices_x, shape_vertices)
-    vertices_y = np.broadcast_to(vertices_y, shape_vertices)
+    polygon = np.broadcast_to(polygon, shape_points)
 
     result = _point_in_polygon_numba.point_in_polygon_numba(
         x=x.reshape(-1),
         y=y.reshape(-1),
-        vertices_x=vertices_x.reshape(-1, num_vertices),
-        vertices_y=vertices_y.reshape(-1, num_vertices),
+        vertices_x=vertices_x.reshape(num_polygons, num_vertices),
+        vertices_y=vertices_y.reshape(num_polygons, num_vertices),
+        polygon=polygon.reshape(-1),
     )
 
     result = result.reshape(shape_points)
