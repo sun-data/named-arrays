@@ -28,6 +28,108 @@ class InputValueError(ValueError):
     """
 
 
+def _is_vertex(
+    axis: str,
+    shape_inputs: dict[str, int],
+    shape_outputs: dict[str, int],
+) -> bool:
+    """
+    Whether an axis of a function array is a vertex axis, along which the
+    inputs are the edges of the cells of the outputs, rather than a center
+    axis.
+
+    Parameters
+    ----------
+    axis
+        The name of the axis.
+    shape_inputs
+        The shape of the inputs of the function array.
+    shape_outputs
+        The shape of the outputs of the function array.
+    """
+    if axis in shape_inputs and axis in shape_outputs:
+        num_inputs = shape_inputs[axis]
+        num_outputs = shape_outputs[axis]
+        if num_inputs == num_outputs + 1:
+            return True
+        if num_inputs != num_outputs and 1 not in (num_inputs, num_outputs):
+            raise ValueError(
+                f"output dimension, "
+                f"self.outputs.shape[{axis}]={num_outputs},"
+                f"must either match input dimension,"
+                f"self.inputs.shape[{axis}]={num_inputs},"
+                f"(representing bin centers) "
+                "or exceed by one (representing bin vertices)."
+            )
+    return False
+
+
+def _item_vertex(
+    item: int | np.integer | slice,
+    num: int,
+    axis: str,
+) -> tuple[slice, slice]:
+    """
+    Convert an index of the cells along a vertex axis of a function array
+    into a slice of its outputs and a slice of its inputs.
+
+    Parameters
+    ----------
+    item
+        An integer or a slice of the cells along `axis`.
+        Negative values count from the end, as they do for :mod:`numpy`.
+        An integer selects one cell and keeps the axis, since the cell
+        still has two vertices.
+    num
+        The number of cells along `axis`.
+    axis
+        The name of the vertex axis, for the error messages.
+
+    Returns
+    -------
+    The slice of the outputs, the cells, and the slice of the inputs,
+    the vertices which bound those cells.
+    """
+    if isinstance(item, slice):
+        cells = range(num)[item]
+        if len(cells) <= 1:
+            # The step of a selection of at most one cell does not change
+            # which cells it selects, only their direction.
+            step = 1 if cells.step > 0 else -1
+            cells = range(cells.start, cells.start + step * len(cells), step)
+        elif cells.step not in (1, -1):
+            raise ValueError(
+                f"A slice along the vertex axis {axis!r} must have a step of "
+                f"1 or -1, got {item}, since cells which are not adjacent "
+                f"do not share vertices."
+            )
+    else:
+        try:
+            index = range(num)[item]
+        except IndexError:
+            raise IndexError(
+                f"index {item} is out of bounds for the vertex axis {axis!r} "
+                f"with {num} cells"
+            ) from None
+        cells = range(index, index + 1)
+
+    # A selection of no cells keeps the vertex where it starts,
+    # so that the axis stays a vertex axis.
+    if cells.step == 1:
+        start = cells.start
+        stop = start + len(cells)
+        return slice(start, stop), slice(start, stop + 1)
+    else:
+        # The cells `start, start - 1, ..., stop + 1` are bounded by the
+        # vertices `start + 1, start, ..., stop + 1`.
+        # A stop of -1 is written as `None`, since -1 would count from the end.
+        start = cells.start
+        stop = start - len(cells)
+        stop = stop if stop >= 0 else None
+        outputs = slice(start, stop, -1) if cells else slice(0, 0)
+        return outputs, slice(start + 1, stop, -1)
+
+
 @functools.cache
 def _array_function_dispatch() -> tuple[dict[Callable, Callable], dict[Callable, Callable]]:
     """
@@ -79,48 +181,20 @@ class AbstractFunctionArray(
         """
         Return keys corresponding to all input axes representing bin centers
         """
-        axes_center = tuple()
-        input_shape = self.inputs.shape
-        output_shape = self.outputs.shape
-
-        for axis in self.axes:
-            if axis in input_shape:
-                if axis in output_shape:
-                    if input_shape[axis] == output_shape[axis]:
-                        axes_center += (axis,)
-                    else:
-                        if input_shape[axis] == output_shape[axis] + 1:
-                            pass
-                        elif output_shape[axis] == 1 or input_shape[axis] == 1:
-                            axes_center += (axis,)
-                        else:
-                            raise ValueError(
-                                f"output dimension, "
-                                f"self.outputs.shape[{axis}]={output_shape[axis]},"
-                                f"must either match input dimension,"
-                                f"self.inputs.shape[{axis}]={input_shape[axis]},"
-                                f"(representing bin centers) "
-                                "or exceed by one (representing bin vertices)."
-                            )
-                else:
-                    axes_center += (axis,)
-            else:
-                axes_center += (axis,)
-
-        return axes_center
+        shape_inputs = self.inputs.shape
+        shape_outputs = self.outputs.shape
+        return tuple(
+            axis for axis in self.axes
+            if not _is_vertex(axis, shape_inputs, shape_outputs)
+        )
 
     @property
     def axes_vertex(self) -> tuple(str):
         """
         Return keys corresponding to all input axes representing bin vertices
         """
-        axes_vertex = tuple()
-
-        for axis in self.axes:
-            if axis not in self.axes_center:
-                axes_vertex += (axis,)
-
-        return axes_vertex
+        axes_center = self.axes_center
+        return tuple(axis for axis in self.axes if axis not in axes_center)
 
     @property
     def type_abstract(self) -> Type[AbstractFunctionArray]:
@@ -747,18 +821,12 @@ class AbstractFunctionArray(
                         if ax in outputs.shape:
                             item_outputs[ax] = item_ax
                     if ax in axes_vertex:
-                        if np.issubdtype(type(item_ax), np.integer):
-                            item_outputs[ax] = slice(item_ax, item_ax + 1)
-                            item_inputs[ax] = slice(item_ax, item_ax + 2)
-                        elif isinstance(item_ax, slice):
-                            item_outputs[ax] = item_ax
-                            if item_ax.start is None and item_ax.stop is None:
-                                item_inputs[ax] = item_ax
-                            else:
-                                if item_ax.stop is not None:
-                                    item_inputs[ax] = slice(item_ax.start, item_ax.stop + 1)
-                                else:
-                                    item_inputs[ax] = slice(item_ax.start, None)
+                        if isinstance(item_ax, slice) or np.issubdtype(type(item_ax), np.integer):
+                            item_outputs[ax], item_inputs[ax] = _item_vertex(
+                                item=item_ax,
+                                num=outputs.shape[ax],
+                                axis=ax,
+                            )
                         else:
                             return NotImplemented
 
@@ -1320,12 +1388,27 @@ class FunctionArray(
             value: float | u.Quantity | na.FunctionArray,
     ):
 
+        shape_inputs = na.shape(self.inputs)
+        shape_outputs = na.shape(self.outputs)
+
+        def is_vertex(axis: str) -> bool:
+            return _is_vertex(axis, shape_inputs, shape_outputs)
+
+        # Whether the inputs can be assigned the inputs of `value`.
+        # Only the cells are assigned along a vertex axis, since `value`
+        # cannot say where their vertices are.
+        assign_inputs = True
+
         if isinstance(item, na.AbstractFunctionArray):
             if not np.all(item.inputs == self.inputs):
                 raise ValueError("boolean advanced index does not have the same inputs as the array")
 
             item_inputs = item.outputs
             item_outputs = item.outputs
+
+            # the mask selects cells, which are not the vertices
+            if any(is_vertex(ax) for ax in shape_inputs):
+                assign_inputs = False
 
         elif isinstance(item, dict):
 
@@ -1336,6 +1419,17 @@ class FunctionArray(
                 if isinstance(item_ax, na.AbstractFunctionArray):
                     item_inputs[ax] = item_ax.inputs
                     item_outputs[ax] = item_ax.outputs
+                elif is_vertex(ax):
+                    # An integer keeps the axis, as it does for indexing,
+                    # so that ``a[item] = a[item]`` leaves `a` unchanged.
+                    if np.issubdtype(type(item_ax), np.integer):
+                        item_ax, _ = _item_vertex(
+                            item=item_ax,
+                            num=shape_outputs[ax],
+                            axis=ax,
+                        )
+                    item_outputs[ax] = item_ax
+                    assign_inputs = False
                 else:
                     item_inputs[ax] = item_outputs[ax] = item_ax
         else:
@@ -1350,10 +1444,8 @@ class FunctionArray(
                 value_outputs = value.outputs
 
                 # maybe this should only set to None vertex axes only
-                axes_vertex = self.axes_vertex
-                for ax in value_inputs.shape:
-                    axes_vertex = axes_vertex
-                    if ax in axes_vertex:
+                for ax in na.shape(value_inputs):
+                    if is_vertex(ax):
                         value_inputs = None
 
             else:
@@ -1370,7 +1462,7 @@ class FunctionArray(
             value_inputs = None
             value_outputs = value
 
-        if value_inputs is not None:
+        if value_inputs is not None and assign_inputs:
             self.inputs[item_inputs] = value_inputs
 
         self.outputs[item_outputs] = value_outputs
