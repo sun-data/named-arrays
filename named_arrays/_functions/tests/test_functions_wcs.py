@@ -97,7 +97,7 @@ def test__getitem__(
     array: na.FunctionArray,
     item: dict[str, int | slice | na.AbstractArray],
     lazy: bool,
-):
+) -> None:
     """
     Indexing a function array whose inputs are a WCS vector leaves the inputs
     a WCS vector, without computing the coordinates of more than one pixel,

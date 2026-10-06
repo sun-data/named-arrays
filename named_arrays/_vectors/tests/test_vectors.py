@@ -849,7 +849,7 @@ class AbstractTestAbstractWcsVector(
             assert isinstance(k, str)
             assert isinstance(result[k], int)
 
-    def test_shape_explicit(self, array: na.AbstractWcsVector):
+    def test_shape_explicit(self, array: na.AbstractWcsVector) -> None:
         explicit = array.explicit
         assert array.shape == explicit.shape
         assert array.axes == explicit.axes
@@ -877,7 +877,7 @@ class AbstractTestAbstractWcsVector(
         array: na.AbstractWcsVector,
         item: dict[str, int | slice],
         lazy: bool,
-    ):
+    ) -> None:
         result = array[item]
         expected = array.explicit[item]
         if lazy:
@@ -889,7 +889,7 @@ class AbstractTestAbstractWcsVector(
 
 
 @pytest.mark.parametrize("num_crval", [1, 5])
-def test__getitem__wcs_parameter_along_wcs_axis(num_crval: int):
+def test__getitem__wcs_parameter_along_wcs_axis(num_crval: int) -> None:
     """
     A WCS parameter which varies along a sliced WCS axis, even one with a
     single element broadcast against the pixels, is indexed through the
