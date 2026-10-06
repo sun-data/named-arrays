@@ -269,15 +269,29 @@ class AbstractTestAbstractFunctionArray(
                         if ax in array.outputs.shape:
                             item_outputs[ax] = item_ax
                     if ax in array.axes_vertex:
-                        if np.issubdtype(type(item_ax), np.integer):
-                            item_outputs[ax] = slice(item_ax, item_ax + 1)
-                            item_inputs[ax] = slice(item_ax, item_ax + 2)
-                        elif isinstance(item_ax, slice):
-                            item_outputs[ax] = item_ax
-                            if item_ax.stop is not None:
-                                item_inputs[ax] = slice(item_ax.start, item_ax.stop + 1)
-                            else:
-                                item_inputs[ax] = slice(item_ax.start, None)
+                        # The cells selected, normalized as Python normalizes
+                        # an index of a range, and the vertices which bound
+                        # them, gathered with integer arrays rather than with
+                        # slices like the implementation.
+                        num = array.outputs.shape[ax]
+                        if isinstance(item_ax, slice):
+                            cells = range(num)[item_ax]
+                            if cells.step not in (1, -1):
+                                with pytest.raises(ValueError, match="must have a step of 1 or -1"):
+                                    array[item]
+                                return
+                        else:
+                            if not -num <= item_ax < num:
+                                with pytest.raises(IndexError, match="out of bounds"):
+                                    array[item]
+                                return
+                            cells = range(item_ax % num, item_ax % num + 1)
+                        if cells.step == 1:
+                            vertices = range(cells.start, cells.start + len(cells) + 1)
+                        else:
+                            vertices = range(cells.start + 1, cells.start - len(cells), -1)
+                        item_outputs[ax] = na.ScalarArray(np.array(cells, dtype=int), axes=ax)
+                        item_inputs[ax] = na.ScalarArray(np.array(vertices, dtype=int), axes=ax)
 
         result = array[item]
 

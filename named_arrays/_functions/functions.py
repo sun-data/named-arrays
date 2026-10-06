@@ -28,6 +28,67 @@ class InputValueError(ValueError):
     """
 
 
+def _item_vertex(
+    item: int | slice,
+    num: int,
+    axis: str,
+) -> tuple[slice, slice]:
+    """
+    Convert an index of the cells along a vertex axis of a function array
+    into a slice of its outputs and a slice of its inputs.
+
+    Parameters
+    ----------
+    item
+        An integer or a slice of the cells along `axis`.
+        Negative values count from the end, as they do for :mod:`numpy`.
+        An integer selects one cell and keeps the axis, since the cell
+        still has two vertices.
+    num
+        The number of cells along `axis`.
+    axis
+        The name of the vertex axis, for the error messages.
+
+    Returns
+    -------
+    The slice of the outputs, the cells, and the slice of the inputs,
+    the vertices which bound those cells.
+    """
+    if isinstance(item, slice):
+        cells = range(num)[item]
+        if cells.step not in (1, -1):
+            raise ValueError(
+                f"A slice along the vertex axis {axis!r} must have a step of "
+                f"1 or -1, got {item}, since cells which are not adjacent "
+                f"do not share vertices."
+            )
+    else:
+        try:
+            index = range(num)[item]
+        except IndexError:
+            raise IndexError(
+                f"index {item} is out of bounds for the vertex axis {axis!r} "
+                f"with {num} cells"
+            ) from None
+        cells = range(index, index + 1)
+
+    # A selection of no cells keeps the vertex where it starts,
+    # so that the axis stays a vertex axis.
+    if cells.step == 1:
+        start = cells.start
+        stop = start + len(cells)
+        return slice(start, stop), slice(start, stop + 1)
+    else:
+        # The cells `start, start - 1, ..., stop + 1` are bounded by the
+        # vertices `start + 1, start, ..., stop + 1`.
+        # A stop of -1 is written as `None`, since -1 would count from the end.
+        start = cells.start
+        stop = start - len(cells)
+        stop = stop if stop >= 0 else None
+        outputs = slice(start, stop, -1) if cells else slice(0, 0)
+        return outputs, slice(start + 1, stop, -1)
+
+
 @functools.cache
 def _array_function_dispatch() -> tuple[dict[Callable, Callable], dict[Callable, Callable]]:
     """
@@ -743,18 +804,12 @@ class AbstractFunctionArray(
                             item_outputs[ax] = item_ax
                     axes_vertex = array.axes_vertex
                     if ax in axes_vertex:
-                        if np.issubdtype(type(item_ax), np.integer):
-                            item_outputs[ax] = slice(item_ax, item_ax + 1)
-                            item_inputs[ax] = slice(item_ax, item_ax + 2)
-                        elif isinstance(item_ax, slice):
-                            item_outputs[ax] = item_ax
-                            if item_ax.start is None and item_ax.stop is None:
-                                item_inputs[ax] = item_ax
-                            else:
-                                if item_ax.stop is not None:
-                                    item_inputs[ax] = slice(item_ax.start, item_ax.stop + 1)
-                                else:
-                                    item_inputs[ax] = slice(item_ax.start, None)
+                        if isinstance(item_ax, slice) or np.issubdtype(type(item_ax), np.integer):
+                            item_outputs[ax], item_inputs[ax] = _item_vertex(
+                                item=item_ax,
+                                num=outputs.shape[ax],
+                                axis=ax,
+                            )
                         else:
                             return NotImplemented
 

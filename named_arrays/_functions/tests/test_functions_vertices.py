@@ -141,6 +141,19 @@ class AbstractTestAbstractFunctionArrayVertices(
             dict(y=0),
             dict(y=np.int64(0)),
             dict(y=slice(0, 1)),
+            dict(y=-1),
+            dict(y=np.int64(-2)),
+            dict(y=slice(-3, None)),
+            dict(y=slice(1, -1)),
+            dict(y=slice(None, -2)),
+            dict(y=slice(None, None, -1)),
+            dict(y=slice(-2, 0, -1)),
+            dict(y=slice(3, 1)),
+            dict(y=slice(-10, None, -1)),
+            dict(x=-1, y=slice(None, None, -1)),
+            dict(y=slice(None, None, 2)),
+            dict(y=_num_y),
+            dict(y=-_num_y - 1),
         ]
 
     )
@@ -318,6 +331,68 @@ class TestFunctionArrayVertices(
             value: float | u.Quantity | na.AbstractScalar | na.AbstractVectorArray,
     ):
         super().test__setitem__(array=array.explicit, item=item, value=value)
+
+
+@pytest.mark.parametrize(
+    argnames="item,cells,vertices",
+    argvalues=[
+        (3, [3], [3, 4]),
+        (-1, [9], [9, 10]),
+        (slice(-3, None), [7, 8, 9], [7, 8, 9, 10]),
+        (slice(2, -1), [2, 3, 4, 5, 6, 7, 8], [2, 3, 4, 5, 6, 7, 8, 9]),
+        (slice(2, -3), [2, 3, 4, 5, 6], [2, 3, 4, 5, 6, 7]),
+        (slice(None, None, -1), list(range(9, -1, -1)), list(range(10, -1, -1))),
+        (slice(5, 1, -1), [5, 4, 3, 2], [6, 5, 4, 3, 2]),
+        (slice(5, 2), [], [5]),
+        (slice(20, None), [], [10]),
+        (slice(-20, None, -1), [], [0]),
+    ],
+)
+def test__getitem__vertex_axis(
+    item: int | slice,
+    cells: list[int],
+    vertices: list[int],
+):
+    """
+    Indexing the cells along a vertex axis keeps the vertices which bound
+    them, however the index is written.
+    """
+    f = na.FunctionArray(
+        inputs=na.linspace(0, 10, axis="x", num=11),
+        outputs=na.arange(0, 10, axis="x"),
+    )
+    result = f[dict(x=item)]
+    assert result.axes_vertex == ("x",)
+    assert result.inputs.axes == ("x",)
+    assert result.outputs.axes == ("x",)
+    assert result.inputs.ndarray.tolist() == vertices
+    assert result.outputs.ndarray.tolist() == cells
+
+
+@pytest.mark.parametrize(
+    argnames="item,error",
+    argvalues=[
+        (slice(0, 10, 2), ValueError),
+        (slice(None, None, -2), ValueError),
+        (10, IndexError),
+        (-11, IndexError),
+    ],
+)
+def test__getitem__vertex_axis_error(
+    item: int | slice,
+    error: type[Exception],
+):
+    """
+    A slice whose cells do not share vertices, or an integer past the last
+    cell, raises an error rather than returning inputs that do not bound the
+    outputs.
+    """
+    f = na.FunctionArray(
+        inputs=na.linspace(0, 10, axis="x", num=11),
+        outputs=na.arange(0, 10, axis="x"),
+    )
+    with pytest.raises(error):
+        f[dict(x=item)]
 
 
 @pytest.mark.parametrize("type_array", [na.FunctionArray])
