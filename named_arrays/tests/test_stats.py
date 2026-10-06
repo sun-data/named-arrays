@@ -160,3 +160,21 @@ def test_rankdata(
         result_expected[mask] = scipy.stats.rankdata(_a[i].ndarray[mask], method=method)
 
         assert np.allclose(result[i].ndarray, result_expected, equal_nan=True)
+
+
+@pytest.mark.parametrize("method", ["average", "min", "max", "dense"])
+def test_rankdata_uncertain_ties(method: str):
+    # Ties which only occur in some samples rank each sample separately
+    a = na.UncertainScalarArray(
+        nominal=na.ScalarArray(np.array([1., 2, 3, 4]), axes="x"),
+        distribution=na.ScalarArray(
+            ndarray=np.array([[1., 1], [2, 1], [3, 3], [4, 4]]),
+            axes=("x", "_distribution"),
+        ),
+    )
+    result = na.stats.rankdata(a, axis="x", method=method)
+    assert np.all(result.nominal.ndarray == scipy.stats.rankdata(a.nominal.ndarray, method=method))
+    for i in range(a.distribution.shape["_distribution"]):
+        sample = a.distribution[dict(_distribution=i)].ndarray
+        result_sample = result.distribution[dict(_distribution=i)].ndarray
+        assert np.all(result_sample == scipy.stats.rankdata(sample, method=method))

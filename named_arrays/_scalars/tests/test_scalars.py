@@ -535,7 +535,7 @@ class AbstractTestAbstractScalarArray(
             if not set(item.shape).issubset(array.shape):
                 with pytest.raises(
                     expected_exception=ValueError,
-                    match="the axes in item, .*, must be a subset of the axes in array, .*"
+                    match="the axes in item, .*, must be a subset of the axes in (the )?array, .*"
                 ):
                     array[item]
                 return

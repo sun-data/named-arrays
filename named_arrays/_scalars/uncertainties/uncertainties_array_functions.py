@@ -128,6 +128,20 @@ def array_function_default(
     a = a.broadcasted
     shape_a = a.shape
 
+    if isinstance(where, na.AbstractUncertainScalarArray):
+        # A distribution without a sample axis has the same values in every
+        # sample, so it can be reduced over a selection which differs
+        # between samples once it is broadcast along them.
+        axis_distribution = a.axis_distribution
+        shape_where = na.shape(where.distribution)
+        shape_distribution = na.shape(a.distribution)
+        if axis_distribution in shape_where and axis_distribution not in shape_distribution:
+            shape_distribution[axis_distribution] = shape_where[axis_distribution]
+            a = na.UncertainScalarArray(
+                nominal=a.nominal,
+                distribution=na.broadcast_to(a.distribution, shape_distribution),
+            )
+
     kwargs = dict()
     kwargs_nominal = dict()
     kwargs_distribution = dict()

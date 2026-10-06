@@ -212,6 +212,18 @@ def array_function_default(
         initial: bool | int | float | complex | u.Quantity = np._NoValue,
         where: bool | na.AbstractScalarArray = np._NoValue,
 ):
+    if isinstance(where, na.AbstractUncertainScalarArray):
+        # Reducing over a selection which differs between samples gives a
+        # different result in each sample.
+        kwargs = dict(axis=axis, keepdims=keepdims, where=where)
+        if dtype is not np._NoValue:
+            kwargs["dtype"] = dtype
+        if out is not None:
+            kwargs["out"] = out
+        if initial is not np._NoValue:
+            kwargs["initial"] = initial
+        return func(na.UncertainScalarArray(a, a), **kwargs)
+
     func, a = count_nonzero_as_sum(func, a)
 
     a = a.explicit

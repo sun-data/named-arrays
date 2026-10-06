@@ -23,6 +23,20 @@ def _normalize_shape(shape: dict[str, None | int]) -> dict[str, int]:
     return {axis: shape[axis] for axis in shape if shape[axis] is not None}
 
 
+def _mask_varies(mask: na.AbstractArray) -> bool:
+    """
+    Whether any uncertain scalar inside `mask`, such as a component of a
+    vector or the outputs of a function, selects different elements in its
+    nominal value and in the samples of its distribution.
+    """
+    from named_arrays._scalars.uncertainties import uncertainties
+    if isinstance(mask, na.AbstractFunctionArray):
+        return _mask_varies(mask.inputs) or _mask_varies(mask.outputs)
+    if isinstance(mask, na.AbstractVectorArray):
+        return any(_mask_varies(entry) for entry in mask.entries.values())
+    return uncertainties._varies(mask)
+
+
 def test_linspace_num_scalar_array():
     # `num` given as a 0-d integer scalar array must be accepted, both directly
     # and as the per-component values produced when `linspace` decomposes a
@@ -1956,6 +1970,7 @@ class AbstractTestAbstractArray(
                 # below still holds for the nominal value, where every mask is
                 # certain.
                 assert str(e).startswith("the nonzero elements of `a` differ")
+                assert _mask_varies(mask)
                 array = na.nominal(array.broadcasted)
                 mask = array > array.mean()
                 indices = np.nonzero(mask)
