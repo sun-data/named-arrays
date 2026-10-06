@@ -849,8 +849,7 @@ class AbstractTestAbstractWcsVector(
             assert isinstance(k, str)
             assert isinstance(result[k], int)
 
-    def test_shape(self, array: na.AbstractWcsVector):
-        super().test_shape(array)
+    def test_shape_explicit(self, array: na.AbstractWcsVector):
         explicit = array.explicit
         assert array.shape == explicit.shape
         assert array.axes == explicit.axes
@@ -868,6 +867,9 @@ class AbstractTestAbstractWcsVector(
             (dict(x=0), False),
             (dict(y=slice(None, None, 2)), False),
             (dict(x=slice(None, None, -1)), False),
+            # an index array along another axis, which has a WCS axis
+            (dict(z=na.ScalarArray(np.array([0, 1]), axes="y")), False),
+            (dict(z=None), False),
         ],
     )
     def test__getitem__wcs(
@@ -884,6 +886,39 @@ class AbstractTestAbstractWcsVector(
             assert isinstance(result, na.AbstractExplicitVectorArray)
         assert result.shape == expected.shape
         assert np.all(result.explicit == expected)
+
+
+@pytest.mark.parametrize("num_crval", [1, 5])
+def test__getitem__wcs_parameter_along_wcs_axis(num_crval: int):
+    """
+    A WCS parameter which varies along a sliced WCS axis, even one with a
+    single element broadcast against the pixels, is indexed through the
+    explicit vector.
+    """
+    x = na.ScalarArray(np.arange(num_crval) * u.arcsec, axes="x")
+    array = na.ExplicitTemporalWcsPositionalVectorArray(
+        time=10 * u.s,
+        crval=na.PositionalVectorArray(
+            position=na.Cartesian2dVectorArray(x, 1 * u.arcsec),
+        ),
+        crpix=na.CartesianNdVectorArray(dict(x=2, y=3)),
+        cdelt=na.PositionalVectorArray(
+            position=na.Cartesian2dVectorArray(1, 1) * u.arcsec,
+        ),
+        pc=na.PositionalMatrixArray(
+            position=na.Cartesian2dMatrixArray(
+                x=na.CartesianNdVectorArray(dict(x=1, y=0)),
+                y=na.CartesianNdVectorArray(dict(x=0, y=1)),
+            ),
+        ),
+        shape_wcs=dict(x=5, y=4),
+    )
+    item = dict(x=slice(1, 3))
+    result = array[item]
+    expected = array.explicit[item]
+    assert isinstance(result, na.AbstractExplicitVectorArray)
+    assert result.shape == expected.shape == dict(x=2, y=4)
+    assert np.all(result == expected)
 
 
 def test_searchsorted_sorter_per_component():
