@@ -2938,6 +2938,12 @@ def point_in_polygon(
     except scalars.ScalarTypeError:  # pragma: nocover
         return NotImplemented
 
+    if axis not in vertices_x.shape and axis not in vertices_y.shape:
+        raise ValueError(
+            f"`axis` {axis!r} is not an axis of the vertices, whose axes are "
+            f"{tuple(na.shape_broadcasted(vertices_x, vertices_y))}."
+        )
+
     shape_vertices = na.shape_broadcasted(
         x,
         y,

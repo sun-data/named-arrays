@@ -34,7 +34,7 @@ circle = radius * na.Cartesian2dVectorArray(
             False,
         ),
         (
-            na.linspace(-1, 1, axis="x", num=5),
+            na.linspace(-1, 1, axis="x", num=5) * u.mm,
             0 * u.mm,
             circle.x,
             circle.y,
@@ -66,7 +66,7 @@ def test_point_in_polygon(
     vertices_y: na.AbstractScalar,
     axis: str,
     result_expected: na.AbstractScalar,
-):
+) -> None:
     result = na.geometry.point_in_polygon(
         x=x,
         y=y,
@@ -81,7 +81,7 @@ def test_point_in_polygon(
 @pytest.mark.parametrize("unit", [u.mm, u.cm])
 def test_point_in_polygon_tests_each_point_against_its_own_polygon(
     unit: u.UnitBase,
-):
+) -> None:
     """
     Points which share an axis with the polygons are each tested against
     the polygon at the same index along it, and an axis which only the
@@ -117,7 +117,7 @@ def test_point_in_polygon_tests_each_point_against_its_own_polygon(
 )
 def test_point_in_polygon_does_not_copy_the_vertices_for_every_point(
     moving: bool,
-):
+) -> None:
     """
     The memory taken is in proportion to the number of points,
     not to the number of points times the number of vertices,
@@ -126,14 +126,17 @@ def test_point_in_polygon_does_not_copy_the_vertices_for_every_point(
     """
     num = 100_000
     num_vertices = 101
+    radius = 10 * u.mm
     angle = na.linspace(0, 360, axis=axis, num=num_vertices) * u.deg
-    vertices_x = 10 * u.mm * np.cos(angle)
-    vertices_y = 10 * u.mm * np.sin(angle)
-    x = na.linspace(-2, 2, axis="point", num=num).explicit * u.cm
+    shift = 0 * u.mm
     if moving:
         shift = na.linspace(0, 1, axis="wavelength", num=3) * u.mm
-        vertices_x = (vertices_x + shift).explicit
-        x = x.to(u.mm) + 0 * shift
+    vertices_x = (radius * np.cos(angle) + shift).explicit
+    vertices_y = radius * np.sin(angle)
+    # none of these lands on an edge, which lie on a vertex at y = 0
+    x = na.linspace(-2, 2, axis="point", num=num).explicit * u.cm
+    if moving:
+        x = (x.to(u.mm) + 0 * shift).explicit
 
     def test() -> na.AbstractExplicitArray:
         """Test the points against the polygons."""
@@ -145,14 +148,71 @@ def test_point_in_polygon_does_not_copy_the_vertices_for_every_point(
             axis=axis,
         )
 
-    result_expected = test()
+    # compile the kernel before measuring
+    test()
 
-    tracemalloc.start()
+    tracing = tracemalloc.is_tracing()
+    if not tracing:
+        tracemalloc.start()
     try:
+        tracemalloc.reset_peak()
+        baseline, _ = tracemalloc.get_traced_memory()
         result = test()
         _, peak = tracemalloc.get_traced_memory()
     finally:
-        tracemalloc.stop()
+        if not tracing:
+            tracemalloc.stop()
 
-    assert np.all(result == result_expected)
-    assert peak < 3 * num * 8 * 8
+    assert np.all(result == (np.abs(x - shift) < radius))
+
+    # room for four float64 copies of the points, where a copy of the
+    # vertices for every point takes two times 101 of them
+    num_points = result.size
+    assert peak - baseline < 4 * 8 * num_points
+
+
+def test_point_in_polygon_converts_every_argument_to_one_unit() -> None:
+    """
+    The points and vertices are compared in one unit, taken from whichever
+    argument has one, and an argument without a unit counts as dimensionless.
+    """
+    vertices_x = 60 * u.percent * np.cos(angles)
+    vertices_y = 60 * u.percent * np.sin(angles)
+    x = na.linspace(0.5, 0.7, axis="x", num=2)
+
+    result = na.geometry.point_in_polygon(
+        x=x,
+        y=0,
+        vertices_x=vertices_x,
+        vertices_y=vertices_y,
+        axis=axis,
+    )
+
+    assert np.all(result == (x < 0.6))
+
+
+def test_point_in_polygon_refuses_points_without_a_unit_against_lengths() -> None:
+    """
+    A point without a unit is dimensionless, so it cannot be compared with
+    vertices which are lengths, even when another coordinate has a length.
+    """
+    with pytest.raises(u.UnitConversionError):
+        na.geometry.point_in_polygon(
+            x=0,
+            y=1.5 * u.cm,
+            vertices_x=circle.x,
+            vertices_y=circle.y,
+            axis=axis,
+        )
+
+
+def test_point_in_polygon_refuses_an_axis_the_vertices_lack() -> None:
+    """A misspelled vertex axis raises, rather than testing every vertex alone."""
+    with pytest.raises(ValueError, match="not an axis of the vertices"):
+        na.geometry.point_in_polygon(
+            x=0 * u.mm,
+            y=0 * u.mm,
+            vertices_x=circle.x,
+            vertices_y=circle.y,
+            axis="vertx",
+        )
