@@ -269,20 +269,46 @@ class AbstractTestAbstractFunctionArray(
                         if ax in array.outputs.shape:
                             item_outputs[ax] = item_ax
                     if ax in array.axes_vertex:
-                        if np.issubdtype(type(item_ax), np.integer):
-                            item_outputs[ax] = slice(item_ax, item_ax + 1)
-                            item_inputs[ax] = slice(item_ax, item_ax + 2)
-                        elif isinstance(item_ax, slice):
-                            item_outputs[ax] = item_ax
-                            if item_ax.stop is not None:
-                                item_inputs[ax] = slice(item_ax.start, item_ax.stop + 1)
-                            else:
-                                item_inputs[ax] = slice(item_ax.start, None)
+                        # The cells selected, found by indexing with numpy
+                        # rather than with the normalization of the
+                        # implementation, and the vertices which bound them,
+                        # gathered with integer arrays.
+                        num = array.outputs.shape[ax]
+                        try:
+                            cells = np.atleast_1d(np.arange(num)[item_ax])
+                        except IndexError:
+                            with pytest.raises(IndexError, match="out of bounds"):
+                                array[item]
+                            return
+                        step = 1
+                        if isinstance(item_ax, slice) and item_ax.step is not None:
+                            step = item_ax.step
+                        if len(cells) > 1 and abs(step) != 1:
+                            with pytest.raises(ValueError, match="must have a step of 1 or -1"):
+                                array[item]
+                            return
+                        if len(cells) == 0:
+                            # An empty selection keeps the vertex where it
+                            # starts, which is pinned down for every kind of
+                            # slice by `test__getitem__vertex_axis`.
+                            start = range(num)[item_ax].start
+                            vertices = np.array([start if step > 0 else start + 1])
+                        elif step > 0:
+                            vertices = np.append(cells, cells[-1] + 1)
+                        else:
+                            vertices = np.append(cells + 1, cells[-1])
+                        item_outputs[ax] = na.ScalarArray(cells, axes=ax)
+                        item_inputs[ax] = na.ScalarArray(vertices, axes=ax)
 
         result = array[item]
 
-        assert np.all(result.inputs == array.inputs[item_inputs])
-        assert np.all(result.outputs == array.outputs[item_outputs])
+        expected_inputs = array.inputs[item_inputs]
+        expected_outputs = array.outputs[item_outputs]
+        if isinstance(item, dict):
+            assert result.inputs.shape == expected_inputs.shape
+            assert result.outputs.shape == expected_outputs.shape
+        assert np.all(result.inputs == expected_inputs)
+        assert np.all(result.outputs == expected_outputs)
 
     def test__bool__(self, array: na.AbstractFunctionArray):
         if array.shape or array.unit is not None:
