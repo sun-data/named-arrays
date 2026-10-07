@@ -39,8 +39,6 @@ def _candidates(cls: type) -> tuple[str, ...]:
     The names of the fields of `cls`, other than its inputs and outputs, which
     are set by its constructor.
     """
-    if not dataclasses.is_dataclass(cls):
-        return ()
     return tuple(
         field.name
         for field in dataclasses.fields(cls)
@@ -227,15 +225,19 @@ def check_axes(
         )
 
 
-def _inexact(value: Any) -> bool:
-    """Whether the elements of `value` are floating-point or complex numbers."""
+def _inexact(value: Any, axis: Sequence[str]) -> bool:
+    """
+    Whether the elements of `value` are floating-point or complex numbers,
+    where they vary along `axis`.
+
+    A component of a vector which does not vary along `axis`, such as a
+    constant integer, is left as it is by an operation along it.
+    """
     if isinstance(value, na.AbstractVectorArray):
-        return all(_inexact(c) for c in value.components.values())
-    if isinstance(value, na.AbstractScalar):
-        dtype = value.dtype
-    else:
-        dtype = na.get_dtype(value)
-    return bool(np.issubdtype(dtype, np.inexact))
+        return all(_inexact(c, axis) for c in value.components.values())
+    if set(na.shape(value)).isdisjoint(axis):
+        return True
+    return bool(np.issubdtype(na.get_dtype(value), np.inexact))
 
 
 def check_inexact(
@@ -258,7 +260,7 @@ def check_inexact(
         The name of the operation, for the error message.
     """
     for name, value, axes, arg in _varies(a, axis):
-        if not _inexact(value):
+        if not _inexact(value, axes):
             raise ValueError(
                 f"`{name}` of this {type(a).__name__} varies along {axes}, "
                 f"along which {operation} averages neighboring elements, but "

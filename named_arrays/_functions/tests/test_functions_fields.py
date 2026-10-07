@@ -28,6 +28,9 @@ class _Images(na.FunctionArray):
     label: str = "images"
     """A field which is not a named array."""
 
+    instrument: object = None
+    """A field which cannot be compared, such as a model of the instrument."""
+
 
 @dataclasses.dataclass(eq=False, repr=False)
 class _Masked(na.FunctionArray):
@@ -35,6 +38,14 @@ class _Masked(na.FunctionArray):
 
     where: na.AbstractScalar | bool = True
     """Whether to use each sample."""
+
+
+@dataclasses.dataclass(eq=False, repr=False)
+class _Pointed(na.FunctionArray):
+    """A function with a vector field, unrelated to images."""
+
+    pointing: na.AbstractVectorArray | None = None
+    """The pointing of the instrument for each sample."""
 
 
 def _images(scale: float = 1) -> _Images:
@@ -318,6 +329,13 @@ class TestSetitem:
         plain[dict(t=0)] = _images(scale=10)[dict(t=1)]
         assert np.all(plain.outputs[dict(t=0)] == _images(scale=10).outputs[dict(t=1)])
 
+    def test_setitem_not_comparable(self):
+        # a field which cannot be compared is left as it is
+        images = _images().replace(instrument=object())
+        instrument = images.instrument
+        images[dict(t=0)] = _images(scale=10)[dict(t=1)].replace(instrument=object())
+        assert images.instrument is instrument
+
     def test_setitem_read_only(self):
         # a field which cannot be written in place may still be given the
         # value it already has
@@ -513,6 +531,26 @@ class TestCellCenters:
         with pytest.raises(ValueError, match="not floating-point numbers"):
             masked.cell_centers("t")
 
+    def test_vector(self):
+        # a component which does not vary along the axis, such as a constant
+        # integer, is left as it is
+        images = _images_center()
+        pointing = na.Cartesian2dVectorArray(images.timedelta.value * u.arcsec, 0)
+        pointed = _Pointed(images.inputs, images.outputs, pointing=pointing)
+        result = pointed.cell_centers("t")
+        assert np.all(result.pointing.x == pointing.x.cell_centers("t"))
+        assert result.pointing.y == 0
+
+    def test_vector_not_inexact(self):
+        images = _images_center()
+        pointing = na.Cartesian2dVectorArray(
+            x=0 * u.arcsec,
+            y=na.ScalarArray(np.arange(_num_t), axes="t"),
+        )
+        pointed = _Pointed(images.inputs, images.outputs, pointing=pointing)
+        with pytest.raises(ValueError, match="not floating-point numbers"):
+            pointed.cell_centers("t")
+
 
 def test_regrid():
     images = _images_center()
@@ -656,6 +694,13 @@ class TestCombine:
         b = a.replace(timedelta=np.nan * u.s)
         result = np.stack([a, b], axis="s")
         assert np.isnan(result.timedelta)
+
+    def test_not_comparable(self):
+        # a field which cannot be compared is taken from the first array
+        a = _images().replace(instrument=object())
+        b = a.replace(outputs=2 * a.outputs, instrument=object())
+        result = np.stack([a, b], axis="s")
+        assert result.instrument is a.instrument
 
     @pytest.mark.parametrize("reverse", [False, True])
     def test_unrelated_types(self, reverse: bool):
