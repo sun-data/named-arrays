@@ -13,7 +13,7 @@ which are not named arrays, such as strings or nested models, are carried over
 unchanged.
 """
 
-from typing import Any, Callable, Sequence, cast
+from typing import Any, Callable, Iterator, Sequence, cast
 import dataclasses
 import functools
 import numpy as np
@@ -22,11 +22,14 @@ import named_arrays as na
 
 __all__ = [
     "names",
+    "values",
     "apply",
     "check",
     "check_axes",
+    "check_inexact",
     "stack_like",
     "setitem",
+    "out",
 ]
 
 
@@ -65,6 +68,19 @@ def names(a: Any) -> tuple[str, ...]:
     )
 
 
+def values(a: Any) -> dict[str, Any]:
+    """
+    The value of every field of `a` other than its inputs and outputs, by
+    name.
+
+    Parameters
+    ----------
+    a
+        A function array.
+    """
+    return {name: getattr(a, name) for name in _candidates(type(a))}
+
+
 def apply(
     a: Any,
     func: Callable[["na.AbstractArray"], "na.AbstractArray"],
@@ -95,6 +111,18 @@ def apply(
     return result
 
 
+def _explicit(a: Any) -> bool:
+    """
+    Whether the shape of `a` can be found without computing the elements of
+    an implicit array, such as a random sample.
+    """
+    if isinstance(a, na.AbstractImplicitArray):
+        return False
+    if isinstance(a, na.AbstractVectorArray):
+        return all(_explicit(c) for c in a.components.values())
+    return True
+
+
 def check(a: Any) -> None:
     """
     Raise an error if a named-array field of `a` does not have the same number
@@ -102,7 +130,8 @@ def check(a: Any) -> None:
 
     The outputs may have a single element along an axis, as they do after a
     reduction which keeps the reduced axes, since the inputs and the fields
-    then keep their elements along it.
+    then keep their elements along it. Implicit outputs and fields are not
+    checked, since finding their shape would compute them.
 
     Parameters
     ----------
@@ -112,9 +141,15 @@ def check(a: Any) -> None:
     fields = names(a)
     if not fields:
         return
-    shape_outputs = na.shape(a.outputs)
+    outputs = a.outputs
+    if not _explicit(outputs):
+        return
+    shape_outputs = na.shape(outputs)
     for name in fields:
-        shape = getattr(a, name).shape
+        value = getattr(a, name)
+        if not _explicit(value):
+            continue
+        shape = value.shape
         for axis in shape:
             num = shape_outputs.get(axis)
             if num is not None and num != 1 and num != shape[axis]:
@@ -126,10 +161,29 @@ def check(a: Any) -> None:
                 )
 
 
+def _varies(
+    a: Any,
+    axis: Sequence[str],
+) -> Iterator[tuple[str, "na.AbstractArray", tuple[str, ...], str]]:
+    """
+    The named-array fields of `a` which vary along any of `axis`.
+
+    Yields the name and value of each, the axes of `axis` which it varies
+    along, and those axes written as an argument, for the error messages.
+    """
+    for name in names(a):
+        value = getattr(a, name)
+        axes = tuple(ax for ax in axis if ax in value.shape)
+        if axes:
+            arg = repr(axes[0]) if len(axes) == 1 else repr(axes)
+            yield name, value, axes, arg
+
+
 def check_axes(
     a: Any,
     axis: Sequence[str],
     operation: str,
+    resamples: bool = False,
     hint: str = "",
 ) -> None:
     """
@@ -145,22 +199,72 @@ def check_axes(
     operation
         A description of what the operation does to `axis`, for the error
         message, for example ``"np.sum with keepdims=False removes"``.
+    resamples
+        Whether the operation resamples `axis` instead of reducing it, which
+        changes the fix that the message suggests.
     hint
         Another way to avoid the error, appended to the message.
     """
-    for name in names(a):
-        value = getattr(a, name)
-        axes = tuple(ax for ax in axis if ax in value.shape)
-        if axes:
-            arg = repr(axes[0]) if len(axes) == 1 else repr(axes)
+    for name, _, axes, arg in _varies(a, axis):
+        if resamples:
+            fix = (
+                f"for example its mean, "
+                f"`dataclasses.replace(a, {name}=a.{name}.mean({arg}))`, and "
+                f"resample it separately if the result needs it."
+            )
+        else:
+            fix = (
+                f"reduced the way it should be (a sum or mean of an exposure "
+                f"time, `any` or `all` of a mask), for example "
+                f"`dataclasses.replace(a, {name}=a.{name}.sum({arg}))`."
+            )
+        raise ValueError(
+            f"`{name}` of this {type(a).__name__} varies along {axes}, "
+            f"which {operation}, so it would no longer match the outputs. "
+            f"Replace it first with a version which does not vary along "
+            f"{arg}, {fix}{hint}"
+        )
+
+
+def _inexact(value: Any) -> bool:
+    """Whether the elements of `value` are floating-point or complex numbers."""
+    if isinstance(value, na.AbstractVectorArray):
+        return all(_inexact(c) for c in value.components.values())
+    if isinstance(value, na.AbstractScalar):
+        dtype = value.dtype
+    else:
+        dtype = na.get_dtype(value)
+    return bool(np.issubdtype(dtype, np.inexact))
+
+
+def check_inexact(
+    a: Any,
+    axis: Sequence[str],
+    operation: str,
+) -> None:
+    """
+    Raise an error if an operation would average neighboring elements of a
+    named-array field of `a` along `axis` which are not floating-point
+    numbers, such as a boolean mask, whose elements would become fractions.
+
+    Parameters
+    ----------
+    a
+        The function array being operated on.
+    axis
+        The axes along which the operation averages neighboring elements.
+    operation
+        The name of the operation, for the error message.
+    """
+    for name, value, axes, arg in _varies(a, axis):
+        if not _inexact(value):
             raise ValueError(
                 f"`{name}` of this {type(a).__name__} varies along {axes}, "
-                f"which {operation}, so it would no longer match the outputs. "
-                f"Replace it first with a version which does not vary along "
-                f"{arg}, reduced the way it should be (a sum or mean of an "
-                f"exposure time, `any` or `all` of a mask), for example "
-                f"`dataclasses.replace(a, {name}=a.{name}.sum({arg}))`."
-                f"{hint}"
+                f"along which {operation} averages neighboring elements, but "
+                f"its elements are not floating-point numbers, so they would "
+                f"become fractions, such as 0.5 for a mask. Replace it first "
+                f"with a version which does not vary along {arg}, or with "
+                f"floating-point numbers if fractions make sense for it."
             )
 
 
@@ -194,7 +298,12 @@ def _equal(a: Any, b: Any) -> bool:
         # named arrays broadcast against each other by the names of their
         # axes, so a value which is constant along an axis equals one which
         # does not have it
-        return bool(np.all(a == b))
+        equal = a == b
+        if not np.all(equal):
+            # NaN does not equal itself, but a value which is NaN in the
+            # same places is the same
+            equal = equal | (np.isnan(a) & np.isnan(b))
+        return bool(np.all(equal))
     except (TypeError, ValueError, u.UnitsError):
         return False
 
@@ -236,7 +345,7 @@ def stack_like(
         The function arrays being stacked or concatenated.
     template
         The array whose type, and whose fields which cannot be compared, the
-        result takes.
+        result takes. Its type must have every field of the others.
     axis
         The axis along which the arrays are stacked or concatenated.
     lengths
@@ -249,9 +358,22 @@ def stack_like(
         outputs.
     """
     operation = f"np.{func.__name__}"
+
+    candidates = _candidates(type(template))
+    for a in arrays:
+        lost = [name for name in _candidates(type(a)) if name not in candidates]
+        if lost:
+            raise TypeError(
+                f"{operation} cannot combine arrays of types "
+                f"{[type(a).__name__ for a in arrays]}, since none of them is "
+                f"a subclass of all the others, so the result, a "
+                f"{type(template).__name__}, would lose {lost} of the "
+                f"{type(a).__name__}"
+            )
+
     array_like = set(n for a in arrays for n in names(a))
     result = dict()
-    for name in _candidates(type(template)):
+    for name in candidates:
 
         if name not in array_like:
             values = [getattr(a, name) for a in arrays if hasattr(a, name)]
@@ -317,7 +439,9 @@ def setitem(
     are written, without leaving `a` half written if one of them fails.
 
     A field of `a` which does not vary along an axis of `item` can only take a
-    value which is the same as the one it has.
+    value which is the same as the one it has, and so can a field which is
+    not a named array in either array, if it can be compared. The fields
+    which `a` or `value` does not have are left alone.
 
     Parameters
     ----------
@@ -332,16 +456,40 @@ def setitem(
     if not isinstance(value, na.AbstractFunctionArray):
         return []
 
+    candidates = _candidates(type(a))
+    if not candidates:
+        return []
+
     operation = "assignment"
+    shape_outputs = na.shape(a.outputs)
     writes = []
-    for name in dict.fromkeys(names(a) + names(value)):
+    for name in candidates:
         if not hasattr(value, name):
             continue
+
+        if not isinstance(getattr(a, name), na.AbstractArray):
+            if not isinstance(getattr(value, name), na.AbstractArray):
+                # neither is sampled along the axes, so it is the same for
+                # every element
+                current = getattr(a, name)
+                field_value = getattr(value, name)
+                if _simple(current) and _simple(field_value) and not _equal(current, field_value):
+                    raise ValueError(
+                        f"`{name}` of the value is {field_value!r}, but "
+                        f"`{name}` of this {type(a).__name__} is "
+                        f"{current!r}. Assigning elements cannot change a "
+                        f"field which is not a named array, so the two must "
+                        f"be the same."
+                    )
+                continue
+
         field = _value(a, name, operation)
         field_value = _value(value, name, operation)
 
         if isinstance(item, dict):
-            axes = tuple(item)
+            # an axis which neither the outputs nor the field have is
+            # ignored, as it is by the outputs
+            axes = tuple(ax for ax in item if ax in shape_outputs or ax in field.shape)
             index = {ax: item[ax] for ax in item if ax in field.shape}
             current = field[index]
         else:
@@ -356,9 +504,15 @@ def setitem(
                 f"`{name}` of this {type(a).__name__} does not have"
             )
 
+        # writing the value the field already has would change nothing, and
+        # a field which cannot be written in place, such as a vector of
+        # floats, may still be given it
+        if _equal(current, field_value):
+            continue
+
         if set(axes).issubset(field.shape) and isinstance(getattr(a, name), na.AbstractArray):
             writes.append(_writer(field, index, field_value))
-        elif not _equal(current, field_value):
+        else:
             missing = sorted(set(axes) - set(field.shape))
             raise ValueError(
                 f"`{name}` does not vary along {missing}, so it cannot hold a "
@@ -366,3 +520,32 @@ def setitem(
                 f"it along {missing} first."
             )
     return writes
+
+
+def out(
+    out: Any,
+    fields: dict[str, Any],
+) -> Any:
+    """
+    Give `out`, an array which holds the result of an operation, the fields of
+    the result which are named arrays, or which replace one, if its type has
+    them.
+
+    Parameters
+    ----------
+    out
+        The array given as the `out` argument of the operation.
+    fields
+        The fields of the result, as given by :func:`values`.
+
+    Returns
+    -------
+        `out`, with the fields of the result.
+    """
+    candidates = _candidates(type(out))
+    for name, value in fields.items():
+        if name not in candidates:
+            continue
+        if isinstance(value, na.AbstractArray) or isinstance(getattr(out, name), na.AbstractArray):
+            setattr(out, name, value)
+    return out

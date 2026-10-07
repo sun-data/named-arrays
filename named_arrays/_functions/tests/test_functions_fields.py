@@ -29,6 +29,14 @@ class _Images(na.FunctionArray):
     """A field which is not a named array."""
 
 
+@dataclasses.dataclass(eq=False, repr=False)
+class _Masked(na.FunctionArray):
+    """A function with a mask of the samples to use, unrelated to images."""
+
+    where: na.AbstractScalar | bool = True
+    """Whether to use each sample."""
+
+
 def _images(scale: float = 1) -> _Images:
     """Images along time, channel, and the vertices of a detector axis."""
     outputs = na.ScalarArray(
@@ -303,6 +311,34 @@ class TestSetitem:
         assert np.all(images.timedelta[dict(t=0)] == 7 * u.s)
         assert np.all(images.timedelta[dict(t=1)] == _images().timedelta[dict(t=1)])
 
+    def test_setitem_plain(self):
+        # an array without the fields of the value just takes its outputs
+        images = _images()
+        plain = na.FunctionArray(images.inputs, images.outputs.copy())
+        plain[dict(t=0)] = _images(scale=10)[dict(t=1)]
+        assert np.all(plain.outputs[dict(t=0)] == _images(scale=10).outputs[dict(t=1)])
+
+    def test_setitem_simple_differs(self):
+        images = _images()
+        value = _images(scale=10)[dict(t=1)].replace(label="other")
+        with pytest.raises(ValueError, match="`label` of the value is 'other'"):
+            images[dict(t=0)] = value
+
+    def test_setitem_scalar_differs(self):
+        # a scalar field on both sides cannot hold a value for one image only
+        images = _images().replace(timedelta=0 * u.s)
+        value = _images(scale=10)[dict(t=1)].replace(timedelta=5 * u.s)
+        with pytest.raises(ValueError, match="`timedelta` of the value is"):
+            images[dict(t=0)] = value
+        images[dict(t=0)] = value.replace(timedelta=0 * u.ms)
+
+    def test_setitem_unknown_axis(self):
+        # the outputs raise for an axis which the array does not have, and the
+        # fields do not raise first with a misleading message
+        images = _images()
+        with pytest.raises(ValueError, match="must be a subset"):
+            images[dict(t=0, z=0)] = _images(scale=10)[dict(t=1)]
+
     def test_setitem_mask(self):
         images = _images_center()
         # assigning with a mask also writes the inputs, so they must have
@@ -331,6 +367,16 @@ class TestReduction:
         images = _images()
         with pytest.raises(ValueError, match="timedelta"):
             func(images, axis="t", keepdims=False)
+
+    def test_keepdims_outputs_axis(self, func: Callable):
+        # keeping the axes keeps only the axes of the inputs, so an axis of
+        # the outputs which the inputs do not have is reduced to one element
+        images = _images_center()
+        with pytest.raises(ValueError, match="keeps only the axes of the inputs"):
+            func(images, axis="w")
+        images = images.replace(timedelta=images.timedelta.sum("w"))
+        result = func(images, axis="w")
+        assert np.all(result.timedelta == images.timedelta)
 
     def test_reduced_first(self, func: Callable):
         images = _images()
@@ -418,17 +464,34 @@ class TestDebroadcast:
         assert np.all(result.timedelta == 2 * u.s)
 
 
-def test_cell_centers():
-    images = _images_center()
-    result = images.cell_centers("t")
-    assert result.timedelta.shape["t"] == _num_t - 1
-    assert np.all(result.timedelta == images.timedelta.cell_centers("t"))
+class TestCellCenters:
+
+    def test_cell_centers(self):
+        images = _images_center()
+        result = images.cell_centers("t")
+        assert result.timedelta.shape["t"] == _num_t - 1
+        assert np.all(result.timedelta == images.timedelta.cell_centers("t"))
+
+    def test_random(self):
+        images = _images_center()
+        with pytest.raises(ValueError, match="random=True"):
+            images.cell_centers("t", random=True)
+        # a field which does not vary along the axis is passed on
+        images = images.replace(timedelta=images.timedelta[dict(w=0)])
+        result = images.cell_centers("w", random=True, seed=0)
+        assert result.timedelta is images.timedelta
+
+    def test_not_inexact(self):
+        images = _images_center()
+        masked = _Masked(images.inputs, images.outputs, where=images.outputs > 20 * u.DN)
+        with pytest.raises(ValueError, match="not floating-point numbers"):
+            masked.cell_centers("t")
 
 
 def test_regrid():
     images = _images_center()
     inputs = na.linspace(0, 30, axis="t", num=2 * _num_t) * u.s
-    with pytest.raises(ValueError, match="regrid resamples"):
+    with pytest.raises(ValueError, match=r"regrid resamples.*timedelta\.mean"):
         images.regrid(inputs, axis="t")
 
 
@@ -438,6 +501,17 @@ class TestCheck:
         images = _images()
         with pytest.raises(ValueError, match="has 3 elements along 't'"):
             images.replace(timedelta=images.timedelta[dict(t=slice(0, 3))])
+
+    def test_implicit(self):
+        # finding the shape of implicit outputs would compute them, so the
+        # check waits until they are explicit
+        images = _Images(
+            inputs=na.linspace(0, 30, axis="t", num=_num_t) * u.s,
+            outputs=na.ScalarLinearSpace(0 * u.DN, 1 * u.DN, axis="t", num=_num_t),
+            timedelta=_images().timedelta[dict(t=slice(0, 3))],
+        )
+        with pytest.raises(ValueError, match="has 3 elements along 't'"):
+            images.explicit
 
     def test_outputs_reduced(self):
         # the outputs of a reduction which keeps its axes have one element
@@ -457,8 +531,8 @@ class TestOut:
     def test_reduction(self):
         images = _images_center()
         out = self._out()
-        out = out.replace(outputs=np.sum(out.outputs, axis="w", keepdims=True))
-        result = np.sum(images, axis="w", out=out)
+        out = out.replace(outputs=np.sum(out.outputs, axis="t", keepdims=True))
+        result = np.sum(images, axis="t", out=out)
         assert result is out
         assert np.all(result.timedelta == images.timedelta)
 
@@ -481,6 +555,53 @@ class TestOut:
         assert result is out
         assert out.timedelta == 5 * u.s
 
+    def test_stack_other_type(self):
+        # an `out` of a type without the fields does not get them
+        a = _images_center()
+        out = na.FunctionArray(
+            inputs=np.stack([a.inputs, a.inputs], axis="s"),
+            outputs=np.stack([a.outputs, a.outputs], axis="s"),
+        )
+        np.stack([a, a], axis="s", out=out)
+        assert not hasattr(out, "timedelta")
+
+    def test_clip(self):
+        images = _images_center()
+        result = np.clip(images, 0 * u.DN, 10 * u.DN, out=self._out())
+        assert np.all(result.timedelta == images.timedelta)
+
+    def test_round(self):
+        images = _images_center()
+        result = np.round(images, out=self._out())
+        assert np.all(result.timedelta == images.timedelta)
+
+    def test_matmul(self):
+        images = _images_center()
+        out = self._out()
+        result = np.matmul(images, 2, out=out)
+        assert result is out
+        assert np.all(result.timedelta == images.timedelta)
+
+    def test_copyto(self):
+        images = _images_center()
+        dst = self._out()
+        np.copyto(dst=dst, src=images)
+        assert np.all(dst.timedelta == images.timedelta)
+
+    def test_copyto_simple_differs(self):
+        images = _images_center()
+        with pytest.raises(ValueError, match="`label` of the value is 'other'"):
+            np.copyto(dst=self._out(), src=images.replace(label="other"))
+
+    def test_copyto_where(self):
+        images = _images_center()
+        images = images.replace(inputs=na.broadcast_to(images.inputs, images.outputs.shape).copy())
+        dst = images.replace(outputs=0 * images.outputs, timedelta=0 * images.timedelta)
+        where = na.FunctionArray(images.inputs, images.outputs > 20 * u.DN)
+        np.copyto(dst=dst, src=images, where=where)
+        expected = np.where(where.outputs, images.timedelta, 0 * u.s)
+        assert np.all(dst.timedelta == expected)
+
 
 class TestCombine:
 
@@ -502,6 +623,23 @@ class TestCombine:
         a = _images()
         result = np.stack([a, a.replace(outputs=2 * a.outputs)], axis="s")
         assert result.label == a.label
+
+    def test_simple_nan(self):
+        # a field which is NaN in every array is the same in every array
+        a = _images().replace(timedelta=np.nan * u.s)
+        b = a.replace(timedelta=np.nan * u.s)
+        result = np.stack([a, b], axis="s")
+        assert np.isnan(result.timedelta)
+
+    @pytest.mark.parametrize("reverse", [False, True])
+    def test_unrelated_types(self, reverse: bool):
+        # neither type has the fields of the other, so the result would lose
+        # some, whichever comes first
+        a = _images()
+        masked = _Masked(a.inputs, a.outputs, where=a.outputs > 20 * u.DN)
+        arrays = [a, masked][::-1] if reverse else [a, masked]
+        with pytest.raises(TypeError, match="none of them is a subclass"):
+            np.concatenate(arrays, axis="t")
 
 
 def test_reduction_message():

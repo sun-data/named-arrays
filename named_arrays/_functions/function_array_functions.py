@@ -95,6 +95,7 @@ def array_function_default(
         inputs_out = outputs_out = out
 
     if keepdims:
+        _check_keepdims(func, a, axis_normalized)
         if inputs_out is not None:
             np.copyto(src=inputs, dst=inputs_out)
             inputs_result = inputs_out
@@ -130,7 +131,7 @@ def array_function_default(
             outputs=outputs_result,
         )
     else:
-        result = _out_fields(out, a)
+        result = _fields.out(out, _fields.values(a))
 
     return result
 
@@ -192,7 +193,7 @@ def array_function_cumulative_reduce(
             outputs=outputs_result,
         )
     else:
-        result = _out_fields(out, a)
+        result = _fields.out(out, _fields.values(a))
 
     return result
 
@@ -240,6 +241,7 @@ def array_function_percentile_like(
         inputs_out = outputs_out = out
 
     if keepdims:
+        _check_keepdims(func, a, axis_normalized)
         if inputs_out is not None:
             np.copyto(src=inputs, dst=inputs_out)
             inputs_result = inputs_out
@@ -276,19 +278,35 @@ def array_function_percentile_like(
             outputs=outputs_result,
         )
     else:
-        result = _out_fields(out, a)
+        result = _fields.out(out, _fields.values(a))
 
     return result
 
 
-def _out_fields(
-        out: na.AbstractFunctionArray,
+def _check_keepdims(
+        func: Callable,
         a: na.AbstractFunctionArray,
-) -> na.AbstractFunctionArray:
-    """Give `out` the named-array fields of `a`, whose result it holds."""
-    for name in _fields.names(a):
-        setattr(out, name, getattr(a, name))
-    return out
+        axis: tuple[str, ...],
+) -> None:
+    """
+    Raise an error if a reduction which keeps its axes would reduce a field of
+    `a` to a single element anyway.
+
+    The result keeps the elements of the inputs along the reduced axes, and
+    so do the fields, but the outputs and the result have a single element
+    along an axis which the inputs do not have.
+    """
+    if not _fields.names(a):
+        return
+    shape_inputs = na.shape(a.inputs)
+    _fields.check_axes(
+        a=a,
+        axis=tuple(ax for ax in axis if ax not in shape_inputs),
+        operation=(
+            f"np.{func.__name__} reduces to a single element, since "
+            f"keepdims=True keeps only the axes of the inputs"
+        ),
+    )
 
 
 def array_function_arg_reduce(
@@ -390,9 +408,7 @@ def array_function_stack_like(
     else:
         out.inputs = inputs_result
         out.outputs = outputs_result
-        for name in fields:
-            setattr(out, name, fields[name])
-        result = out
+        result = _fields.out(out, fields)
 
     return result
 
@@ -428,6 +444,15 @@ def copyto(
     else:
         where_inputs = where_outputs = where
 
+    # the fields are written the way an assignment writes them, as
+    # ``dst[where] = src[where]``
+    if not _fields.values(dst):
+        writes = []
+    elif isinstance(where, na.AbstractFunctionArray):
+        writes = _fields.setitem(dst, where.outputs, src[where])
+    else:
+        writes = _fields.setitem(dst, dict(), src)
+
     try:
         np.copyto(dst=dst.inputs, src=src.inputs, casting=casting, where=where_inputs)
     except TypeError:
@@ -437,6 +462,9 @@ def copyto(
         np.copyto(dst=dst.outputs, src=src.outputs, casting=casting, where=where_outputs)
     except TypeError:
         dst.outputs = src.outputs
+
+    for write in writes:
+        write()
 
 
 @_implements(np.gradient)
@@ -718,7 +746,7 @@ def clip(
     if out is None:
         result = a.replace(outputs=result)
     else:
-        result = out
+        result = _fields.out(out, _fields.values(a))
 
     return result
 
@@ -747,7 +775,7 @@ def round(
     if out is None:
         result = a.replace(outputs=result)
     else:
-        result = out
+        result = _fields.out(out, _fields.values(a))
 
     return result
 

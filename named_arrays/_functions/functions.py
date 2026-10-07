@@ -386,7 +386,12 @@ class AbstractFunctionArray(
             axis=axis,
         )
 
-        _fields.check_axes(_self, axis_regrid, operation="regrid resamples")
+        _fields.check_axes(
+            _self,
+            axis_regrid,
+            operation="regrid resamples",
+            resamples=True,
+        )
 
         if weights is not None:
             _weights, shape_input, shape_output = weights
@@ -542,12 +547,20 @@ class AbstractFunctionArray(
         else:
             axes = tuple(axis)
 
-        def centers(v: na.AbstractArray) -> na.AbstractArray:
-            return v.cell_centers(
-                axis=tuple(ax for ax in axes if ax in v.shape),
-                random=random,
-                seed=seed,
+        # the fields are not sampled at the same random points as the outputs,
+        # and the centers of a mask or a count would be fractions
+        if random:
+            _fields.check_axes(
+                exp,
+                axes,
+                operation="cell_centers with random=True samples at random points",
+                resamples=True,
+                hint=" Or use random=False.",
             )
+        _fields.check_inexact(exp, axes, operation="cell_centers")
+
+        def centers(v: na.AbstractArray) -> na.AbstractArray:
+            return v.cell_centers(axis=tuple(ax for ax in axes if ax in v.shape))
 
         return exp.replace(
             inputs=exp.inputs.cell_centers(axis, random=random, seed=seed),
@@ -864,11 +877,7 @@ class AbstractFunctionArray(
             # which they do not have
             fields = dict()
             if _fields.names(array):
-                item_fields = {
-                    ax: item[ax].outputs if isinstance(item[ax], na.AbstractFunctionArray)
-                    else item_outputs.get(ax, item[ax])
-                    for ax in item
-                }
+                item_fields = {ax: item_outputs.get(ax, item[ax]) for ax in item}
                 fields = _fields.apply(array, lambda v: v[item_fields], axes=tuple(item_fields))
 
         else:
@@ -927,9 +936,13 @@ class AbstractFunctionArray(
             self,
             x1: float | u.Quantity | FunctionArray,
             x2: float | u.Quantity | FunctionArray,
-            out: None | na.FunctionArray = None,
+            out: None | na.FunctionArray | tuple[na.FunctionArray] = None,
             **kwargs,
     ) -> FunctionArray:
+
+        # numpy passes the `out` argument of a ufunc as a tuple
+        if isinstance(out, tuple):
+            (out,) = out
 
         if isinstance(x1, na.AbstractArray):
             if isinstance(x1, AbstractFunctionArray):
@@ -978,7 +991,7 @@ class AbstractFunctionArray(
         )
 
         if out is not None:
-            result = out
+            result = _fields.out(out, _fields.values(result))
 
         return result
 
@@ -1065,8 +1078,7 @@ class AbstractFunctionArray(
             if out[i] is not None:
                 out[i].inputs = result[i].inputs
                 out[i].outputs = result[i].outputs
-                for name in _fields.names(result[i]):
-                    setattr(out[i], name, getattr(result[i], name))
+                _fields.out(out[i], _fields.values(result[i]))
                 result[i] = out[i]
 
         if nout == 1:
@@ -1315,32 +1327,54 @@ class FunctionArray(
       do to the outputs, along the axes which the field has.
       :func:`named_arrays.debroadcast` keeps an axis that the field varies
       along.
-    * Assigning another array of the subclass with ``__setitem__`` writes its
-      fields into those of this array, in place, like the outputs. A field
-      which does not vary along an axis being assigned can only be given the
-      value it already has. Since most operations pass the fields of an array
-      on without copying them, assigning into the result of, say, a ufunc
-      also changes the fields of the array it was computed from.
+    * Assigning another array of the subclass with ``__setitem__``, or
+      copying one with :func:`numpy.copyto`, writes its fields into those of
+      this array, in place, like the outputs. A field which does not vary
+      along an axis being assigned can only be given the value it already
+      has, and so can a field which is not a named array, such as a string.
+      Since most operations pass the fields of an array on without copying
+      them, assigning into the result of, say, a ufunc also changes the
+      fields of the array it was computed from.
     * An operation which removes or resamples an axis that the field varies
       along raises an error: a reduction with ``keepdims=False``,
       :func:`numpy.percentile` (which removes the axes by default),
-      :meth:`integrate`, or :meth:`regrid`. Whether the field should be
-      summed, averaged, or dropped depends on what it is, so replace it first,
-      for example with :func:`dataclasses.replace`.
+      :meth:`integrate`, :meth:`regrid`, or :meth:`cell_centers` with
+      ``random=True``. So does a reduction with ``keepdims=True`` along an
+      axis which the inputs do not have, since it keeps only the axes of the
+      inputs. Whether the field should be summed, averaged, or dropped
+      depends on what it is, so replace it first, for example with
+      :func:`dataclasses.replace`.
+    * :meth:`cell_centers` also raises an error for a field whose elements
+      are not floating-point numbers, such as a mask, rather than turn them
+      into fractions.
     * The other operations, including the reductions which keep the reduced
       axes (the default for a function array), pass the field on unchanged. A
       ufunc of several arrays of the subclass takes the fields of the first.
+      An array given as the ``out`` argument of an operation takes the fields
+      of the result, if its type has them.
 
     When the arrays combined by :func:`numpy.stack` or
     :func:`numpy.concatenate` have fields which are not named arrays, such as
     a string or a number, those must be the same in every array. Fields which
     cannot be compared, such as models of an instrument, are taken from the
-    array whose type is a subclass of the types of all the others.
+    array whose type is a subclass of the types of all the others. Arrays
+    with a field which that type does not have, such as arrays of two
+    unrelated subclasses, cannot be combined.
 
     Every function array checks, when it is built, that each such field has
     the same number of elements as the outputs along the axes they share, so
     that an operation which changes the outputs without the field fails
-    instead of leaving the field stale.
+    instead of leaving the field stale. The check has limits:
+
+    * It allows outputs with a single element along an axis, as after a
+      reduction which keeps its axes, and it cannot see an axis which an
+      operation removed from the outputs but not from the field. Catching
+      those would take the shape of the inputs, which can be expensive to
+      compute.
+    * It skips outputs and fields which are implicit, such as random samples,
+      since finding their shape would compute them.
+    * A subclass which defines its own ``__post_init__`` must call
+      ``super().__post_init__()`` for the check to run.
 
     Fields whose values are not named arrays are otherwise passed on unchanged
     by every operation.
