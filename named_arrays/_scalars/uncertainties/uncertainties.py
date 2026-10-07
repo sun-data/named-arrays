@@ -8,7 +8,7 @@ import functools
 import numpy as np
 import astropy.units as u
 import named_arrays as na
-from named_arrays._core import _required, _array_function_handlers
+from named_arrays._core import _required, _array_function_handlers, _broadcast_item
 
 __all__ = [
     "nominal",
@@ -585,6 +585,13 @@ class AbstractUncertainScalarArray(
                     item_nominal.pop(ax)
                 if ax not in distribution.axes:
                     item_distribution.pop(ax)
+
+            # the nominal value or the distribution may have a single element
+            # along an indexed axis where the other has more, so each is
+            # broadcast against the other first and the same elements are
+            # selected from both
+            nominal = _broadcast_item(nominal, shape_array_distribution, item_nominal)
+            distribution = _broadcast_item(distribution, shape_array_distribution, item_distribution)
 
         else:
             return NotImplemented

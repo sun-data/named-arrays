@@ -8,6 +8,7 @@ import numpy as np
 import astropy.units as u
 import named_arrays as na
 import named_arrays._core_array_functions as _core_array_functions
+from named_arrays._core import _broadcast_item
 from named_arrays._functions import _fields
 import itertools
 
@@ -861,6 +862,10 @@ class AbstractFunctionArray(
 
             item_inputs = dict()
             item_outputs = dict()
+            # the number of elements along each center axis which the inputs
+            # or the outputs are broadcast to, where they have only one
+            shape_center_inputs = dict()
+            shape_center_outputs = dict()
             for ax in item:
                 item_ax = item[ax]
                 if isinstance(item_ax, na.AbstractFunctionArray):
@@ -877,17 +882,40 @@ class AbstractFunctionArray(
                         return NotImplemented
                 else:
                     #can't assume center ax is in both outputs and inputs
-                    if ax in shape_inputs:
+                    num_inputs = shape_inputs.get(ax)
+                    num_outputs = shape_outputs.get(ax)
+                    if num_inputs is not None:
                         item_inputs[ax] = item_ax
-                    if ax in shape_outputs:
+                    if num_outputs is not None:
                         item_outputs[ax] = item_ax
+                    # the inputs or the outputs may have a single element
+                    # along a center axis where the other has more, so it is
+                    # broadcast against the other first and the same elements
+                    # are selected from both
+                    if num_inputs == 1 and num_outputs not in (None, 1):
+                        shape_center_inputs[ax] = num_outputs
+                    if num_outputs == 1 and num_inputs not in (None, 1):
+                        shape_center_outputs[ax] = num_inputs
+
+            if shape_center_inputs:
+                shape_inputs = shape_inputs | shape_center_inputs
+                inputs = na.broadcast_to(inputs, shape_inputs)
+            if shape_center_outputs:
+                shape_outputs = shape_outputs | shape_center_outputs
+                outputs = na.broadcast_to(outputs, shape_outputs)
 
             # the fields are indexed like the outputs, and ignore the axes
-            # which they do not have
+            # which they do not have, but are broadcast first like the
+            # outputs along the axes where they have a single element
             fields = dict()
             if _fields.names(array):
                 item_fields = {ax: item_outputs.get(ax, item[ax]) for ax in item}
-                fields = _fields.apply(array, lambda v: v[item_fields], axes=tuple(item_fields))
+                shape_fields = shape_inputs | shape_outputs
+                fields = _fields.apply(
+                    array,
+                    lambda v: _broadcast_item(v, shape_fields, item_fields)[item_fields],
+                    axes=tuple(item_fields),
+                )
 
         else:
             return NotImplemented

@@ -483,6 +483,37 @@ class TestGetitemConstant:
         assert result.timedelta is images.timedelta
 
 
+@pytest.mark.parametrize("num_timedelta", [1, _num_t])
+@pytest.mark.parametrize(
+    argnames="item",
+    argvalues=[
+        dict(t=slice(1, 3)),
+        dict(t=2),
+        dict(t=-1),
+        dict(t=na.ScalarArray(np.array([2, 0]), axes="t")),
+    ],
+)
+def test_getitem_outputs_single(num_timedelta: int, item: dict) -> None:
+    """
+    Outputs with a single element along an axis, as after a reduction which
+    keeps the axis, are broadcast against the inputs before they are
+    indexed, and so is a field which also has a single element along it.
+    """
+    images = _images()
+    images = images.replace(
+        outputs=images.outputs[dict(t=slice(0, 1))],
+        timedelta=images.timedelta[dict(t=slice(0, num_timedelta))],
+    )
+    result = images[item]
+    shape_t = dict(t=_num_t)
+    outputs = na.broadcast_to(images.outputs, images.outputs.shape | shape_t)
+    timedelta = na.broadcast_to(images.timedelta, images.timedelta.shape | shape_t)
+    assert result.outputs.shape == outputs[item].shape
+    assert np.all(result.outputs == outputs[item])
+    assert result.timedelta.shape == timedelta[item].shape
+    assert np.all(result.timedelta == timedelta[item])
+
+
 class TestDebroadcast:
 
     def _images(self, timedelta: na.AbstractScalar) -> _Images:

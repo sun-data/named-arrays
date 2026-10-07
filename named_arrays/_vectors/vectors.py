@@ -7,6 +7,7 @@ import functools
 import numpy as np
 import astropy.units as u
 import named_arrays as na
+from named_arrays._core import _broadcast_item
 
 __all__ = [
     "VectorPrototypeT",
@@ -341,6 +342,12 @@ class AbstractVectorArray(
                 return NotImplemented
 
         elif isinstance(item, dict):
+
+            # a component with a single element along an indexed axis is
+            # broadcast against the others first, so that the same elements
+            # are selected from every component
+            for c in components:
+                components[c] = _broadcast_item(components[c], shape_array, item)
 
             item = item.copy()
             for ax in item:
@@ -1022,9 +1029,9 @@ class AbstractWcsVector(
             elif not isinstance(item_ax, slice) and not np.issubdtype(type(item_ax), np.integer):
                 return super()._getitem(item)
 
-        # A WCS parameter with a sliced WCS axis may have only one element
-        # along it, broadcast against the pixel indices, which slicing it
-        # would not account for, so it is left to the explicit vector.
+        # A vector with a WCS parameter along a sliced WCS axis finds its
+        # shape from its explicit coordinates (see :attr:`shape`), and so would
+        # the result, so it is left to the explicit vector.
         for p in parameters_wcs.values():
             if not item_wcs.keys().isdisjoint(na.shape(p)):
                 return super()._getitem(item)
@@ -1037,12 +1044,28 @@ class AbstractWcsVector(
         if any(len(pixels[ax]) < 2 for ax in pixels):
             return super()._getitem(item)
 
+        components_explicit = self._components_explicit
+
+        # An explicit component or a WCS parameter with a single element
+        # along an indexed axis is broadcast against the coordinates first,
+        # as it is in the explicit vector, so that the same elements are
+        # selected from it.
+        values = list(components_explicit.values()) + list(parameters_wcs.values())
+        if any(na.shape(v).get(ax) == 1 for v in values for ax in item):
+            shape = self.shape
+            components_explicit = {
+                c: _broadcast_item(components_explicit[c], shape, item)
+                for c in components_explicit
+            }
+            parameters_wcs = {
+                p: _broadcast_item(parameters_wcs[p], shape, item)
+                for p in parameters_wcs
+            }
+
         crpix = na.getitem(parameters_wcs["crpix"], item)
         components_crpix = dict(crpix.components)
         for ax in pixels:
             components_crpix[ax] = components_crpix[ax] - pixels[ax].start
-
-        components_explicit = self._components_explicit
 
         return self.replace(
             **na.getitem(components_explicit, item),

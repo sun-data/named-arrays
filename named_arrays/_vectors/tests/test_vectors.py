@@ -891,19 +891,76 @@ class AbstractTestAbstractWcsVector(
         assert np.all(result.explicit == expected)
 
 
-def _wcs_channels(crpix: float) -> na.ExplicitTemporalWcsPositionalVectorArray:
+def _vectors_single_element() -> list[na.AbstractVectorArray]:
+    """
+    Vectors and a matrix with a component which has a single element along
+    an axis where the other components have many.
+    """
+    x = na.arange(0, 10, axis="x")
+    single = na.ScalarArray(np.array([2]), axes="x")
+    return [
+        na.Cartesian2dVectorArray(x=x, y=single),
+        na.Cartesian2dVectorArray(x=single, y=x + na.arange(0, 3, axis="y")),
+        na.Cartesian2dMatrixArray(
+            x=na.Cartesian2dVectorArray(x=x, y=single),
+            y=na.Cartesian2dVectorArray(x=single, y=1),
+        ),
+    ]
+
+
+@pytest.mark.parametrize("array", _vectors_single_element())
+@pytest.mark.parametrize(
+    argnames="item",
+    argvalues=[
+        dict(x=slice(2, 5)),
+        dict(x=5),
+        dict(x=-1),
+        dict(x=slice(None, None, -3)),
+        dict(x=slice(5, 2)),
+        dict(x=na.ScalarArray(np.array([7, 2]), axes="x")),
+        dict(x=na.ScalarArray(np.array([7, 2]), axes="z")),
+        dict(x=slice(2, 5), y=1),
+        na.arange(0, 10, axis="x") > 4,
+    ],
+)
+def test__getitem__single_element(
+    array: na.AbstractVectorArray,
+    item: dict[str, int | slice | na.AbstractArray] | na.AbstractArray,
+) -> None:
+    """
+    A component with a single element along an indexed axis, where the other
+    components have more, is indexed as if it were broadcast against them.
+    """
+    result = array[item]
+    expected = array.broadcasted[item]
+    assert result.shape == expected.shape
+    assert np.all(result == expected)
+
+
+def _wcs_channels(
+    crpix: float,
+    single: bool = False,
+) -> na.ExplicitTemporalWcsPositionalVectorArray:
     """
     A WCS vector whose parameters vary along a `channel` axis.
+
+    If `single`, the time, a component of `crval`, and `cdelt` have a single
+    element along `channel` instead, which is broadcast against the others.
     """
     channel = na.ScalarArray(np.arange(3), axes="channel")
+    time = channel
+    crval_y = -channel
+    cdelt_x = 1 + channel
+    if single:
+        time = crval_y = cdelt_x = na.ScalarArray(np.array([2]), axes="channel")
     return na.ExplicitTemporalWcsPositionalVectorArray(
-        time=channel * u.s,
+        time=time * u.s,
         crval=na.PositionalVectorArray(
-            position=na.Cartesian2dVectorArray(channel, -channel) * u.arcsec,
+            position=na.Cartesian2dVectorArray(channel, crval_y) * u.arcsec,
         ),
         crpix=na.CartesianNdVectorArray(dict(x=crpix + 0 * channel, y=crpix + channel)),
         cdelt=na.PositionalVectorArray(
-            position=na.Cartesian2dVectorArray(1 + channel, 1) * u.arcsec,
+            position=na.Cartesian2dVectorArray(cdelt_x, 1) * u.arcsec,
         ),
         pc=na.PositionalMatrixArray(
             position=na.Cartesian2dMatrixArray(
@@ -922,23 +979,27 @@ def _wcs_channels(crpix: float) -> na.ExplicitTemporalWcsPositionalVectorArray:
         (dict(channel=1, x=slice(4, 8)), True),
         (dict(channel=slice(1, None), y=slice(-5, None)), True),
         (dict(channel=na.ScalarArray(np.array([0, 2]), axes="channel"), x=slice(2, 6)), True),
+        (dict(channel=-1, y=slice(2, 6)), True),
         (dict(x=slice(4, 5)), False),
         (dict(x=slice(4, 4)), False),
     ],
 )
 @pytest.mark.parametrize("crpix", [4, 3.5])
+@pytest.mark.parametrize("single", [False, True])
 def test__getitem__wcs_channels(
     item: dict[str, int | slice | na.AbstractArray],
     lazy: bool,
     crpix: float,
+    single: bool,
 ) -> None:
     """
     Indexing a WCS vector along the axis of its parameters and along its WCS
     axes gives the same vector as indexing the explicit vector, including
     when a slice starts half a pixel past `crpix`, where the coordinates of
-    the first pixel along that axis are zero.
+    the first pixel along that axis are zero, and when some parameters have
+    a single element along `channel`.
     """
-    array = _wcs_channels(crpix)
+    array = _wcs_channels(crpix, single)
     result = array[item]
     expected = array.explicit[item]
     if lazy:
@@ -948,6 +1009,7 @@ def test__getitem__wcs_channels(
         assert isinstance(result, na.AbstractExplicitVectorArray)
     assert result.shape == expected.shape
     assert np.all(result.explicit == expected)
+    assert np.all(result.explicit == array.broadcasted[item])
 
 
 @pytest.mark.parametrize("num_crval", [1, 5])

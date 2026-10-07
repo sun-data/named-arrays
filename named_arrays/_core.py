@@ -480,6 +480,44 @@ def getitem(
         return a
 
 
+def _broadcast_item(
+    a: Any,
+    shape: dict[str, int],
+    item: Mapping[str, Any],
+) -> Any:
+    """
+    Broadcast `a` along each axis of `item` where it has a single element
+    but `shape` has a different number of elements.
+
+    An array which is broadcast against others, such as a component of a
+    vector, can have a single element along an axis where the others have
+    many. Indexing that element by the same item as the others would select
+    the wrong elements of it, or none at all, so it is broadcast first.
+
+    Parameters
+    ----------
+    a
+        The array to broadcast. Any value which is not a named array is
+        returned unchanged.
+    shape
+        The shape of the arrays which `a` is broadcast against.
+    item
+        The items along each axis which will index `a`. An item of
+        :obj:`None` does not index its axis, so `a` is not broadcast along it.
+    """
+    if not isinstance(a, AbstractArray):
+        return a
+    shape_a = a.shape
+    shape_new = {
+        ax: shape[ax]
+        for ax in item
+        if item[ax] is not None and shape_a.get(ax) == 1 and shape.get(ax, 1) != 1
+    }
+    if not shape_new:
+        return a
+    return a.broadcast_to(shape_a | shape_new)
+
+
 def pack(a: Any, axis: str = "pack") -> na.ScalarArray:
     """
     Flatten the numeric leaves of a nested structure into a 1D array.

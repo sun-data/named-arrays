@@ -15,19 +15,24 @@ def _function_arrays() -> list[na.FunctionArray]:
     def full(value: float) -> na.ScalarArray:
         return na.ScalarArray.full(shape_base, value)
 
+    def single(value: float) -> na.ScalarArray:
+        return na.ScalarArray.full(dict(channel=1), value)
+
     # A stack of images, each with its own slightly rotated WCS, with the
-    # reference pixel at a vertex or, as for AIA, at the center of a pixel.
+    # reference pixel at a vertex or, as for AIA, at the center of a pixel,
+    # and with the time and the plate scale either given for each image or
+    # given once and broadcast against the other parameters.
     images = [
         na.FunctionArray(
             inputs=na.ExplicitTemporalSpectralWcsPositionalVectorArray(
-                time=full(0) << u.s,
+                time=constant(0) << u.s,
                 wavelength=na.ScalarArray(np.array([171, 193, 211]) << u.AA, axes="channel"),
                 crval=na.PositionalVectorArray(
                     position=na.Cartesian2dVectorArray(full(1), full(2)) << u.arcsec,
                 ),
                 crpix=na.CartesianNdVectorArray(dict(x=full(crpix), y=full(crpix))),
                 cdelt=na.PositionalVectorArray(
-                    position=na.Cartesian2dVectorArray(full(0.5), full(0.5)) << u.arcsec,
+                    position=na.Cartesian2dVectorArray(constant(0.5), constant(0.5)) << u.arcsec,
                 ),
                 pc=na.PositionalMatrixArray(
                     position=na.Cartesian2dMatrixArray(
@@ -44,7 +49,11 @@ def _function_arrays() -> list[na.FunctionArray]:
                 seed=42,
             ),
         )
-        for crpix in [_num / 2, _num / 2 - 0.5]
+        for crpix, constant in [
+            (_num / 2, full),
+            (_num / 2 - 0.5, full),
+            (_num / 2 - 0.5, single),
+        ]
     ]
 
     # A spectrograph raster, where the time of each exposure is an explicit
@@ -136,4 +145,5 @@ def test__getitem__(
     assert result.shape == expected.shape
     assert result.inputs.shape == expected.inputs.shape
     assert np.all(result.inputs.explicit == expected.inputs)
+    assert np.all(result.inputs.explicit == array.broadcasted[item].inputs)
     assert np.all(result.outputs == expected.outputs)
