@@ -4,6 +4,7 @@ import astropy.units as u
 import named_arrays as na
 import named_arrays._scalars.scalar_array_functions
 import named_arrays._scalars.uncertainties.uncertainties_array_functions
+from named_arrays._functions import _fields
 
 __all__ = [
     "DEFAULT_FUNCTIONS",
@@ -94,12 +95,19 @@ def array_function_default(
         inputs_out = outputs_out = out
 
     if keepdims:
+        _check_keepdims(func, a, axis_normalized)
         if inputs_out is not None:
             np.copyto(src=inputs, dst=inputs_out)
             inputs_result = inputs_out
         else:
             inputs_result = inputs
     else:
+        _fields.check_axes(
+            a=a,
+            axis=axis_normalized,
+            operation=f"np.{func.__name__} with keepdims=False removes",
+            hint=" Or keep the axes with keepdims=True.",
+        )
         inputs = inputs.cell_centers(axis=set(axis_normalized)-set(a.axes_center))
         shape_inputs = na.shape_broadcasted(inputs, inputs_where)
         inputs_result = np.mean(
@@ -123,7 +131,7 @@ def array_function_default(
             outputs=outputs_result,
         )
     else:
-        result = out
+        result = _fields.out(out, _fields.values(a))
 
     return result
 
@@ -185,7 +193,7 @@ def array_function_cumulative_reduce(
             outputs=outputs_result,
         )
     else:
-        result = out
+        result = _fields.out(out, _fields.values(a))
 
     return result
 
@@ -233,12 +241,19 @@ def array_function_percentile_like(
         inputs_out = outputs_out = out
 
     if keepdims:
+        _check_keepdims(func, a, axis_normalized)
         if inputs_out is not None:
             np.copyto(src=inputs, dst=inputs_out)
             inputs_result = inputs_out
         else:
             inputs_result = inputs
     else:
+        _fields.check_axes(
+            a=a,
+            axis=axis_normalized,
+            operation=f"np.{func.__name__} with keepdims=False removes",
+            hint=" Or keep the axes with keepdims=True.",
+        )
         inputs_result = np.mean(
             a=na.broadcast_to(inputs, shape_inputs),
             axis=[ax for ax in shape_inputs if ax in axis_normalized],
@@ -263,9 +278,35 @@ def array_function_percentile_like(
             outputs=outputs_result,
         )
     else:
-        result = out
+        result = _fields.out(out, _fields.values(a))
 
     return result
+
+
+def _check_keepdims(
+        func: Callable,
+        a: na.AbstractFunctionArray,
+        axis: tuple[str, ...],
+) -> None:
+    """
+    Raise an error if a reduction which keeps its axes would reduce a field of
+    `a` to a single element anyway.
+
+    The result keeps the elements of the inputs along the reduced axes, and
+    so do the fields, but the outputs and the result have a single element
+    along an axis which the inputs do not have.
+    """
+    if not _fields.names(a):
+        return
+    shape_inputs = na.shape(a.inputs)
+    _fields.check_axes(
+        a=a,
+        axis=tuple(ax for ax in axis if ax not in shape_inputs),
+        operation=(
+            f"np.{func.__name__} reduces to a single element, since "
+            f"keepdims=True keeps only the axes of the inputs"
+        ),
+    )
 
 
 def array_function_arg_reduce(
@@ -304,6 +345,7 @@ def array_function_stack_like(
             )
 
         arrays_broadcasted = list()
+        lengths = list()
         for array in arrays:
 
             array = array.explicit
@@ -311,11 +353,31 @@ def array_function_stack_like(
 
             array = array.broadcast_to({axis: shape[axis]}, append=True)
             arrays_broadcasted.append(array)
+            lengths.append(shape[axis])
 
         arrays = arrays_broadcasted
 
+    else:
+        lengths = None
+
     arrays_inputs = tuple(array.inputs for array in arrays)
     arrays_outputs = tuple(array.outputs for array in arrays)
+
+    # the result takes the type of an array whose type is a subclass of the
+    # types of all the others, so that it does not depend on their order
+    template = arrays[0]
+    for array in arrays:
+        if all(isinstance(array, type(other)) for other in arrays):
+            template = array
+            break
+
+    fields = _fields.stack_like(
+        func=func,
+        arrays=arrays,
+        template=template,
+        axis=axis,
+        lengths=lengths,
+    )
 
     if out is None:
         inputs_out = outputs_out = out
@@ -338,14 +400,15 @@ def array_function_stack_like(
     )
 
     if out is None:
-        result = arrays[0].replace(
+        result = template.replace(
             inputs=inputs_result,
             outputs=outputs_result,
+            **fields,
         )
     else:
         out.inputs = inputs_result
         out.outputs = outputs_result
-        result = out
+        result = _fields.out(out, fields)
 
     return result
 
@@ -381,6 +444,15 @@ def copyto(
     else:
         where_inputs = where_outputs = where
 
+    # the fields are written the way an assignment writes them, as
+    # ``dst[where] = src[where]``
+    if not _fields.values(dst):
+        writes = []
+    elif isinstance(where, na.AbstractFunctionArray):
+        writes = _fields.setitem(dst, where.outputs, src[where])
+    else:
+        writes = _fields.setitem(dst, dict(), src)
+
     try:
         np.copyto(dst=dst.inputs, src=src.inputs, casting=casting, where=where_inputs)
     except TypeError:
@@ -390,6 +462,9 @@ def copyto(
         np.copyto(dst=dst.outputs, src=src.outputs, casting=casting, where=where_outputs)
     except TypeError:
         dst.outputs = src.outputs
+
+    for write in writes:
+        write()
 
 
 @_implements(np.gradient)
@@ -479,7 +554,16 @@ def moveaxis(
     source_inputs, destination_inputs = tuple(tuple(i) for i in zip(*source_destination_inputs))
     source_outputs, destination_outputs = tuple(tuple(i) for i in zip(*source_destination_outputs))
 
+    def move(v: na.AbstractArray) -> na.AbstractArray:
+        pairs = [(src, dest) for src, dest in zip(source, destination) if src in v.shape]
+        return np.moveaxis(
+            a=v,
+            source=tuple(src for src, _ in pairs),
+            destination=tuple(dest for _, dest in pairs),
+        )
+
     return a.replace(
+        **_fields.apply(a, move, axes=source),
         inputs=np.moveaxis(
             a=a.inputs,
             source=source_inputs,
@@ -506,10 +590,28 @@ def reshape(
         )
 
     a = a.broadcasted
+    shape_old = a.shape
 
-    return a.type_explicit(
+    fields = dict()
+    for name in _fields.names(a):
+        v = getattr(a, name)
+        if set(v.shape).isdisjoint(shape_old):
+            continue
+        if not set(v.shape).issubset(shape_old):
+            raise ValueError(
+                f"`{name}` of this {type(a).__name__} has axes "
+                f"{tuple(v.shape)}, which cannot be reshaped along with the "
+                f"axes of the array, {tuple(shape_old)}, since the reshape "
+                f"does not account for {set(v.shape) - set(shape_old)}"
+            )
+        # a reshape flattens the elements in the order of the axes, so the
+        # field is put in the same shape and order as the outputs first
+        fields[name] = np.reshape(na.broadcast_to(v, shape_old), shape)
+
+    return a.replace(
         inputs=np.reshape(a.inputs, shape),
-        outputs=np.reshape(a.outputs, shape)
+        outputs=np.reshape(a.outputs, shape),
+        **fields,
     )
 
 
@@ -542,6 +644,11 @@ def take_along_axis(
     return arr.replace(
         inputs=np.take_along_axis(inputs, indices, axis=axis),
         outputs=np.take_along_axis(outputs, indices, axis=axis),
+        **_fields.apply(
+            arr,
+            lambda v: np.take_along_axis(v, indices, axis=axis),
+            axes=(axis,),
+        ),
     )
 
 
@@ -639,7 +746,7 @@ def clip(
     if out is None:
         result = a.replace(outputs=result)
     else:
-        result = out
+        result = _fields.out(out, _fields.values(a))
 
     return result
 
@@ -668,7 +775,7 @@ def round(
     if out is None:
         result = a.replace(outputs=result)
     else:
-        result = out
+        result = _fields.out(out, _fields.values(a))
 
     return result
 
@@ -715,6 +822,11 @@ def repeat(
     a = a.broadcasted
 
     return a.replace(
+        **_fields.apply(
+            a,
+            lambda v: np.repeat(a=v, repeats=repeats, axis=axis),
+            axes=(axis,),
+        ),
         inputs=np.repeat(
             a=a.inputs,
             repeats=repeats,

@@ -8,6 +8,7 @@ import numpy as np
 import astropy.units as u
 import named_arrays as na
 import named_arrays._core_array_functions as _core_array_functions
+from named_arrays._functions import _fields
 import itertools
 
 __all__ = [
@@ -326,9 +327,14 @@ class AbstractFunctionArray(
         inputs = na.broadcast_to(inputs, inputs_shape_broadcasted)
         outputs = na.broadcast_to(outputs, outputs_shape_broadcasted)
 
+        def combine(v: na.AbstractArray) -> na.AbstractArray:
+            v = na.broadcast_to(v, v.shape | {ax: shape[ax] for ax in axes})
+            return v.combine_axes(axes=axes, axis_new=axis_new)
+
         return self.replace(
             inputs=inputs.combine_axes(axes=axes, axis_new=axis_new),
             outputs=outputs.combine_axes(axes=axes, axis_new=axis_new),
+            **_fields.apply(self, combine, axes=axes),
         )
 
     def __call__(
@@ -375,9 +381,16 @@ class AbstractFunctionArray(
 
         _self = self.explicit
 
-        inputs_new, _, _ = _self._normalize__regrid__args(
+        inputs_new, _, axis_regrid = _self._normalize__regrid__args(
             inputs=inputs,
             axis=axis,
+        )
+
+        _fields.check_axes(
+            _self,
+            axis_regrid,
+            operation="regrid resamples",
+            resamples=True,
         )
 
         if weights is not None:
@@ -526,9 +539,33 @@ class AbstractFunctionArray(
         seed: None | int = None,
     ) -> na.AbstractExplicitArray:
         exp = self.explicit
+
+        if axis is None:
+            axes = tuple(na.shape(exp.outputs))
+        elif isinstance(axis, str):
+            axes = (axis,)
+        else:
+            axes = tuple(axis)
+
+        # the fields are not sampled at the same random points as the outputs,
+        # and the centers of a mask or a count would be fractions
+        if random:
+            _fields.check_axes(
+                exp,
+                axes,
+                operation="cell_centers with random=True samples at random points",
+                resamples=True,
+                hint=" Or use random=False.",
+            )
+        _fields.check_inexact(exp, axes, operation="cell_centers")
+
+        def centers(v: na.AbstractArray) -> na.AbstractArray:
+            return v.cell_centers(axis=tuple(ax for ax in axes if ax in v.shape))
+
         return exp.replace(
             inputs=exp.inputs.cell_centers(axis, random=random, seed=seed),
             outputs=exp.outputs.cell_centers(axis, random=random, seed=seed),
+            **_fields.apply(exp, centers, axes=axes),
         )
 
     def integrate(
@@ -591,6 +628,8 @@ class AbstractFunctionArray(
 
         if not set(axis).issubset(self.axes):
             raise ValueError(f"axes {set(axis) - set(self.axes)} not in {self.axes}")
+
+        _fields.check_axes(self, axis, operation="integration removes")
 
         axes_vertex = self.axes_vertex
         inputs = self.inputs
@@ -797,6 +836,14 @@ class AbstractFunctionArray(
             inputs = na.broadcast_to(inputs, na.broadcast_shapes(inputs.shape, shape_item_inputs))
             outputs = na.broadcast_to(outputs, na.broadcast_shapes(outputs.shape, shape_item_outputs))
 
+            # the fields are selected the same way as the outputs, so they
+            # are broadcast against the item first
+            fields = _fields.apply(
+                array,
+                lambda v: na.broadcast_to(v, na.broadcast_shapes(v.shape, shape_item_outputs))[item_outputs],
+                axes=tuple(shape_item_outputs),
+            )
+
         elif isinstance(item, dict):
 
             # the shapes are found once, since they may need to be computed
@@ -835,12 +882,20 @@ class AbstractFunctionArray(
                     if ax in shape_outputs:
                         item_outputs[ax] = item_ax
 
+            # the fields are indexed like the outputs, and ignore the axes
+            # which they do not have
+            fields = dict()
+            if _fields.names(array):
+                item_fields = {ax: item_outputs.get(ax, item[ax]) for ax in item}
+                fields = _fields.apply(array, lambda v: v[item_fields], axes=tuple(item_fields))
+
         else:
             return NotImplemented
 
         return array.replace(
             inputs=inputs[item_inputs],
             outputs=outputs[item_outputs],
+            **fields,
         )
 
     def _getitem_reversed(
@@ -890,9 +945,13 @@ class AbstractFunctionArray(
             self,
             x1: float | u.Quantity | FunctionArray,
             x2: float | u.Quantity | FunctionArray,
-            out: None | na.FunctionArray = None,
+            out: None | na.FunctionArray | tuple[na.FunctionArray] = None,
             **kwargs,
     ) -> FunctionArray:
+
+        # numpy passes the `out` argument of a ufunc as a tuple
+        if isinstance(out, tuple):
+            (out,) = out
 
         if isinstance(x1, na.AbstractArray):
             if isinstance(x1, AbstractFunctionArray):
@@ -941,7 +1000,7 @@ class AbstractFunctionArray(
         )
 
         if out is not None:
-            result = out
+            result = _fields.out(out, _fields.values(result))
 
         return result
 
@@ -1028,6 +1087,7 @@ class AbstractFunctionArray(
             if out[i] is not None:
                 out[i].inputs = result[i].inputs
                 out[i].outputs = result[i].outputs
+                _fields.out(out[i], _fields.values(result[i]))
                 result[i] = out[i]
 
         if nout == 1:
@@ -1263,6 +1323,110 @@ class FunctionArray(
     :attr:`inputs` represents the inputs (or independent variables) of the
     function, and :attr:`outputs` represents the outputs (or dependent variables) of
     the function.
+
+    A subclass can add fields of its own, such as the exposure time of each
+    image of an observation. Every such field whose value is a named array is
+    treated as sampled along the axes of the function:
+
+    * Indexing (with a :class:`dict`, :meth:`isel`, index arrays, or a boolean
+      mask), :func:`numpy.stack`, :func:`numpy.concatenate`,
+      :func:`numpy.moveaxis`, :func:`numpy.repeat`,
+      :func:`numpy.take_along_axis`, :func:`numpy.reshape`,
+      :meth:`combine_axes`, and :meth:`cell_centers` do to the field what they
+      do to the outputs, along the axes which the field has.
+      :func:`named_arrays.debroadcast` keeps an axis that the field varies
+      along.
+    * Assigning another array of the subclass with ``__setitem__``, or
+      copying one with :func:`numpy.copyto`, writes its fields into those of
+      this array, in place, like the outputs. A field which does not vary
+      along an axis being assigned can only be given the value it already
+      has, and so can a field which is not a named array, such as a string.
+      Since most operations pass the fields of an array on without copying
+      them, assigning into the result of, say, a ufunc also changes the
+      fields of the array it was computed from. A field without a
+      distribution is instead replaced by an uncertain copy of itself, like
+      the outputs, when the value is uncertain or the mask selects different
+      elements in different samples.
+    * An operation which removes or resamples an axis that the field varies
+      along raises an error: a reduction with ``keepdims=False``,
+      :func:`numpy.percentile` (which removes the axes by default),
+      :meth:`integrate`, :meth:`regrid`, or :meth:`cell_centers` with
+      ``random=True``. So does a reduction with ``keepdims=True`` along an
+      axis which the inputs do not have, since it keeps only the axes of the
+      inputs. Whether the field should be summed, averaged, or dropped
+      depends on what it is, so replace it first, for example with
+      :func:`dataclasses.replace`.
+    * :meth:`cell_centers` also raises an error for a field whose elements
+      are not floating-point numbers, such as a mask, rather than turn them
+      into fractions.
+    * The other operations, including the reductions which keep the reduced
+      axes (the default for a function array), pass the field on unchanged. A
+      ufunc of several arrays of the subclass takes the fields of the first.
+      An array given as the ``out`` argument of an operation takes the fields
+      of the result, if its type has them.
+
+    When the arrays combined by :func:`numpy.stack` or
+    :func:`numpy.concatenate` have fields which are not named arrays, such as
+    a string or a number, those must be the same in every array. Fields which
+    cannot be compared, such as models of an instrument, are taken from the
+    array whose type is a subclass of the types of all the others. Arrays
+    with a field which that type does not have, such as arrays of two
+    unrelated subclasses, cannot be combined.
+
+    Every function array checks, when it is built, that each such field has
+    the same number of elements as the outputs along the axes they share, so
+    that an operation which changes the outputs without the field fails
+    instead of leaving the field stale. The check has limits:
+
+    * It allows outputs with a single element along an axis, as after a
+      reduction which keeps its axes, and it cannot see an axis which an
+      operation removed from the outputs but not from the field. Catching
+      those would take the shape of the inputs, which can be expensive to
+      compute.
+    * It skips outputs and fields which are implicit, such as random samples,
+      since finding their shape would compute them.
+    * A subclass which defines its own ``__post_init__`` must call
+      ``super().__post_init__()`` for the check to run.
+
+    Fields whose values are not named arrays are otherwise passed on unchanged
+    by every operation.
+
+    Examples
+    --------
+
+    The exposure time of each of a sequence of images follows the images when
+    they are indexed.
+
+    .. jupyter-execute::
+
+        import dataclasses
+        import numpy as np
+        import astropy.units as u
+        import named_arrays as na
+
+        @dataclasses.dataclass(eq=False, repr=False)
+        class Images(na.FunctionArray):
+            timedelta: na.AbstractScalar = 0 * u.s
+
+        images = Images(
+            inputs=na.linspace(0, 30, axis="time", num=4) * u.s,
+            outputs=na.ScalarArray(np.arange(4.0), axes="time") * u.DN,
+            timedelta=na.ScalarArray(np.array([1, 2, 3, 4]) * u.s, axes="time"),
+        )
+
+        images[dict(time=slice(1, 3))].timedelta
+
+    Co-adding the images removes the axis of time, so the exposure times are
+    added up first.
+
+    .. jupyter-execute::
+
+        total = np.sum(
+            dataclasses.replace(images, timedelta=images.timedelta.sum("time")),
+            axis="time",
+            keepdims=False,
+        )
+        total.outputs / total.timedelta
     """
     inputs: InputsT = 0
     """The inputs of the function."""
@@ -1321,6 +1485,9 @@ class FunctionArray(
 
     outputs: OutputsT = 0
     """The outputs of the function."""
+
+    def __post_init__(self) -> None:
+        _fields.check(self)
 
     @classmethod
     def from_scalar_array(
@@ -1469,6 +1636,10 @@ class FunctionArray(
 
         from named_arrays._scalars.uncertainties import uncertainties
 
+        # every field is checked before anything is written, so that an error
+        # does not leave this array half written
+        writes = _fields.setitem(self, item_outputs, value)
+
         # Inputs or outputs without a distribution cannot store a selection
         # which differs between samples, or an uncertain value, so they are
         # replaced by an uncertain copy of themselves once both are assigned.
@@ -1482,6 +1653,9 @@ class FunctionArray(
 
         self.inputs = inputs
         self.outputs = outputs
+
+        for write in writes:
+            write()
 
 
 @dataclasses.dataclass(eq=False, repr=False)
