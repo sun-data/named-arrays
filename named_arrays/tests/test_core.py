@@ -23,6 +23,20 @@ def _normalize_shape(shape: dict[str, None | int]) -> dict[str, int]:
     return {axis: shape[axis] for axis in shape if shape[axis] is not None}
 
 
+def _mask_varies(mask: na.AbstractArray) -> bool:
+    """
+    Whether any uncertain scalar inside `mask`, such as a component of a
+    vector or the outputs of a function, selects different elements in its
+    nominal value and in the samples of its distribution.
+    """
+    from named_arrays._scalars.uncertainties import uncertainties
+    if isinstance(mask, na.AbstractFunctionArray):
+        return _mask_varies(mask.inputs) or _mask_varies(mask.outputs)
+    if isinstance(mask, na.AbstractVectorArray):
+        return any(_mask_varies(entry) for entry in mask.entries.values())
+    return uncertainties._varies(mask)
+
+
 def test_linspace_num_scalar_array():
     # `num` given as a 0-d integer scalar array must be accepted, both directly
     # and as the per-component values produced when `linspace` decomposes a
@@ -1063,6 +1077,23 @@ class AbstractTestAbstractArray(
     ):
         pass
 
+    def test__getitem__gathers_unnamed_axes(self, array: na.AbstractArray):
+        # An index which varies along an axis of the array that the item
+        # does not name, like the indices returned by `numpy.argsort()`,
+        # gathers along that axis instead of repeating it
+        shape = array.shape
+        if len(shape) < 2:
+            return
+        axis, axis_other = tuple(shape)[:2]
+        index = na.ScalarArray(
+            ndarray=np.random.default_rng(0).integers(0, shape[axis], size=(shape[axis], shape[axis_other])),
+            axes=(axis, axis_other),
+        )
+        result = array[{axis: index}]
+        for i in range(shape[axis_other]):
+            item = {axis_other: i}
+            assert np.all(result[item] == array[item][{axis: index[item]}])
+
     def test_isel(self, array: na.AbstractArray):
         shape = array.shape
         if not shape:
@@ -1930,7 +1961,20 @@ class AbstractTestAbstractArray(
             #
             # else:
             mask = array > array.mean()
-            result = array[np.nonzero(mask)]
+            try:
+                indices = np.nonzero(mask)
+            except ValueError as e:
+                # An uncertain mask which selects different elements in
+                # different samples has no single set of indices, which the
+                # uncertain scalar tests check precisely. The correspondence
+                # below still holds for the nominal value, where every mask is
+                # certain.
+                assert str(e).startswith("the nonzero elements of `a` differ")
+                assert _mask_varies(mask)
+                array = na.nominal(array.broadcasted)
+                mask = array > array.mean()
+                indices = np.nonzero(mask)
+            result = array[indices]
             result_expected = array[mask]
             assert np.all(result == result_expected)
 
@@ -3306,6 +3350,26 @@ class AbstractTestAbstractExplicitArray(
             assert np.all(result[item].outputs == value.outputs)
         else:
             assert np.all(result[item] == value)
+
+    def test__setitem__gathers_unnamed_axes(self, array: na.AbstractArray):
+        # Assigning through an index which varies along an axis that the item
+        # does not name scatters along that axis, so values assigned through
+        # a different permutation at each position come back out through it
+        shape = array.shape
+        if len(shape) < 2:
+            return
+        axis, axis_other = tuple(shape)[:2]
+        index = na.ScalarArray(
+            ndarray=np.random.default_rng(0).permuted(
+                np.broadcast_to(np.arange(shape[axis]), (shape[axis_other], shape[axis])),
+                axis=~0,
+            ),
+            axes=(axis_other, axis),
+        )
+        array = na.broadcast_to(array, shape)
+        result = array.copy()
+        result[{axis: index}] = array
+        assert np.all(result[{axis: index}] == array)
 
 
 class AbstractTestAbstractExplicitArrayCreation(

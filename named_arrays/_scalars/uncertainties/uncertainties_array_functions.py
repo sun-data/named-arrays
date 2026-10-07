@@ -128,6 +128,21 @@ def array_function_default(
     a = a.broadcasted
     shape_a = a.shape
 
+    if isinstance(where, na.AbstractUncertainScalarArray):
+        # A distribution without a sample axis, or with only one sample, has
+        # the same values in every sample, so it can be reduced over a
+        # selection which differs between samples once it is broadcast
+        # along them.
+        axis_distribution = a.axis_distribution
+        num_where = na.shape(where.distribution).get(axis_distribution, 1)
+        shape_distribution = na.shape(a.distribution)
+        if shape_distribution.get(axis_distribution, 1) == 1 and num_where > 1:
+            shape_distribution[axis_distribution] = num_where
+            a = na.UncertainScalarArray(
+                nominal=a.nominal,
+                distribution=na.broadcast_to(a.distribution, shape_distribution),
+            )
+
     kwargs = dict()
     kwargs_nominal = dict()
     kwargs_distribution = dict()
@@ -696,19 +711,17 @@ def sort(
 
     a = a.broadcasted
 
-    indices_sorted = np.argsort(
-        a=a,
-        axis=axis,
-        kind=kind,
-        order=order,
-    )
+    # The nominal value and every sample are sorted independently, so the
+    # sort must never reach across the distribution axis.
+    if axis is None:
+        axis = na.axis_normalized(a, axis)
+        if not axis:
+            return a
 
-    result = na.UncertainScalarArray(
-        nominal=a.nominal[indices_sorted],
-        distribution=a.distribution[indices_sorted],
+    return na.UncertainScalarArray(
+        nominal=np.sort(a.nominal, axis=axis, kind=kind, order=order),
+        distribution=np.sort(a.distribution, axis=axis, kind=kind, order=order),
     )
-
-    return result
 
 
 @implements(np.argsort)
@@ -721,12 +734,21 @@ def argsort(
 
     a = a.broadcasted
 
-    return np.argsort(
-        a=np.mean(a.distribution, axis=a.axis_distribution),
-        axis=axis,
-        kind=kind,
-        order=order,
-    )
+    if axis is None:
+        axis = na.axis_normalized(a, axis)
+        if not axis:
+            return dict()
+
+    indices_nominal = np.argsort(a.nominal, axis=axis, kind=kind, order=order)
+    indices_distribution = np.argsort(a.distribution, axis=axis, kind=kind, order=order)
+
+    return {
+        ax: na.UncertainScalarArray(
+            nominal=indices_nominal[ax],
+            distribution=indices_distribution[ax],
+        )
+        for ax in indices_nominal
+    }
 
 
 @implements(np.take_along_axis)
@@ -911,12 +933,22 @@ def allclose(
 
 
 @implements(np.nonzero)
-def nonzero(a: na.AbstractUncertainScalarArray) -> dict[str, na.UncertainScalarArray]:
+def nonzero(a: na.AbstractUncertainScalarArray) -> dict[str, na.AbstractScalarArray]:
     a = a.explicit
 
-    result = np.nonzero(a.nominal * np.prod(a.distribution, axis=a.axis_distribution))
+    union, varies = uncertainties._mask_union(a != 0)
 
-    return result
+    if varies:
+        raise ValueError(
+            "the nonzero elements of `a` differ between its nominal value and the samples of its "
+            "distribution, so they cannot be described by a single set of indices. "
+            "Use the boolean array `a != 0` instead, with `numpy.where()`, or as an index, "
+            "which fills the elements a sample did not select with NaN and so needs "
+            "a floating-point array, or use `numpy.nonzero(a.nominal)` to select using "
+            "only the nominal value."
+        )
+
+    return np.nonzero(union)
 
 
 @implements(np.where)

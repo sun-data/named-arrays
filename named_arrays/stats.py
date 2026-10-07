@@ -183,7 +183,12 @@ def rankdata(
     count = na.ScalarArray(np.zeros(tuple(shape_count.values())), axes=tuple(shape_count.keys()))
     index_count = na.indices(shape_count)
     index_count[axis_flat] = group
-    count[index_count] = (index + 1).astype(float)
+    value_count = (index + 1).astype(float)
+    # The groups of an uncertain array can differ between samples,
+    # which needs a count that stores every sample separately.
+    from named_arrays._scalars.uncertainties import uncertainties
+    count = uncertainties._as_uncertain(count, index_count, value_count)
+    count[index_count] = value_count
 
     count_leq = np.take_along_axis(count, group, axis=axis_flat)
     count_less = np.take_along_axis(count, group - 1, axis=axis_flat)

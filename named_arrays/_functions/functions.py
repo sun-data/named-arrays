@@ -1467,10 +1467,21 @@ class FunctionArray(
             value_inputs = None
             value_outputs = value
 
-        if value_inputs is not None and assign_inputs:
-            self.inputs[item_inputs] = value_inputs
+        from named_arrays._scalars.uncertainties import uncertainties
 
-        self.outputs[item_outputs] = value_outputs
+        # Inputs or outputs without a distribution cannot store a selection
+        # which differs between samples, or an uncertain value, so they are
+        # replaced by an uncertain copy of themselves once both are assigned.
+        inputs = self.inputs
+        if value_inputs is not None and assign_inputs:
+            inputs = uncertainties._as_uncertain(inputs, item_inputs, value_inputs)
+            inputs[item_inputs] = value_inputs
+
+        outputs = uncertainties._as_uncertain(self.outputs, item_outputs, value_outputs)
+        outputs[item_outputs] = value_outputs
+
+        self.inputs = inputs
+        self.outputs = outputs
 
 
 @dataclasses.dataclass(eq=False, repr=False)
