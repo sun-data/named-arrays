@@ -862,8 +862,10 @@ class AbstractTestAbstractWcsVector(
             (dict(x=slice(1, None)), True),
             (dict(x=slice(None, -1), y=slice(1, 3)), True),
             (dict(y=slice(-2, None, 1)), True),
-            (dict(x=slice(2, 1)), True),
             (dict(z=0), True),
+            # fewer than two pixels are computed explicitly
+            (dict(x=slice(2, 1)), False),
+            (dict(x=slice(1, 2)), False),
             (dict(x=0), False),
             (dict(y=slice(None, None, 2)), False),
             (dict(x=slice(None, None, -1)), False),
@@ -882,10 +884,70 @@ class AbstractTestAbstractWcsVector(
         expected = array.explicit[item]
         if lazy:
             assert type(result) is type(array)
+            assert result.shape == result.explicit.shape
         else:
             assert isinstance(result, na.AbstractExplicitVectorArray)
         assert result.shape == expected.shape
         assert np.all(result.explicit == expected)
+
+
+def _wcs_channels(crpix: float) -> na.ExplicitTemporalWcsPositionalVectorArray:
+    """
+    A WCS vector whose parameters vary along a `channel` axis.
+    """
+    channel = na.ScalarArray(np.arange(3), axes="channel")
+    return na.ExplicitTemporalWcsPositionalVectorArray(
+        time=channel * u.s,
+        crval=na.PositionalVectorArray(
+            position=na.Cartesian2dVectorArray(channel, -channel) * u.arcsec,
+        ),
+        crpix=na.CartesianNdVectorArray(dict(x=crpix + 0 * channel, y=crpix + channel)),
+        cdelt=na.PositionalVectorArray(
+            position=na.Cartesian2dVectorArray(1 + channel, 1) * u.arcsec,
+        ),
+        pc=na.PositionalMatrixArray(
+            position=na.Cartesian2dMatrixArray(
+                x=na.CartesianNdVectorArray(dict(x=1, y=0.125 * channel)),
+                y=na.CartesianNdVectorArray(dict(x=-0.125 * channel, y=1)),
+            ),
+        ),
+        shape_wcs=dict(x=9, y=10),
+    )
+
+
+@pytest.mark.parametrize(
+    argnames="item,lazy",
+    argvalues=[
+        (dict(x=slice(4, 8)), True),
+        (dict(channel=1, x=slice(4, 8)), True),
+        (dict(channel=slice(1, None), y=slice(-5, None)), True),
+        (dict(channel=na.ScalarArray(np.array([0, 2]), axes="channel"), x=slice(2, 6)), True),
+        (dict(x=slice(4, 5)), False),
+        (dict(x=slice(4, 4)), False),
+    ],
+)
+@pytest.mark.parametrize("crpix", [4, 3.5])
+def test__getitem__wcs_channels(
+    item: dict[str, int | slice | na.AbstractArray],
+    lazy: bool,
+    crpix: float,
+) -> None:
+    """
+    Indexing a WCS vector along the axis of its parameters and along its WCS
+    axes gives the same vector as indexing the explicit vector, including
+    when a slice starts half a pixel past `crpix`, where the coordinates of
+    the first pixel along that axis are zero.
+    """
+    array = _wcs_channels(crpix)
+    result = array[item]
+    expected = array.explicit[item]
+    if lazy:
+        assert type(result) is type(array)
+        assert result.shape == result.explicit.shape
+    else:
+        assert isinstance(result, na.AbstractExplicitVectorArray)
+    assert result.shape == expected.shape
+    assert np.all(result.explicit == expected)
 
 
 @pytest.mark.parametrize("num_crval", [1, 5])
@@ -913,6 +975,7 @@ def test__getitem__wcs_parameter_along_wcs_axis(num_crval: int) -> None:
         ),
         shape_wcs=dict(x=5, y=4),
     )
+    assert array.shape == array.explicit.shape
     item = dict(x=slice(1, 3))
     result = array[item]
     expected = array.explicit[item]

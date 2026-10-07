@@ -929,18 +929,34 @@ class AbstractWcsVector(
 
     @property
     def shape(self) -> dict[str, int]:
-        # Found from the coordinates of a single pixel, so that the shape of
-        # a large vector does not need every coordinate to be computed.
-        # A pixel axis which the coordinates do not depend on, because its
-        # elements of `pc` are zero, is not an axis of this vector.
+        # Found from the coordinates of at most two pixels along each WCS
+        # axis, so that the shape of a large vector does not need every
+        # coordinate to be computed. Matrix multiplication of scalars drops an
+        # operand which is zero everywhere, so the axes of the coordinates
+        # depend on their values: an axis which no element of `pc` depends
+        # on is not an axis of this vector, and neither is an axis of one
+        # pixel where the pixel is at `crpix`. Two pixels are never both at
+        # `crpix`, so this finds the same axes as :attr:`explicit`.
         shape_wcs = self.shape_wcs
-        pixel = self.replace(shape_wcs=dict.fromkeys(shape_wcs, 1))
-        shape = na.shape_broadcasted(
-            *pixel._components_explicit.values(),
-            *pixel._components_wcs.values(),
+
+        # A WCS parameter which varies along a WCS axis would need to be cut
+        # down to the same pixels, so the rare vector with one is computed.
+        for p in self._parameters_wcs.values():
+            if not shape_wcs.keys().isdisjoint(na.shape(p)):
+                return self.explicit.shape
+
+        pixels = self.replace(
+            shape_wcs={ax: min(shape_wcs[ax], 2) for ax in shape_wcs},
         )
-        shape_wcs = {ax: shape_wcs[ax] for ax in shape if ax in shape_wcs}
-        return na.broadcast_shapes(shape, shape_wcs)
+        shape_components = na.shape_broadcasted(*pixels._components_wcs.values())
+        shape_components = {
+            ax: shape_wcs.get(ax, shape_components[ax])
+            for ax in shape_components
+        }
+        return na.broadcast_shapes(
+            na.shape_broadcasted(*self._components_explicit.values()),
+            shape_components,
+        )
 
     @property
     def axes(self) -> tuple[str, ...]:
@@ -963,8 +979,9 @@ class AbstractWcsVector(
         allows it.
 
         A dictionary whose items along the WCS axes are slices with a step of
-        one, and whose other items are integers, slices, or scalar arrays
-        without any WCS axes, results in another vector of this type.
+        one which keep at least two pixels, and whose other items are integers,
+        slices, or scalar arrays without any WCS axes, results in another
+        vector of this type.
         The explicit components are indexed like they would be in
         :attr:`explicit`, the WCS parameters are indexed by the items along
         their axes, and each slice along a WCS axis moves the reference pixel
@@ -998,14 +1015,15 @@ class AbstractWcsVector(
             if not item_wcs.keys().isdisjoint(na.shape(p)):
                 return super()._getitem(item)
 
-        def index(a: na.ArrayLike) -> na.ArrayLike:
-            if isinstance(a, na.AbstractArray):
-                return a[item]
-            return a
-
         pixels = {ax: range(shape_wcs[ax])[item_wcs[ax]] for ax in item_wcs}
 
-        crpix = index(parameters_wcs["crpix"])
+        # Fewer than two pixels along an axis could all be at `crpix`, which
+        # would drop the axis from the coordinates (see :attr:`shape`) where
+        # the explicit vector keeps it, so that is left to the explicit vector.
+        if any(len(pixels[ax]) < 2 for ax in pixels):
+            return super()._getitem(item)
+
+        crpix = na.getitem(parameters_wcs["crpix"], item)
         components_crpix = dict(crpix.components)
         for ax in pixels:
             components_crpix[ax] = components_crpix[ax] - pixels[ax].start
@@ -1013,10 +1031,10 @@ class AbstractWcsVector(
         components_explicit = self._components_explicit
 
         return self.replace(
-            **{c: index(components_explicit[c]) for c in components_explicit},
-            crval=index(parameters_wcs["crval"]),
+            **na.getitem(components_explicit, item),
+            crval=na.getitem(parameters_wcs["crval"], item),
             crpix=crpix.type_explicit.from_components(components_crpix),
-            cdelt=index(parameters_wcs["cdelt"]),
-            pc=index(parameters_wcs["pc"]),
+            cdelt=na.getitem(parameters_wcs["cdelt"], item),
+            pc=na.getitem(parameters_wcs["pc"], item),
             shape_wcs=shape_wcs | {ax: len(pixels[ax]) for ax in pixels},
         )

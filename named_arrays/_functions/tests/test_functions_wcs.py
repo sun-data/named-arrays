@@ -15,33 +15,37 @@ def _function_arrays() -> list[na.FunctionArray]:
     def full(value: float) -> na.ScalarArray:
         return na.ScalarArray.full(shape_base, value)
 
-    # A stack of images, each with its own slightly rotated WCS.
-    images = na.FunctionArray(
-        inputs=na.ExplicitTemporalSpectralWcsPositionalVectorArray(
-            time=full(0) << u.s,
-            wavelength=na.ScalarArray(np.array([171, 193, 211]) << u.AA, axes="channel"),
-            crval=na.PositionalVectorArray(
-                position=na.Cartesian2dVectorArray(full(1), full(2)) << u.arcsec,
-            ),
-            crpix=na.CartesianNdVectorArray(dict(x=full(_num / 2), y=full(_num / 2))),
-            cdelt=na.PositionalVectorArray(
-                position=na.Cartesian2dVectorArray(full(0.5), full(0.5)) << u.arcsec,
-            ),
-            pc=na.PositionalMatrixArray(
-                position=na.Cartesian2dMatrixArray(
-                    x=na.CartesianNdVectorArray(dict(x=full(1), y=full(0.125))),
-                    y=na.CartesianNdVectorArray(dict(x=full(-0.125), y=full(1))),
+    # A stack of images, each with its own slightly rotated WCS, with the
+    # reference pixel at a vertex or, as for AIA, at the center of a pixel.
+    images = [
+        na.FunctionArray(
+            inputs=na.ExplicitTemporalSpectralWcsPositionalVectorArray(
+                time=full(0) << u.s,
+                wavelength=na.ScalarArray(np.array([171, 193, 211]) << u.AA, axes="channel"),
+                crval=na.PositionalVectorArray(
+                    position=na.Cartesian2dVectorArray(full(1), full(2)) << u.arcsec,
                 ),
+                crpix=na.CartesianNdVectorArray(dict(x=full(crpix), y=full(crpix))),
+                cdelt=na.PositionalVectorArray(
+                    position=na.Cartesian2dVectorArray(full(0.5), full(0.5)) << u.arcsec,
+                ),
+                pc=na.PositionalMatrixArray(
+                    position=na.Cartesian2dMatrixArray(
+                        x=na.CartesianNdVectorArray(dict(x=full(1), y=full(0.125))),
+                        y=na.CartesianNdVectorArray(dict(x=full(-0.125), y=full(1))),
+                    ),
+                ),
+                shape_wcs=dict(x=_num + 1, y=_num + 1),
             ),
-            shape_wcs=dict(x=_num + 1, y=_num + 1),
-        ),
-        outputs=na.random.uniform(
-            low=0,
-            high=1,
-            shape_random=shape_base | dict(x=_num, y=_num),
-            seed=42,
-        ),
-    )
+            outputs=na.random.uniform(
+                low=0,
+                high=1,
+                shape_random=shape_base | dict(x=_num, y=_num),
+                seed=42,
+            ),
+        )
+        for crpix in [_num / 2, _num / 2 - 0.5]
+    ]
 
     # A spectrograph raster, where the time of each exposure is an explicit
     # component which varies along one of the WCS axes.
@@ -74,7 +78,7 @@ def _function_arrays() -> list[na.FunctionArray]:
         ),
     )
 
-    return [images, raster]
+    return images + [raster]
 
 
 @pytest.mark.parametrize("array", _function_arrays())
@@ -84,7 +88,7 @@ def _function_arrays() -> list[na.FunctionArray]:
         (dict(x=slice(2, 5), y=slice(3, 7)), True),
         (dict(x=3), True),
         (dict(x=slice(2, 5), y=0), True),
-        (dict(x=slice(5, 2)), True),
+        (dict(x=slice(8, 12)), True),
         (dict(x=-1), True),
         (dict(x=slice(-5, None)), True),
         (dict(x=slice(2, -3), y=slice(-4, -1)), True),
@@ -93,6 +97,8 @@ def _function_arrays() -> list[na.FunctionArray]:
         (dict(channel=slice(1, None), y=slice(None, 4)), True),
         (dict(channel=na.ScalarArray(np.array([0, 2]), axes="channel")), True),
         (dict(x=slice(None, None, -1)), False),
+        # no cells keep a single vertex, which is computed explicitly
+        (dict(x=slice(5, 2)), False),
     ],
 )
 def test__getitem__(
@@ -103,8 +109,9 @@ def test__getitem__(
 ) -> None:
     """
     Indexing a function array whose inputs are a WCS vector leaves the inputs
-    a WCS vector, without computing the coordinates of more than one pixel,
-    and gives the same function as indexing the explicit array.
+    a WCS vector, without computing the coordinates of more than two pixels
+    along each axis, and gives the same function as indexing the explicit
+    array.
     """
     # Record the shape of every grid of pixels the WCS is evaluated on.
     shapes = []
@@ -120,7 +127,8 @@ def test__getitem__(
 
     if lazy:
         assert type(result.inputs) is type(array.inputs)
-        assert all(n == 1 for shape in shapes for n in shape.values())
+        assert all(n <= 2 for shape in shapes for n in shape.values())
+        assert result.inputs.shape == result.inputs.explicit.shape
     else:
         assert isinstance(result.inputs, na.AbstractExplicitVectorArray)
 

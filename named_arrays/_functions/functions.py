@@ -770,12 +770,14 @@ class AbstractFunctionArray(
             item: Mapping[str, int | slice | na.AbstractArray] | na.AbstractArray | na.AbstractFunctionArray,
     ) -> FunctionArray:
 
-        # The inputs and outputs index themselves, rather than being made
-        # explicit first, so that implicit inputs which can be indexed without
-        # computing every coordinate, like a WCS vector, stay implicit.
+        # Implicit inputs and outputs are made explicit once, as they would be
+        # by `explicit`, except inputs which are a WCS vector, which can be
+        # indexed without computing every coordinate and so stay implicit.
         array = self
         inputs = array.inputs
-        outputs = array.outputs
+        if not isinstance(inputs, na.AbstractWcsVector):
+            inputs = na.explicit(inputs)
+        outputs = na.explicit(array.outputs)
 
         if isinstance(item, na.AbstractArray):
             if isinstance(item, na.AbstractFunctionArray):
@@ -797,14 +799,18 @@ class AbstractFunctionArray(
 
         elif isinstance(item, dict):
 
+            # the shapes are found once, since they may need to be computed
+            shape_inputs = na.shape(inputs)
+            shape_outputs = na.shape(outputs)
+
             # ignore axes that are not present in this function array, so that
             # indexing is consistent with ``ScalarArray`` and composes with
             # ``na.getitem`` over heterogeneous structures (e.g. a function
             # array that lacks the axis being selected is left untouched)
-            item = {ax: item[ax] for ax in item if ax in array.axes}
-
-            axes_center = array.axes_center
-            axes_vertex = array.axes_vertex
+            item = {
+                ax: item[ax] for ax in item
+                if ax in shape_inputs or ax in shape_outputs
+            }
 
             item_inputs = dict()
             item_outputs = dict()
@@ -813,22 +819,21 @@ class AbstractFunctionArray(
                 if isinstance(item_ax, na.AbstractFunctionArray):
                     item_inputs[ax] = item_ax.inputs
                     item_outputs[ax] = item_ax.outputs
+                elif _is_vertex(ax, shape_inputs, shape_outputs):
+                    if isinstance(item_ax, slice) or np.issubdtype(type(item_ax), np.integer):
+                        item_outputs[ax], item_inputs[ax] = _item_vertex(
+                            item=item_ax,
+                            num=shape_outputs[ax],
+                            axis=ax,
+                        )
+                    else:
+                        return NotImplemented
                 else:
-                    if ax in axes_center:
-                        #can't assume center ax is in both outputs and inputs
-                        if ax in inputs.shape:
-                            item_inputs[ax] = item_ax
-                        if ax in outputs.shape:
-                            item_outputs[ax] = item_ax
-                    if ax in axes_vertex:
-                        if isinstance(item_ax, slice) or np.issubdtype(type(item_ax), np.integer):
-                            item_outputs[ax], item_inputs[ax] = _item_vertex(
-                                item=item_ax,
-                                num=outputs.shape[ax],
-                                axis=ax,
-                            )
-                        else:
-                            return NotImplemented
+                    #can't assume center ax is in both outputs and inputs
+                    if ax in shape_inputs:
+                        item_inputs[ax] = item_ax
+                    if ax in shape_outputs:
+                        item_outputs[ax] = item_ax
 
         else:
             return NotImplemented
