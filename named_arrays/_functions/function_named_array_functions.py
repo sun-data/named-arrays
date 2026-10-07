@@ -2,6 +2,7 @@ from typing import Callable, Literal, Sequence, TYPE_CHECKING
 import numpy as np
 import astropy.units as u
 import named_arrays as na
+from named_arrays._functions import _fields
 import named_arrays._scalars.scalar_named_array_functions
 
 if TYPE_CHECKING:
@@ -63,20 +64,24 @@ def asarray_like(
         like_inputs = like_outputs = like
         type_like = na.FunctionArray
 
-    return type_like(
-        inputs=func(
-            a=a_inputs,
-            dtype=dtype,
-            order=order,
-            like=like_inputs,
-        ),
-        outputs=func(
-            a=a_outputs,
-            dtype=dtype,
-            order=order,
-            like=like_outputs,
-        ),
+    inputs = func(
+        a=a_inputs,
+        dtype=dtype,
+        order=order,
+        like=like_inputs,
     )
+    outputs = func(
+        a=a_outputs,
+        dtype=dtype,
+        order=order,
+        like=like_outputs,
+    )
+
+    # an array which is already of the type keeps its fields
+    if isinstance(a, type_like):
+        return a.replace(inputs=inputs, outputs=outputs)
+
+    return type_like(inputs=inputs, outputs=outputs)
 
 
 @_implements(na.unit)
@@ -169,6 +174,12 @@ def debroadcast(
         constant = constant and bool(np.all(outputs == outputs[{axis: slice(0, 1)}]))
         if constant and axis in shape_inputs:
             constant = bool(np.all(inputs == inputs[{axis: slice(0, 1)}]))
+        # a field which varies along the axis keeps it too, since selecting
+        # the first element would lose the rest of the field
+        for name in _fields.names(array):
+            field = getattr(array, name)
+            if constant and axis in field.shape:
+                constant = bool(np.all(field == field[{axis: slice(0, 1)}]))
         if constant:
             index[axis] = 0
 

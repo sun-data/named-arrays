@@ -307,10 +307,12 @@ class AbstractFunctionArray(
 
         _self = self.explicit
 
-        inputs_new, _, _ = _self._normalize__regrid__args(
+        inputs_new, _, axis_regrid = _self._normalize__regrid__args(
             inputs=inputs,
             axis=axis,
         )
+
+        _fields.check_axes(_self, axis_regrid, operation="regrid resamples")
 
         if weights is not None:
             _weights, shape_input, shape_output = weights
@@ -458,9 +460,25 @@ class AbstractFunctionArray(
         seed: None | int = None,
     ) -> na.AbstractExplicitArray:
         exp = self.explicit
+
+        if axis is None:
+            axes = tuple(na.shape(exp.outputs))
+        elif isinstance(axis, str):
+            axes = (axis,)
+        else:
+            axes = tuple(axis)
+
+        def centers(v: na.AbstractArray) -> na.AbstractArray:
+            return v.cell_centers(
+                axis=tuple(ax for ax in axes if ax in v.shape),
+                random=random,
+                seed=seed,
+            )
+
         return exp.replace(
             inputs=exp.inputs.cell_centers(axis, random=random, seed=seed),
             outputs=exp.outputs.cell_centers(axis, random=random, seed=seed),
+            **_fields.apply(exp, centers, axes=axes),
         )
 
     def integrate(
@@ -524,7 +542,7 @@ class AbstractFunctionArray(
         if not set(axis).issubset(self.axes):
             raise ValueError(f"axes {set(axis) - set(self.axes)} not in {self.axes}")
 
-        _fields.check_reduction(self, axis, operation="integration")
+        _fields.check_axes(self, axis, operation="integration removes")
 
         axes_vertex = self.axes_vertex
         inputs = self.inputs
@@ -731,6 +749,7 @@ class AbstractFunctionArray(
             fields = _fields.apply(
                 array,
                 lambda v: na.broadcast_to(v, na.broadcast_shapes(v.shape, shape_item_outputs))[item_outputs],
+                axes=tuple(shape_item_outputs),
             )
 
         elif isinstance(item, dict):
@@ -775,12 +794,14 @@ class AbstractFunctionArray(
 
             # the fields are indexed like the outputs, and ignore the axes
             # which they do not have
-            item_fields = {
-                ax: item[ax].outputs if isinstance(item[ax], na.AbstractFunctionArray)
-                else item_outputs.get(ax, item[ax])
-                for ax in item
-            }
-            fields = _fields.apply(array, lambda v: v[item_fields])
+            fields = dict()
+            if _fields.names(array):
+                item_fields = {
+                    ax: item[ax].outputs if isinstance(item[ax], na.AbstractFunctionArray)
+                    else item_outputs.get(ax, item[ax])
+                    for ax in item
+                }
+                fields = _fields.apply(array, lambda v: v[item_fields], axes=tuple(item_fields))
 
         else:
             return NotImplemented
@@ -976,6 +997,8 @@ class AbstractFunctionArray(
             if out[i] is not None:
                 out[i].inputs = result[i].inputs
                 out[i].outputs = result[i].outputs
+                for name in _fields.names(result[i]):
+                    setattr(out[i], name, getattr(result[i], name))
                 result[i] = out[i]
 
         if nout == 1:
@@ -1216,23 +1239,43 @@ class FunctionArray(
     image of an observation. Every such field whose value is a named array is
     treated as sampled along the axes of the function:
 
-    * Indexing, :func:`numpy.stack`, :func:`numpy.concatenate`,
+    * Indexing (with a :class:`dict`, :meth:`isel`, index arrays, or a boolean
+      mask), :func:`numpy.stack`, :func:`numpy.concatenate`,
       :func:`numpy.moveaxis`, :func:`numpy.repeat`,
       :func:`numpy.take_along_axis`, :func:`numpy.reshape`,
-      :meth:`combine_axes`, and assigning
-      another array of the subclass with ``__setitem__``, do to the field what
-      they do to the outputs, along the axes which the field has.
-    * The operations which keep the shape of the function pass the field on
-      unchanged, as do the reductions which keep the reduced axes (the default
-      for a function array).
-    * A reduction which removes an axis that the field varies along (one with
-      ``keepdims=False``, :func:`numpy.percentile`, or :meth:`integrate`)
-      raises an error, since whether the field should be summed, averaged, or
-      dropped depends on what it is. Reduce the field first, for example with
-      :func:`dataclasses.replace`.
+      :meth:`combine_axes`, and :meth:`cell_centers` do to the field what they
+      do to the outputs, along the axes which the field has.
+      :func:`named_arrays.debroadcast` keeps an axis that the field varies
+      along.
+    * Assigning another array of the subclass with ``__setitem__`` writes its
+      fields into those of this array, in place, like the outputs. A field
+      which does not vary along an axis being assigned can only be given the
+      value it already has. Since most operations pass the fields of an array
+      on without copying them, assigning into the result of, say, a ufunc
+      also changes the fields of the array it was computed from.
+    * An operation which removes or resamples an axis that the field varies
+      along raises an error: a reduction with ``keepdims=False``,
+      :func:`numpy.percentile` (which removes the axes by default),
+      :meth:`integrate`, or :meth:`regrid`. Whether the field should be
+      summed, averaged, or dropped depends on what it is, so replace it first,
+      for example with :func:`dataclasses.replace`.
+    * The other operations, including the reductions which keep the reduced
+      axes (the default for a function array), pass the field on unchanged. A
+      ufunc of several arrays of the subclass takes the fields of the first.
 
-    Fields whose values are not named arrays, such as strings or models of an
-    instrument, are passed on unchanged by every operation.
+    When the arrays combined by :func:`numpy.stack` or
+    :func:`numpy.concatenate` have fields which are not named arrays, such as
+    a string or a number, those must be the same in every array. Fields which
+    cannot be compared, such as models of an instrument, are taken from the
+    array whose type is a subclass of the types of all the others.
+
+    Every function array checks, when it is built, that each such field has
+    the same number of elements as the outputs along the axes they share, so
+    that an operation which changes the outputs without the field fails
+    instead of leaving the field stale.
+
+    Fields whose values are not named arrays are otherwise passed on unchanged
+    by every operation.
 
     Examples
     --------
@@ -1328,6 +1371,9 @@ class FunctionArray(
 
     outputs: OutputsT = 0
     """The outputs of the function."""
+
+    def __post_init__(self) -> None:
+        _fields.check(self)
 
     @classmethod
     def from_scalar_array(
@@ -1450,41 +1496,17 @@ class FunctionArray(
             value_inputs = None
             value_outputs = value
 
+        # every field is checked before anything is written, so that an error
+        # does not leave this array half written
+        writes = _fields.setitem(self, item_outputs, value)
+
         if value_inputs is not None:
             self.inputs[item_inputs] = value_inputs
 
         self.outputs[item_outputs] = value_outputs
 
-        if isinstance(value, na.AbstractFunctionArray) and isinstance(item, dict):
-            self._setitem_fields(item_outputs, value)
-
-    def _setitem_fields(
-            self,
-            item: dict[str, int | slice | na.AbstractArray],
-            value: na.AbstractFunctionArray,
-    ) -> None:
-        """
-        Write the named-array fields of `value` into those of this array,
-        along the axes of `item` which each field has.
-        """
-        for name in _fields.names(self):
-            value_field = getattr(value, name, None)
-            if not isinstance(value_field, na.AbstractArray):
-                continue
-            field = getattr(self, name)
-            index = {ax: item[ax] for ax in item if ax in field.shape}
-            missing = [ax for ax in item if ax not in field.shape and ax in self.shape]
-            if missing and not np.all(field[index] == value_field):
-                raise ValueError(
-                    f"`{name}` does not vary along {missing}, so it cannot hold "
-                    f"a different value for only the elements being set. "
-                    f"Broadcast it along {missing} first."
-                )
-            # most operations pass a field on without copying it, so it may
-            # be shared with other arrays, which must not change too
-            field = na.explicit(field).copy()
-            field[index] = value_field
-            setattr(self, name, field)
+        for write in writes:
+            write()
 
 
 @dataclasses.dataclass(eq=False, repr=False)

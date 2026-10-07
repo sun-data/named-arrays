@@ -101,10 +101,10 @@ def array_function_default(
         else:
             inputs_result = inputs
     else:
-        _fields.check_reduction(
+        _fields.check_axes(
             a=a,
             axis=axis_normalized,
-            operation=f"{func.__name__} with keepdims=False",
+            operation=f"np.{func.__name__} with keepdims=False removes",
             hint=" Or keep the axes with keepdims=True.",
         )
         inputs = inputs.cell_centers(axis=set(axis_normalized)-set(a.axes_center))
@@ -130,7 +130,7 @@ def array_function_default(
             outputs=outputs_result,
         )
     else:
-        result = out
+        result = _out_fields(out, a)
 
     return result
 
@@ -192,7 +192,7 @@ def array_function_cumulative_reduce(
             outputs=outputs_result,
         )
     else:
-        result = out
+        result = _out_fields(out, a)
 
     return result
 
@@ -246,10 +246,10 @@ def array_function_percentile_like(
         else:
             inputs_result = inputs
     else:
-        _fields.check_reduction(
+        _fields.check_axes(
             a=a,
             axis=axis_normalized,
-            operation=f"{func.__name__} with keepdims=False",
+            operation=f"np.{func.__name__} with keepdims=False removes",
             hint=" Or keep the axes with keepdims=True.",
         )
         inputs_result = np.mean(
@@ -276,9 +276,19 @@ def array_function_percentile_like(
             outputs=outputs_result,
         )
     else:
-        result = out
+        result = _out_fields(out, a)
 
     return result
+
+
+def _out_fields(
+        out: na.AbstractFunctionArray,
+        a: na.AbstractFunctionArray,
+) -> na.AbstractFunctionArray:
+    """Give `out` the named-array fields of `a`, whose result it holds."""
+    for name in _fields.names(a):
+        setattr(out, name, getattr(a, name))
+    return out
 
 
 def array_function_arg_reduce(
@@ -317,6 +327,7 @@ def array_function_stack_like(
             )
 
         arrays_broadcasted = list()
+        lengths = list()
         for array in arrays:
 
             array = array.explicit
@@ -324,17 +335,30 @@ def array_function_stack_like(
 
             array = array.broadcast_to({axis: shape[axis]}, append=True)
             arrays_broadcasted.append(array)
+            lengths.append(shape[axis])
 
         arrays = arrays_broadcasted
+
+    else:
+        lengths = None
 
     arrays_inputs = tuple(array.inputs for array in arrays)
     arrays_outputs = tuple(array.outputs for array in arrays)
 
+    # the result takes the type of an array whose type is a subclass of the
+    # types of all the others, so that it does not depend on their order
+    template = arrays[0]
+    for array in arrays:
+        if all(isinstance(array, type(other)) for other in arrays):
+            template = array
+            break
+
     fields = _fields.stack_like(
         func=func,
         arrays=arrays,
+        template=template,
         axis=axis,
-        shapes=[array.shape for array in arrays],
+        lengths=lengths,
     )
 
     if out is None:
@@ -358,7 +382,7 @@ def array_function_stack_like(
     )
 
     if out is None:
-        result = arrays[0].replace(
+        result = template.replace(
             inputs=inputs_result,
             outputs=outputs_result,
             **fields,
@@ -540,21 +564,26 @@ def reshape(
     a = a.broadcasted
     shape_old = a.shape
 
-    def reshape_field(v: na.AbstractArray) -> na.AbstractArray:
+    fields = dict()
+    for name in _fields.names(a):
+        v = getattr(a, name)
+        if set(v.shape).isdisjoint(shape_old):
+            continue
         if not set(v.shape).issubset(shape_old):
             raise ValueError(
-                f"a field with axes {tuple(v.shape)} cannot be reshaped along "
-                f"with an array with axes {tuple(shape_old)}, since the "
-                f"reshape does not account for {set(v.shape) - set(shape_old)}"
+                f"`{name}` of this {type(a).__name__} has axes "
+                f"{tuple(v.shape)}, which cannot be reshaped along with the "
+                f"axes of the array, {tuple(shape_old)}, since the reshape "
+                f"does not account for {set(v.shape) - set(shape_old)}"
             )
         # a reshape flattens the elements in the order of the axes, so the
         # field is put in the same shape and order as the outputs first
-        return np.reshape(na.broadcast_to(v, shape_old), shape)
+        fields[name] = np.reshape(na.broadcast_to(v, shape_old), shape)
 
     return a.replace(
         inputs=np.reshape(a.inputs, shape),
         outputs=np.reshape(a.outputs, shape),
-        **_fields.apply(a, reshape_field, axes=tuple(shape_old)),
+        **fields,
     )
 
 
