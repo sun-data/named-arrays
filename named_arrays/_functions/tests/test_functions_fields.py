@@ -318,6 +318,15 @@ class TestSetitem:
         plain[dict(t=0)] = _images(scale=10)[dict(t=1)]
         assert np.all(plain.outputs[dict(t=0)] == _images(scale=10).outputs[dict(t=1)])
 
+    def test_setitem_read_only(self):
+        # a field which cannot be written in place may still be given the
+        # value it already has
+        images = _images()
+        images.timedelta.ndarray.flags.writeable = False
+        images[dict(t=0)] = images[dict(t=0)].copy()
+        with pytest.raises(ValueError, match="read-only"):
+            images[dict(t=0)] = _images(scale=10)[dict(t=1)]
+
     def test_setitem_simple_differs(self):
         images = _images()
         value = _images(scale=10)[dict(t=1)].replace(label="other")

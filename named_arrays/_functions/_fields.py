@@ -116,6 +116,8 @@ def _explicit(a: Any) -> bool:
     Whether the shape of `a` can be found without computing the elements of
     an implicit array, such as a random sample.
     """
+    if type(a) is na.ScalarArray:
+        return True
     if isinstance(a, na.AbstractImplicitArray):
         return False
     if isinstance(a, na.AbstractVectorArray):
@@ -138,17 +140,16 @@ def check(a: Any) -> None:
     a
         A function array which has just been built.
     """
-    fields = names(a)
-    if not fields:
-        return
-    outputs = a.outputs
-    if not _explicit(outputs):
-        return
-    shape_outputs = na.shape(outputs)
-    for name in fields:
+    shape_outputs = None
+    for name in _candidates(type(a)):
         value = getattr(a, name)
-        if not _explicit(value):
+        if not isinstance(value, na.AbstractArray) or not _explicit(value):
             continue
+        if shape_outputs is None:
+            outputs = a.outputs
+            if not _explicit(outputs):
+                return
+            shape_outputs = na.shape(outputs)
         shape = value.shape
         for axis in shape:
             num = shape_outputs.get(axis)
@@ -417,6 +418,19 @@ def stack_like(
     return result
 
 
+def _writeable(a: Any) -> bool:
+    """
+    Whether every element of `a` is held by an array which can be written in
+    place, unlike a broadcast array or a vector of floats.
+    """
+    if isinstance(a, na.ScalarArray):
+        ndarray = a.ndarray
+        return isinstance(ndarray, np.ndarray) and ndarray.flags.writeable
+    if isinstance(a, na.AbstractVectorArray):
+        return all(_writeable(c) for c in a.components.values())
+    return False
+
+
 def _writer(
     field: "na.AbstractArray",
     index: Any,
@@ -504,13 +518,21 @@ def setitem(
                 f"`{name}` of this {type(a).__name__} does not have"
             )
 
-        # writing the value the field already has would change nothing, and
+        varies = set(axes).issubset(field.shape) and isinstance(getattr(a, name), na.AbstractArray)
+
+        # comparing a field with the value costs more than writing it, so a
+        # field which can be written in place is not compared
+        if varies and _writeable(field):
+            writes.append(_writer(field, index, field_value))
+            continue
+
+        # writing the value the field already has would change nothing, so
         # a field which cannot be written in place, such as a vector of
         # floats, may still be given it
         if _equal(current, field_value):
             continue
 
-        if set(axes).issubset(field.shape) and isinstance(getattr(a, name), na.AbstractArray):
+        if varies:
             writes.append(_writer(field, index, field_value))
         else:
             missing = sorted(set(axes) - set(field.shape))
