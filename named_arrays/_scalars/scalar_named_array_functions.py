@@ -2938,6 +2938,12 @@ def point_in_polygon(
     except scalars.ScalarTypeError:  # pragma: nocover
         return NotImplemented
 
+    if axis not in vertices_x.shape and axis not in vertices_y.shape:
+        raise ValueError(
+            f"`axis` {axis!r} is not an axis of the vertices, whose axes are "
+            f"{tuple(na.shape_broadcasted(vertices_x, vertices_y))}."
+        )
+
     shape_vertices = na.shape_broadcasted(
         x,
         y,
@@ -2947,20 +2953,15 @@ def point_in_polygon(
 
     shape = {a: shape_vertices[a] for a in shape_vertices if a != axis}
 
-    num_vertices = shape_vertices[axis]
-    shape_vertices = shape.copy()
-    shape_vertices[axis] = num_vertices
-
-    x = na.broadcast_to(x, shape)
-    y = na.broadcast_to(y, shape)
-    vertices_x = na.broadcast_to(vertices_x, shape_vertices)
-    vertices_y = na.broadcast_to(vertices_y, shape_vertices)
+    # The vertices keep their own shape, aligned to the points,
+    # so that they are not copied once for every point.
+    axes_vertices = tuple(shape) + (axis,)
 
     result = _point_in_polygon_quantity(
-        x=x.ndarray,
-        y=y.ndarray,
-        vertices_x=vertices_x.ndarray,
-        vertices_y=vertices_y.ndarray,
+        x=x.ndarray_aligned(shape),
+        y=y.ndarray_aligned(shape),
+        vertices_x=vertices_x.ndarray_aligned(axes_vertices),
+        vertices_y=vertices_y.ndarray_aligned(axes_vertices),
     )
 
     result = na.ScalarArray(

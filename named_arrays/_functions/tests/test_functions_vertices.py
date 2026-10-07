@@ -335,6 +335,10 @@ class TestFunctionArrayVertices(
     ):
         super().test__setitem__(array=array.explicit, item=item, value=value)
 
+    @pytest.mark.skip(reason="the inputs have one more vertex than the outputs along an index array")
+    def test__setitem__gathers_unnamed_axes(self, array: na.AbstractArray):
+        """Index arrays along a vertex axis are not supported."""
+
 
 @pytest.mark.parametrize(
     argnames="item,cells,vertices",

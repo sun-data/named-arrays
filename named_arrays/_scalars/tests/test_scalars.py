@@ -535,7 +535,7 @@ class AbstractTestAbstractScalarArray(
             if not set(item.shape).issubset(array.shape):
                 with pytest.raises(
                     expected_exception=ValueError,
-                    match="the axes in item, .*, must be a subset of the axes in array, .*"
+                    match="the axes in item, .*, must be a subset of the axes in (the )?array, .*"
                 ):
                     array[item]
                 return
@@ -2243,3 +2243,9 @@ def test_digitize_axis_none_uses_the_only_axis():
     )
 
     assert np.all(na.digitize(x, bins) == na.digitize(x, bins, axis="w"))
+
+
+def test_setitem_invalid_item():
+    a = na.ScalarArray(np.zeros((_num_x, _num_y)), axes=("x", "y"))
+    with pytest.raises(TypeError, match="`item` must be an instance of"):
+        a[(0, 1)] = 1

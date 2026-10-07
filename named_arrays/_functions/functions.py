@@ -809,9 +809,14 @@ class AbstractFunctionArray(
             item: Mapping[str, int | slice | na.AbstractArray] | na.AbstractArray | na.AbstractFunctionArray,
     ) -> FunctionArray:
 
-        array = self.explicit
+        # Implicit inputs and outputs are made explicit once, as they would be
+        # by `explicit`, except inputs which are a WCS vector, which can be
+        # indexed without computing every coordinate and so stay implicit.
+        array = self
         inputs = array.inputs
-        outputs = array.outputs
+        if not isinstance(inputs, na.AbstractWcsVector):
+            inputs = na.explicit(inputs)
+        outputs = na.explicit(array.outputs)
 
         if isinstance(item, na.AbstractArray):
             if isinstance(item, na.AbstractFunctionArray):
@@ -841,11 +846,18 @@ class AbstractFunctionArray(
 
         elif isinstance(item, dict):
 
+            # the shapes are found once, since they may need to be computed
+            shape_inputs = na.shape(inputs)
+            shape_outputs = na.shape(outputs)
+
             # ignore axes that are not present in this function array, so that
             # indexing is consistent with ``ScalarArray`` and composes with
             # ``na.getitem`` over heterogeneous structures (e.g. a function
             # array that lacks the axis being selected is left untouched)
-            item = {ax: item[ax] for ax in item if ax in array.axes}
+            item = {
+                ax: item[ax] for ax in item
+                if ax in shape_inputs or ax in shape_outputs
+            }
 
             item_inputs = dict()
             item_outputs = dict()
@@ -854,24 +866,21 @@ class AbstractFunctionArray(
                 if isinstance(item_ax, na.AbstractFunctionArray):
                     item_inputs[ax] = item_ax.inputs
                     item_outputs[ax] = item_ax.outputs
+                elif _is_vertex(ax, shape_inputs, shape_outputs):
+                    if isinstance(item_ax, slice) or np.issubdtype(type(item_ax), np.integer):
+                        item_outputs[ax], item_inputs[ax] = _item_vertex(
+                            item=item_ax,
+                            num=shape_outputs[ax],
+                            axis=ax,
+                        )
+                    else:
+                        return NotImplemented
                 else:
-                    axes_center = array.axes_center
-                    if ax in axes_center:
-                        #can't assume center ax is in both outputs and inputs
-                        if ax in inputs.shape:
-                            item_inputs[ax] = item_ax
-                        if ax in outputs.shape:
-                            item_outputs[ax] = item_ax
-                    axes_vertex = array.axes_vertex
-                    if ax in axes_vertex:
-                        if isinstance(item_ax, slice) or np.issubdtype(type(item_ax), np.integer):
-                            item_outputs[ax], item_inputs[ax] = _item_vertex(
-                                item=item_ax,
-                                num=outputs.shape[ax],
-                                axis=ax,
-                            )
-                        else:
-                            return NotImplemented
+                    #can't assume center ax is in both outputs and inputs
+                    if ax in shape_inputs:
+                        item_inputs[ax] = item_ax
+                    if ax in shape_outputs:
+                        item_outputs[ax] = item_ax
 
             # the fields are indexed like the outputs, and ignore the axes
             # which they do not have
@@ -1334,7 +1343,10 @@ class FunctionArray(
       has, and so can a field which is not a named array, such as a string.
       Since most operations pass the fields of an array on without copying
       them, assigning into the result of, say, a ufunc also changes the
-      fields of the array it was computed from.
+      fields of the array it was computed from. A field without a
+      distribution is instead replaced by an uncertain copy of itself, like
+      the outputs, when the value is uncertain or the mask selects different
+      elements in different samples.
     * An operation which removes or resamples an axis that the field varies
       along raises an error: a reduction with ``keepdims=False``,
       :func:`numpy.percentile` (which removes the axes by default),
@@ -1622,14 +1634,25 @@ class FunctionArray(
             value_inputs = None
             value_outputs = value
 
+        from named_arrays._scalars.uncertainties import uncertainties
+
         # every field is checked before anything is written, so that an error
         # does not leave this array half written
         writes = _fields.setitem(self, item_outputs, value)
 
+        # Inputs or outputs without a distribution cannot store a selection
+        # which differs between samples, or an uncertain value, so they are
+        # replaced by an uncertain copy of themselves once both are assigned.
+        inputs = self.inputs
         if value_inputs is not None and assign_inputs:
-            self.inputs[item_inputs] = value_inputs
+            inputs = uncertainties._as_uncertain(inputs, item_inputs, value_inputs)
+            inputs[item_inputs] = value_inputs
 
-        self.outputs[item_outputs] = value_outputs
+        outputs = uncertainties._as_uncertain(self.outputs, item_outputs, value_outputs)
+        outputs[item_outputs] = value_outputs
+
+        self.inputs = inputs
+        self.outputs = outputs
 
         for write in writes:
             write()

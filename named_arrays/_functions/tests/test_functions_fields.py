@@ -359,6 +359,23 @@ class TestSetitem:
         expected = np.where(mask.outputs, other.timedelta, _images_center().timedelta)
         assert np.all(images.timedelta == expected)
 
+    def test_setitem_mask_uncertain(self):
+        # a mask which differs between samples makes the field uncertain, as
+        # it does the outputs
+        images = _images_center()
+        images = images.replace(inputs=na.broadcast_to(images.inputs, images.outputs.shape).copy())
+        other = images.replace(outputs=10 * images.outputs, timedelta=10 * images.timedelta)
+        threshold = na.UncertainScalarArray(
+            nominal=20 * u.DN,
+            distribution=na.ScalarArray(np.array([10, 20, 30]) * u.DN, axes="_distribution"),
+        )
+        mask = na.FunctionArray(images.inputs, images.outputs > threshold)
+        images[mask] = other[mask]
+        expected = np.where(mask.outputs, other.timedelta, _images_center().timedelta)
+        assert isinstance(images.timedelta, na.UncertainScalarArray)
+        assert np.all(images.timedelta.nominal == expected.nominal)
+        assert np.all(images.timedelta.distribution == expected.distribution)
+
 
 @pytest.mark.parametrize(
     argnames="func",

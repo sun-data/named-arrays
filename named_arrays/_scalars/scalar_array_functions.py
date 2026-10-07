@@ -212,6 +212,28 @@ def array_function_default(
         initial: bool | int | float | complex | u.Quantity = np._NoValue,
         where: bool | na.AbstractScalarArray = np._NoValue,
 ):
+    if isinstance(where, na.AbstractUncertainScalarArray):
+        from .uncertainties import uncertainties
+        if uncertainties._varies(where):
+            # Reducing over a selection which differs between samples gives a
+            # different result in each sample.
+            if out is not None and not isinstance(out, na.AbstractUncertainScalarArray):
+                raise ValueError(
+                    "`where` selects different elements in the nominal value and in the samples "
+                    "of its distribution, so the result differs between samples and `out` must "
+                    f"be an instance of `{na.UncertainScalarArray.__name__}`, got `{type(out)}`."
+                )
+            kwargs = dict(axis=axis, keepdims=keepdims, where=where)
+            if dtype is not np._NoValue:
+                kwargs["dtype"] = dtype
+            if out is not None:
+                kwargs["out"] = out
+            if initial is not np._NoValue:
+                kwargs["initial"] = initial
+            return func(na.UncertainScalarArray(a, a), **kwargs)
+        # Every sample selects the same elements, so the result is certain.
+        where = uncertainties._certain(where)
+
     func, a = count_nonzero_as_sum(func, a)
 
     a = a.explicit

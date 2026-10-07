@@ -432,13 +432,24 @@ def _writeable(a: Any) -> bool:
 
 
 def _writer(
-    field: "na.AbstractArray",
+    a: Any,
+    name: str,
     index: Any,
     value: "na.AbstractArray",
 ) -> Callable[[], None]:
-    """A function which writes `value` into `field` at `index` when called."""
+    """
+    A function which writes `value` into the field `name` of `a` at `index`
+    when called.
+
+    A field without a distribution cannot store a selection which differs
+    between samples, or an uncertain value, so it is replaced by an uncertain
+    copy of itself, as the outputs are.
+    """
     def write() -> None:
+        from named_arrays._scalars.uncertainties import uncertainties
+        field = uncertainties._as_uncertain(getattr(a, name), index, value)
         cast("na.AbstractExplicitArray", field)[index] = value
+        setattr(a, name, field)
     return write
 
 
@@ -523,7 +534,7 @@ def setitem(
         # comparing a field with the value costs more than writing it, so a
         # field which can be written in place is not compared
         if varies and _writeable(field):
-            writes.append(_writer(field, index, field_value))
+            writes.append(_writer(a, name, index, field_value))
             continue
 
         # writing the value the field already has would change nothing, so
@@ -533,7 +544,7 @@ def setitem(
             continue
 
         if varies:
-            writes.append(_writer(field, index, field_value))
+            writes.append(_writer(a, name, index, field_value))
         else:
             missing = sorted(set(axes) - set(field.shape))
             raise ValueError(
