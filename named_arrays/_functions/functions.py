@@ -8,6 +8,7 @@ import numpy as np
 import astropy.units as u
 import named_arrays as na
 import named_arrays._core_array_functions as _core_array_functions
+from named_arrays._core import _item_single
 from named_arrays._functions import _fields
 import itertools
 
@@ -859,14 +860,25 @@ class AbstractFunctionArray(
                 if ax in shape_inputs or ax in shape_outputs
             }
 
+            names_fields = _fields.names(array)
+            shapes_fields = [na.shape(getattr(array, name)) for name in names_fields]
+
             item_inputs = dict()
             item_outputs = dict()
+            # The number of elements along each center axis of the item. The
+            # inputs, the outputs, or a field may have a single element along
+            # it, which stands for every element along it.
+            shape_center = dict()
+            # The center axes along which a single element of the outputs and
+            # the fields is broadcast before it is indexed, instead of kept.
+            axes_broadcast = []
             for ax in item:
                 item_ax = item[ax]
+                vertex = _is_vertex(ax, shape_inputs, shape_outputs)
                 if isinstance(item_ax, na.AbstractFunctionArray):
                     item_inputs[ax] = item_ax.inputs
                     item_outputs[ax] = item_ax.outputs
-                elif _is_vertex(ax, shape_inputs, shape_outputs):
+                elif vertex:
                     if isinstance(item_ax, slice) or np.issubdtype(type(item_ax), np.integer):
                         item_outputs[ax], item_inputs[ax] = _item_vertex(
                             item=item_ax,
@@ -877,17 +889,46 @@ class AbstractFunctionArray(
                         return NotImplemented
                 else:
                     #can't assume center ax is in both outputs and inputs
-                    if ax in shape_inputs:
+                    num_inputs = shape_inputs.get(ax)
+                    num_outputs = shape_outputs.get(ax)
+                    if num_inputs is not None:
                         item_inputs[ax] = item_ax
-                    if ax in shape_outputs:
+                    if num_outputs is not None:
                         item_outputs[ax] = item_ax
+
+                if not vertex:
+                    num_inputs_center = shape_inputs.get(ax, 1)
+                    num = shape_outputs.get(ax, 1)
+                    if num == 1:
+                        num = num_inputs_center
+                    for shape in shapes_fields:
+                        if num == 1:
+                            num = shape.get(ax, 1)
+                    shape_center[ax] = num
+                    # Inputs sliced to two elements against a single output
+                    # would read as a vertex axis with one cell.
+                    if (
+                        shape_outputs.get(ax) == 1
+                        and num_inputs_center != 1
+                        and isinstance(item_ax, slice)
+                        and len(range(num)[item_ax]) == 2
+                    ):
+                        axes_broadcast.append(ax)
 
             # the fields are indexed like the outputs, and ignore the axes
             # which they do not have
             fields = dict()
-            if _fields.names(array):
+            if names_fields:
                 item_fields = {ax: item_outputs.get(ax, item[ax]) for ax in item}
-                fields = _fields.apply(array, lambda v: v[item_fields], axes=tuple(item_fields))
+
+                def index_field(value: na.AbstractArray) -> na.AbstractArray:
+                    value, item_value = _item_single(value, item_fields, shape_center, broadcast=axes_broadcast)
+                    return value[item_value]
+
+                fields = _fields.apply(array, index_field, axes=tuple(item_fields))
+
+            inputs, item_inputs = _item_single(inputs, item_inputs, shape_center, shape_inputs)
+            outputs, item_outputs = _item_single(outputs, item_outputs, shape_center, shape_outputs, axes_broadcast)
 
         else:
             return NotImplemented
