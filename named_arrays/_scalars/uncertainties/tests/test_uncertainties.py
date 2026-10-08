@@ -2049,6 +2049,34 @@ def test_getitem_single_element(
     assert np.all(result == expected)
 
 
+@pytest.mark.parametrize(
+    argnames="item,writeable",
+    argvalues=[
+        (dict(x=slice(None)), True),
+        (dict(x=slice(2, 5)), False),
+        (dict(x=5), False),
+    ],
+)
+def test_getitem_single_element_view(
+    item: dict[str, int | slice],
+    writeable: bool,
+) -> None:
+    """
+    A nominal value with a single element along an indexed axis keeps it as
+    a view, which can only be written to if the selection includes every
+    element along the axis, since writing to it changes all of them.
+    """
+    nominal = na.ScalarArray(np.array([[2.0, 3.0]]), axes=("x", "z"))
+    samples = na.arange(0, 3, axis=na.UncertainScalarArray.axis_distribution) / 4
+    array = na.UncertainScalarArray(
+        nominal=nominal,
+        distribution=na.arange(0, 10, axis="x") + samples,
+    )
+    result = array[item]
+    assert np.shares_memory(result.nominal.ndarray, nominal.ndarray)
+    assert result.nominal.ndarray.flags.writeable == writeable
+
+
 def test_vector_setitem_shared_component():
     # Components which are the same plain array are replaced by separate
     # uncertain copies, and the plain array itself is never written to

@@ -488,6 +488,8 @@ class TestGetitemConstant:
     argnames="item",
     argvalues=[
         dict(t=slice(1, 3)),
+        dict(t=slice(1, 4)),
+        dict(t=slice(None)),
         dict(t=2),
         dict(t=-1),
         dict(t=na.ScalarArray(np.array([2, 0]), axes="t")),
@@ -496,8 +498,9 @@ class TestGetitemConstant:
 def test_getitem_outputs_single(num_timedelta: int, item: dict) -> None:
     """
     Outputs with a single element along an axis, as after a reduction which
-    keeps the axis, are broadcast against the inputs before they are
-    indexed, and so is a field which also has a single element along it.
+    keeps the axis, select the same elements as if they were broadcast
+    against the inputs, and so does a field which also has a single element
+    along it.
     """
     images = _images()
     images = images.replace(
@@ -506,12 +509,35 @@ def test_getitem_outputs_single(num_timedelta: int, item: dict) -> None:
     )
     result = images[item]
     shape_t = dict(t=_num_t)
-    outputs = na.broadcast_to(images.outputs, images.outputs.shape | shape_t)
-    timedelta = na.broadcast_to(images.timedelta, images.timedelta.shape | shape_t)
-    assert result.outputs.shape == outputs[item].shape
-    assert np.all(result.outputs == outputs[item])
-    assert result.timedelta.shape == timedelta[item].shape
-    assert np.all(result.timedelta == timedelta[item])
+    outputs = na.broadcast_to(images.outputs, images.outputs.shape | shape_t)[item]
+    timedelta = na.broadcast_to(images.timedelta, images.timedelta.shape | shape_t)[item]
+    assert "t" not in result.axes_vertex
+    assert na.broadcast_shapes(result.outputs.shape, outputs.shape) == outputs.shape
+    assert np.all(result.outputs == outputs)
+    assert na.broadcast_shapes(result.timedelta.shape, timedelta.shape) == timedelta.shape
+    assert np.all(result.timedelta == timedelta)
+
+
+@pytest.mark.parametrize(
+    argnames="item",
+    argvalues=[
+        dict(w=slice(1, 3)),
+        dict(w=2),
+        dict(w=-1),
+    ],
+)
+def test_getitem_outputs_single_field(item: dict) -> None:
+    """
+    Outputs with a single element along an axis which the inputs do not have,
+    but a field does, select the same elements as if they were broadcast
+    against the field.
+    """
+    images = _images()
+    images = images.replace(outputs=images.outputs[dict(w=slice(0, 1))])
+    result = images[item]
+    outputs = na.broadcast_to(images.outputs, images.outputs.shape | dict(w=_num_w))[item]
+    assert np.all(result.outputs == outputs)
+    assert np.all(result.timedelta == images.timedelta[item])
 
 
 class TestDebroadcast:

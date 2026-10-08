@@ -45,6 +45,7 @@ def _function_arrays() -> list[na.FunctionArray]:
     argvalues=[
         dict(x=slice(2, 5)),
         dict(x=slice(2, 4)),
+        dict(x=slice(0, 1)),
         dict(x=slice(5, 2)),
         dict(x=slice(None, None, -1)),
         dict(x=3),
@@ -68,11 +69,19 @@ def test__getitem__(
     assert result.axes_vertex == expected.axes_vertex
     if isinstance(item["x"], slice):
         assert result.axes_vertex == array.axes_vertex
-    # `broadcasted` also broadcasts the inputs along the axes of the outputs
-    assert result.inputs.shape.get("x") == expected.inputs.shape.get("x")
-    assert result.outputs.shape.get("x") == expected.outputs.shape.get("x")
     assert np.all(result.inputs == expected.inputs)
     assert np.all(result.outputs == expected.outputs)
+
+
+@pytest.mark.parametrize("array", _function_arrays())
+def test__getitem__full(array: na.FunctionArray) -> None:
+    """
+    Slicing every element along an axis leaves the inputs and the outputs as
+    they are, so a single element along it stays a single element.
+    """
+    result = array[dict(x=slice(None))]
+    assert result.inputs.shape == array.inputs.shape
+    assert result.outputs.shape == array.outputs.shape
 
 
 @pytest.mark.parametrize(
@@ -80,14 +89,19 @@ def test__getitem__(
     argvalues=[
         dict(x=na.ScalarArray(np.array([7, 2]), axes="x")),
         dict(x=na.ScalarArray(np.array([7, 2]), axes="z")),
+        dict(x=na.FunctionArray(
+            inputs=na.ScalarArray(np.array([7, 2]), axes="x"),
+            outputs=na.ScalarArray(np.array([7, 2]), axes="x"),
+        )),
     ],
 )
 def test__getitem__array_center(
     item: dict[str, na.AbstractArray],
 ) -> None:
     """
-    An index array along a center axis selects the same elements from inputs
-    with a single element along it as from the outputs.
+    An index array, or a function array of them, along a center axis selects
+    the same elements from inputs with a single element along it as from the
+    outputs.
     """
     array = na.FunctionArray(
         inputs=na.ScalarArray(np.array([2.0]), axes="x"),

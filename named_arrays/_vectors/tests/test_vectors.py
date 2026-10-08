@@ -937,6 +937,32 @@ def test__getitem__single_element(
     assert np.all(result == expected)
 
 
+@pytest.mark.parametrize(
+    argnames="item,writeable",
+    argvalues=[
+        (dict(x=slice(None)), True),
+        (dict(x=slice(None, None, -1)), True),
+        (dict(x=slice(2, 5)), False),
+        (dict(x=slice(0, 1)), False),
+        (dict(x=3), False),
+    ],
+)
+def test__getitem__single_element_view(
+    item: dict[str, int | slice],
+    writeable: bool,
+) -> None:
+    """
+    A component with a single element along an indexed axis keeps it as a
+    view, which can only be written to if the selection includes every
+    element along the axis, since writing to it changes all of them.
+    """
+    y = na.ScalarArray(np.array([[2.0, 3.0]]), axes=("x", "z"))
+    array = na.Cartesian2dVectorArray(x=na.arange(0, 10, axis="x"), y=y)
+    result = array[item]
+    assert np.shares_memory(result.y.ndarray, y.ndarray)
+    assert result.y.ndarray.flags.writeable == writeable
+
+
 def _wcs_channels(
     crpix: float,
     single: bool = False,

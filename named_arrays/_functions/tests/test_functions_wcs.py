@@ -8,6 +8,15 @@ _num_channel = 3
 _num_wavelength = 5
 
 
+def _same(value: na.ScalarArray) -> na.ScalarArray:
+    return value
+
+
+def _first(value: na.ScalarArray) -> na.ScalarArray:
+    """The first element of `value` along `channel`, as a single element."""
+    return value[dict(channel=slice(0, 1))]
+
+
 def _function_arrays() -> list[na.FunctionArray]:
 
     shape_base = dict(channel=_num_channel)
@@ -18,26 +27,28 @@ def _function_arrays() -> list[na.FunctionArray]:
     def single(value: float) -> na.ScalarArray:
         return na.ScalarArray.full(dict(channel=1), value)
 
+    wavelength = na.ScalarArray(np.array([171, 193, 211]) << u.AA, axes="channel")
+
     # A stack of images, each with its own slightly rotated WCS, with the
     # reference pixel at a vertex or, as for AIA, at the center of a pixel,
-    # and with the time and the plate scale either given for each image or
-    # given once and broadcast against the other parameters.
+    # and with the time and the plate scale, or the whole WCS, either given
+    # for each image or given once and broadcast against the images.
     images = [
         na.FunctionArray(
             inputs=na.ExplicitTemporalSpectralWcsPositionalVectorArray(
                 time=constant(0) << u.s,
-                wavelength=na.ScalarArray(np.array([171, 193, 211]) << u.AA, axes="channel"),
+                wavelength=varying(wavelength),
                 crval=na.PositionalVectorArray(
-                    position=na.Cartesian2dVectorArray(full(1), full(2)) << u.arcsec,
+                    position=na.Cartesian2dVectorArray(varying(full(1)), varying(full(2))) << u.arcsec,
                 ),
-                crpix=na.CartesianNdVectorArray(dict(x=full(crpix), y=full(crpix))),
+                crpix=na.CartesianNdVectorArray(dict(x=varying(full(crpix)), y=varying(full(crpix)))),
                 cdelt=na.PositionalVectorArray(
                     position=na.Cartesian2dVectorArray(constant(0.5), constant(0.5)) << u.arcsec,
                 ),
                 pc=na.PositionalMatrixArray(
                     position=na.Cartesian2dMatrixArray(
-                        x=na.CartesianNdVectorArray(dict(x=full(1), y=full(0.125))),
-                        y=na.CartesianNdVectorArray(dict(x=full(-0.125), y=full(1))),
+                        x=na.CartesianNdVectorArray(dict(x=varying(full(1)), y=varying(full(0.125)))),
+                        y=na.CartesianNdVectorArray(dict(x=varying(full(-0.125)), y=varying(full(1)))),
                     ),
                 ),
                 shape_wcs=dict(x=_num + 1, y=_num + 1),
@@ -49,10 +60,11 @@ def _function_arrays() -> list[na.FunctionArray]:
                 seed=42,
             ),
         )
-        for crpix, constant in [
-            (_num / 2, full),
-            (_num / 2 - 0.5, full),
-            (_num / 2 - 0.5, single),
+        for crpix, constant, varying in [
+            (_num / 2, full, _same),
+            (_num / 2 - 0.5, full, _same),
+            (_num / 2 - 0.5, single, _same),
+            (_num / 2 - 0.5, single, _first),
         ]
     ]
 
