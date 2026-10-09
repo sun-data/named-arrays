@@ -556,13 +556,11 @@ def annotate(
     if textcoords is None:
         textcoords = xycoords
 
-    if arrowprops is None:
-        arrowprops = dict()
-
     try:
         text = scalars._normalize(text)
         ax = scalars._normalize(ax)
-        arrowprops = {k: scalars._normalize(arrowprops[k]) for k in arrowprops}
+        if arrowprops is not None:
+            arrowprops = {k: scalars._normalize(arrowprops[k]) for k in arrowprops}
         annotation_clip = scalars._normalize(annotation_clip)
         kwargs = {k: scalars._normalize(kwargs[k]) for k in kwargs}
     except na.ScalarTypeError:  # pragma: nocover
@@ -592,7 +590,8 @@ def annotate(
     ax = ax.broadcast_to(shape)
     xycoords = xycoords.broadcast_to(shape).astype(object)
     textcoords = textcoords.broadcast_to(shape).astype(object)
-    arrowprops = {k: arrowprops[k].broadcast_to(shape) for k in arrowprops}
+    if arrowprops is not None:
+        arrowprops = {k: arrowprops[k].broadcast_to(shape) for k in arrowprops}
     annotation_clip = annotation_clip.broadcast_to(shape)
     kwargs = {k: kwargs[k].broadcast_to(shape) for k in kwargs}
 
@@ -618,13 +617,19 @@ def annotate(
 
     for index in na.ndindex(shape):
 
+        # matplotlib draws an arrow for any arrowprops other than None
+        if arrowprops is None:
+            arrowprops_index = None
+        else:
+            arrowprops_index = {k: arrowprops[k][index].ndarray for k in arrowprops}
+
         result[index] = ax[index].ndarray.annotate(
             text=text[index].ndarray,
             xy=tuple(xy[c][index].ndarray for c in components),
             xytext=tuple(xytext[c][index].ndarray for c in components),
             xycoords=tuple(xycoords[c][index].ndarray for c in components),
             textcoords=tuple(textcoords[c][index].ndarray for c in components),
-            arrowprops={k: arrowprops[k][index].ndarray for k in arrowprops},
+            arrowprops=arrowprops_index,
             annotation_clip=annotation_clip[index].ndarray,
             **{k: kwargs[k][index].ndarray for k in kwargs},
         )

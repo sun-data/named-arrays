@@ -1335,17 +1335,20 @@ class AbstractTestAbstractScalarArray(
         class TestPltBraceVertical:
 
             @pytest.mark.parametrize("kind", ["left", "right"])
+            @pytest.mark.parametrize("label", [None, "label"])
             def test_plt_brace_vertical(
                 self,
                 array: na.AbstractScalarArray,
                 kind: str,
-            ):
+                label: None | str,
+            ) -> None:
                 with astropy.visualization.quantity_support():
                     result = na.plt.brace_vertical(
                         x=array.value,
                         width=0.1,
                         ymin=0.1,
                         ymax=0.9,
+                        label=label,
                         kind=kind,
                     )
                 assert isinstance(result, na.ScalarArray)

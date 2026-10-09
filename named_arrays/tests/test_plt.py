@@ -183,6 +183,39 @@ def test_annotate(
 
     for element in result.ndarray.flat:
         assert isinstance(element, matplotlib.text.Annotation)
+        assert element.arrow_patch is None
+
+    plt.close(fig)
+
+
+@pytest.mark.parametrize(
+    argnames="arrowprops,has_arrow",
+    argvalues=[
+        (None, False),
+        (dict(), True),
+        (dict(arrowstyle="->"), True),
+    ],
+)
+def test_annotate_arrowprops(
+    arrowprops: None | dict,
+    has_arrow: bool,
+) -> None:
+    """As in matplotlib, an arrow is drawn unless `arrowprops` is `None`."""
+    fig, ax = plt.subplots()
+
+    result = na.plt.annotate(
+        text="text",
+        xy=na.Cartesian2dVectorArray(
+            x=na.linspace(0.25, 0.75, axis="x", num=3),
+            y=0.5,
+        ),
+        xytext=na.Cartesian2dVectorArray(0.75, 0.75),
+        ax=ax,
+        arrowprops=arrowprops,
+    )
+
+    for element in result.ndarray.flat:
+        assert (element.arrow_patch is not None) == has_arrow
 
     plt.close(fig)
 
@@ -1156,5 +1189,61 @@ def test_plot_quantity_axis_units():
     t = na.linspace(0, 1, axis="x", num=5) * u.s
     with pytest.raises(matplotlib.units.ConversionError):
         na.plt.plot(t, y, ax=ax)
+
+    plt.close(fig)
+
+
+@pytest.mark.parametrize("kind", ["left", "right"])
+@pytest.mark.parametrize("unit", [1, u.mm])
+def test_brace_vertical_label_gap(
+    kind: str,
+    unit: float | u.UnitBase,
+) -> None:
+    """
+    The label is half the font size away from the tip of the brace.
+
+    The gap is an offset, not spaces around the label, which TeX discards.
+    """
+    fig, ax = plt.subplots()
+
+    result = na.plt.brace_vertical(
+        x=0.5 * unit,
+        width=0.05 * unit,
+        ymin=0.1 * unit,
+        ymax=0.9 * unit,
+        ax=ax,
+        label="label",
+        kind=kind,
+    )
+    fig.canvas.draw()
+
+    line = result[dict()].ndarray
+    x = ax.transData.transform(line.get_xydata())[:, 0]
+    (text,) = ax.texts
+    bbox = text.get_window_extent()
+
+    assert text.get_text() == "label"
+    if kind == "left":
+        gap = x.min() - bbox.x1
+    else:
+        gap = bbox.x0 - x.max()
+    assert gap == pytest.approx(0.5 * text.get_size() * fig.dpi / 72, abs=1e-3)
+
+    plt.close(fig)
+
+
+def test_brace_vertical_no_label() -> None:
+    """Without a label, only the brace is drawn."""
+    fig, ax = plt.subplots()
+
+    na.plt.brace_vertical(
+        x=0.5,
+        width=0.05,
+        ymin=0.1,
+        ymax=0.9,
+        ax=ax,
+    )
+
+    assert len(ax.texts) == 0
 
     plt.close(fig)
