@@ -1736,6 +1736,7 @@ def annotate(
         The coordinate system that `xytext` is given in.
     arrowprops
         The properties used to draw the arrow.
+        If :obj:`None`, no arrow is drawn.
     annotation_clip
         Whether to draw the annotation when the point is outside
         the axes limits.
@@ -1757,6 +1758,7 @@ def annotate(
             text="text",
             xy=na.Cartesian2dVectorArray(x=.5, y=.5),
             xytext=na.Cartesian2dVectorArray(x=.75, y=.75),
+            arrowprops=dict(arrowstyle="->"),
         )
 
     |
@@ -1773,6 +1775,7 @@ def annotate(
                 y=.5,
             ),
             xytext=na.Cartesian2dVectorArray(x=.75, y=.75),
+            arrowprops=dict(arrowstyle="->"),
         )
     """
     return na._named_array_function(
@@ -2227,6 +2230,10 @@ def invert_yaxis(
     )
 
 
+_gap_brace = 0.5
+"""The gap between the tip of a curly bracket and its label, in font sizes."""
+
+
 @_with_quantity_support
 def brace_vertical(
     x: float | u.Quantity | na.AbstractScalar,
@@ -2258,6 +2265,8 @@ def brace_vertical(
         A matplotlib axes instance on which to plot the curly bracket.
     label
         The optional text label for the curly bracket.
+        It is placed half the font size away from the tip of the bracket.
+        If :obj:`None`, no label is drawn.
     beta
         Parameter which controls the "curlyness" of the bracket.
         If :obj:`None`, ``beta = 2 / width``.
@@ -2266,10 +2275,10 @@ def brace_vertical(
     kwargs_plot
         Additional keyword arguments that are passed to :func:`plot`.
     kwargs_text
-        Additional keyword arguments that are passed to :func:`text`.
+        Additional keyword arguments that are passed to :func:`annotate`.
     kwargs
         Additional keyword arguments that are passed to both
-        :func:`plot` and :func:`text`.
+        :func:`plot` and :func:`annotate`.
 
     Examples
     --------
@@ -2316,8 +2325,6 @@ def brace_vertical(
         kwargs_text = dict()
     kwargs_text = kwargs | kwargs_text
 
-    label = na.as_named_array(label).astype(str).astype(object)
-
     if beta is None:
         beta = 1 / (width / 2)
 
@@ -2336,14 +2343,12 @@ def brace_vertical(
     f = f - 1.5
 
     if kind == "left":
-        x_text = x - width
+        sign = -1
         ha = "right"
-        label = label + "  "
     elif kind == "right":
         f = -f
-        x_text = x + width
+        sign = +1
         ha = "left"
-        label = "  " + label
     else:   # pragma: nocover
         raise ValueError(
             f"Invalide kind of brace '{kind}', the only supported options are "
@@ -2360,15 +2365,20 @@ def brace_vertical(
         **kwargs_plot,
     )
 
-    text(
-        x=x_text,
-        y=ycen,
-        s=label,
-        ax=ax,
-        ha=ha,
-        va="center",
-        **kwargs_text
-    )
+    if label is not None:
+        # The gap is an offset rather than spaces around the label,
+        # since TeX discards spaces at the ends of a label.
+        annotate(
+            text=na.as_named_array(label).astype(str).astype(object),
+            xy=na.Cartesian2dVectorArray(x + sign * width, ycen),
+            xytext=na.Cartesian2dVectorArray(sign * _gap_brace, 0),
+            ax=ax,
+            textcoords="offset fontsize",
+            annotation_clip=False,
+            ha=ha,
+            va="center",
+            **kwargs_text
+        )
 
     return result
 
