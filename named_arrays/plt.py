@@ -2440,6 +2440,7 @@ def dimension(
     rotate: bool = True,
     ax: None | matplotlib.axes.Axes | na.AbstractScalar = None,
     components: None | tuple[str, str] = None,
+    along: None | str = None,
     arrowstyle: str = "<->",
     kwargs_extension: None | dict[str, Any] = None,
     kwargs_dimension: None | dict[str, Any] = None,
@@ -2500,6 +2501,16 @@ def dimension(
         If `a` and `b` have more than two components, use this argument to
         specify which components correspond to the horizontal and vertical
         positions.
+    along
+        If :obj:`None`, the default, the distance between `a` and `b` is
+        dimensioned along the segment connecting them.
+        Otherwise, the name of one of the two plotted components, and only
+        the distance between `a` and `b` along it is dimensioned, as a
+        mechanical drawing dimensions the horizontal or the vertical distance
+        between two features which are not level with each other.
+        The dimension line is then parallel to that component, displaced by
+        `offset` from `a`, and each point is joined to it by an extension
+        line of its own length.
     arrowstyle
         The :class:`matplotlib.patches.ArrowStyle` used to draw the
         dimension line.
@@ -2584,6 +2595,21 @@ def dimension(
     a = na.Cartesian2dVectorArray(components_a[cx], components_a[cy])
     b = na.Cartesian2dVectorArray(components_b[cx], components_b[cy])
 
+    # The point the extension line from `b` starts at. If only the distance
+    # along one component is dimensioned, `b` is replaced by the point level
+    # with `a` which is as far along that component as `b`, and the
+    # dimension is drawn between `a` and it.
+    b_point = b
+    if along is not None:
+        if along == cx:
+            b = na.Cartesian2dVectorArray(b.x, a.y)
+        elif along == cy:
+            b = na.Cartesian2dVectorArray(a.x, b.y)
+        else:
+            raise ValueError(
+                f"{along=} must be one of the plotted components, {components=}."
+            )
+
     if kwargs_extension is None:
         kwargs_extension = dict()
     kwargs_extension = dict(color="gray") | kwargs | kwargs_extension
@@ -2624,7 +2650,7 @@ def dimension(
     # Start the extension lines a fraction of the way out from each point so
     # they do not touch it, as in a mechanical drawing.
     a_gap = a + gap * offset * normal
-    b_gap = b + gap * offset * normal
+    b_gap = b_point + gap * (p2 - b_point)
 
     axis = "_dimension"
 

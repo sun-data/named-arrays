@@ -335,6 +335,91 @@ def test_dimension_default_ax():
 
 
 @pytest.mark.parametrize(
+    argnames="along,b,expected_line,expected_extension_a,expected_extension_b",
+    argvalues=[
+        (
+            "x",
+            na.Cartesian2dVectorArray(1, 0.5),
+            [[0, 1], [1, 1]],
+            [[0, 0.1], [0, 1]],
+            [[1, 0.55], [1, 1]],
+        ),
+        (
+            "y",
+            na.Cartesian2dVectorArray(0.5, 1),
+            [[-1, 0], [-1, 1]],
+            [[-0.1, 0], [-1, 0]],
+            [[0.35, 1], [-1, 1]],
+        ),
+    ],
+)
+def test_dimension_along(
+    along: str,
+    b: na.Cartesian2dVectorArray,
+    expected_line: list,
+    expected_extension_a: list,
+    expected_extension_b: list,
+) -> None:
+    """
+    Dimensioned along one component, only the distance along it is measured,
+    the dimension line is parallel to it at the offset from `a`, and each
+    point is joined to the line by an extension line of its own length.
+    """
+    fig, ax = plt.subplots()
+
+    result = na.plt.dimension(
+        a=na.Cartesian2dVectorArray(0, 0),
+        b=b,
+        offset=1,
+        along=along,
+        gap=0.1,
+        ax=ax,
+    )
+
+    annotation = result[dict()].ndarray
+    line = np.array([annotation.xy, annotation.xyann])
+    assert np.allclose(line, expected_line)
+
+    extension_a, extension_b = ax.lines
+    assert np.allclose(extension_a.get_xydata(), expected_extension_a)
+    assert np.allclose(extension_b.get_xydata(), expected_extension_b)
+
+    (label,) = ax.texts[1:]
+    assert label.get_text() == "1.00"
+
+    plt.close(fig)
+
+
+def test_dimension_along_components() -> None:
+    """The component dimensioned along is named as the vectors name it."""
+    fig, ax = plt.subplots()
+
+    result = na.plt.dimension(
+        a=na.Cartesian3dVectorArray(0, 7, 0),
+        b=na.Cartesian3dVectorArray(0.5, 7, 2),
+        offset=1,
+        components=("z", "x"),
+        along="z",
+        ax=ax,
+    )
+
+    annotation = result[dict()].ndarray
+    line = np.array([annotation.xy, annotation.xyann])
+    assert np.allclose(line, [[0, 1], [2, 1]])
+
+    plt.close(fig)
+
+
+def test_dimension_along_invalid() -> None:
+    with pytest.raises(ValueError, match="must be one of the plotted components"):
+        na.plt.dimension(
+            a=na.Cartesian2dVectorArray(0, 0),
+            b=na.Cartesian2dVectorArray(1, 1),
+            along="z",
+        )
+
+
+@pytest.mark.parametrize(
     argnames="center,radius,radius_inner,components",
     argvalues=[
         (na.Cartesian2dVectorArray(0.5, 0.5), 0.3, 0, None),
