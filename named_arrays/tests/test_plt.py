@@ -4,6 +4,7 @@ import matplotlib.axes
 import matplotlib.animation
 import matplotlib.collections
 import matplotlib.image
+import matplotlib.lines
 import matplotlib.patches
 import matplotlib.text
 import matplotlib.units
@@ -329,6 +330,139 @@ def test_dimension_default_ax():
 
     for element in result.ndarray.flat:
         assert isinstance(element, matplotlib.text.Annotation)
+
+    plt.close(fig)
+
+
+@pytest.mark.parametrize(
+    argnames="center,radius,radius_inner,components",
+    argvalues=[
+        (na.Cartesian2dVectorArray(0.5, 0.5), 0.3, 0, None),
+        (
+            na.Cartesian2dVectorArray(
+                x=na.linspace(0.2, 0.8, axis="d", num=3),
+                y=0.5,
+            ) * u.mm,
+            0.3 * u.mm,
+            0.1 * u.mm,
+            None,
+        ),
+        (
+            na.Cartesian3dVectorArray(0.5, 0.2, 0.5) * u.mm,
+            0.3 * u.mm,
+            0,
+            ("x", "z"),
+        ),
+    ],
+)
+@pytest.mark.parametrize(
+    argnames="angle_b",
+    argvalues=[
+        30 * u.deg,
+        na.linspace(10, 50, axis="d", num=3) * u.deg,
+    ],
+)
+@pytest.mark.parametrize(
+    argnames="label",
+    argvalues=[
+        None,
+        "foo",
+    ],
+)
+def test_dimension_angular(
+    center: na.AbstractCartesian2dVectorArray | na.AbstractCartesian3dVectorArray,
+    radius: float | u.Quantity,
+    radius_inner: float | u.Quantity,
+    components: None | tuple[str, str],
+    angle_b: u.Quantity | na.AbstractScalar,
+    label: None | str,
+) -> None:
+    fig, ax = plt.subplots()
+
+    result = na.plt.dimension_angular(
+        center=center,
+        radius=radius,
+        angle_a=0 * u.deg,
+        angle_b=angle_b,
+        radius_inner=radius_inner,
+        label=label,
+        components=components,
+        ax=ax,
+    )
+
+    for element in result.ndarray.flat:
+        assert isinstance(element, matplotlib.lines.Line2D)
+
+    plt.close(fig)
+
+
+def test_dimension_angular_geometry() -> None:
+    """
+    The arc runs around the center at the radius from one angle to the
+    other, the extension lines run from a gap beyond the component out to
+    the arc, an arrowhead sits at each end of the arc, and the default label
+    is the size of the angle in degrees.
+    """
+    fig, ax = plt.subplots()
+
+    center = np.array([0.3, 0.2])
+    radius = 0.5
+    radius_inner = 0.2
+    gap = 0.1
+    angle_a = 10
+    angle_b = 40
+    num = 101
+
+    result = na.plt.dimension_angular(
+        center=na.Cartesian2dVectorArray(*center),
+        radius=radius,
+        angle_a=angle_a * u.deg,
+        angle_b=angle_b * u.deg,
+        radius_inner=radius_inner,
+        gap=gap,
+        num=num,
+        ax=ax,
+    )
+
+    def point(r: float, angle: float | np.ndarray) -> np.ndarray:
+        """A point at a distance and direction from the center."""
+        angle = np.deg2rad(angle)
+        return center + r * np.stack([np.cos(angle), np.sin(angle)], axis=-1)
+
+    arc = result[dict()].ndarray
+    expected_arc = point(radius, np.linspace(angle_a, angle_b, num))
+    assert np.allclose(arc.get_xydata(), expected_arc)
+
+    extension_a, extension_b = (line for line in ax.lines if line is not arc)
+    radius_start = radius_inner + gap * (radius - radius_inner)
+    for extension, angle in [(extension_a, angle_a), (extension_b, angle_b)]:
+        expected = np.stack([point(radius_start, angle), point(radius, angle)])
+        assert np.allclose(extension.get_xydata(), expected)
+
+    *arrowheads, label = ax.texts
+    assert np.allclose(arrowheads[0].xy, expected_arc[0])
+    assert np.allclose(arrowheads[0].xyann, expected_arc[1])
+    assert np.allclose(arrowheads[1].xy, expected_arc[-1])
+    assert np.allclose(arrowheads[1].xyann, expected_arc[-2])
+
+    assert label.get_text() == f"30.0{u.deg:latex_inline}"
+    assert np.allclose(label.get_position(), point(radius, (angle_a + angle_b) / 2))
+
+    plt.close(fig)
+
+
+def test_dimension_angular_default_ax() -> None:
+    fig, ax = plt.subplots()
+
+    result = na.plt.dimension_angular(
+        center=na.Cartesian2dVectorArray(0.5, 0.5),
+        radius=0.3,
+        angle_a=0 * u.deg,
+        angle_b=30 * u.deg,
+    )
+
+    for element in result.ndarray.flat:
+        assert isinstance(element, matplotlib.lines.Line2D)
 
     plt.close(fig)
 

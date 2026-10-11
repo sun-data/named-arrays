@@ -48,6 +48,7 @@ __all__ = [
     "annotate",
     "brace_vertical",
     "dimension",
+    "dimension_angular",
     "set_xlabel",
     "get_xlabel",
     "set_ylabel",
@@ -2675,6 +2676,257 @@ def dimension(
     text(
         x=midpoint.x,
         y=midpoint.y,
+        s=label,
+        ax=ax,
+        **kwargs_text,
+    )
+
+    return result
+
+
+def dimension_angular(
+    center: na.AbstractCartesian2dVectorArray,
+    radius: float | u.Quantity | na.AbstractScalar,
+    angle_a: u.Quantity | na.AbstractScalar,
+    angle_b: u.Quantity | na.AbstractScalar,
+    radius_inner: float | u.Quantity | na.AbstractScalar = 0,
+    angle_label: None | u.Quantity | na.AbstractScalar = None,
+    label: None | str | na.AbstractScalar = None,
+    decimals: int = 1,
+    gap: float | na.AbstractScalar = 0.1,
+    num: int = 101,
+    ax: None | matplotlib.axes.Axes | na.AbstractScalar = None,
+    components: None | tuple[str, str] = None,
+    arrowstyle: str = "->",
+    kwargs_extension: None | dict[str, Any] = None,
+    kwargs_dimension: None | dict[str, Any] = None,
+    kwargs_text: None | dict[str, Any] = None,
+    **kwargs,
+) -> na.ScalarArray[npt.NDArray[None | matplotlib.artist.Artist]]:
+    """
+    Annotate the angle between two directions like a mechanical drawing.
+
+    The counterpart of :func:`dimension` for angles. An arc with an arrowhead
+    at each end is drawn around `center` at a distance `radius`, from the
+    direction `angle_a` to the direction `angle_b`, and each end of the arc is
+    joined back towards `center` by an extension line. The extension lines
+    stop short of `radius_inner`, so that they can begin at the edge of the
+    component whose angle is being dimensioned rather than at its center.
+
+    Parameters
+    ----------
+    center
+        The vertex of the angle, in data coordinates.
+    radius
+        The distance from `center` to the arc, in data coordinates.
+    angle_a
+        The direction of one side of the angle, measured counterclockwise
+        from the horizontal axis.
+    angle_b
+        The direction of the other side of the angle, measured the same way.
+    radius_inner
+        How far from `center` the component being dimensioned extends, in
+        data coordinates. The extension lines begin a gap beyond it.
+    angle_label
+        The direction from `center` in which the label is drawn, at a
+        distance `radius`.
+        If :obj:`None`, the label is drawn at the middle of the arc.
+        Move it off the arc when the arc is too short to hold it.
+    label
+        The text label for the dimension.
+        If :obj:`None`, the size of the angle :math:`|b - a|` in degrees,
+        rounded to `decimals` places and followed by a degree sign, is used.
+    decimals
+        The number of decimal places to round the default `label` to.
+        Ignored if `label` is given explicitly.
+    gap
+        The fraction of the distance from `radius_inner` to `radius` to leave
+        as a gap before the start of each extension line, matching the
+        convention of a mechanical drawing.
+    num
+        The number of points the arc is drawn through.
+    ax
+        A matplotlib axes instance on which to plot the dimension.
+    components
+        If `center` has more than two components, use this argument to
+        specify which components correspond to the horizontal and vertical
+        positions.
+    arrowstyle
+        The :class:`matplotlib.patches.ArrowStyle` of the arrowhead drawn at
+        each end of the arc, pointing outwards along the arc.
+    kwargs_extension
+        Additional keyword arguments passed to :func:`plot` when drawing the
+        extension lines.
+    kwargs_dimension
+        Additional keyword arguments passed to :func:`plot` when drawing the
+        arc. Its color and line width are given to the arrowheads too, and an
+        ``arrowprops`` entry is passed to :func:`annotate` when drawing them.
+    kwargs_text
+        Additional keyword arguments passed to :func:`text` when drawing the
+        label.
+    kwargs
+        Additional keyword arguments passed to :func:`plot` and :func:`text`.
+
+    Notes
+    -----
+    The angles are measured in data coordinates, so the drawing is only true
+    to them on axes with an equal aspect ratio, which is what a mechanical
+    drawing uses.
+
+    Returns
+    -------
+        The array of lines representing the arcs.
+
+    Examples
+    --------
+
+    Dimension how far a plate is tilted from the vertical.
+
+    .. jupyter-execute::
+
+        import numpy as np
+        import matplotlib.pyplot as plt
+        import astropy.units as u
+        import named_arrays as na
+
+        center = na.Cartesian2dVectorArray(0, 0)
+        tilt = 40 * u.deg
+        half_length = 1
+
+        fig, ax = plt.subplots()
+        na.plt.plot(
+            na.linspace(-1, 1, axis="plate", num=2) * half_length * -np.sin(tilt),
+            na.linspace(-1, 1, axis="plate", num=2) * half_length * np.cos(tilt),
+            ax=ax,
+            axis="plate",
+            color="black",
+            linewidth=3,
+        )
+        ax.set_aspect("equal")
+        ax.set_xlim(-1.6, 1.6)
+        ax.set_ylim(-1.2, 1.7)
+        na.plt.dimension_angular(
+            center=center,
+            radius=1.5 * half_length,
+            angle_a=90 * u.deg,
+            angle_b=90 * u.deg + tilt,
+            radius_inner=half_length,
+            ax=ax,
+        );
+    """
+    import matplotlib
+    import matplotlib.pyplot as plt
+
+    if ax is None:
+        ax = plt.gca()
+
+    components_center = center.cartesian_nd.components
+
+    if components is None:
+        components = tuple(components_center)
+
+    cx, cy = components
+    center = na.Cartesian2dVectorArray(components_center[cx], components_center[cy])
+
+    if kwargs_extension is None:
+        kwargs_extension = dict()
+    kwargs_extension = dict(color="gray") | kwargs | kwargs_extension
+
+    # The arc is drawn as a line, so it is given the color and the width of
+    # the line :func:`dimension` draws its dimension with, an arrow, rather
+    # than the next color in the cycle and the width of a plotted line.
+    if kwargs_dimension is None:
+        kwargs_dimension = dict()
+    kwargs_dimension = (
+        dict(color="black", linewidth=matplotlib.rcParams["patch.linewidth"])
+        | kwargs
+        | kwargs_dimension
+    )
+    arrowprops = dict(
+        arrowstyle=arrowstyle,
+        shrinkA=0,
+        shrinkB=0,
+        color=kwargs_dimension["color"],
+        linewidth=kwargs_dimension["linewidth"],
+    )
+    arrowprops = arrowprops | kwargs_dimension.pop("arrowprops", dict())
+
+    if kwargs_text is None:
+        kwargs_text = dict()
+    kwargs_text = kwargs | kwargs_text
+
+    # Give a unitless `radius_inner` the same unit as the radius so that the
+    # default `radius_inner=0` can be used with unitful coordinates.
+    radius = na.as_named_array(radius)
+    radius_inner = na.as_named_array(radius_inner)
+    if na.unit(radius_inner) is None:
+        radius_inner = radius_inner * na.unit_normalized(radius)
+
+    if angle_label is None:
+        angle_label = (angle_a + angle_b) / 2
+
+    if label is None:
+        size = na.as_named_array(np.abs(angle_b - angle_a)).to(u.deg)
+        label = size.to_string_array(f"%.{decimals}f", pad_unit="")
+    label = na.as_named_array(label).astype(str).astype(object)
+
+    def _direction(
+        angle: u.Quantity | na.AbstractScalar,
+    ) -> na.Cartesian2dVectorArray:
+        return na.Cartesian2dVectorArray(np.cos(angle), np.sin(angle))
+
+    axis = "_dimension_angular"
+
+    # Extension lines along each side of the angle, from a gap beyond the
+    # component out to the arc.
+    radius_start = radius_inner + gap * (radius - radius_inner)
+    for angle in (angle_a, angle_b):
+        direction = _direction(angle)
+        start = center + radius_start * direction
+        stop = center + radius * direction
+        plot(
+            na.stack([start.x, stop.x], axis=axis),
+            na.stack([start.y, stop.y], axis=axis),
+            ax=ax,
+            axis=axis,
+            **kwargs_extension,
+        )
+
+    # The arc between the two extension lines.
+    angle = na.linspace(angle_a, angle_b, axis=axis, num=num)
+    arc = center + radius * _direction(angle)
+    result = plot(
+        arc.x,
+        arc.y,
+        ax=ax,
+        axis=axis,
+        **kwargs_dimension,
+    )
+
+    # An arrowhead at each end of the arc, drawn along its last segment so
+    # that it points along the arc.
+    for end, inside in [(0, 1), (num - 1, num - 2)]:
+        annotate(
+            text="",
+            xy=arc[{axis: end}],
+            xytext=arc[{axis: inside}],
+            ax=ax,
+            arrowprops=arrowprops,
+            annotation_clip=False,
+        )
+
+    # The label is drawn on a background matching the axes, and above the
+    # arc, so it masks the arc underneath, as :func:`dimension` does.
+    position = center + radius * _direction(angle_label)
+    kwargs_text = dict(
+        ha="center",
+        va="center",
+        backgroundcolor=_facecolor(ax),
+        zorder=5,
+    ) | kwargs_text
+    text(
+        x=position.x,
+        y=position.y,
         s=label,
         ax=ax,
         **kwargs_text,
