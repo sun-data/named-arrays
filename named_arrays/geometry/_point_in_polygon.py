@@ -168,10 +168,11 @@ def _contiguous(
     a: float | np.ndarray,
     shape: tuple[int, ...],
     newshape: tuple[int, ...],
+    dtype: type = np.float64,
 ) -> np.ndarray:
     """
-    Broadcast an array to a shape and reshape it into a C-contiguous array
-    of 64-bit floats.
+    Broadcast an array to a shape and reshape it into a C-contiguous array,
+    of 64-bit floats unless `dtype` says otherwise.
 
     The kernel is compiled once for each type and layout of its arguments,
     so they are always given to it in the same ones.  The array is copied
@@ -185,8 +186,10 @@ def _contiguous(
         The shape to broadcast `a` to.
     newshape
         The shape to give the broadcast array.
+    dtype
+        The type to give the array.
     """
     a = np.asarray(a)
     if a.shape != shape:
         a = np.broadcast_to(a, shape)
-    return np.ascontiguousarray(a.reshape(newshape), dtype=np.float64)
+    return np.ascontiguousarray(a.reshape(newshape), dtype=dtype)
