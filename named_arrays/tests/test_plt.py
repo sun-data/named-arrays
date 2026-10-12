@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.axes
 import matplotlib.animation
 import matplotlib.collections
+import matplotlib.colors
 import matplotlib.image
 import matplotlib.lines
 import matplotlib.patches
@@ -335,27 +336,54 @@ def test_dimension_default_ax():
 
 
 @pytest.mark.parametrize(
-    argnames="along,b,expected_line,expected_extension_a,expected_extension_b",
+    argnames="along,b,offset,expected_line,expected_extension_a,expected_extension_b",
     argvalues=[
         (
             "x",
             na.Cartesian2dVectorArray(1, 0.5),
+            1,
             [[0, 1], [1, 1]],
             [[0, 0.1], [0, 1]],
-            [[1, 0.55], [1, 1]],
+            [[1, 0.6], [1, 1]],
         ),
         (
             "y",
             na.Cartesian2dVectorArray(0.5, 1),
+            1,
             [[-1, 0], [-1, 1]],
-            [[-0.1, 0], [-1, 0]],
+            [[-0.15, 0], [-1, 0]],
             [[0.35, 1], [-1, 1]],
+        ),
+        (
+            "x",
+            na.Cartesian2dVectorArray(1, 5),
+            1,
+            [[0, 1], [1, 1]],
+            [[0, 0.4], [0, 1]],
+            [[1, 4.6], [1, 1]],
+        ),
+        (
+            "x",
+            na.Cartesian2dVectorArray(1, 0.95),
+            1,
+            [[0, 1], [1, 1]],
+            [[0, 0.1], [0, 1]],
+            [[1, 1], [1, 1]],
+        ),
+        (
+            "y",
+            na.Cartesian2dVectorArray(0.5, 1),
+            0,
+            [[0, 0], [0, 1]],
+            [[0, 0], [0, 0]],
+            [[0.45, 1], [0, 1]],
         ),
     ],
 )
 def test_dimension_along(
     along: str,
     b: na.Cartesian2dVectorArray,
+    offset: float,
     expected_line: list,
     expected_extension_a: list,
     expected_extension_b: list,
@@ -363,14 +391,16 @@ def test_dimension_along(
     """
     Dimensioned along one component, only the distance along it is measured,
     the dimension line is parallel to it at the offset from `a`, and each
-    point is joined to the line by an extension line of its own length.
+    point is joined to the line by an extension line of its own length,
+    which starts the same gap from each point, a fraction of the longer one,
+    but no further than the dimension line.
     """
     fig, ax = plt.subplots()
 
     result = na.plt.dimension(
         a=na.Cartesian2dVectorArray(0, 0),
         b=b,
-        offset=1,
+        offset=offset,
         along=along,
         gap=0.1,
         ax=ax,
@@ -411,12 +441,73 @@ def test_dimension_along_components() -> None:
 
 
 def test_dimension_along_invalid() -> None:
+    fig, ax = plt.subplots()
+
     with pytest.raises(ValueError, match="must be one of the plotted components"):
         na.plt.dimension(
             a=na.Cartesian2dVectorArray(0, 0),
             b=na.Cartesian2dVectorArray(1, 1),
             along="z",
+            ax=ax,
         )
+
+    plt.close(fig)
+
+
+@pytest.mark.parametrize(
+    argnames="b,along",
+    argvalues=[
+        (na.Cartesian2dVectorArray(0, 0), None),
+        (na.Cartesian2dVectorArray(0, 1), "x"),
+        (na.Cartesian2dVectorArray(1, 0), "y"),
+    ],
+)
+def test_dimension_zero(
+    b: na.Cartesian2dVectorArray,
+    along: None | str,
+) -> None:
+    """A distance of zero has no direction to dimension it in."""
+    fig, ax = plt.subplots()
+
+    with pytest.raises(ValueError, match="must not be zero"):
+        na.plt.dimension(
+            a=na.Cartesian2dVectorArray(0, 0),
+            b=b,
+            offset=0.1,
+            along=along,
+            ax=ax,
+        )
+
+    plt.close(fig)
+
+
+def test_dimension_kwargs() -> None:
+    """
+    The aliases of matplotlib replace the defaults they stand for, rather
+    than conflicting with them.
+    """
+    fig, ax = plt.subplots()
+
+    na.plt.dimension(
+        a=na.Cartesian2dVectorArray(0, 0),
+        b=na.Cartesian2dVectorArray(1, 0),
+        offset=0.1,
+        ax=ax,
+        kwargs_extension=dict(lw=3),
+        kwargs_text=dict(ha="left"),
+        c="red",
+    )
+
+    for extension in ax.lines:
+        assert matplotlib.colors.same_color(extension.get_color(), "red")
+        assert extension.get_linewidth() == 3
+
+    annotation, label = ax.texts
+    assert matplotlib.colors.same_color(annotation.get_color(), "red")
+    assert matplotlib.colors.same_color(label.get_color(), "red")
+    assert label.get_horizontalalignment() == "left"
+
+    plt.close(fig)
 
 
 @pytest.mark.parametrize(
@@ -441,10 +532,14 @@ def test_dimension_along_invalid() -> None:
     ],
 )
 @pytest.mark.parametrize(
-    argnames="angle_b",
+    argnames="angle_b,degrees",
     argvalues=[
-        30 * u.deg,
-        na.linspace(10, 50, axis="d", num=3) * u.deg,
+        (30 * u.deg, 30),
+        (np.pi / 6, 30),
+        (
+            na.linspace(10, 50, axis="d", num=3) * u.deg,
+            na.linspace(10, 50, axis="d", num=3),
+        ),
     ],
 )
 @pytest.mark.parametrize(
@@ -459,24 +554,59 @@ def test_dimension_angular(
     radius: float | u.Quantity,
     radius_inner: float | u.Quantity,
     components: None | tuple[str, str],
-    angle_b: u.Quantity | na.AbstractScalar,
+    angle_b: float | u.Quantity | na.AbstractScalar,
+    degrees: float | na.AbstractScalar,
     label: None | str,
 ) -> None:
+    """
+    The arc is drawn around the center, in the plotted components, with and
+    without units, for each element of an array, and the default label is
+    the size of the angle in degrees, whether or not the angles have units.
+    """
     fig, ax = plt.subplots()
+
+    angle_a = 0
+    num = 11
 
     result = na.plt.dimension_angular(
         center=center,
         radius=radius,
-        angle_a=0 * u.deg,
+        angle_a=angle_a,
         angle_b=angle_b,
         radius_inner=radius_inner,
         label=label,
+        num=num,
         components=components,
         ax=ax,
     )
 
-    for element in result.ndarray.flat:
-        assert isinstance(element, matplotlib.lines.Line2D)
+    if components is None:
+        components = ("x", "y")
+    components_center = center.cartesian_nd.components
+    vertex = na.Cartesian2dVectorArray(
+        x=components_center[components[0]],
+        y=components_center[components[1]],
+    )
+    angle = na.linspace(angle_a, angle_b, axis="arc", num=num)
+    arc = vertex + radius * na.Cartesian2dVectorArray(np.cos(angle), np.sin(angle))
+    unit = na.unit_normalized(arc)
+
+    for index in na.ndindex(result.shape):
+        line = result[index].ndarray
+        assert isinstance(line, matplotlib.lines.Line2D)
+        xy = line.get_xydata()
+        expected = arc[index]
+        assert np.allclose(xy[:, 0] * unit, expected.x.ndarray)
+        assert np.allclose(xy[:, 1] * unit, expected.y.ndarray)
+
+    labels = ax.texts[-result.ndarray.size :]
+    for index, text in zip(na.ndindex(result.shape), labels):
+        if label is None:
+            size = na.as_named_array(degrees)[index].ndarray
+            expected_label = f"{size:.1f}{u.deg:latex_inline}"
+        else:
+            expected_label = label
+        assert text.get_text() == expected_label
 
     plt.close(fig)
 
@@ -534,6 +664,62 @@ def test_dimension_angular_geometry() -> None:
     assert np.allclose(label.get_position(), point(radius, (angle_a + angle_b) / 2))
 
     plt.close(fig)
+
+
+def test_dimension_angular_kwargs() -> None:
+    """
+    The aliases of matplotlib replace the defaults they stand for, rather
+    than conflicting with them, and the arrowheads are drawn like the arc.
+    """
+    fig, ax = plt.subplots()
+
+    result = na.plt.dimension_angular(
+        center=na.Cartesian2dVectorArray(0.5, 0.5),
+        radius=0.3,
+        angle_a=0 * u.deg,
+        angle_b=30 * u.deg,
+        ax=ax,
+        kwargs_extension=dict(c="blue", lw=3),
+        kwargs_dimension=dict(c="red", lw=2, alpha=0.3, zorder=10),
+        kwargs_text=dict(ha="left"),
+    )
+
+    arc = result[dict()].ndarray
+    assert matplotlib.colors.same_color(arc.get_color(), "red")
+    assert arc.get_linewidth() == 2
+    assert arc.get_alpha() == 0.3
+    assert arc.get_zorder() == 10
+
+    extensions = [line for line in ax.lines if line is not arc]
+    assert len(extensions) == 2
+    for extension in extensions:
+        assert matplotlib.colors.same_color(extension.get_color(), "blue")
+        assert extension.get_linewidth() == 3
+
+    *arrowheads, label = ax.texts
+    assert len(arrowheads) == 2
+    for arrowhead in arrowheads:
+        arrow = arrowhead.arrow_patch
+        assert matplotlib.colors.same_color(arrow.get_edgecolor(), (1, 0, 0, 0.3))
+        assert arrow.get_linewidth() == 2
+        assert arrow.get_alpha() == 0.3
+        assert arrowhead.get_zorder() == 10
+
+    assert label.get_horizontalalignment() == "left"
+
+    plt.close(fig)
+
+
+@pytest.mark.parametrize("num", [1, 2])
+def test_dimension_angular_num_invalid(num: int) -> None:
+    with pytest.raises(ValueError, match="must be at least 3"):
+        na.plt.dimension_angular(
+            center=na.Cartesian2dVectorArray(0.5, 0.5),
+            radius=0.3,
+            angle_a=0 * u.deg,
+            angle_b=30 * u.deg,
+            num=num,
+        )
 
 
 def test_dimension_angular_default_ax() -> None:

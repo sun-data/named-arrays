@@ -2440,11 +2440,11 @@ def dimension(
     rotate: bool = True,
     ax: None | matplotlib.axes.Axes | na.AbstractScalar = None,
     components: None | tuple[str, str] = None,
-    along: None | str = None,
     arrowstyle: str = "<->",
     kwargs_extension: None | dict[str, Any] = None,
     kwargs_dimension: None | dict[str, Any] = None,
     kwargs_text: None | dict[str, Any] = None,
+    along: None | str = None,
     **kwargs,
 ) -> na.ScalarArray[npt.NDArray[matplotlib.text.Annotation]]:
     """
@@ -2488,9 +2488,12 @@ def dimension(
         The number of decimal places to round the default `label` to.
         Ignored if `label` is given explicitly.
     gap
-        The fraction of the `offset` distance to leave as a gap between each
-        point and the start of its extension line, matching the convention of
-        a mechanical drawing.
+        The gap to leave between each point and the start of its extension
+        line, matching the convention of a mechanical drawing, as a fraction
+        of the length of the longer extension line, so that the gap is the
+        same at both points.
+        Unless `along` is given, both extension lines are `offset` long.
+        A gap is never longer than the extension line it starts.
     rotate
         If :obj:`True`, the default, rotate the label to match the on-screen
         angle of the dimension line.
@@ -2501,16 +2504,6 @@ def dimension(
         If `a` and `b` have more than two components, use this argument to
         specify which components correspond to the horizontal and vertical
         positions.
-    along
-        If :obj:`None`, the default, the distance between `a` and `b` is
-        dimensioned along the segment connecting them.
-        Otherwise, the name of one of the two plotted components, and only
-        the distance between `a` and `b` along it is dimensioned, as a
-        mechanical drawing dimensions the horizontal or the vertical distance
-        between two features which are not level with each other.
-        The dimension line is then parallel to that component, displaced by
-        `offset` from `a`, and each point is joined to it by an extension
-        line of its own length.
     arrowstyle
         The :class:`matplotlib.patches.ArrowStyle` used to draw the
         dimension line.
@@ -2524,6 +2517,23 @@ def dimension(
     kwargs_text
         Additional keyword arguments passed to :func:`text` when drawing the
         label.
+    along
+        If :obj:`None`, the default, the distance between `a` and `b` is
+        dimensioned along the segment connecting them.
+        Otherwise, the name of one of the two plotted components, and only
+        the distance between `a` and `b` along it is dimensioned, as a
+        mechanical drawing dimensions the horizontal or the vertical distance
+        between two features which are not level with each other.
+        The dimension line is then parallel to that component, displaced by
+        `offset` from `a`, and each point is joined to it by an extension
+        line of its own length.
+        The direction from `a` to `b` which a positive `offset` is measured
+        from is then the direction along that component in which `b` lies
+        from `a`, so the side the dimension line is displaced to depends on
+        which side of `a` `b` lies on.
+        To displace the dimension lines from `a` to points on both sides of
+        it to the same side, give the offsets of the points on one side the
+        opposite sign.
     kwargs
         Additional keyword arguments passed to :func:`plot`, :func:`annotate`,
         and :func:`text`.
@@ -2581,6 +2591,9 @@ def dimension(
         ax.set_xlim(0, 1)
         ax.set_ylim(0, 1)
     """
+    import matplotlib.cbook
+    import matplotlib.lines
+    import matplotlib.text
     import matplotlib.pyplot as plt
     if ax is None:
         ax = plt.gca()
@@ -2610,17 +2623,24 @@ def dimension(
                 f"{along=} must be one of the plotted components, {components=}."
             )
 
-    if kwargs_extension is None:
-        kwargs_extension = dict()
-    kwargs_extension = dict(color="gray") | kwargs | kwargs_extension
+    # Each set of keyword arguments has the aliases of matplotlib, like `c`
+    # and `lw`, replaced by the names they stand for before they are merged,
+    # so that they replace the defaults rather than conflict with them.
+    normalize = matplotlib.cbook.normalize_kwargs
 
-    if kwargs_dimension is None:
-        kwargs_dimension = dict()
-    kwargs_dimension = kwargs | kwargs_dimension
+    kwargs_extension = (
+        dict(color="gray")
+        | normalize(kwargs, matplotlib.lines.Line2D)
+        | normalize(kwargs_extension, matplotlib.lines.Line2D)
+    )
 
-    if kwargs_text is None:
-        kwargs_text = dict()
-    kwargs_text = kwargs | kwargs_text
+    kwargs_dimension = normalize(kwargs, matplotlib.text.Annotation) | normalize(
+        kwargs_dimension, matplotlib.text.Annotation
+    )
+
+    kwargs_text = normalize(kwargs, matplotlib.text.Text) | normalize(
+        kwargs_text, matplotlib.text.Text
+    )
 
     # Direction from `a` to `b` and the unit normal used for the displacement.
     # The perpendicular direction is computed in display coordinates (via the
@@ -2629,6 +2649,12 @@ def dimension(
     # equal, while the offset magnitude stays in data coordinates.
     delta = b - a
     length = delta.length
+    if np.any(length == 0):
+        raise ValueError(
+            "The distance to dimension must not be zero, but `a` and `b` "
+            "coincide, or lie level with each other across the component "
+            f"dimensioned along, {along=}."
+        )
     aspect = _display_aspect(ax)
     normal = na.Cartesian2dVectorArray(-aspect * delta.y, delta.x / aspect)
     normal = normal / normal.length
@@ -2647,10 +2673,18 @@ def dimension(
     p1 = a + offset * normal
     p2 = b + offset * normal
 
-    # Start the extension lines a fraction of the way out from each point so
-    # they do not touch it, as in a mechanical drawing.
-    a_gap = a + gap * offset * normal
-    b_gap = b_point + gap * (p2 - b_point)
+    # Start each extension line a gap away from its point so that it does
+    # not touch it, as in a mechanical drawing. The gap is the same at both
+    # points, a fraction of the longer extension line, but no longer than
+    # the extension line it starts. Each extension line runs along the
+    # normal, so its signed length is its projection onto the normal.
+    distance_a = offset
+    distance_b = (p2 - b_point) @ normal
+    size_gap = gap * np.maximum(np.abs(distance_a), np.abs(distance_b))
+    gap_a = np.sign(distance_a) * np.minimum(size_gap, np.abs(distance_a))
+    gap_b = np.sign(distance_b) * np.minimum(size_gap, np.abs(distance_b))
+    a_gap = a + gap_a * normal
+    b_gap = b_point + gap_b * normal
 
     axis = "_dimension"
 
@@ -2692,8 +2726,8 @@ def dimension(
     else:
         rotation = 0
     kwargs_text = dict(
-        ha="center",
-        va="center",
+        horizontalalignment="center",
+        verticalalignment="center",
         rotation=rotation,
         rotation_mode="anchor",
         backgroundcolor=_facecolor(ax),
@@ -2748,6 +2782,7 @@ def dimension_angular(
     angle_a
         The direction of one side of the angle, measured counterclockwise
         from the horizontal axis.
+        Angles without units are in radians.
     angle_b
         The direction of the other side of the angle, measured the same way.
     radius_inner
@@ -2770,7 +2805,8 @@ def dimension_angular(
         as a gap before the start of each extension line, matching the
         convention of a mechanical drawing.
     num
-        The number of points the arc is drawn through.
+        The number of points the arc is drawn through, at least 3 so that
+        it bends.
     ax
         A matplotlib axes instance on which to plot the dimension.
     components
@@ -2780,13 +2816,22 @@ def dimension_angular(
     arrowstyle
         The :class:`matplotlib.patches.ArrowStyle` of the arrowhead drawn at
         each end of the arc, pointing outwards along the arc.
+        Each end is drawn as an arrow of its own, along the last segment of
+        the arc, so a style with a head at one end, like the default
+        ``"->"`` or ``"-|>"``, gives the arc one head at each end.
+        A style with a head at both ends, like ``"<->"``, gives each end of
+        the arc a second head, which points back along it.
+        Use ``"-"`` to draw the arc without heads.
     kwargs_extension
         Additional keyword arguments passed to :func:`plot` when drawing the
         extension lines.
     kwargs_dimension
         Additional keyword arguments passed to :func:`plot` when drawing the
-        arc. Its color and line width are given to the arrowheads too, and an
-        ``arrowprops`` entry is passed to :func:`annotate` when drawing them.
+        arc.
+        The arrowheads are drawn with every one of them which an arrow has
+        too, like the color, the line width and the transparency of the arc,
+        and at its zorder, and an ``arrowprops`` entry is passed to
+        :func:`annotate` when drawing them.
     kwargs_text
         Additional keyword arguments passed to :func:`text` when drawing the
         label.
@@ -2841,7 +2886,14 @@ def dimension_angular(
         );
     """
     import matplotlib
+    import matplotlib.cbook
+    import matplotlib.lines
+    import matplotlib.patches
+    import matplotlib.text
     import matplotlib.pyplot as plt
+
+    if num < 3:
+        raise ValueError(f"{num=} must be at least 3, so that the arc bends.")
 
     if ax is None:
         ax = plt.gca()
@@ -2854,32 +2906,52 @@ def dimension_angular(
     cx, cy = components
     center = na.Cartesian2dVectorArray(components_center[cx], components_center[cy])
 
-    if kwargs_extension is None:
-        kwargs_extension = dict()
-    kwargs_extension = dict(color="gray") | kwargs | kwargs_extension
+    # Each set of keyword arguments has the aliases of matplotlib, like `c`
+    # and `lw`, replaced by the names they stand for before they are merged,
+    # so that they replace the defaults rather than conflict with them.
+    normalize = matplotlib.cbook.normalize_kwargs
+
+    kwargs_extension = (
+        dict(color="gray")
+        | normalize(kwargs, matplotlib.lines.Line2D)
+        | normalize(kwargs_extension, matplotlib.lines.Line2D)
+    )
 
     # The arc is drawn as a line, so it is given the color and the width of
     # the line :func:`dimension` draws its dimension with, an arrow, rather
     # than the next color in the cycle and the width of a plotted line.
-    if kwargs_dimension is None:
-        kwargs_dimension = dict()
     kwargs_dimension = (
         dict(color="black", linewidth=matplotlib.rcParams["patch.linewidth"])
-        | kwargs
-        | kwargs_dimension
+        | normalize(kwargs, matplotlib.lines.Line2D)
+        | normalize(kwargs_dimension, matplotlib.lines.Line2D)
     )
-    arrowprops = dict(
-        arrowstyle=arrowstyle,
-        shrinkA=0,
-        shrinkB=0,
-        color=kwargs_dimension["color"],
-        linewidth=kwargs_dimension["linewidth"],
+    arrowprops = normalize(
+        kwargs_dimension.pop("arrowprops", None),
+        matplotlib.patches.FancyArrowPatch,
     )
-    arrowprops = arrowprops | kwargs_dimension.pop("arrowprops", dict())
 
-    if kwargs_text is None:
-        kwargs_text = dict()
-    kwargs_text = kwargs | kwargs_text
+    # The arrowheads are drawn like the arc. The arrow of each is given every
+    # property of the arc which an arrow has, like its color, its width and
+    # its transparency, except its transform, since an annotation places its
+    # arrow itself. The arrow is drawn by its annotation, at the zorder of
+    # the annotation, which is given the zorder of the arc.
+    arrowprops = (
+        dict(arrowstyle=arrowstyle, shrinkA=0, shrinkB=0)
+        | {
+            key: value
+            for key, value in kwargs_dimension.items()
+            if key != "transform"
+            and hasattr(matplotlib.patches.FancyArrowPatch, f"set_{key}")
+        }
+        | arrowprops
+    )
+    kwargs_arrowhead = dict()
+    if "zorder" in kwargs_dimension:
+        kwargs_arrowhead["zorder"] = kwargs_dimension["zorder"]
+
+    kwargs_text = normalize(kwargs, matplotlib.text.Text) | normalize(
+        kwargs_text, matplotlib.text.Text
+    )
 
     # Give a unitless `radius_inner` the same unit as the radius so that the
     # default `radius_inner=0` can be used with unitful coordinates.
@@ -2892,8 +2964,12 @@ def dimension_angular(
         angle_label = (angle_a + angle_b) / 2
 
     if label is None:
-        size = na.as_named_array(np.abs(angle_b - angle_a)).to(u.deg)
-        label = size.to_string_array(f"%.{decimals}f", pad_unit="")
+        size = na.as_named_array(np.abs(angle_b - angle_a))
+        # Angles without units are in radians, as the cosine and sine which
+        # draw the arc take them to be.
+        if na.unit(size) is None:
+            size = size * u.rad
+        label = size.to(u.deg).to_string_array(f"%.{decimals}f", pad_unit="")
     label = na.as_named_array(label).astype(str).astype(object)
 
     def _direction(
@@ -2939,14 +3015,15 @@ def dimension_angular(
             ax=ax,
             arrowprops=arrowprops,
             annotation_clip=False,
+            **kwargs_arrowhead,
         )
 
     # The label is drawn on a background matching the axes, and above the
     # arc, so it masks the arc underneath, as :func:`dimension` does.
     position = center + radius * _direction(angle_label)
     kwargs_text = dict(
-        ha="center",
-        va="center",
+        horizontalalignment="center",
+        verticalalignment="center",
         backgroundcolor=_facecolor(ax),
         zorder=5,
     ) | kwargs_text
