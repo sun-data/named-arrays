@@ -130,17 +130,27 @@ def test_convex_hull_axes() -> None:
                 y=na.ScalarArray(np.array([3]), axes="vertex"),
             ),
         ),
+        (
+            na.Cartesian2dVectorArray(
+                x=na.ScalarArray(np.array([2, 2, 2, 2, 2]), axes=_axis),
+                y=na.ScalarArray(np.array([3, 3, 3, 3, 3]), axes=_axis),
+            ),
+            na.Cartesian2dVectorArray(
+                x=na.ScalarArray(np.array([2]), axes="vertex"),
+                y=na.ScalarArray(np.array([3]), axes="vertex"),
+            ),
+        ),
     ],
-    ids=["collinear", "single"],
+    ids=["collinear", "single", "coincident"],
 )
 def test_convex_hull_degenerate(
     points: na.Cartesian2dVectorArray,
     expected: na.Cartesian2dVectorArray,
 ) -> None:
-    """Collinear points have a hull of their two ends, and a single point is
-    its own hull."""
+    """Collinear points have a hull of their two ends, and a single point, or
+    points which all coincide, are their own hull."""
     result = na.geometry.convex_hull(points, axis=_axis)
-    assert np.allclose(result, expected)
+    assert np.array_equal(result, expected)
 
 
 def test_convex_hull_empty() -> None:
@@ -148,9 +158,73 @@ def test_convex_hull_empty() -> None:
     points = na.stack([_square, _square], axis="set")
     where = na.ScalarArray(np.array([True, False]), axes="set")
     result = na.geometry.convex_hull(points, axis=_axis, where=where)
-    assert np.allclose(result[dict(set=0)], _square_hull)
-    assert np.all(np.isnan(result[dict(set=1)].x))
-    assert np.all(np.isnan(result[dict(set=1)].y))
+    expected = na.Cartesian2dVectorArray(
+        x=na.stack([_square_hull.x, np.nan + 0 * _square_hull.x], axis="set"),
+        y=na.stack([_square_hull.y, np.nan + 0 * _square_hull.y], axis="set"),
+    )
+    assert np.array_equal(result, expected, equal_nan=True)
+
+
+def test_convex_hull_no_points() -> None:
+    """
+    Points along an axis of length zero have a hull of a single vertex of
+    NaN, in each set.
+    """
+    shape = dict(set=2, point=0)
+    points = na.Cartesian2dVectorArray(
+        x=na.ScalarArray(np.zeros(tuple(shape.values())), axes=tuple(shape)),
+        y=na.ScalarArray(np.zeros(tuple(shape.values())), axes=tuple(shape)),
+    )
+    result = na.geometry.convex_hull(points, axis=_axis)
+    nan = na.ScalarArray(np.full((2, 1), np.nan), axes=("set", "vertex"))
+    expected = na.Cartesian2dVectorArray(nan, nan)
+    assert np.array_equal(result, expected, equal_nan=True)
+
+
+@pytest.mark.parametrize(
+    argnames="x,y",
+    argvalues=[
+        (np.nan, 0),
+        (0, np.nan),
+        (np.inf, 0),
+        (-np.inf, np.inf),
+    ],
+)
+def test_convex_hull_not_finite(x: float, y: float) -> None:
+    """
+    Points with a coordinate which is not finite are left out, as are those
+    left out by `where`, among points which are.
+    """
+    outlier = na.Cartesian2dVectorArray(
+        x=na.ScalarArray(np.array([x, x]), axes=_axis),
+        y=na.ScalarArray(np.array([y, y]), axes=_axis),
+    )
+    points = na.concatenate([_square, outlier], axis=_axis)
+    result = na.geometry.convex_hull(points, axis=_axis)
+    assert np.array_equal(result, _square_hull)
+
+
+@pytest.mark.parametrize(
+    argnames="dtype,dtype_expected",
+    argvalues=[
+        (np.float32, np.float32),
+        (np.float64, np.float64),
+        (np.int64, np.float64),
+    ],
+)
+def test_convex_hull_dtype(dtype: type, dtype_expected: type) -> None:
+    """
+    The vertices keep the type of the points if it is a floating-point type,
+    since they are copies of some of them, or else are 64-bit floats.
+    """
+    points = na.Cartesian2dVectorArray(
+        x=na.ScalarArray(np.array([1, -1, 1, -1, 0]).astype(dtype), axes=_axis),
+        y=na.ScalarArray(np.array([1, -1, -1, 1, 0]).astype(dtype), axes=_axis),
+    )
+    result = na.geometry.convex_hull(points, axis=_axis)
+    assert result.x.ndarray.dtype == dtype_expected
+    assert result.y.ndarray.dtype == dtype_expected
+    assert np.array_equal(result, _square_hull)
 
 
 @pytest.mark.parametrize("seed", [0, 1, 2])
@@ -191,16 +265,56 @@ def test_convex_hull_counterclockwise() -> None:
 
 
 @pytest.mark.parametrize(
-    argnames="kwargs,error",
+    argnames="kwargs,error,match",
     argvalues=[
-        (dict(points=_square.x, axis=_axis), TypeError),
-        (dict(points=_square, axis="foo"), ValueError),
+        (dict(points=_square.x, axis=_axis), TypeError, "NotImplemented"),
+        (
+            dict(
+                points=na.Cartesian3dVectorArray(_square.x, _square.y, _square.x),
+                axis=_axis,
+            ),
+            TypeError,
+            "exactly the components x and y",
+        ),
+        (
+            dict(
+                points=na.Cartesian2dMatrixArray(
+                    na.Cartesian2dVectorArray(_square.x, _square.y),
+                    na.Cartesian2dVectorArray(_square.y, _square.x),
+                ),
+                axis=_axis,
+            ),
+            TypeError,
+            "NotImplemented",
+        ),
+        (
+            dict(
+                points=na.Cartesian2dVectorArray(
+                    na.UncertainScalarArray(_square.x, _square.x),
+                    _square.y,
+                ),
+                axis=_axis,
+            ),
+            TypeError,
+            "NotImplemented",
+        ),
+        (
+            dict(
+                points=_square,
+                axis=_axis,
+                where=na.UncertainScalarArray(True, True),
+            ),
+            TypeError,
+            "NotImplemented",
+        ),
+        (dict(points=_square, axis="foo"), ValueError, "are not axes"),
         (
             dict(points=na.stack([_square, _square], "set"), axis=_axis, axis_vertex="set"),
             ValueError,
+            "is already an axis",
         ),
     ],
 )
-def test_convex_hull_errors(kwargs: dict, error: type) -> None:
-    with pytest.raises(error):
+def test_convex_hull_errors(kwargs: dict, error: type, match: str) -> None:
+    with pytest.raises(error, match=match):
         na.geometry.convex_hull(**kwargs)

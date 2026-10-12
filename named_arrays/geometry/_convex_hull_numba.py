@@ -42,7 +42,8 @@ def convex_hull_numba(
     the points and then walks along them twice, once for the lower half of
     the hull and once for the upper half, in :math:`O(n \\log n)` time.
     Points which lie on an edge of the hull, rather than at a corner, are not
-    vertices of it.
+    vertices of it, and neither are copies of a vertex.
+    Points with a coordinate which is not finite are left out.
 
     Parameters
     ----------
@@ -59,18 +60,19 @@ def convex_hull_numba(
 
     Returns
     -------
-    indices
-        For each set of points, the indices of the vertices of its hull along
-        the last axis of `x`, in counterclockwise order starting from the
-        vertex with the least :math:`x`-coordinate (the least
-        :math:`y`-coordinate among a tie). Only the first `num` entries of
-        each row are vertices.
-    num
-        The number of vertices of each hull.
+    x_vertices
+        For each set of points, the :math:`x`-coordinates of the vertices of
+        its hull along the last axis, in counterclockwise order starting from
+        the vertex with the least :math:`x`-coordinate (the least
+        :math:`y`-coordinate among a tie). Every hull is padded to the number
+        of vertices of the largest, and at least one, by repeating its last
+        vertex. The vertices of a set with no points are NaN.
+    y_vertices
+        The :math:`y`-coordinates of the vertices, in the same shape.
     """
     num_sets, num_points = x.shape
 
-    indices = np.zeros((num_sets, num_points), dtype=np.int64)
+    indices = np.empty((num_sets, num_points), dtype=np.int64)
     num = np.zeros(num_sets, dtype=np.int64)
 
     for s in numba.prange(num_sets):
@@ -82,7 +84,7 @@ def convex_hull_numba(
         candidates = np.empty(num_points, dtype=np.int64)
         n = 0
         for i in range(num_points):
-            if where_s[i]:
+            if where_s[i] and np.isfinite(x_s[i]) and np.isfinite(y_s[i]):
                 candidates[n] = i
                 n += 1
         candidates = candidates[:n]
@@ -123,7 +125,33 @@ def convex_hull_numba(
         # The upper half ends on the vertex the lower half started from.
         h -= 1
 
+        # If every point coincides, the two ends of the chains are copies of
+        # the same point.
+        if h == 2:
+            a = hull[0]
+            b = hull[1]
+            if x_s[a] == x_s[b] and y_s[a] == y_s[b]:
+                h = 1
+
         indices[s, :h] = hull[:h]
         num[s] = h
 
-    return indices, num
+    num_vertices = 1
+    for s in range(num_sets):
+        num_vertices = max(num_vertices, num[s])
+
+    x_vertices = np.empty((num_sets, num_vertices))
+    y_vertices = np.empty((num_sets, num_vertices))
+
+    for s in numba.prange(num_sets):
+        h = num[s]
+        for v in range(num_vertices):
+            if h == 0:
+                x_vertices[s, v] = np.nan
+                y_vertices[s, v] = np.nan
+            else:
+                i = indices[s, min(v, h - 1)]
+                x_vertices[s, v] = x[s, i]
+                y_vertices[s, v] = y[s, i]
+
+    return x_vertices, y_vertices

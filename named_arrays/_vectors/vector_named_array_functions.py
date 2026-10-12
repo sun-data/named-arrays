@@ -5,6 +5,7 @@ import astropy.units as u
 import named_arrays as na
 from named_arrays._scalars import scalars
 import named_arrays._scalars.scalar_named_array_functions
+from named_arrays.geometry._convex_hull import _convex_hull_quantity
 from . import vectors
 
 if TYPE_CHECKING:
@@ -1203,6 +1204,69 @@ def regridding_transpose_weights_conservative(
     result = na.ScalarArray(result, tuple(shape_orthogonal))
 
     return result, _shape_output, _shape_input
+
+
+@_implements(na.geometry.convex_hull)
+def geometry_convex_hull(
+    points: na.AbstractCartesian2dVectorArray,
+    axis: str | Sequence[str],
+    axis_vertex: str = "vertex",
+    where: bool | na.AbstractScalar = True,
+) -> na.Cartesian2dVectorArray:
+
+    if not isinstance(points, na.AbstractCartesian2dVectorArray):  # pragma: nocover
+        return NotImplemented
+
+    # Vectors with more components, like 3D vectors, are subclasses of 2D
+    # vectors, but have no 2D hull.
+    components = tuple(points.components)
+    if components != ("x", "y"):
+        raise TypeError(
+            f"`points` must have exactly the components x and y, "
+            f"got {components=}."
+        )
+
+    try:
+        x = scalars._normalize(points.x).explicit
+        y = scalars._normalize(points.y).explicit
+        where = scalars._normalize(where).explicit
+    except scalars.ScalarTypeError:
+        return NotImplemented
+
+    if isinstance(axis, str):
+        axis = (axis,)
+    axis = tuple(axis)
+
+    shape = na.shape_broadcasted(x, y, where)
+
+    missing = [a for a in axis if a not in shape]
+    if missing:
+        raise ValueError(f"{missing=} are not axes of `points` or `where`, {shape=}.")
+
+    shape_batch = {a: shape[a] for a in shape if a not in axis}
+
+    if axis_vertex in shape_batch:
+        raise ValueError(
+            f"{axis_vertex=} is already an axis of `points` which is not "
+            f"reduced, {shape_batch=}."
+        )
+
+    # The axes of the points of a set are last.
+    axes = tuple(shape_batch) + axis
+
+    x_vertices, y_vertices = _convex_hull_quantity(
+        x=x.ndarray_aligned(axes),
+        y=y.ndarray_aligned(axes),
+        where=where.ndarray_aligned(axes),
+        num_axes_points=len(axis),
+    )
+
+    axes_vertices = tuple(shape_batch) + (axis_vertex,)
+
+    return na.Cartesian2dVectorArray(
+        x=na.ScalarArray(x_vertices, axes=axes_vertices),
+        y=na.ScalarArray(y_vertices, axes=axes_vertices),
+    )
 
 
 @_implements(na.numexpr.evaluate)

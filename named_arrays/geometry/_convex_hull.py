@@ -3,6 +3,7 @@ import math
 import numpy as np
 import astropy.units as u
 import named_arrays as na
+from ._point_in_polygon import _contiguous
 
 __all__ = [
     "convex_hull",
@@ -28,8 +29,14 @@ def convex_hull(
     Hulls have different numbers of vertices, so every hull is padded to the
     number of vertices of the largest by repeating its last vertex, which
     leaves the polygon it describes unchanged. Points which lie on an edge of
-    a hull, rather than at a corner, are not vertices of it. A set with no
-    points has a hull whose vertices are all NaN.
+    a hull, rather than at a corner, are not vertices of it, and neither are
+    copies of a vertex, so the hull of points which all coincide is that one
+    point. Points with a coordinate which is not finite, like NaN, are left
+    out. A set with no points has a hull whose vertices are all NaN.
+
+    The vertices keep the unit of the :math:`x`-coordinates, or of the
+    :math:`y`-coordinates if those have none, and the type of the
+    coordinates if it is a floating-point type, or else are 64-bit floats.
 
     The hull of each set is found with Andrew's monotone chain algorithm, in
     :math:`O(n \\log n)` time for :math:`n` points.
@@ -38,6 +45,8 @@ def convex_hull(
     ----------
     points
         The points to find the hull of.
+        Must have exactly the two components :math:`x` and :math:`y`, which
+        must be scalars that are not uncertain.
     axis
         The logical axis or axes along which the points of a single set vary.
     axis_vertex
@@ -80,97 +89,83 @@ def convex_hull(
             edgecolor="black",
         );
     """
+    return na._named_array_function(
+        func=convex_hull,
+        points=points,
+        axis=axis,
+        axis_vertex=axis_vertex,
+        where=where,
+    )
+
+
+def _convex_hull_quantity(
+    x: float | np.ndarray | u.Quantity,
+    y: float | np.ndarray | u.Quantity,
+    where: bool | np.ndarray,
+    num_axes_points: int,
+) -> tuple[np.ndarray | u.Quantity, np.ndarray | u.Quantity]:
+    """
+    Find the convex hull of each of a batch of sets of points.
+
+    If the coordinates have units, both are converted to the unit of the
+    :math:`x`-coordinates, or of the :math:`y`-coordinates if those have
+    none, so a coordinate without one counts as dimensionless.
+
+    Parameters
+    ----------
+    x
+        The :math:`x`-coordinates of the points.
+        Its last `num_axes_points` axes are the axes along which the points
+        of a single set vary, and the others are batch axes.
+    y
+        The :math:`y`-coordinates of the points, which should broadcast
+        against `x`.
+    where
+        Which of the points take part, which should broadcast against `x`.
+    num_axes_points
+        The number of axes, at the end of the broadcast shape of the
+        arguments, along which the points of a single set vary.
+
+    Returns
+    -------
+    x_vertices
+        The :math:`x`-coordinates of the vertices of each hull, along the
+        last axis, after the batch axes.
+    y_vertices
+        The :math:`y`-coordinates of the vertices, in the same shape.
+    """
     from . import _convex_hull_numba
 
-    if not isinstance(points, na.AbstractCartesian2dVectorArray):
-        raise TypeError(
-            f"`points` must be an instance of "
-            f"`named_arrays.AbstractCartesian2dVectorArray`, got {type(points)}."
-        )
+    dtype = np.result_type(np.asarray(x), np.asarray(y))
+    if not np.issubdtype(dtype, np.floating):
+        dtype = np.float64
 
-    if isinstance(axis, str):
-        axis = (axis,)
-    axis = tuple(axis)
+    units = [a.unit for a in (x, y) if isinstance(a, u.Quantity)]
+    unit = units[0] if units else None
+    if unit is not None:
+        x, y = (u.Quantity(a, copy=False).to_value(unit) for a in (x, y))
 
-    x = na.as_named_array(points.x).explicit
-    y = na.as_named_array(points.y).explicit
-    where = na.as_named_array(where).explicit
+    shape = np.broadcast_shapes(np.shape(x), np.shape(y), np.shape(where))
+    index_points = len(shape) - num_axes_points
+    shape_batch = shape[:index_points]
+    num_sets = math.prod(shape_batch)
+    num_points = math.prod(shape[index_points:])
+    newshape = (num_sets, num_points)
 
-    for a in (x, y, where):
-        if not isinstance(a, na.ScalarArray):
-            raise TypeError(
-                f"the components of `points` and `where` must be scalars "
-                f"which are not uncertain, got {type(a)}."
-            )
-
-    shape = na.shape_broadcasted(x, y, where)
-
-    missing = [a for a in axis if a not in shape]
-    if missing:
-        raise ValueError(f"{missing=} are not axes of `points` or `where`, {shape=}.")
-
-    shape_batch = {a: shape[a] for a in shape if a not in axis}
-
-    if axis_vertex in shape_batch:
-        raise ValueError(
-            f"{axis_vertex=} is already an axis of `points` which is not "
-            f"reduced, {shape_batch=}."
-        )
-    shape_points = {a: shape[a] for a in axis}
-    shape_ordered = shape_batch | shape_points
-
-    unit = x.unit
-    if unit is None:
-        unit = y.unit
-
-    def _values(a: "na.ScalarArray") -> np.ndarray:
-        result = a.ndarray_aligned(shape_ordered)
-        if unit is not None:
-            result = u.Quantity(result).to_value(unit)
-        result = np.broadcast_to(result, tuple(shape_ordered.values()))
-        return result
-
-    num_sets = math.prod(shape_batch.values())
-    num_points = math.prod(shape_points.values())
-
-    x_values = _values(x).reshape(num_sets, num_points)
-    y_values = _values(y).reshape(num_sets, num_points)
-    where_values = np.broadcast_to(
-        where.ndarray_aligned(shape_ordered),
-        tuple(shape_ordered.values()),
-    ).reshape(num_sets, num_points)
-
-    indices, num = _convex_hull_numba.convex_hull_numba(
-        x=np.ascontiguousarray(x_values, dtype=float),
-        y=np.ascontiguousarray(y_values, dtype=float),
-        where=np.ascontiguousarray(where_values, dtype=bool),
+    x_vertices, y_vertices = _convex_hull_numba.convex_hull_numba(
+        x=_contiguous(x, shape, newshape),
+        y=_contiguous(y, shape, newshape),
+        where=_contiguous(where, shape, newshape, dtype=bool),
     )
 
-    num_vertices = max(int(num.max(initial=0)), 1)
-
-    # Pad each hull to the same number of vertices by repeating its last.
-    position = np.minimum(
-        np.arange(num_vertices)[np.newaxis, :],
-        np.maximum(num - 1, 0)[:, np.newaxis],
-    )
-    vertex = np.take_along_axis(indices, position, axis=1)
-
-    x_vertices = np.take_along_axis(x_values, vertex, axis=1).astype(float)
-    y_vertices = np.take_along_axis(y_values, vertex, axis=1).astype(float)
-    x_vertices[num == 0] = np.nan
-    y_vertices[num == 0] = np.nan
-
-    shape_result = tuple(shape_batch.values()) + (num_vertices,)
-    x_vertices = x_vertices.reshape(shape_result)
-    y_vertices = y_vertices.reshape(shape_result)
+    # Every vertex is one of the points, so the vertices are given back in
+    # the type of the points without rounding.
+    shape_vertices = shape_batch + (x_vertices.shape[~0],)
+    x_vertices = x_vertices.reshape(shape_vertices).astype(dtype, copy=False)
+    y_vertices = y_vertices.reshape(shape_vertices).astype(dtype, copy=False)
 
     if unit is not None:
         x_vertices = x_vertices << unit
         y_vertices = y_vertices << unit
 
-    axes = tuple(shape_batch) + (axis_vertex,)
-
-    return na.Cartesian2dVectorArray(
-        x=na.ScalarArray(x_vertices, axes=axes),
-        y=na.ScalarArray(y_vertices, axes=axes),
-    )
+    return x_vertices, y_vertices
