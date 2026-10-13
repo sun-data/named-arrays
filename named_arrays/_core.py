@@ -480,6 +480,92 @@ def getitem(
         return a
 
 
+def _item_single(
+    a: Any,
+    item: Mapping[str, Any],
+    shape: dict[str, int],
+    shape_a: None | dict[str, int] = None,
+    broadcast: Collection[str] = (),
+) -> tuple[Any, Mapping[str, Any]]:
+    """
+    Prepare `a` and `item` for indexing `a`, where `a` may have a single
+    element along an axis of `item` but `shape` has a different number.
+
+    An array which is broadcast against others, such as a component of a
+    vector, can have a single element along an axis where the others have
+    many. That element stands for every element along the axis, so indexing
+    it by the same item as the others would select the wrong elements of it,
+    or none at all. Instead, an integer selects it with ``0``, an integer
+    index array selects it with an array of zeros, and a slice keeps it, or
+    keeps none of it if the slice selects nothing. The result of a slice or an
+    integer is a view of the same data, which still broadcasts against the
+    others.
+
+    If the selection does not include every element along the axis, the view
+    is made read-only, since writing to the single element would change the
+    elements outside the selection too. Along an axis of `broadcast`, or for
+    any other item, `a` is broadcast along the axis before it is indexed,
+    which gives a read-only view too.
+
+    Parameters
+    ----------
+    a
+        The array to index. Any value which is not a named array is returned
+        unchanged.
+    item
+        The items along each axis which will index `a`. An item of
+        :obj:`None` does not index its axis.
+    shape
+        The shape of the arrays which `a` is broadcast against.
+    shape_a
+        The shape of `a`, if it is already known.
+    broadcast
+        The axes along which a single element of `a` is broadcast instead of
+        kept, even for a slice.
+
+    Returns
+    -------
+    a
+        The array, broadcast or made read-only if needed.
+    item
+        The item to index `a` with.
+    """
+    if not isinstance(a, AbstractArray):
+        return a, item
+    if shape_a is None:
+        shape_a = a.shape
+    item_a = None
+    shape_new = dict()
+    read_only = False
+    for ax in item:
+        item_ax = item[ax]
+        num = shape.get(ax, 1)
+        if item_ax is None or shape_a.get(ax) != 1 or num == 1:
+            continue
+        if item_a is None:
+            item_a = dict(item)
+        if ax in broadcast:
+            shape_new[ax] = num
+        elif isinstance(item_ax, slice):
+            num_selected = len(range(num)[item_ax])
+            item_a[ax] = slice(None) if num_selected else slice(0, 0)
+            read_only = read_only or 0 < num_selected < num
+        elif np.issubdtype(type(item_ax), np.integer):
+            item_a[ax] = 0
+            read_only = True
+        elif isinstance(item_ax, na.AbstractScalar) and np.issubdtype(get_dtype(item_ax), np.integer):
+            item_a[ax] = 0 * item_ax
+        else:
+            shape_new[ax] = num
+    if item_a is None:
+        return a, item
+    if shape_new:
+        a = a.broadcast_to(shape_a | shape_new)
+    elif read_only and isinstance(a, AbstractExplicitArray):
+        a = a.broadcast_to(shape_a)
+    return a, item_a
+
+
 def pack(a: Any, axis: str = "pack") -> na.ScalarArray:
     """
     Flatten the numeric leaves of a nested structure into a 1D array.
