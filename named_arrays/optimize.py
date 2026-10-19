@@ -21,6 +21,7 @@ __all__ = [
     "minimum_brent",
     "LeastSquaresResult",
     "least_squares",
+    "evaluate",
 ]
 
 InputT = TypeVar("InputT", bound="float | u.Quantity | na.AbstractScalarArray")
@@ -352,9 +353,13 @@ def minimum_brent(
 @dataclasses.dataclass(frozen=True, eq=False)
 class LeastSquaresResult:
     """
-    The results of :func:`least_squares` for every fit of a batch.
+    The results of :func:`least_squares` for every fit of a batch, and what
+    is needed to evaluate the best-fit model with :meth:`evaluate`.
 
     Each array varies along the batch axes of the fit.
+    If any argument of the fit was uncertain, the nominal values of the
+    arguments and each of their samples are fit separately, and the results
+    are uncertain arrays.
     """
 
     parameters: na.AbstractVectorArray
@@ -390,6 +395,44 @@ class LeastSquaresResult:
 
     converged: na.AbstractScalarArray
     """Whether each fit converged."""
+
+    model: ndoptimize.Model
+    """The model which was fit."""
+
+    x: float | u.Quantity | na.AbstractScalar | na.AbstractVectorArray
+    """The independent variable of the fit."""
+
+    axis: tuple[str, ...]
+    """The axes along which the data points of each fit vary."""
+
+    unit: None | u.UnitBase
+    """The unit of the data, and so of the model, or :obj:`None` if it has none."""
+
+    def evaluate(
+        self,
+        x: None | float | u.Quantity | na.AbstractScalar | na.AbstractVectorArray = None,
+        axis: None | str | Sequence[str] = None,
+    ) -> na.AbstractScalar:
+        """
+        Evaluate the best-fit model of every fit, using :func:`evaluate`.
+
+        Parameters
+        ----------
+        x
+            The points at which to evaluate the model.
+            If :obj:`None` (the default), the independent variable of the
+            fit, so that the result is the model of the data.
+        axis
+            The axis or axes along which the points of `x` vary.
+            If :obj:`None` (the default), the axes of the fit.
+        """
+        return evaluate(
+            model=self.model,
+            x=self.x if x is None else x,
+            parameters=self.parameters,
+            axis=self.axis if axis is None else axis,
+            unit=self.unit,
+        )
 
 
 def least_squares(
@@ -434,6 +477,10 @@ def least_squares(
     the unit of its initial guess.
     The variance is converted to the unit of the data squared, and the bounds
     and priors of each parameter to the unit of its guess.
+
+    Any argument may be uncertain, including a component of a vector.
+    Then the nominal values of the arguments and each of their samples are
+    fit separately, and the results are uncertain arrays.
 
     Parameters
     ----------
@@ -524,14 +571,23 @@ def least_squares(
             axis="velocity",
         )
 
+        # the best-fit model of the first three spectra, on a finer grid
+        index = dict(position=slice(0, 3))
+        velocity_fine = na.linspace(-100, 100, axis="velocity_fine", num=201) * u.km / u.s
+        fit = result.evaluate(x=velocity_fine, axis="velocity_fine")
+
         # compare the fitted centers to the truth
         error = result.parameters.center - truth.center
         uncertainty = np.sqrt(result.covariance.center.center)
 
-        fig, ax = plt.subplots(constrained_layout=True)
-        na.plt.scatter(truth.center, error / uncertainty, ax=ax);
-        ax.set_xlabel(f"true center ({ax.get_xlabel()})");
-        ax.set_ylabel("(fitted center - true center) / uncertainty");
+        fig, ax = plt.subplots(ncols=2, figsize=(8, 3.5), constrained_layout=True)
+        na.plt.scatter(velocity, data[index], ax=ax[0], color="gray");
+        na.plt.plot(velocity_fine, fit[index], ax=ax[0], axis="velocity_fine");
+        ax[0].set_xlabel(f"velocity ({ax[0].get_xlabel()})");
+        ax[0].set_ylabel(f"intensity ({ax[0].get_ylabel()})");
+        na.plt.scatter(truth.center, error / uncertainty, ax=ax[1]);
+        ax[1].set_xlabel(f"true center ({ax[1].get_xlabel()})");
+        ax[1].set_ylabel("(fitted center - true center) / uncertainty");
     """
     return na._named_array_function(
         func=least_squares,
@@ -548,4 +604,91 @@ def least_squares(
         correlation=correlation,
         max_iterations=max_iterations,
         tolerance=tolerance,
+    )
+
+
+def evaluate(
+    model: ndoptimize.Model,
+    x: float | u.Quantity | na.AbstractScalar | na.AbstractVectorArray,
+    parameters: na.AbstractVectorArray,
+    axis: str | Sequence[str],
+    unit: None | u.UnitBase = None,
+) -> na.AbstractScalar:
+    """
+    Evaluate a model for many sets of parameters at once, using
+    :func:`ndoptimize.evaluate`.
+
+    The points of a single evaluation vary along `axis`, and every other axis
+    of the arguments is a batch axis.
+    :meth:`LeastSquaresResult.evaluate` calls this function with the
+    best-fit parameters of :func:`least_squares`.
+
+    The model is a compiled function of plain numbers, so it sees the values
+    of `x` and of each parameter in their own units, and its result is given
+    the unit `unit`.
+
+    Any argument may be uncertain, including a component of a vector.
+    Then the model is evaluated for the nominal values of the arguments and
+    for each of their samples separately, and the result is an uncertain
+    array.
+
+    Parameters
+    ----------
+    model
+        The model to evaluate, made with :func:`ndoptimize.model`.
+    x
+        The points at which to evaluate the model.
+        If it is a vector, its components, in order, are the inputs of the
+        model; otherwise it is the single input.
+    parameters
+        The parameters of the model, a vector whose components are the
+        parameters named in :attr:`ndoptimize.Model.parameters`.
+        It must not vary along `axis`.
+    axis
+        The logical axis or axes along which the points of a single
+        evaluation vary.
+    unit
+        The unit of the values of the model.
+        If :obj:`None` (the default), the result has no unit.
+
+    Examples
+    --------
+
+    Evaluate Gaussians of three different widths.
+
+    .. jupyter-execute::
+
+        import numpy as np
+        import matplotlib.pyplot as plt
+        import astropy.units as u
+        import named_arrays as na
+        import ndoptimize
+
+        velocity = na.linspace(-50, 50, axis="velocity", num=101) * u.km / u.s
+
+        parameters = na.CartesianNdVectorArray(dict(
+            amplitude=1 * u.DN,
+            center=0 * u.km / u.s,
+            width=na.ScalarArray(np.array([5, 10, 20]), axes="line") * u.km / u.s,
+        ))
+
+        f = na.optimize.evaluate(
+            model=ndoptimize.models.gaussian,
+            x=velocity,
+            parameters=parameters,
+            axis="velocity",
+            unit=u.DN,
+        )
+
+        fig, ax = plt.subplots(constrained_layout=True)
+        na.plt.plot(velocity, f, ax=ax, axis="velocity", label=parameters.width);
+        ax.legend();
+    """
+    return na._named_array_function(
+        func=evaluate,
+        model=model,
+        x=x,
+        parameters=parameters,
+        axis=axis,
+        unit=unit,
     )

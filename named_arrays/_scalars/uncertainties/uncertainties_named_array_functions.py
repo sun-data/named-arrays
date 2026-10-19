@@ -1,4 +1,4 @@
-from typing import Callable, Sequence, Literal, TYPE_CHECKING
+from typing import Any, Callable, Sequence, Literal, TYPE_CHECKING
 import collections
 import numpy as np
 import numpy.typing as npt
@@ -8,6 +8,7 @@ import named_arrays._scalars.scalar_named_array_functions
 from . import uncertainties
 
 if TYPE_CHECKING:
+    import ndoptimize
     import matplotlib.artist
     import matplotlib.axes
 
@@ -1072,6 +1073,119 @@ def optimize_root_secant(
         f0 = f1
 
     raise ValueError("Max iterations exceeded")
+
+
+def _distribution(a: Any) -> Any:
+    """
+    The samples of an uncertain array, a vector with the samples of each of
+    its uncertain components, or anything else unchanged, which then
+    broadcasts against the samples.
+    """
+    if isinstance(a, na.AbstractUncertainScalarArray):
+        return a.distribution
+    if isinstance(a, na.AbstractVectorArray):
+        return a.type_explicit.from_components({
+            c: _distribution(v) for c, v in a.explicit.components.items()
+        })
+    return a
+
+
+def _uncertain(nominal: Any, distribution: Any) -> Any:
+    """
+    Combine the results for the nominal values and for the samples into an
+    uncertain array, or, for vectors, a vector of uncertain components.
+    """
+    if isinstance(nominal, na.AbstractVectorArray):
+        return nominal.type_explicit.from_components({
+            c: _uncertain(nominal.components[c], distribution.components[c])
+            for c in nominal.components
+        })
+    return na.UncertainScalarArray(nominal, distribution)
+
+
+@_implements(na.optimize.least_squares)
+def optimize_least_squares(
+    model: "ndoptimize.Model",
+    x: float | u.Quantity | na.AbstractScalar | na.AbstractVectorArray,
+    data: float | u.Quantity | na.AbstractScalar,
+    variance: float | u.Quantity | na.AbstractScalar,
+    guess: na.AbstractVectorArray,
+    axis: str | Sequence[str],
+    lower: None | na.AbstractVectorArray = None,
+    upper: None | na.AbstractVectorArray = None,
+    prior_mean: None | na.AbstractVectorArray = None,
+    prior_sigma: None | na.AbstractVectorArray = None,
+    correlation: None | npt.ArrayLike = None,
+    max_iterations: int = 1000,
+    tolerance: float = 1e-8,
+) -> na.optimize.LeastSquaresResult:
+
+    arguments = dict(
+        x=x,
+        data=data,
+        variance=variance,
+        guess=guess,
+        lower=lower,
+        upper=upper,
+        prior_mean=prior_mean,
+        prior_sigma=prior_sigma,
+    )
+    kwargs = dict(
+        model=model,
+        axis=axis,
+        correlation=correlation,
+        max_iterations=max_iterations,
+        tolerance=tolerance,
+    )
+
+    # the nominal values and the samples, along their own axis, are fit
+    # separately
+    nominal = na.optimize.least_squares(
+        **{k: na.nominal(v) for k, v in arguments.items()},
+        **kwargs,
+    )
+    distribution = na.optimize.least_squares(
+        **{k: _distribution(v) for k, v in arguments.items()},
+        **kwargs,
+    )
+
+    return na.optimize.LeastSquaresResult(
+        parameters=_uncertain(nominal.parameters, distribution.parameters),
+        covariance=_uncertain(nominal.covariance, distribution.covariance),
+        chi2=_uncertain(nominal.chi2, distribution.chi2),
+        num_points=_uncertain(nominal.num_points, distribution.num_points),
+        iterations=_uncertain(nominal.iterations, distribution.iterations),
+        converged=_uncertain(nominal.converged, distribution.converged),
+        model=model,
+        x=x,
+        axis=nominal.axis,
+        unit=nominal.unit,
+    )
+
+
+@_implements(na.optimize.evaluate)
+def optimize_evaluate(
+    model: "ndoptimize.Model",
+    x: float | u.Quantity | na.AbstractScalar | na.AbstractVectorArray,
+    parameters: na.AbstractVectorArray,
+    axis: str | Sequence[str],
+    unit: None | u.UnitBase = None,
+) -> na.UncertainScalarArray:
+
+    kwargs = dict(model=model, axis=axis, unit=unit)
+
+    return na.UncertainScalarArray(
+        nominal=na.optimize.evaluate(
+            x=na.nominal(x),
+            parameters=na.nominal(parameters),
+            **kwargs,
+        ),
+        distribution=na.optimize.evaluate(
+            x=_distribution(x),
+            parameters=_distribution(parameters),
+            **kwargs,
+        ),
+    )
 
 
 def _colorsynth_normalize(
