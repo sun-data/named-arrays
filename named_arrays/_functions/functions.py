@@ -11,12 +11,17 @@ import named_arrays._core_array_functions as _core_array_functions
 from named_arrays._functions import _fields
 import itertools
 
+if TYPE_CHECKING:
+    import ndoptimize
+
 __all__ = [
     "InputValueError",
     "AbstractFunctionArray",
     "FunctionArray",
     "AbstractPolynomialFunctionArray",
     "PolynomialFitFunctionArray",
+    "AbstractModelFunctionArray",
+    "ModelFitFunctionArray",
 ]
 
 InputsT = TypeVar("InputsT", bound=na.AbstractArray, covariant=True)
@@ -1920,3 +1925,390 @@ class PolynomialFitFunctionArray(
             raise NotImplementedError
 
         return v1_T_v2
+
+
+@dataclasses.dataclass(eq=False, repr=False)
+class AbstractModelFunctionArray(
+    AbstractFunctionArray,
+):
+    """
+    A function array with a model of its outputs, compiled with
+    :func:`ndoptimize.model`, and the parameters of the model.
+    """
+
+    @property
+    @abc.abstractmethod
+    def model(self) -> ndoptimize.Model:
+        """The model of the outputs, made with :func:`ndoptimize.model`."""
+
+    @property
+    @abc.abstractmethod
+    def parameters(self) -> na.AbstractVectorArray:
+        """
+        The parameters of the model, a vector whose components are named
+        after :attr:`ndoptimize.Model.parameters`.
+        """
+
+    @property
+    @abc.abstractmethod
+    def components_model(self) -> None | str | Sequence[str]:
+        """
+        The components of the inputs, in order, which are the inputs of the
+        model, or :obj:`None` for every component.
+        """
+
+    @property
+    @abc.abstractmethod
+    def axis_model(self) -> None | str | Sequence[str]:
+        """
+        The logical axes along which the points of a single instance of the
+        model vary, or :obj:`None` for every axis.
+        """
+
+    def _inputs_model(
+        self,
+        inputs: float | u.Quantity | na.AbstractScalar | na.AbstractVectorArray,
+    ) -> float | u.Quantity | na.AbstractScalar | na.AbstractVectorArray:
+        """
+        The inputs of the model for the given inputs of this function, the
+        components named by :attr:`components_model`.
+
+        Parameters
+        ----------
+        inputs
+            A set of independent variables of this function.
+        """
+        components = self.components_model
+        if components is None:
+            return inputs
+
+        if isinstance(components, str):
+            components = (components,)
+
+        if not isinstance(inputs, na.AbstractVectorArray):
+            raise TypeError(
+                f"`components_model` selects components of vector inputs, "
+                f"got {type(inputs)}."
+            )
+
+        # the components of nested vectors are named with dots, as in
+        # `PolynomialFitFunctionArray.coefficient_names`
+        inputs = inputs.cartesian_nd.components
+        missing = tuple(c for c in components if c not in inputs)
+        if missing:
+            raise ValueError(
+                f"The components {missing} of `components_model` are not "
+                f"components of the inputs, {tuple(inputs)}."
+            )
+
+        return na.CartesianNdVectorArray({c: inputs[c] for c in components})
+
+    def __call__(
+        self,
+        inputs: float | u.Quantity | na.AbstractScalar | na.AbstractVectorArray,
+    ) -> na.FunctionArray:
+        """
+        Evaluate the model at the given inputs, using
+        :func:`ndoptimize.evaluate`.
+
+        The values of the model have the unit of :attr:`outputs`.
+        If :attr:`parameters` are uncertain, the model is evaluated for their
+        nominal values and for each of their samples, and the outputs are
+        uncertain.
+
+        Parameters
+        ----------
+        inputs
+            The inputs at which to evaluate the model, of the same kind as
+            :attr:`inputs`.
+            The axes of :attr:`axis_model` along which they vary are the
+            points of each evaluation, and every other axis is a batch axis,
+            like the axes along which :attr:`parameters` vary.
+        """
+        outputs = na.optimize._evaluate(
+            model=self.model,
+            x=self._inputs_model(inputs),
+            parameters=self.parameters,
+            axis=self.axis_model,
+            unit=na.unit(self.outputs),
+        )
+        return na.FunctionArray(inputs, outputs)
+
+    @property
+    def predictions(self) -> na.AbstractScalar:
+        """
+        The outputs of the model given :attr:`inputs`.
+        Equivalent to ``self(self.inputs).outputs``.
+        """
+        return self(self.inputs).outputs
+
+
+@dataclasses.dataclass(eq=False, repr=False)
+class ModelFitFunctionArray(
+    FunctionArray[InputsT, OutputsT],
+    AbstractModelFunctionArray,
+):
+    r"""
+    A :class:`named_arrays.ModelFitFunctionArray` carries the independent
+    variables, inputs, and dependent variables, outputs, of a discrete
+    function, and a nonlinear least-squares fit of a model to that function,
+    using the Levenberg-Marquardt method of :func:`ndoptimize.least_squares`.
+
+    The points of a single fit vary along :attr:`axis_model`, and every other
+    axis is a batch axis, along which each set of outputs gets a fit of its
+    own, so that one array can fit every spectrum of a spectral cube.
+    The parameters are the components of a vector, named after
+    :attr:`ndoptimize.Model.parameters`.
+    They are fit the first time they, or any other result of the fit, are
+    used.
+
+    Each fit minimizes
+
+    .. math::
+
+        \chi^2 = (y - f)^T C^{-1} (y - f)
+            + \sum_k \left( \frac{p_k - \bar{p}_k}{\sigma_k} \right)^2,
+
+    where :math:`y` is the outputs, :math:`f` is the model, :math:`C` is the
+    covariance of the noise, :math:`p_k` are the parameters, and
+    :math:`\bar{p}_k` and :math:`\sigma_k` are the means and standard
+    deviations of their Gaussian priors.
+
+    The model is a compiled function of plain numbers, so it sees the values
+    of the inputs and outputs in their own units, and the value of each
+    parameter in the unit of its initial guess.
+    The variance is converted to the unit of the outputs squared, and the
+    bounds and priors of each parameter to the unit of its guess.
+
+    Any field may be uncertain, including a component of a vector.
+    Then the nominal values and each of the samples are fit separately, and
+    the results of the fit are uncertain arrays.
+
+    Parameters
+    ----------
+    inputs
+        The set of independent variables.
+        If it is a vector, its components, in order, are the inputs of the
+        model, unless `components_model` selects some of them.
+    outputs
+        The set of dependent variables, which the model is fit to.
+        Points which are NaN are left out of their fit.
+    model
+        The model to fit, made with :func:`ndoptimize.model`.
+    guess
+        The initial guess for the parameters, a vector whose components are
+        the parameters named in :attr:`ndoptimize.Model.parameters`.
+        It must not vary along `axis_model`, and neither may the bounds and
+        priors.
+    variance
+        The variance of the noise of each output.
+        Points with a variance which is NaN or not positive are left out of
+        their fit.
+    components_model
+        The components of the inputs, in order, which are the inputs of the
+        model, with those of nested vectors named with dots, like
+        ``"position.x"``.
+        If :obj:`None` (the default), every component.
+    axis_model
+        The logical axes along which the points of a single fit vary.
+        If :obj:`None` (the default), every axis of the inputs, outputs, and
+        variance.
+    where_model
+        A boolean mask controlling which elements to use for fitting.
+    lower
+        The lower bounds of the parameters, a vector with a component for
+        each parameter that has one.
+        If :obj:`None` (the default), no parameter has a lower bound.
+    upper
+        The upper bounds of the parameters, in the same form as `lower`.
+    prior_mean
+        The means of the Gaussian priors of the parameters, a vector with a
+        component for each parameter that has a prior.
+    prior_sigma
+        The standard deviations of the Gaussian priors of the parameters, in
+        the same form as `prior_mean`.
+        A parameter has a prior only if it has a component here.
+    correlation
+        The correlation of the noise of two outputs by their separation along
+        `axis_model`, in samples, starting with 1, as in
+        :func:`ndoptimize.least_squares`.
+        It requires a single axis in `axis_model`.
+        If :obj:`None` (the default), the noise is uncorrelated.
+    max_iterations
+        The maximum number of steps of each fit.
+    tolerance
+        The convergence tolerance on the Newton decrement, as in
+        :func:`ndoptimize.least_squares`.
+
+    Examples
+    --------
+
+    Fit a Gaussian to each of a hundred noisy spectral lines, with the
+    parameters in physical units.
+
+    .. jupyter-execute::
+
+        import numpy as np
+        import matplotlib.pyplot as plt
+        import astropy.units as u
+        import named_arrays as na
+        import ndoptimize
+
+        # the true parameters of the lines
+        shape = dict(position=100)
+        truth = na.CartesianNdVectorArray(dict(
+            amplitude=na.random.uniform(5, 10, shape, seed=0) * u.DN,
+            center=na.random.normal(0, 10, shape, seed=1) * u.km / u.s,
+            width=na.random.uniform(10, 20, shape, seed=2) * u.km / u.s,
+        ))
+
+        # the noisy spectra
+        velocity = na.linspace(-100, 100, axis="velocity", num=41) * u.km / u.s
+        z = (velocity - truth.center) / truth.width
+        sigma = 0.5 * u.DN
+        intensity = na.random.normal(truth.amplitude * np.exp(-z * z / 2), sigma, seed=3)
+
+        # fit every spectrum
+        fit = na.ModelFitFunctionArray(
+            inputs=velocity,
+            outputs=intensity,
+            model=ndoptimize.models.gaussian,
+            guess=na.CartesianNdVectorArray(dict(
+                amplitude=5 * u.DN,
+                center=0 * u.km / u.s,
+                width=15 * u.km / u.s,
+            )),
+            variance=np.square(sigma),
+            axis_model="velocity",
+        )
+
+        # the best-fit model of the first three spectra, on a finer grid
+        index = dict(position=slice(0, 3))
+        best = fit(na.linspace(-100, 100, axis="velocity", num=201) * u.km / u.s)
+
+        # compare the fitted centers to the truth
+        error = fit.parameters.center - truth.center
+        uncertainty = np.sqrt(fit.covariance.center.center)
+
+        fig, ax = plt.subplots(ncols=2, figsize=(8, 3.5), constrained_layout=True)
+        na.plt.scatter(fit.inputs, fit.outputs[index], ax=ax[0], color="gray");
+        na.plt.plot(best.inputs, best.outputs[index], ax=ax[0], axis="velocity");
+        ax[0].set_xlabel(f"velocity ({ax[0].get_xlabel()})");
+        ax[0].set_ylabel(f"intensity ({ax[0].get_ylabel()})");
+        na.plt.scatter(truth.center, error / uncertainty, ax=ax[1]);
+        ax[1].set_xlabel(f"true center ({ax[1].get_xlabel()})");
+        ax[1].set_ylabel("(fitted center - true center) / uncertainty");
+    """
+
+    model: None | ndoptimize.Model = None
+    """The model to fit, made with :func:`ndoptimize.model`."""
+
+    guess: None | na.AbstractVectorArray = None
+    """The initial guess for the parameters."""
+
+    variance: None | float | u.Quantity | na.AbstractScalar = None
+    """The variance of the noise of each output."""
+
+    components_model: None | str | Sequence[str] = None
+    """The components of the inputs which are the inputs of the model."""
+
+    axis_model: None | str | Sequence[str] = None
+    """The logical axes along which the points of a single fit vary."""
+
+    where_model: bool | na.AbstractScalar = True
+    """A boolean mask controlling which elements to use for fitting."""
+
+    lower: None | na.AbstractVectorArray = None
+    """The lower bounds of the parameters."""
+
+    upper: None | na.AbstractVectorArray = None
+    """The upper bounds of the parameters."""
+
+    prior_mean: None | na.AbstractVectorArray = None
+    """The means of the Gaussian priors of the parameters."""
+
+    prior_sigma: None | na.AbstractVectorArray = None
+    """The standard deviations of the Gaussian priors of the parameters."""
+
+    correlation: None | Sequence[float] = None
+    """The correlation of the noise of two outputs by their separation."""
+
+    max_iterations: int = 1000
+    """The maximum number of steps of each fit."""
+
+    tolerance: float = 1e-8
+    """The convergence tolerance on the Newton decrement."""
+
+    @functools.cached_property
+    def _fit(self) -> na.optimize._LeastSquaresResult:
+        """Every result of the fit, computed the first time one is used."""
+        for name in ("model", "guess", "variance"):
+            if getattr(self, name) is None:
+                raise ValueError(f"`{name}` is required to fit the model.")
+
+        outputs = self.outputs
+        if self.where_model is not True:
+            outputs = np.where(self.where_model, outputs, np.nan)
+
+        return na.optimize._least_squares(
+            model=self.model,
+            x=self._inputs_model(self.inputs),
+            data=outputs,
+            variance=self.variance,
+            guess=self.guess,
+            axis=self.axis_model,
+            lower=self.lower,
+            upper=self.upper,
+            prior_mean=self.prior_mean,
+            prior_sigma=self.prior_sigma,
+            correlation=self.correlation,
+            max_iterations=self.max_iterations,
+            tolerance=self.tolerance,
+        )
+
+    @property
+    def parameters(self) -> na.AbstractVectorArray:
+        """
+        The best-fit parameters, a vector of the same type, components and
+        units as :attr:`guess`, which varies along the batch axes.
+        """
+        return self._fit.parameters
+
+    @property
+    def covariance(self) -> na.AbstractMatrixArray:
+        """
+        The covariance of the best-fit parameters, a matrix whose rows and
+        columns are named after the parameters, so that
+        ``covariance.center.width`` is the covariance of ``center`` and
+        ``width``.
+
+        Each element has the product of the units of its two parameters.
+        A parameter which has no effect on the model and no prior has an
+        infinite variance, and the covariance of a fit whose parameters the
+        outputs and the priors cannot constrain is NaN, as described in
+        :attr:`ndoptimize.LeastSquaresResult.covariance`.
+        """
+        return self._fit.covariance
+
+    @property
+    def chi2(self) -> na.AbstractScalar:
+        """
+        The chi-squared of the outputs at the solution, without the
+        contribution of the priors.
+        """
+        return self._fit.chi2
+
+    @property
+    def num_points(self) -> na.AbstractScalar:
+        """The number of points used by each fit."""
+        return self._fit.num_points
+
+    @property
+    def iterations(self) -> na.AbstractScalar:
+        """The number of steps taken by each fit."""
+        return self._fit.iterations
+
+    @property
+    def converged(self) -> na.AbstractScalar:
+        """Whether each fit converged."""
+        return self._fit.converged

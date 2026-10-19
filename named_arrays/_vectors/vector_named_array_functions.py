@@ -1305,13 +1305,14 @@ def _optimize_inputs(
     x: float | u.Quantity | na.AbstractScalar | na.AbstractVectorArray,
 ) -> list[na.ScalarArray]:
     """
-    The inputs of a model, the components of `x` if it is a vector or else
-    `x` itself, each as the value in its own unit.
+    The inputs of a model, the components of `x` if it is a vector, with
+    those of nested vectors in their place, or else `x` itself, each as the
+    value in its own unit.
 
     Raises :class:`ScalarTypeError` if an input is not a scalar array.
     """
     if isinstance(x, na.AbstractVectorArray):
-        inputs = list(x.explicit.components.values())
+        inputs = list(x.explicit.cartesian_nd.components.values())
     else:
         inputs = [x]
     inputs = [scalars._normalize(c).explicit for c in inputs]
@@ -1369,11 +1370,12 @@ def _optimize_parameters(
 def _optimize_shape(
     arrays_points: list[na.AbstractScalarArray],
     arrays_parameters: dict[str, dict[str, na.AbstractScalarArray]],
-    axis: str | Sequence[str],
+    axis: None | str | Sequence[str],
+    required: bool,
 ) -> tuple[tuple[str, ...], dict[str, int], dict[str, int]]:
     """
-    Split the axes of the arguments of :func:`named_arrays.optimize.least_squares`
-    or :func:`named_arrays.optimize.evaluate` into the axes along which the
+    Split the axes of the arguments of :func:`named_arrays.optimize._least_squares`
+    or :func:`named_arrays.optimize._evaluate` into the axes along which the
     points of each set vary and the batch axes.
 
     Parameters
@@ -1384,29 +1386,35 @@ def _optimize_shape(
         The values of the parameters by argument and parameter, which may not
         vary along `axis`.
     axis
-        The axis or axes along which the points of each set vary.
+        The axis or axes along which the points of each set vary, or
+        :obj:`None` for every axis of `arrays_points`.
+    required
+        Whether every axis in `axis` must be an axis of the arguments.
+        If not, those which are not are left out.
 
     Returns
     -------
     axis
-        `axis` as a tuple.
+        The axes along which the points of each set vary, as a tuple.
     shape_batch
         The shape of the batch axes.
     shape_points
         The shape of the axes in `axis`.
     """
-    if isinstance(axis, str):
-        axis = (axis,)
-    axis = tuple(axis)
-
     arrays = arrays_points + [
         p for vector in arrays_parameters.values() for p in vector.values()
     ]
     shape = na.shape_broadcasted(*arrays)
 
-    missing = tuple(a for a in axis if a not in shape)
-    if missing:
-        raise ValueError(f"{missing=} are not axes of the arguments, {shape=}.")
+    if axis is None:
+        axis = tuple(na.shape_broadcasted(*arrays_points))
+    else:
+        if isinstance(axis, str):
+            axis = (axis,)
+        missing = tuple(a for a in axis if a not in shape)
+        if missing and required:
+            raise ValueError(f"{missing=} are not axes of the arguments, {shape=}.")
+        axis = tuple(a for a in axis if a in shape)
 
     for name_argument, vector in arrays_parameters.items():
         for name, p in vector.items():
@@ -1458,22 +1466,22 @@ def _optimize_scalar(
     return na.ScalarArray(ndarray, axes)
 
 
-@_implements(na.optimize.least_squares)
+@_implements(na.optimize._least_squares)
 def optimize_least_squares(
     model: "ndoptimize.Model",
     x: float | u.Quantity | na.AbstractScalar | na.AbstractVectorArray,
     data: float | u.Quantity | na.AbstractScalar,
     variance: float | u.Quantity | na.AbstractScalar,
     guess: na.AbstractVectorArray,
-    axis: str | Sequence[str],
+    axis: None | str | Sequence[str],
     lower: None | na.AbstractVectorArray = None,
     upper: None | na.AbstractVectorArray = None,
     prior_mean: None | na.AbstractVectorArray = None,
     prior_sigma: None | na.AbstractVectorArray = None,
-    correlation: None | npt.ArrayLike = None,
+    correlation: None | Sequence[float] = None,
     max_iterations: int = 1000,
     tolerance: float = 1e-8,
-) -> na.optimize.LeastSquaresResult:
+) -> "na.optimize._LeastSquaresResult":
 
     import ndoptimize
 
@@ -1528,7 +1536,6 @@ def optimize_least_squares(
 
     # the model sees plain numbers: the data and the inputs in their own
     # units, and each parameter in the unit of its guess
-    unit_result = na.unit(data)
     unit_data = na.unit_normalized(data)
     data = _value(data, unit_data)
     variance = _value(variance, unit_data ** 2)
@@ -1548,6 +1555,7 @@ def optimize_least_squares(
         arrays_points=[data, variance, *inputs],
         arrays_parameters=values,
         axis=axis,
+        required=True,
     )
 
     if correlation is not None and len(axis) != 1:
@@ -1582,7 +1590,7 @@ def optimize_least_squares(
     units = {name: na.unit(parameters["guess"][name]) for name in names}
     order = tuple(parameters["guess"])
 
-    return na.optimize.LeastSquaresResult(
+    return na.optimize._LeastSquaresResult(
         parameters=guess.type_explicit.from_components({
             name: _optimize_scalar(
                 result.parameters[..., index[name]],
@@ -1607,20 +1615,16 @@ def optimize_least_squares(
         num_points=na.ScalarArray(result.num_points, axes_batch),
         iterations=na.ScalarArray(result.iterations, axes_batch),
         converged=na.ScalarArray(result.converged, axes_batch),
-        model=model,
-        x=x,
-        axis=axis,
-        unit=unit_result,
     )
 
 
-@_implements(na.optimize.evaluate)
+@_implements(na.optimize._evaluate)
 def optimize_evaluate(
     model: "ndoptimize.Model",
     x: float | u.Quantity | na.AbstractScalar | na.AbstractVectorArray,
     parameters: na.AbstractVectorArray,
-    axis: str | Sequence[str],
-    unit: None | u.UnitBase = None,
+    axis: None | str | Sequence[str],
+    unit: None | u.UnitBase,
 ) -> na.AbstractScalar:
 
     import ndoptimize
@@ -1664,6 +1668,7 @@ def optimize_evaluate(
         arrays_points=inputs,
         arrays_parameters=dict(parameters=values),
         axis=axis,
+        required=False,
     )
     axes_batch = tuple(shape_batch)
 

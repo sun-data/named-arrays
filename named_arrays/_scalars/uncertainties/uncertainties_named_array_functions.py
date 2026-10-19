@@ -1,5 +1,6 @@
 from typing import Any, Callable, Sequence, Literal, TYPE_CHECKING
 import collections
+import dataclasses
 import numpy as np
 import numpy.typing as npt
 import astropy.units as u
@@ -1103,22 +1104,22 @@ def _uncertain(nominal: Any, distribution: Any) -> Any:
     return na.UncertainScalarArray(nominal, distribution)
 
 
-@_implements(na.optimize.least_squares)
+@_implements(na.optimize._least_squares)
 def optimize_least_squares(
     model: "ndoptimize.Model",
     x: float | u.Quantity | na.AbstractScalar | na.AbstractVectorArray,
     data: float | u.Quantity | na.AbstractScalar,
     variance: float | u.Quantity | na.AbstractScalar,
     guess: na.AbstractVectorArray,
-    axis: str | Sequence[str],
+    axis: None | str | Sequence[str],
     lower: None | na.AbstractVectorArray = None,
     upper: None | na.AbstractVectorArray = None,
     prior_mean: None | na.AbstractVectorArray = None,
     prior_sigma: None | na.AbstractVectorArray = None,
-    correlation: None | npt.ArrayLike = None,
+    correlation: None | Sequence[float] = None,
     max_iterations: int = 1000,
     tolerance: float = 1e-8,
-) -> na.optimize.LeastSquaresResult:
+) -> "na.optimize._LeastSquaresResult":
 
     arguments = dict(
         x=x,
@@ -1140,47 +1141,42 @@ def optimize_least_squares(
 
     # the nominal values and the samples, along their own axis, are fit
     # separately
-    nominal = na.optimize.least_squares(
+    nominal = na.optimize._least_squares(
         **{k: na.nominal(v) for k, v in arguments.items()},
         **kwargs,
     )
-    distribution = na.optimize.least_squares(
+    distribution = na.optimize._least_squares(
         **{k: _distribution(v) for k, v in arguments.items()},
         **kwargs,
     )
 
-    return na.optimize.LeastSquaresResult(
-        parameters=_uncertain(nominal.parameters, distribution.parameters),
-        covariance=_uncertain(nominal.covariance, distribution.covariance),
-        chi2=_uncertain(nominal.chi2, distribution.chi2),
-        num_points=_uncertain(nominal.num_points, distribution.num_points),
-        iterations=_uncertain(nominal.iterations, distribution.iterations),
-        converged=_uncertain(nominal.converged, distribution.converged),
-        model=model,
-        x=x,
-        axis=nominal.axis,
-        unit=nominal.unit,
-    )
+    return na.optimize._LeastSquaresResult(**{
+        field.name: _uncertain(
+            getattr(nominal, field.name),
+            getattr(distribution, field.name),
+        )
+        for field in dataclasses.fields(nominal)
+    })
 
 
-@_implements(na.optimize.evaluate)
+@_implements(na.optimize._evaluate)
 def optimize_evaluate(
     model: "ndoptimize.Model",
     x: float | u.Quantity | na.AbstractScalar | na.AbstractVectorArray,
     parameters: na.AbstractVectorArray,
-    axis: str | Sequence[str],
-    unit: None | u.UnitBase = None,
+    axis: None | str | Sequence[str],
+    unit: None | u.UnitBase,
 ) -> na.UncertainScalarArray:
 
     kwargs = dict(model=model, axis=axis, unit=unit)
 
     return na.UncertainScalarArray(
-        nominal=na.optimize.evaluate(
+        nominal=na.optimize._evaluate(
             x=na.nominal(x),
             parameters=na.nominal(parameters),
             **kwargs,
         ),
-        distribution=na.optimize.evaluate(
+        distribution=na.optimize._evaluate(
             x=_distribution(x),
             parameters=_distribution(parameters),
             **kwargs,

@@ -45,7 +45,7 @@ _guess = na.CartesianNdVectorArray(
 
 
 def _gaussian_linear(
-    velocity: na.AbstractScalar,
+    velocity: float | u.Quantity | na.AbstractScalar,
     parameters: na.AbstractVectorArray,
 ) -> na.AbstractScalar:
     """The model of :func:`ndoptimize.models.gaussian_linear` in named arrays."""
@@ -63,16 +63,29 @@ def _guess_with(**components: Any) -> na.CartesianNdVectorArray:
     return na.CartesianNdVectorArray(_guess.components | components)
 
 
+def _fit(**kwargs: Any) -> na.ModelFitFunctionArray:
+    """A fit of the test spectra, with some fields replaced or added."""
+    arguments: dict[str, Any] = dict(
+        inputs=_velocity,
+        outputs=_data,
+        model=ndoptimize.models.gaussian_linear,
+        guess=_guess,
+        variance=np.square(_sigma),
+        axis_model=_axis,
+    )
+    return na.ModelFitFunctionArray(**(arguments | kwargs))
+
+
 def _assert_equal(
-    result: na.optimize.LeastSquaresResult,
+    result: na.ModelFitFunctionArray,
     expected: ndoptimize.LeastSquaresResult,
     axes: tuple[str, ...],
     units: dict[str, None | u.UnitBase],
 ) -> None:
     """
-    Check that the result of :func:`named_arrays.optimize.least_squares` is
-    that of :func:`ndoptimize.least_squares` along the given batch axes, with
-    the given units of the parameters.
+    Check that the results of a fit are those of
+    :func:`ndoptimize.least_squares` along the given batch axes, with the
+    given units of the parameters.
     """
     assert tuple(result.parameters.components) == tuple(units)
     for k, name in enumerate(_names):
@@ -98,7 +111,19 @@ def _assert_equal(
         )
 
 
-def test_least_squares() -> None:
+def _assert_parameters_equal(
+    a: na.ModelFitFunctionArray,
+    b: na.ModelFitFunctionArray,
+) -> None:
+    """Check that two fits found the same parameters."""
+    for name in a.model.parameters:
+        assert np.array_equal(
+            a.parameters.components[name],
+            b.parameters.components[name],
+        )
+
+
+def test_fit() -> None:
     """
     Fitting named arrays with units, partial bounds and priors, and
     correlated noise gives the same fits as :func:`ndoptimize.least_squares`
@@ -107,13 +132,8 @@ def test_least_squares() -> None:
     data = _data.copy()
     data[dict(x=0, y=1, velocity=slice(10, 13))] = np.nan * u.DN
 
-    result = na.optimize.least_squares(
-        model=ndoptimize.models.gaussian_linear,
-        x=_velocity,
-        data=data,
-        variance=np.square(_sigma),
-        guess=_guess,
-        axis=_axis,
+    result = _fit(
+        outputs=data,
         lower=na.CartesianNdVectorArray(dict(width=3 * _unit_x)),
         prior_mean=na.CartesianNdVectorArray(dict(center=0 * _unit_x)),
         prior_sigma=na.CartesianNdVectorArray(dict(center=10 * _unit_x)),
@@ -151,58 +171,40 @@ def test_least_squares() -> None:
     assert np.all(np.abs(error) < 4)
 
 
-def test_least_squares_units() -> None:
+def test_fit_units() -> None:
     """
     Bounds and priors in other units than the guess give the same fits, and
-    a variance in a unit which is not that of the data squared raises an
+    a variance in a unit which is not that of the outputs squared raises an
     error.
     """
-    kwargs: dict[str, Any] = dict(
-        model=ndoptimize.models.gaussian_linear,
-        x=_velocity,
-        data=_data,
-        variance=np.square(_sigma),
-        guess=_guess,
-        axis=_axis,
-    )
-    result = na.optimize.least_squares(
+    result = _fit(
         prior_mean=na.CartesianNdVectorArray(dict(width=15 * _unit_x)),
         prior_sigma=na.CartesianNdVectorArray(dict(width=5 * _unit_x)),
-        **kwargs,
     )
-    result_converted = na.optimize.least_squares(
+    result_converted = _fit(
         prior_mean=na.CartesianNdVectorArray(dict(width=15000 * u.m / u.s)),
         prior_sigma=na.CartesianNdVectorArray(dict(width=5000 * u.m / u.s)),
-        **kwargs,
     )
     assert np.allclose(result.parameters, result_converted.parameters)
 
-    kwargs["variance"] = 1 * u.km**2
     with pytest.raises(u.UnitConversionError):
-        na.optimize.least_squares(**kwargs)
+        _fit(variance=1 * u.km**2).parameters
 
 
-def test_least_squares_dimensionless() -> None:
-    """Fits of arrays without units give parameters without units."""
-    guess = na.CartesianNdVectorArray(
-        {name: na.value(c) for name, c in _guess.components.items()}
-    )
-    result = na.optimize.least_squares(
-        model=ndoptimize.models.gaussian_linear,
-        x=na.value(_velocity),
-        data=na.value(_data),
+def test_fit_dimensionless() -> None:
+    """
+    Fits of arrays without units give parameters without units, and a model
+    without a unit.
+    """
+    result = _fit(
+        inputs=na.value(_velocity),
+        outputs=na.value(_data),
+        guess=na.CartesianNdVectorArray(
+            {name: na.value(c) for name, c in _guess.components.items()}
+        ),
         variance=_sigma.value**2,
-        guess=guess,
-        axis=_axis,
     )
-    result_units = na.optimize.least_squares(
-        model=ndoptimize.models.gaussian_linear,
-        x=_velocity,
-        data=_data,
-        variance=np.square(_sigma),
-        guess=_guess,
-        axis=_axis,
-    )
+    result_units = _fit()
     for name in _names:
         assert na.unit(result.parameters.components[name]) is None
         assert np.array_equal(
@@ -210,13 +212,13 @@ def test_least_squares_dimensionless() -> None:
             na.value(result_units.parameters.components[name]),
         )
     assert na.unit(result.covariance.center.width) is None
+    assert na.unit(result.predictions) is None
+    assert np.allclose(result.predictions, na.value(result_units.predictions))
 
-    # a variance without a unit is dimensionless, like the data in percent
-    result_percent = na.optimize.least_squares(
-        model=ndoptimize.models.gaussian_linear,
-        x=na.value(_velocity),
-        data=(na.value(_data) << u.dimensionless_unscaled).to(u.percent),
-        variance=_sigma.value**2,
+    # a variance without a unit is dimensionless, like the outputs in percent
+    result_percent = _fit(
+        inputs=na.value(_velocity),
+        outputs=(na.value(_data) << u.dimensionless_unscaled).to(u.percent),
         guess=na.CartesianNdVectorArray(
             dict(
                 amplitude=500 * u.percent,
@@ -226,39 +228,25 @@ def test_least_squares_dimensionless() -> None:
                 intercept=100 * u.percent,
             )
         ),
-        axis=_axis,
+        variance=_sigma.value**2,
     )
     assert np.allclose(result_percent.parameters.amplitude, result.parameters.amplitude)
     assert np.allclose(result_percent.parameters.center, result.parameters.center)
 
 
-def test_least_squares_batch_parameters() -> None:
+def test_fit_batch_parameters() -> None:
     """
     A batch axis which only the guess varies along gives a fit of the same
-    data for each guess.
+    outputs for each guess.
     """
     data = _data[dict(x=0, y=0)]
     guess = _guess_with(center=na.ScalarArray(np.array([-20.0, 20]), "trial") * _unit_x)
 
-    result = na.optimize.least_squares(
-        model=ndoptimize.models.gaussian_linear,
-        x=_velocity,
-        data=data,
-        variance=np.square(_sigma),
-        guess=guess,
-        axis=_axis,
-    )
+    result = _fit(outputs=data, guess=guess)
 
     assert result.parameters.center.shape == dict(trial=2)
     for i in range(2):
-        result_i = na.optimize.least_squares(
-            model=ndoptimize.models.gaussian_linear,
-            x=_velocity,
-            data=data,
-            variance=np.square(_sigma),
-            guess=guess[dict(trial=i)],
-            axis=_axis,
-        )
+        result_i = _fit(outputs=data, guess=guess[dict(trial=i)])
         for name in _names:
             assert np.array_equal(
                 result.parameters.components[name][dict(trial=i)],
@@ -266,67 +254,106 @@ def test_least_squares_batch_parameters() -> None:
             )
 
 
-def test_evaluate() -> None:
+def test__call__() -> None:
     """
-    Evaluating a model for a vector of parameters with batch axes gives the
-    model written in named arrays, in the unit asked for.
+    Calling a fit evaluates the best-fit model at new inputs, in the unit of
+    the outputs, along the same axis with another number of points, or at a
+    single point.
     """
-    result = na.optimize.evaluate(
-        model=ndoptimize.models.gaussian_linear,
-        x=_velocity,
-        parameters=_truth,
-        axis=_axis,
-        unit=u.DN,
-    )
-    expected = _gaussian_linear(_velocity, _truth)
-    assert result.shape == expected.shape
-    assert na.unit(result) == u.DN
-    assert np.allclose(result, expected)
+    fit = _fit()
 
-    result_plain = na.optimize.evaluate(
-        model=ndoptimize.models.gaussian_linear,
-        x=_velocity,
-        parameters=_truth,
-        axis=_axis,
-    )
-    assert na.unit(result_plain) is None
-    assert np.array_equal(result_plain, na.value(result))
+    velocity = na.linspace(-100, 100, axis=_axis, num=101) * _unit_x
+    result = fit(velocity)
+    assert isinstance(result, na.FunctionArray)
+    assert result.inputs is velocity
+    assert result.outputs.shape == dict(fit.chi2.shape, velocity=101)
+    assert na.unit(result.outputs) == u.DN
+    assert np.allclose(result.outputs, _gaussian_linear(velocity, fit.parameters))
+
+    point = fit(10 * _unit_x)
+    assert point.outputs.shape == fit.chi2.shape
+    assert np.allclose(point.outputs, _gaussian_linear(10 * _unit_x, fit.parameters))
 
 
-def test_least_squares_evaluate() -> None:
-    """
-    The best-fit model of a fit is the model of the data, with the
-    chi-squared of the fit, and can be evaluated on a new grid.
-    """
-    variance = np.square(_sigma)
-    result = na.optimize.least_squares(
-        model=ndoptimize.models.gaussian_linear,
-        x=_velocity,
-        data=_data,
-        variance=variance,
-        guess=_guess,
-        axis=_axis,
-    )
+def test_predictions() -> None:
+    """The predictions are the model of the outputs, with the chi-squared of
+    the fit."""
+    fit = _fit()
 
-    f = result.evaluate()
+    f = fit.predictions
     assert f.shape == _data.shape
     assert na.unit(f) == u.DN
-    assert np.array_equal(
-        f,
-        na.optimize.evaluate(
-            model=ndoptimize.models.gaussian_linear,
-            x=_velocity,
-            parameters=result.parameters,
-            axis=_axis,
-            unit=u.DN,
-        ),
-    )
-    chi2 = (np.square(_data - f) / variance).sum(axis=_axis)
-    assert np.allclose(chi2, result.chi2)
+    assert np.array_equal(f, fit(_velocity).outputs)
 
-    velocity = na.linspace(-100, 100, axis="velocity_fine", num=101) * _unit_x
-    f_fine = result.evaluate(x=velocity, axis="velocity_fine")
-    assert f_fine.shape == dict(result.chi2.shape, velocity_fine=101)
+    chi2 = (np.square(_data - f) / np.square(_sigma)).sum(axis=_axis)
+    assert np.allclose(chi2, fit.chi2)
+
+
+def test__getitem__() -> None:
+    """Indexing a fit along a batch axis fits the selected outputs."""
+    index = dict(x=1, y=slice(0, 2))
+    result = _fit()[index]
+    assert isinstance(result, na.ModelFitFunctionArray)
+    for name in _names:
+        assert np.allclose(
+            result.parameters.components[name],
+            _fit().parameters.components[name][index],
+        )
+
+
+def test_where_model() -> None:
+    """A mask leaves the outputs it excludes out of the fit."""
+    where = _velocity < 60 * _unit_x
+    result = _fit(where_model=where)
+    expected = _fit(outputs=np.where(where, _data, np.nan * u.DN))
+    _assert_parameters_equal(result, expected)
+    assert np.all(result.num_points == where.sum())
+
+
+def test_axis_model_none() -> None:
+    """Without `axis_model`, every axis of the outputs is a single fit."""
+    data = _data[dict(x=0, y=0)]
+    result = _fit(outputs=data, axis_model=None)
+    _assert_parameters_equal(result, _fit(outputs=data))
+    assert result.chi2.shape == dict()
+    assert result.predictions.shape == data.shape
+
+
+def test_components_model() -> None:
+    """
+    The model depends on the components of the inputs named by
+    `components_model`, with dots for those of nested vectors.
+    """
+    expected = _fit()
+    position = na.Cartesian2dVectorArray(
+        x=na.ScalarArray(np.array([1.0, 2]), "x") * u.arcsec,
+        y=na.ScalarArray(np.array([3.0, 4, 5]), "y") * u.arcsec,
+    )
+
+    result = _fit(
+        inputs=na.SpectralPositionalVectorArray(wavelength=_velocity, position=position),
+        components_model="wavelength",
+    )
+    _assert_parameters_equal(result, expected)
+    assert np.array_equal(result.predictions, expected.predictions)
+
+    result_nested = _fit(
+        inputs=na.SpectralPositionalVectorArray(
+            wavelength=0 * u.AA,
+            position=na.Cartesian2dVectorArray(_velocity, position.y),
+        ),
+        components_model=("position.x",),
+    )
+    _assert_parameters_equal(result_nested, expected)
+
+    with pytest.raises(ValueError, match="not components of the inputs"):
+        _fit(
+            inputs=na.SpectralPositionalVectorArray(_velocity, position),
+            components_model="velocity",
+        ).parameters
+
+    with pytest.raises(TypeError, match="vector inputs"):
+        _fit(components_model="wavelength").parameters
 
 
 _samples = na.random.normal(
@@ -338,25 +365,20 @@ _samples = na.random.normal(
 """Three more noisy realizations of the test spectra."""
 
 
-def test_least_squares_uncertain() -> None:
+def test_uncertain() -> None:
     """
-    Fitting uncertain data fits the nominal data and each of its samples,
-    and the best-fit model is uncertain too.
+    Fitting uncertain outputs fits the nominal outputs and each of their
+    samples, and the predictions are uncertain too.
     """
     data = na.UncertainScalarArray(_data, _samples)
     kwargs: dict[str, Any] = dict(
-        model=ndoptimize.models.gaussian_linear,
-        x=_velocity,
-        variance=np.square(_sigma),
-        guess=_guess,
-        axis=_axis,
         prior_mean=na.CartesianNdVectorArray(dict(center=0 * _unit_x)),
         prior_sigma=na.CartesianNdVectorArray(dict(center=10 * _unit_x)),
     )
 
-    result = na.optimize.least_squares(data=data, **kwargs)
-    nominal = na.optimize.least_squares(data=data.nominal, **kwargs)
-    distribution = na.optimize.least_squares(data=data.distribution, **kwargs)
+    result = _fit(outputs=data, **kwargs)
+    nominal = _fit(outputs=data.nominal, **kwargs)
+    distribution = _fit(outputs=data.distribution, **kwargs)
 
     for name in _names:
         p = result.parameters.components[name]
@@ -373,105 +395,31 @@ def test_least_squares_uncertain() -> None:
         assert np.array_equal(r.nominal, getattr(nominal, name))
         assert np.array_equal(r.distribution, getattr(distribution, name))
 
-    f = result.evaluate()
+    f = result.predictions
     assert isinstance(f, na.UncertainScalarArray)
-    assert np.array_equal(f.nominal, nominal.evaluate())
-    assert np.array_equal(f.distribution, distribution.evaluate())
+    assert np.array_equal(f.nominal, nominal.predictions)
+    assert np.array_equal(f.distribution, distribution.predictions)
 
 
-def test_least_squares_uncertain_guess() -> None:
+def test_uncertain_guess() -> None:
     """
     An uncertain component of a vector, which the dispatcher does not see,
-    is fit like uncertain data: one fit for the nominal guess and one for each
-    of its samples.
+    is fit like uncertain outputs: one fit for the nominal guess and one for
+    each of its samples.
     """
     center = na.UncertainScalarArray(
         nominal=0 * _unit_x,
         distribution=na.ScalarArray(np.array([-20.0, 20]), "_distribution") * _unit_x,
     )
-    kwargs: dict[str, Any] = dict(
-        model=ndoptimize.models.gaussian_linear,
-        x=_velocity,
-        data=_data,
-        variance=np.square(_sigma),
-        axis=_axis,
-    )
 
-    result = na.optimize.least_squares(guess=_guess_with(center=center), **kwargs)
+    result = _fit(guess=_guess_with(center=center))
 
-    nominal = na.optimize.least_squares(guess=_guess, **kwargs)
-    distribution = na.optimize.least_squares(
-        guess=_guess_with(center=center.distribution),
-        **kwargs,
-    )
+    nominal = _fit()
+    distribution = _fit(guess=_guess_with(center=center.distribution))
     p = result.parameters.center
     assert isinstance(p, na.UncertainScalarArray)
     assert np.array_equal(p.nominal, nominal.parameters.center)
     assert np.array_equal(p.distribution, distribution.parameters.center)
-
-
-def test_evaluate_uncertain() -> None:
-    """Evaluating a model for uncertain parameters evaluates it for the
-    nominal parameters and for each of their samples."""
-    amplitude = na.UncertainScalarArray(
-        nominal=6 * u.DN,
-        distribution=na.ScalarArray(np.array([5.0, 6.5, 7]), "_distribution") * u.DN,
-    )
-    parameters = na.CartesianNdVectorArray(_truth.components | dict(amplitude=amplitude))
-    kwargs: dict[str, Any] = dict(
-        model=ndoptimize.models.gaussian_linear,
-        x=_velocity,
-        axis=_axis,
-        unit=u.DN,
-    )
-
-    result = na.optimize.evaluate(parameters=parameters, **kwargs)
-
-    assert isinstance(result, na.UncertainScalarArray)
-    assert np.array_equal(
-        result.nominal,
-        na.optimize.evaluate(parameters=na.nominal(parameters), **kwargs),
-    )
-    assert np.allclose(
-        result.distribution,
-        _gaussian_linear(
-            _velocity,
-            na.CartesianNdVectorArray(
-                _truth.components | dict(amplitude=amplitude.distribution)
-            ),
-        ),
-    )
-
-
-@pytest.mark.parametrize(
-    argnames="kwargs,error",
-    argvalues=[
-        (dict(parameters=na.CartesianNdVectorArray(dict(amplitude=5 * u.DN))), ValueError),
-        (
-            dict(parameters=na.CartesianNdVectorArray(_truth.components | dict(center=_velocity))),
-            ValueError,
-        ),
-        (
-            dict(
-                parameters=na.CartesianNdVectorArray(
-                    _truth.components
-                    | dict(center=na.Cartesian2dVectorArray(0 * _unit_x, 0 * _unit_x))
-                )
-            ),
-            TypeError,
-        ),
-        (dict(axis="wavelength"), ValueError),
-    ],
-)
-def test_evaluate_invalid(kwargs: dict[str, Any], error: type[Exception]) -> None:
-    arguments: dict[str, Any] = dict(
-        model=ndoptimize.models.gaussian_linear,
-        x=_velocity,
-        parameters=_truth,
-        axis=_axis,
-    )
-    with pytest.raises(error):
-        na.optimize.evaluate(**(arguments | kwargs))
 
 
 @ndoptimize.model(parameters=("amplitude", "x0", "y0", "width"))
@@ -494,10 +442,10 @@ def _gaussian_2d(
         jacobian[i, 3] = amplitude * e * (dx * dx + dy * dy) / width
 
 
-def test_least_squares_vector() -> None:
+def test_vector() -> None:
     """
-    A vector independent variable gives the model its components as inputs,
-    and the points of a fit may vary along more than one axis.
+    A vector of inputs gives the model its components as inputs, and the
+    points of a fit may vary along more than one axis.
     """
     position = na.Cartesian2dVectorArray(
         x=na.linspace(-5, 5, axis="px", num=11) * u.arcsec,
@@ -512,17 +460,11 @@ def test_least_squares_vector() -> None:
         )
     )
     r2 = np.square(position.x - truth.x0) + np.square(position.y - truth.y0)
-    f = truth.amplitude * np.exp(-r2 / (2 * np.square(truth.width)))
-    data = na.random.normal(f, 0.5 * u.DN, seed=1)
-
-    f_model = na.optimize.evaluate(
-        model=_gaussian_2d,
-        x=position,
-        parameters=truth,
-        axis=("px", "py"),
-        unit=u.DN,
+    data = na.random.normal(
+        truth.amplitude * np.exp(-r2 / (2 * np.square(truth.width))),
+        0.5 * u.DN,
+        seed=1,
     )
-    assert np.allclose(f_model, f)
 
     # the compiled model is its Python source
     x_test = np.array([[0.5, -1.0], [2.0, 0.3]])
@@ -533,19 +475,18 @@ def test_least_squares_vector() -> None:
     _gaussian_2d.function.py_func(x_test, p_test, f_python, jacobian_python)  # type: ignore[attr-defined]
     assert np.allclose(f_compiled, f_python)
     assert np.allclose(jacobian_compiled, jacobian_python)
-    guess = na.CartesianNdVectorArray(
-        dict(amplitude=8 * u.DN, x0=0 * u.arcsec, y0=0 * u.arcsec, width=2 * u.arcsec)
-    )
 
     kwargs: dict[str, Any] = dict(
+        inputs=position,
+        outputs=data,
         model=_gaussian_2d,
-        x=position,
-        data=data,
+        guess=na.CartesianNdVectorArray(
+            dict(amplitude=8 * u.DN, x0=0 * u.arcsec, y0=0 * u.arcsec, width=2 * u.arcsec)
+        ),
         variance=0.25 * u.DN**2,
-        guess=guess,
-        axis=("px", "py"),
+        axis_model=("px", "py"),
     )
-    result = na.optimize.least_squares(**kwargs)
+    result = na.ModelFitFunctionArray(**kwargs)
 
     points = ("px", "py")
     x = np.stack(
@@ -569,30 +510,46 @@ def test_least_squares_vector() -> None:
             expected.parameters[..., k],
         )
 
+    p = result.parameters
+    r2 = np.square(position.x - p.x0) + np.square(position.y - p.y0)
+    assert np.allclose(
+        result.predictions,
+        p.amplitude * np.exp(-r2 / (2 * np.square(p.width))),
+    )
+
     with pytest.raises(ValueError, match="single axis"):
-        na.optimize.least_squares(correlation=_correlation, **kwargs)
+        na.ModelFitFunctionArray(correlation=_correlation, **kwargs).parameters
 
 
 @pytest.mark.parametrize(
     argnames="kwargs,error",
     argvalues=[
+        (dict(model=None), ValueError),
+        (dict(guess=None), ValueError),
+        (dict(variance=None), ValueError),
         (dict(guess=na.CartesianNdVectorArray(dict(amplitude=5 * u.DN))), ValueError),
         (dict(guess=_guess_with(extra=1)), ValueError),
         (dict(lower=na.CartesianNdVectorArray(dict(sigma=3 * _unit_x))), ValueError),
         (dict(lower=3 * _unit_x), TypeError),
         (dict(guess=_guess_with(center=_velocity)), ValueError),
-        (dict(axis="wavelength"), ValueError),
-        (dict(data=na.Cartesian2dVectorArray(_data, _data)), TypeError),
+        (dict(axis_model="wavelength"), ValueError),
+        (dict(outputs=na.Cartesian2dVectorArray(_data, _data)), TypeError),
     ],
 )
-def test_least_squares_invalid(kwargs: dict[str, Any], error: type[Exception]) -> None:
-    arguments: dict[str, Any] = dict(
-        model=ndoptimize.models.gaussian_linear,
-        x=_velocity,
-        data=_data,
-        variance=np.square(_sigma),
-        guess=_guess,
-        axis=_axis,
-    )
+def test_fit_invalid(kwargs: dict[str, Any], error: type[Exception]) -> None:
     with pytest.raises(error):
-        na.optimize.least_squares(**(arguments | kwargs))
+        _fit(**kwargs).parameters
+
+
+def test_evaluate_invalid() -> None:
+    """Parameters which are not scalars cannot be evaluated."""
+    with pytest.raises(TypeError):
+        na.optimize._evaluate(
+            model=ndoptimize.models.gaussian_linear,
+            x=_velocity,
+            parameters=_guess_with(
+                center=na.Cartesian2dVectorArray(0 * _unit_x, 0 * _unit_x)
+            ),
+            axis=_axis,
+            unit=None,
+        )

@@ -64,8 +64,7 @@ Several modules extend the array types to other libraries:
 :mod:`named_arrays.random` and :mod:`named_arrays.stats` for sampling and
 statistics,
 :mod:`named_arrays.regridding` for resampling curvilinear grids,
-:mod:`named_arrays.optimize` for root finding, minimization and
-least-squares fitting,
+:mod:`named_arrays.optimize` for root finding and minimization,
 :mod:`named_arrays.transformations` for rotations and translations,
 and :mod:`named_arrays.ndfilters`, :mod:`named_arrays.colorsynth`,
 :mod:`named_arrays.geometry`, :mod:`named_arrays.pdf`, and
