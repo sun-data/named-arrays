@@ -553,3 +553,137 @@ def test_evaluate_invalid() -> None:
             axis=_axis,
             unit=None,
         )
+
+
+@ndoptimize.model(parameters=("weight_lower", "weight_upper"))
+def _edges_weighted(
+    x: np.ndarray,
+    parameters: np.ndarray,
+    f: np.ndarray,
+    jacobian: np.ndarray,
+) -> None:
+    """A weighted sum of the lower and upper edges of each bin, which tells
+    them apart."""
+    for i in range(x.shape[0]):
+        f[i] = parameters[0] * x[i, 0] + parameters[1] * x[i, 1]
+        jacobian[i, 0] = x[i, 0]
+        jacobian[i, 1] = x[i, 1]
+
+
+_edges = na.linspace(0, 10, axis=_axis, num=11) * _unit_x
+"""The edges of ten bins along the points axis."""
+
+_unit_weight = u.DN / _unit_x
+
+
+def _edges_data(
+    edges: na.AbstractScalar,
+    weight_lower: na.AbstractScalar,
+    weight_upper: na.AbstractScalar,
+) -> na.AbstractScalar:
+    """:func:`_edges_weighted` in named arrays, for the given edges of bins."""
+    lower = edges[{_axis: slice(None, -1)}]
+    upper = edges[{_axis: slice(1, None)}]
+    return weight_lower * lower + weight_upper * upper
+
+
+def test_vertex() -> None:
+    """
+    Along an axis of `axis_model` along which the inputs are the edges of
+    bins, the model gets the lower and upper edges of each bin, in that
+    order, and evaluating it at new edges gives one fewer output.
+    """
+    # the compiled model is its Python source
+    x_test = np.array([[1.0, 2.0], [2.0, 4.0]])
+    p_test = np.array([2.0, 3.0])
+    f_compiled, f_python = np.empty(2), np.empty(2)
+    jacobian_compiled, jacobian_python = np.empty((2, 2)), np.empty((2, 2))
+    _edges_weighted(x_test, p_test, f_compiled, jacobian_compiled)
+    _edges_weighted.function.py_func(x_test, p_test, f_python, jacobian_python)  # type: ignore[attr-defined]
+    assert np.array_equal(f_compiled, f_python)
+    assert np.array_equal(jacobian_compiled, jacobian_python)
+
+    weight_lower = na.ScalarArray(np.array([2.0, 4.0]), "y") * _unit_weight
+    weight_upper = 3 * _unit_weight
+    data = _edges_data(_edges, weight_lower, weight_upper)
+
+    fit = na.ModelFitFunctionArray(
+        inputs=_edges,
+        outputs=data,
+        model=_edges_weighted,
+        guess=na.CartesianNdVectorArray(
+            dict(weight_lower=1 * _unit_weight, weight_upper=1 * _unit_weight)
+        ),
+        variance=1 * u.DN**2,
+        axis_model=_axis,
+    )
+    assert fit.axes_vertex == (_axis,)
+    assert np.allclose(fit.parameters.weight_lower, weight_lower)
+    assert np.allclose(fit.parameters.weight_upper, weight_upper)
+
+    assert fit.predictions.shape == data.shape
+    assert np.allclose(fit.predictions, data)
+
+    edges = na.linspace(0, 10, axis=_axis, num=21) * _unit_x
+    result = fit(edges)
+    assert result.inputs is edges
+    assert result.outputs.shape == dict(y=2, velocity=20)
+    assert np.allclose(result.outputs, _edges_data(edges, weight_lower, weight_upper))
+
+
+def test_vertex_components() -> None:
+    """
+    An input of the model which varies along an axis along which the inputs
+    are the edges of bins, but which is not in `axis_model`, raises an error,
+    which selecting the other components avoids.
+    """
+    weight_lower = 2 * _unit_weight
+    weight_upper = 3 * _unit_weight
+    data = _edges_data(_edges, weight_lower, weight_upper)
+    data = data * na.ScalarArray(np.array([1.0, 1.0]), "y")
+    inputs = na.Cartesian2dVectorArray(
+        x=_edges,
+        y=na.linspace(0, 1, axis="y", num=3) * u.arcsec,
+    )
+    kwargs: dict[str, Any] = dict(
+        inputs=inputs,
+        outputs=data,
+        model=_edges_weighted,
+        guess=na.CartesianNdVectorArray(
+            dict(weight_lower=1 * _unit_weight, weight_upper=1 * _unit_weight)
+        ),
+        variance=1 * u.DN**2,
+        axis_model=_axis,
+    )
+
+    with pytest.raises(ValueError, match="not in `axis_model`"):
+        na.ModelFitFunctionArray(**kwargs).parameters
+
+    fit = na.ModelFitFunctionArray(components_model="x", **kwargs)
+    assert np.allclose(fit.parameters.weight_lower, weight_lower)
+    assert np.allclose(fit.parameters.weight_upper, weight_upper)
+
+    # an input which varies along no axis of edges stays a single input,
+    # after the edges of the others
+    kwargs["inputs"] = na.Cartesian2dVectorArray(x=_edges, y=0 * u.arcsec)
+    fit = na.ModelFitFunctionArray(**kwargs)
+    assert np.allclose(fit.parameters.weight_lower, weight_lower)
+    assert np.allclose(fit.parameters.weight_upper, weight_upper)
+
+
+def test_vertex_curvilinear() -> None:
+    """An input of the model which varies along two axes along which the
+    inputs are the edges of bins has no single lower and upper edge."""
+    inputs = _edges + na.linspace(0, 1, axis="y", num=3) * _unit_x
+    outputs = na.ScalarArray.zeros(dict(velocity=10, y=2)) * u.DN
+    fit = na.ModelFitFunctionArray(
+        inputs=inputs,
+        outputs=outputs,
+        model=_edges_weighted,
+        guess=na.CartesianNdVectorArray(
+            dict(weight_lower=1 * _unit_weight, weight_upper=1 * _unit_weight)
+        ),
+        variance=1 * u.DN**2,
+    )
+    with pytest.raises(ValueError, match="no single lower and upper edge"):
+        fit.parameters

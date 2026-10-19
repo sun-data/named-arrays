@@ -1970,8 +1970,11 @@ class AbstractModelFunctionArray(
         inputs: float | u.Quantity | na.AbstractScalar | na.AbstractVectorArray,
     ) -> float | u.Quantity | na.AbstractScalar | na.AbstractVectorArray:
         """
-        The inputs of the model for the given inputs of this function, the
-        components named by :attr:`components_model`.
+        The inputs of the model for the given inputs of this function: the
+        components named by :attr:`components_model`, with each one which
+        varies along a vertex axis of :attr:`axis_model`, along which the
+        inputs of this function are the edges of bins, replaced by the lower
+        and upper edges of the bins.
 
         Parameters
         ----------
@@ -1979,29 +1982,73 @@ class AbstractModelFunctionArray(
             A set of independent variables of this function.
         """
         components = self.components_model
-        if components is None:
+        if components is not None:
+
+            if isinstance(components, str):
+                components = (components,)
+
+            if not isinstance(inputs, na.AbstractVectorArray):
+                raise TypeError(
+                    f"`components_model` selects components of vector inputs, "
+                    f"got {type(inputs)}."
+                )
+
+            # the components of nested vectors are named with dots, as in
+            # `PolynomialFitFunctionArray.coefficient_names`
+            components_inputs = inputs.cartesian_nd.components
+            missing = tuple(c for c in components if c not in components_inputs)
+            if missing:
+                raise ValueError(
+                    f"The components {missing} of `components_model` are not "
+                    f"components of the inputs, {tuple(components_inputs)}."
+                )
+
+            inputs = na.CartesianNdVectorArray(
+                {c: components_inputs[c] for c in components}
+            )
+
+        axes_vertex = self.axes_vertex
+        if not axes_vertex:
             return inputs
 
-        if isinstance(components, str):
-            components = (components,)
+        axis_model = self.axis_model
+        if isinstance(axis_model, str):
+            axis_model = (axis_model,)
 
-        if not isinstance(inputs, na.AbstractVectorArray):
-            raise TypeError(
-                f"`components_model` selects components of vector inputs, "
-                f"got {type(inputs)}."
-            )
+        if isinstance(inputs, na.AbstractVectorArray):
+            components_inputs = inputs.cartesian_nd.components
+        else:
+            components_inputs = {"": inputs}
 
-        # the components of nested vectors are named with dots, as in
-        # `PolynomialFitFunctionArray.coefficient_names`
-        inputs = inputs.cartesian_nd.components
-        missing = tuple(c for c in components if c not in inputs)
-        if missing:
-            raise ValueError(
-                f"The components {missing} of `components_model` are not "
-                f"components of the inputs, {tuple(inputs)}."
-            )
+        result = dict()
+        for name, value in components_inputs.items():
+            axes = tuple(ax for ax in axes_vertex if ax in na.shape(value))
+            if not axes:
+                result[name] = value
+                continue
+            if axis_model is not None:
+                batch = tuple(ax for ax in axes if ax not in axis_model)
+                if batch:
+                    raise ValueError(
+                        f"The input {name!r} of the model varies along {batch}, "
+                        f"along which the inputs of this function are the "
+                        f"edges of bins, but which are not in `axis_model`, "
+                        f"{axis_model}. Select the inputs of the model with "
+                        f"`components_model`, or use the centers of the bins."
+                    )
+            if len(axes) > 1:
+                raise ValueError(
+                    f"The input {name!r} of the model varies along {axes}, "
+                    f"along each of which the inputs of this function are the "
+                    f"edges of bins, so its bins have no single lower and "
+                    f"upper edge."
+                )
+            ax = axes[0]
+            prefix = f"{name}." if name else ""
+            result[f"{prefix}lower"] = value[{ax: slice(None, -1)}]
+            result[f"{prefix}upper"] = value[{ax: slice(1, None)}]
 
-        return na.CartesianNdVectorArray({c: inputs[c] for c in components})
+        return na.CartesianNdVectorArray(result)
 
     def __call__(
         self,
@@ -2024,6 +2071,9 @@ class AbstractModelFunctionArray(
             The axes of :attr:`axis_model` along which they vary are the
             points of each evaluation, and every other axis is a batch axis,
             like the axes along which :attr:`parameters` vary.
+            Along an axis along which :attr:`inputs` are the edges of bins,
+            these are the edges of bins too, and the outputs have one fewer
+            element.
         """
         outputs = na.optimize._evaluate(
             model=self.model,
@@ -2090,6 +2140,10 @@ class ModelFitFunctionArray(
         The set of independent variables.
         If it is a vector, its components, in order, are the inputs of the
         model, unless `components_model` selects some of them.
+        Along an axis of `axis_model` along which the inputs are the edges of
+        bins, with one more element than the outputs, each input which varies
+        along it becomes two inputs of the model, the lower and upper edges of
+        the bins, for a model of the average over each bin.
     outputs
         The set of dependent variables, which the model is fit to.
         Points which are NaN are left out of their fit.
