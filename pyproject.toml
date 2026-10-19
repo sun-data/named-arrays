@@ -30,6 +30,8 @@ dependencies = [
     "ndfilters~=1.0",
     "colorsynth~=1.0",
     "regridding~=3.5",
+    # TODO: replace with a release once sun-data/ndoptimize#4 is merged and published
+    "ndoptimize @ git+https://github.com/sun-data/ndoptimize@feature/least-squares",
     "xarray",
 ]
 dynamic = ["version"]

@@ -1,19 +1,26 @@
 """
-Minimization and root finding of arbitrary functions.
+Minimization, root finding and least-squares fitting.
 
 Analogous to :mod:`scipy.optimize`.
 """
 
 from __future__ import annotations
-from typing import TypeVar, Callable
+from typing import TypeVar, Callable, Sequence, TYPE_CHECKING
+import dataclasses
 import astropy.units as u
 import named_arrays as na
+
+if TYPE_CHECKING:
+    import numpy.typing as npt
+    import ndoptimize
 
 __all__ = [
     "root_secant",
     "root_newton",
     "minimum_gradient_descent",
     "minimum_brent",
+    "LeastSquaresResult",
+    "least_squares",
 ]
 
 InputT = TypeVar("InputT", bound="float | u.Quantity | na.AbstractScalarArray")
@@ -339,4 +346,206 @@ def minimum_brent(
         min_step_size=min_step_size,
         max_iterations=max_iterations,
         callback=callback,
+    )
+
+
+@dataclasses.dataclass(frozen=True, eq=False)
+class LeastSquaresResult:
+    """
+    The results of :func:`least_squares` for every fit of a batch.
+
+    Each array varies along the batch axes of the fit.
+    """
+
+    parameters: na.AbstractVectorArray
+    """
+    The best-fit parameters, a vector of the same type, components and units
+    as the initial guess.
+    """
+
+    covariance: na.AbstractMatrixArray
+    """
+    The covariance of the best-fit parameters, a matrix whose rows and
+    columns are named after the parameters, so that
+    ``covariance.center.width`` is the covariance of ``center`` and
+    ``width``.
+
+    A parameter which has no effect on the model and no prior has an infinite
+    variance, and the covariance of a fit whose parameters the data and the
+    priors cannot constrain is NaN, as described in
+    :attr:`ndoptimize.LeastSquaresResult.covariance`.
+    """
+
+    chi2: na.AbstractScalarArray
+    """
+    The chi-squared of the data at the solution, without the contribution of
+    the priors.
+    """
+
+    num_points: na.AbstractScalarArray
+    """The number of data points used by each fit."""
+
+    iterations: na.AbstractScalarArray
+    """The number of steps taken by each fit."""
+
+    converged: na.AbstractScalarArray
+    """Whether each fit converged."""
+
+
+def least_squares(
+    model: ndoptimize.Model,
+    x: float | u.Quantity | na.AbstractScalar | na.AbstractVectorArray,
+    data: float | u.Quantity | na.AbstractScalar,
+    variance: float | u.Quantity | na.AbstractScalar,
+    guess: na.AbstractVectorArray,
+    axis: str | Sequence[str],
+    lower: None | na.AbstractVectorArray = None,
+    upper: None | na.AbstractVectorArray = None,
+    prior_mean: None | na.AbstractVectorArray = None,
+    prior_sigma: None | na.AbstractVectorArray = None,
+    correlation: None | npt.ArrayLike = None,
+    max_iterations: int = 1000,
+    tolerance: float = 1e-8,
+) -> LeastSquaresResult:
+    r"""
+    Fit a model to many independent sets of data at once, using the
+    Levenberg-Marquardt method of :func:`ndoptimize.least_squares`.
+
+    The data points of a single fit vary along `axis`, and every other axis
+    of the arguments is a batch axis, along which each set of data gets a fit
+    of its own.
+    The parameters are the components of a vector, named after
+    :attr:`ndoptimize.Model.parameters`.
+
+    Each fit minimizes
+
+    .. math::
+
+        \chi^2 = (y - f)^T C^{-1} (y - f)
+            + \sum_k \left( \frac{p_k - \bar{p}_k}{\sigma_k} \right)^2,
+
+    where :math:`y` is the data, :math:`f` is the model, :math:`C` is the
+    covariance of the noise, :math:`p_k` are the parameters, and
+    :math:`\bar{p}_k` and :math:`\sigma_k` are the means and standard
+    deviations of their Gaussian priors.
+
+    The model is a compiled function of plain numbers, so it sees the values
+    of `x` and `data` in their own units, and the value of each parameter in
+    the unit of its initial guess.
+    The variance is converted to the unit of the data squared, and the bounds
+    and priors of each parameter to the unit of its guess.
+
+    Parameters
+    ----------
+    model
+        The model to fit, made with :func:`ndoptimize.model`.
+    x
+        The independent variable.
+        If it is a vector, its components, in order, are the inputs of the
+        model; otherwise it is the single input.
+    data
+        The data to fit.
+        Points which are NaN are left out of their fit.
+    variance
+        The variance of the noise of each data point.
+        Points with a variance which is NaN or not positive are left out of
+        their fit.
+    guess
+        The initial guess for the parameters, a vector whose components are
+        the parameters named in :attr:`ndoptimize.Model.parameters`.
+        It must not vary along `axis`, and neither may the bounds and priors.
+    axis
+        The logical axis or axes along which the data points of a single fit
+        vary.
+    lower
+        The lower bounds of the parameters, a vector with a component for
+        each parameter that has one.
+        If :obj:`None` (the default), no parameter has a lower bound.
+    upper
+        The upper bounds of the parameters, in the same form as `lower`.
+    prior_mean
+        The means of the Gaussian priors of the parameters, a vector with a
+        component for each parameter that has a prior.
+    prior_sigma
+        The standard deviations of the Gaussian priors of the parameters, in
+        the same form as `prior_mean`.
+        A parameter has a prior only if it has a component here.
+    correlation
+        The correlation of the noise of two data points by their separation
+        along `axis`, in samples, starting with 1, as in
+        :func:`ndoptimize.least_squares`.
+        It requires a single `axis`.
+        If :obj:`None` (the default), the noise is uncorrelated.
+    max_iterations
+        The maximum number of steps for each fit.
+    tolerance
+        The convergence tolerance on the Newton decrement, as in
+        :func:`ndoptimize.least_squares`.
+
+    Examples
+    --------
+
+    Fit a Gaussian to each of a hundred noisy spectral lines, with the
+    parameters in physical units.
+
+    .. jupyter-execute::
+
+        import numpy as np
+        import matplotlib.pyplot as plt
+        import astropy.units as u
+        import named_arrays as na
+        import ndoptimize
+
+        # the true parameters of the lines
+        shape = dict(position=100)
+        truth = na.CartesianNdVectorArray(dict(
+            amplitude=na.random.uniform(5, 10, shape, seed=0) * u.DN,
+            center=na.random.normal(0, 10, shape, seed=1) * u.km / u.s,
+            width=na.random.uniform(10, 20, shape, seed=2) * u.km / u.s,
+        ))
+
+        # the noisy spectra
+        velocity = na.linspace(-100, 100, axis="velocity", num=41) * u.km / u.s
+        z = (velocity - truth.center) / truth.width
+        sigma = 0.5 * u.DN
+        data = na.random.normal(truth.amplitude * np.exp(-z * z / 2), sigma, seed=3)
+
+        # fit every spectrum
+        result = na.optimize.least_squares(
+            model=ndoptimize.models.gaussian,
+            x=velocity,
+            data=data,
+            variance=np.square(sigma),
+            guess=na.CartesianNdVectorArray(dict(
+                amplitude=5 * u.DN,
+                center=0 * u.km / u.s,
+                width=15 * u.km / u.s,
+            )),
+            axis="velocity",
+        )
+
+        # compare the fitted centers to the truth
+        error = result.parameters.center - truth.center
+        uncertainty = np.sqrt(result.covariance.center.center)
+
+        fig, ax = plt.subplots(constrained_layout=True)
+        na.plt.scatter(truth.center, error / uncertainty, ax=ax);
+        ax.set_xlabel(f"true center ({ax.get_xlabel()})");
+        ax.set_ylabel("(fitted center - true center) / uncertainty");
+    """
+    return na._named_array_function(
+        func=least_squares,
+        model=model,
+        x=x,
+        data=data,
+        variance=variance,
+        guess=guess,
+        axis=axis,
+        lower=lower,
+        upper=upper,
+        prior_mean=prior_mean,
+        prior_sigma=prior_sigma,
+        correlation=correlation,
+        max_iterations=max_iterations,
+        tolerance=tolerance,
     )

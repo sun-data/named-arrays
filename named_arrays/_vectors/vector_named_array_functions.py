@@ -1,4 +1,5 @@
 from typing import Callable, TypeVar, Sequence, Literal, TYPE_CHECKING
+import math
 import numpy as np
 import numpy.typing as npt
 import astropy.units as u
@@ -9,6 +10,7 @@ from named_arrays.geometry._convex_hull import _convex_hull_quantity
 from . import vectors
 
 if TYPE_CHECKING:
+    import ndoptimize
     import matplotlib.artist
     import matplotlib.axes
     import matplotlib.colors
@@ -1266,6 +1268,222 @@ def geometry_convex_hull(
     return na.Cartesian2dVectorArray(
         x=na.ScalarArray(x_vertices, axes=axes_vertices),
         y=na.ScalarArray(y_vertices, axes=axes_vertices),
+    )
+
+
+def _value(
+    a: na.AbstractExplicitScalarArray,
+    unit: u.UnitBase,
+) -> na.ScalarArray:
+    """
+    The value of `a` in the given unit, which counts an `a` without a unit as
+    dimensionless.
+    """
+    ndarray = a.ndarray
+    if isinstance(ndarray, u.Quantity):
+        ndarray = ndarray.to_value(unit)
+    else:
+        scale = u.dimensionless_unscaled.to(unit)
+        if scale != 1:
+            ndarray = ndarray * scale
+    return na.ScalarArray(ndarray, axes=a.axes)
+
+
+@_implements(na.optimize.least_squares)
+def optimize_least_squares(
+    model: "ndoptimize.Model",
+    x: float | u.Quantity | na.AbstractScalar | na.AbstractVectorArray,
+    data: float | u.Quantity | na.AbstractScalar,
+    variance: float | u.Quantity | na.AbstractScalar,
+    guess: na.AbstractVectorArray,
+    axis: str | Sequence[str],
+    lower: None | na.AbstractVectorArray = None,
+    upper: None | na.AbstractVectorArray = None,
+    prior_mean: None | na.AbstractVectorArray = None,
+    prior_sigma: None | na.AbstractVectorArray = None,
+    correlation: None | npt.ArrayLike = None,
+    max_iterations: int = 1000,
+    tolerance: float = 1e-8,
+) -> na.optimize.LeastSquaresResult:
+
+    import ndoptimize
+
+    if not isinstance(guess, na.AbstractVectorArray):  # pragma: nocover
+        return NotImplemented
+
+    names = model.parameters
+    components_guess = guess.explicit.components
+    if set(components_guess) != set(names):
+        raise ValueError(
+            f"The components of `guess`, {tuple(components_guess)}, must be "
+            f"the parameters of the model, {names}."
+        )
+
+    vectors_parameters = dict(
+        lower=lower,
+        upper=upper,
+        prior_mean=prior_mean,
+        prior_sigma=prior_sigma,
+    )
+    components_parameters = dict()
+    for name_vector, vector in vectors_parameters.items():
+        if vector is None:
+            components_parameters[name_vector] = dict()
+        elif isinstance(vector, na.AbstractVectorArray):
+            components_parameters[name_vector] = vector.explicit.components
+        else:
+            raise TypeError(
+                f"`{name_vector}` must be None or a vector, got {type(vector)}."
+            )
+        unknown = tuple(set(components_parameters[name_vector]) - set(names))
+        if unknown:
+            raise ValueError(
+                f"The components {unknown} of `{name_vector}` are not "
+                f"parameters of the model, {names}."
+            )
+
+    try:
+        data = scalars._normalize(data).explicit
+        variance = scalars._normalize(variance).explicit
+        if isinstance(x, na.AbstractVectorArray):
+            inputs = [scalars._normalize(c).explicit for c in x.explicit.components.values()]
+        else:
+            inputs = [scalars._normalize(x).explicit]
+        components_guess = {
+            name: scalars._normalize(components_guess[name]).explicit
+            for name in components_guess
+        }
+        components_parameters = {
+            name_vector: {
+                name: scalars._normalize(c).explicit
+                for name, c in components.items()
+            }
+            for name_vector, components in components_parameters.items()
+        }
+    except scalars.ScalarTypeError:
+        return NotImplemented
+
+    # the model sees plain numbers: the data and the inputs in their own
+    # units, and each parameter in the unit of its guess
+    unit_data = na.unit_normalized(data)
+    data = _value(data, unit_data)
+    variance = _value(variance, unit_data ** 2)
+    inputs = [_value(c, na.unit_normalized(c)) for c in inputs]
+
+    units = {name: na.unit_normalized(components_guess[name]) for name in names}
+    default = dict(lower=-np.inf, upper=np.inf, prior_mean=0, prior_sigma=np.inf)
+    parameters = dict(guess={
+        name: _value(components_guess[name], units[name])
+        for name in names
+    })
+    for name_vector, components in components_parameters.items():
+        parameters[name_vector] = {
+            name: _value(components[name], units[name])
+            if name in components else na.ScalarArray(default[name_vector])
+            for name in names
+        }
+
+    if isinstance(axis, str):
+        axis = (axis,)
+    axis = tuple(axis)
+
+    shape = na.shape_broadcasted(
+        data,
+        variance,
+        *inputs,
+        *[p for vector in parameters.values() for p in vector.values()],
+    )
+
+    missing = tuple(a for a in axis if a not in shape)
+    if missing:
+        raise ValueError(f"{missing=} are not axes of the arguments, {shape=}.")
+
+    for name_vector, vector in parameters.items():
+        for name, p in vector.items():
+            along = tuple(a for a in axis if a in p.shape)
+            if along:
+                raise ValueError(
+                    f"The parameters of a fit are constant, but `{name_vector}` "
+                    f"varies along {along} for the parameter {name!r}."
+                )
+
+    if correlation is not None and len(axis) != 1:
+        raise ValueError(
+            f"`correlation` is given by separation along a single axis, but "
+            f"the points of a fit vary along {axis=}."
+        )
+
+    shape_batch = {a: shape[a] for a in shape if a not in axis}
+    axes_batch = tuple(shape_batch)
+    shape_points = tuple(shape[a] for a in axis)
+    num_points = math.prod(shape_points)
+
+    def _points(a: na.ScalarArray) -> np.ndarray:
+        """
+        `a` as an array whose batch axes are followed by one axis, along
+        which the points of each fit vary.
+        """
+        ndarray = a.ndarray_aligned(axes_batch + axis)
+        shape_ndarray_batch = ndarray.shape[:len(axes_batch)]
+        ndarray = np.broadcast_to(ndarray, shape_ndarray_batch + shape_points)
+        return ndarray.reshape(shape_ndarray_batch + (num_points,))
+
+    def _stack(arrays: list[np.ndarray]) -> np.ndarray:
+        """Stack arrays with the same last axes along a new last axis."""
+        return np.stack(np.broadcast_arrays(*arrays), axis=~0)
+
+    ndarrays_parameters = {
+        name_vector: _stack([vector[name].ndarray_aligned(axes_batch) for name in names])
+        for name_vector, vector in parameters.items()
+    }
+
+    result = ndoptimize.least_squares(
+        model=model,
+        x=_stack([_points(c) for c in inputs]),
+        data=_points(data),
+        variance=_points(variance),
+        correlation=correlation,
+        max_iterations=max_iterations,
+        tolerance=tolerance,
+        **ndarrays_parameters,
+    )
+
+    def _scalar(ndarray: np.ndarray, *units_factors: None | u.UnitBase) -> na.ScalarArray:
+        """
+        A result over the batch axes, with the product of the given units,
+        or without a unit if none of them is a unit.
+        """
+        units_factors = [unit for unit in units_factors if unit is not None]
+        if units_factors:
+            ndarray = ndarray << math.prod(units_factors[1:], start=units_factors[0])
+        return na.ScalarArray(ndarray, axes_batch)
+
+    # the results keep the components of the guess in its order, and a
+    # parameter whose guess has no unit has none
+    index = {name: k for k, name in enumerate(names)}
+    units = {name: na.unit(components_guess[name]) for name in names}
+    order = tuple(components_guess)
+
+    return na.optimize.LeastSquaresResult(
+        parameters=guess.type_explicit.from_components({
+            name: _scalar(result.parameters[..., index[name]], units[name])
+            for name in order
+        }),
+        covariance=na.CartesianNdMatrixArray({
+            row: na.CartesianNdVectorArray({
+                column: _scalar(
+                    result.covariance[..., index[row], index[column]],
+                    units[row],
+                    units[column],
+                )
+                for column in order
+            })
+            for row in order
+        }),
+        chi2=na.ScalarArray(result.chi2, axes_batch),
+        num_points=na.ScalarArray(result.num_points, axes_batch),
+        iterations=na.ScalarArray(result.iterations, axes_batch),
+        converged=na.ScalarArray(result.converged, axes_batch),
     )
 
 

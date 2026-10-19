@@ -17,6 +17,7 @@ modules_heavy = [
     "matplotlib",
     "mpl_toolkits",
     "ndfilters",
+    "ndoptimize",
     "numba",
     "pandas",
     "regridding",
