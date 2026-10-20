@@ -74,7 +74,6 @@ class AbstractCartesian2dMatrixArray(
         """
 
         z = exponent
-        y = z - 1
 
         a, b = self.x.components.values()
         c, d = self.y.components.values()
@@ -93,17 +92,37 @@ class AbstractCartesian2dMatrixArray(
         else:
             t2 = np.emath.sqrt(discriminant.to_value(unit)) * unit ** (1 / 2)
 
-        e1 = t1 + t2
-        e2 = t1 - t2
+        # the eigenvalue of the greater magnitude, and the step from it to
+        # the other one
+        greater = np.abs(t1 + t2) >= np.abs(t1 - t2)
+        e1 = np.where(greater, t1 + t2, t1 - t2)
+        e2 = np.where(greater, t1 - t2, t1 + t2)
+        h = e2 - e1
 
-        d = e1 - e2
+        p1 = e1 ** z
+        p2 = e2 ** z
+
+        # The divided difference of the power at the two eigenvalues. Where
+        # they are close, the difference of their powers cancels, so it is
+        # found from the logarithm of their ratio instead, and where they are
+        # equal, it is its limit, the derivative of the power.
+        with np.errstate(divide="ignore", invalid="ignore"):
+            # each of these divides by zero, or takes the logarithm of a
+            # negative number, only where it is not used
+            difference_far = (p2 - p1) / h
+            difference_near = p1 * np.expm1(z * np.log1p(h / e1)) / h
+        difference = np.where(
+            np.abs(h) < np.abs(e1) / 2,
+            difference_near,
+            difference_far,
+        )
+        difference = np.where(h == 0, z * e1 ** (z - 1), difference)
 
         identity = na.Cartesian2dIdentityMatrixArray()
 
-        a1 = (e1 ** z - e2 ** z) / d * self
-        a2 = e1 * e2 * (e1 ** y - e2 ** y) / d * identity
-
-        return a1 - a2
+        # the polynomial which interpolates the power at the eigenvalues in
+        # the form of Newton, which still holds where they are equal
+        return difference * self + (p1 - difference * e1) * identity
 
 
 @dataclasses.dataclass(eq=False, repr=False)
