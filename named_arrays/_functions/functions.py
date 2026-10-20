@@ -1927,6 +1927,19 @@ class PolynomialFitFunctionArray(
         return v1_T_v2
 
 
+def _components(
+    a: float | u.Quantity | na.AbstractScalar | na.AbstractVectorArray,
+) -> dict[str, Any]:
+    """
+    The components of the inputs of a model by name, with those of nested
+    vectors named with dots, or, if they are not a vector, the inputs
+    themselves, under an empty name.
+    """
+    if isinstance(a, na.AbstractVectorArray):
+        return a.cartesian_nd.components
+    return {"": a}
+
+
 @dataclasses.dataclass(eq=False, repr=False)
 class AbstractModelFunctionArray(
     AbstractFunctionArray,
@@ -1987,6 +2000,13 @@ class AbstractModelFunctionArray(
             if isinstance(components, str):
                 components = (components,)
 
+            if len(set(components)) != len(components):
+                raise ValueError(
+                    f"Each component of `components_model` is one input of "
+                    f"the model, so it must name each only once, got "
+                    f"{components}."
+                )
+
             if not isinstance(inputs, na.AbstractVectorArray):
                 raise TypeError(
                     f"`components_model` selects components of vector inputs, "
@@ -2015,13 +2035,8 @@ class AbstractModelFunctionArray(
         if isinstance(axis_model, str):
             axis_model = (axis_model,)
 
-        if isinstance(inputs, na.AbstractVectorArray):
-            components_inputs = inputs.cartesian_nd.components
-        else:
-            components_inputs = {"": inputs}
-
         result = dict()
-        for name, value in components_inputs.items():
+        for name, value in _components(inputs).items():
             axes = tuple(ax for ax in axes_vertex if ax in na.shape(value))
             if not axes:
                 result[name] = value
@@ -2058,10 +2073,11 @@ class AbstractModelFunctionArray(
         Evaluate the model at the given inputs, using
         :func:`ndoptimize.evaluate`.
 
-        The values of the model have the unit of :attr:`outputs`.
-        If :attr:`parameters` are uncertain, the model is evaluated for their
-        nominal values and for each of their samples, and the outputs are
-        uncertain.
+        The model sees each input in the unit of the same input in
+        :attr:`inputs`, and its values have the unit of :attr:`outputs`.
+        If :attr:`parameters` or the inputs are uncertain, the model is
+        evaluated for their nominal values and for their samples, and the
+        outputs are uncertain.
 
         Parameters
         ----------
@@ -2071,15 +2087,44 @@ class AbstractModelFunctionArray(
             The axes of :attr:`axis_model` along which they vary are the
             points of each evaluation, and every other axis is a batch axis,
             like the axes along which :attr:`parameters` vary.
+            If :attr:`axis_model` is :obj:`None`, every axis of the inputs
+            is an axis of the points.
             Along an axis along which :attr:`inputs` are the edges of bins,
             these are the edges of bins too, and the outputs have one fewer
             element.
         """
-        outputs = na.optimize._evaluate(
+        from named_arrays._scalars.uncertainties import uncertainties
+
+        inputs = na.as_named_array(inputs)
+
+        x = self._inputs_model(inputs)
+        components = _components(x)
+        components_fit = _components(self._inputs_model(self.inputs))
+        if tuple(components) != tuple(components_fit):
+            raise ValueError(
+                f"These inputs give the model the inputs {tuple(components)}, "
+                f"but the inputs of this function give it {tuple(components_fit)}."
+            )
+        components = {
+            c: na.as_named_array(components[c]).to(na.unit_normalized(components_fit[c]))
+            for c in components
+        }
+        if isinstance(x, na.AbstractVectorArray):
+            x = na.CartesianNdVectorArray(components)
+        else:
+            x = components[""]
+
+        # the samples of uncertain arguments are evaluated separately, and the
+        # shape of an uncertain array leaves out the axis of its samples
+        axis = self.axis_model
+        if axis is None:
+            axis = tuple(na.shape(x))
+
+        outputs = uncertainties._propagate(
+            na.optimize._evaluate,
+            arguments=dict(x=x, parameters=self.parameters),
             model=self.model,
-            x=self._inputs_model(inputs),
-            parameters=self.parameters,
-            axis=self.axis_model,
+            axis=axis,
             unit=na.unit(self.outputs),
         )
         return na.FunctionArray(inputs, outputs)
@@ -2110,7 +2155,8 @@ class ModelFitFunctionArray(
     The parameters are the components of a vector, named after
     :attr:`ndoptimize.Model.parameters`.
     They are fit the first time they, or any other result of the fit, are
-    used.
+    used, and fit again after any field is assigned to, including by
+    assigning to elements of this array.
 
     Each fit minimizes
 
@@ -2158,6 +2204,11 @@ class ModelFitFunctionArray(
         The variance of the noise of each output.
         Points with a variance which is NaN or not positive are left out of
         their fit.
+        Like any field of a function array, it is passed on unchanged by
+        operations which change the outputs, so after one which changes
+        their unit, like multiplying this array by a quantity or taking its
+        :attr:`value`, replace the variance too, for example with
+        :func:`dataclasses.replace`, before using the fit of the result.
     components_model
         The components of the inputs, in order, which are the inputs of the
         model, with those of nested vectors named with dots, like
@@ -2179,9 +2230,8 @@ class ModelFitFunctionArray(
         The means of the Gaussian priors of the parameters, a vector with a
         component for each parameter that has a prior.
     prior_sigma
-        The standard deviations of the Gaussian priors of the parameters, in
-        the same form as `prior_mean`.
-        A parameter has a prior only if it has a component here.
+        The standard deviations of the Gaussian priors of the parameters, a
+        vector with the same components as `prior_mean`.
     correlation
         The correlation of the noise of two outputs by their separation along
         `axis_model`, in samples, starting with 1, as in
@@ -2293,28 +2343,46 @@ class ModelFitFunctionArray(
     tolerance: float = 1e-8
     """The convergence tolerance on the Newton decrement."""
 
+    def __setattr__(self, name: str, value: Any) -> None:
+        super().__setattr__(name, value)
+        # a fit of the old fields is out of date
+        self.__dict__.pop("_fit", None)
+
     @functools.cached_property
     def _fit(self) -> na.optimize._LeastSquaresResult:
         """Every result of the fit, computed the first time one is used."""
+        from named_arrays._scalars.uncertainties import uncertainties
+
         for name in ("model", "guess", "variance"):
             if getattr(self, name) is None:
                 raise ValueError(f"`{name}` is required to fit the model.")
+
+        x = self._inputs_model(self.inputs)
 
         outputs = self.outputs
         if self.where_model is not True:
             outputs = np.where(self.where_model, outputs, np.nan)
 
-        return na.optimize._least_squares(
+        # the samples of uncertain fields are fit separately, and the shape
+        # of an uncertain array leaves out the axis of its samples
+        axis = self.axis_model
+        if axis is None:
+            axis = tuple(na.shape_broadcasted(x, outputs, self.variance))
+
+        return uncertainties._propagate(
+            na.optimize._least_squares,
+            arguments=dict(
+                x=x,
+                data=outputs,
+                variance=self.variance,
+                guess=self.guess,
+                lower=self.lower,
+                upper=self.upper,
+                prior_mean=self.prior_mean,
+                prior_sigma=self.prior_sigma,
+            ),
             model=self.model,
-            x=self._inputs_model(self.inputs),
-            data=outputs,
-            variance=self.variance,
-            guess=self.guess,
-            axis=self.axis_model,
-            lower=self.lower,
-            upper=self.upper,
-            prior_mean=self.prior_mean,
-            prior_sigma=self.prior_sigma,
+            axis=axis,
             correlation=self.correlation,
             max_iterations=self.max_iterations,
             tolerance=self.tolerance,

@@ -271,8 +271,19 @@ def test__call__() -> None:
     assert np.allclose(result.outputs, _gaussian_linear(velocity, fit.parameters))
 
     point = fit(10 * _unit_x)
-    assert point.outputs.shape == fit.chi2.shape
+    assert point.shape == fit.chi2.shape
     assert np.allclose(point.outputs, _gaussian_linear(10 * _unit_x, fit.parameters))
+
+
+def test__call__units() -> None:
+    """
+    The model sees new inputs in the unit of the inputs it was fit to, and
+    inputs in a unit which cannot be converted to that one raise an error.
+    """
+    fit = _fit()
+    assert np.allclose(fit(10000 * u.m / u.s).outputs, fit(10 * _unit_x).outputs)
+    with pytest.raises(u.UnitConversionError):
+        fit(10 * u.s)
 
 
 def test_predictions() -> None:
@@ -287,6 +298,27 @@ def test_predictions() -> None:
 
     chi2 = (np.square(_data - f) / np.square(_sigma)).sum(axis=_axis)
     assert np.allclose(chi2, fit.chi2)
+
+
+def test_assign() -> None:
+    """
+    Assigning to a field, to elements of the array, or with in-place
+    arithmetic discards the fit, which is computed again from the new fields.
+    """
+    fit = _fit(outputs=_data.copy())
+    fit.parameters
+    fit[dict(y=0)] = 0 * u.DN
+    _assert_parameters_equal(fit, _fit(outputs=fit.outputs.copy()))
+
+    fit = _fit()
+    variance = fit.covariance.center.center
+    fit.variance = 4 * fit.variance
+    assert np.allclose(fit.covariance.center.center, 4 * variance)
+
+    fit = _fit(outputs=_data.copy())
+    amplitude = fit.parameters.amplitude
+    fit *= 2
+    assert np.allclose(fit.parameters.amplitude, 2 * amplitude)
 
 
 def test__getitem__() -> None:
@@ -355,6 +387,12 @@ def test_components_model() -> None:
     with pytest.raises(TypeError, match="vector inputs"):
         _fit(components_model="wavelength").parameters
 
+    with pytest.raises(ValueError, match="only once"):
+        _fit(
+            inputs=na.SpectralPositionalVectorArray(_velocity, position),
+            components_model=("wavelength", "wavelength"),
+        ).parameters
+
 
 _samples = na.random.normal(
     _gaussian_linear(_velocity, _truth),
@@ -401,11 +439,54 @@ def test_uncertain() -> None:
     assert np.array_equal(f.distribution, distribution.predictions)
 
 
+def test_uncertain_axis_model_none() -> None:
+    """
+    Without `axis_model`, every axis of uncertain outputs, but not the axis
+    of their samples, is a single fit, so each sample is fit separately.
+    """
+    index = dict(x=0, y=0)
+    data = na.UncertainScalarArray(_data[index], _samples[index])
+
+    result = _fit(outputs=data, axis_model=None)
+
+    nominal = _fit(outputs=data.nominal)
+    distribution = _fit(outputs=data.distribution)
+    for name in _names:
+        p = result.parameters.components[name]
+        assert np.array_equal(p.nominal, nominal.parameters.components[name])
+        assert np.array_equal(p.distribution, distribution.parameters.components[name])
+    assert np.all(result.num_points.distribution == _velocity.shape[_axis])
+
+
+def test_uncertain_inputs() -> None:
+    """
+    Uncertain inputs are fit and evaluated like uncertain outputs, and
+    without `axis_model`, the axis of their samples is not an axis of the
+    points.
+    """
+    index = dict(x=0, y=0)
+    shift = na.ScalarArray(np.array([-1.0, 0, 1]), "_distribution") * _unit_x
+    inputs = na.UncertainScalarArray(_velocity, _velocity + shift)
+
+    result = _fit(inputs=inputs, outputs=_data[index], axis_model=None)
+
+    nominal = _fit(outputs=_data[index])
+    distribution = _fit(inputs=inputs.distribution, outputs=_data[index])
+    p = result.parameters.center
+    assert isinstance(p, na.UncertainScalarArray)
+    assert np.array_equal(p.nominal, nominal.parameters.center)
+    assert np.array_equal(p.distribution, distribution.parameters.center)
+
+    f = result.predictions
+    assert isinstance(f, na.UncertainScalarArray)
+    assert np.array_equal(f.nominal, nominal.predictions)
+    assert np.array_equal(f.distribution, distribution.predictions)
+
+
 def test_uncertain_guess() -> None:
     """
-    An uncertain component of a vector, which the dispatcher does not see,
-    is fit like uncertain outputs: one fit for the nominal guess and one for
-    each of its samples.
+    An uncertain component of a vector is fit like uncertain outputs: one fit
+    for the nominal guess and one for each of its samples.
     """
     center = na.UncertainScalarArray(
         nominal=0 * _unit_x,
@@ -422,7 +503,7 @@ def test_uncertain_guess() -> None:
     assert np.array_equal(p.distribution, distribution.parameters.center)
 
 
-@ndoptimize.model(parameters=("amplitude", "x0", "y0", "width"))
+@ndoptimize.model(parameters=("amplitude", "x0", "y0", "width"), cache=False)
 def _gaussian_2d(
     x: np.ndarray,
     parameters: np.ndarray,
@@ -529,8 +610,11 @@ def test_vector() -> None:
         (dict(variance=None), ValueError),
         (dict(guess=na.CartesianNdVectorArray(dict(amplitude=5 * u.DN))), ValueError),
         (dict(guess=_guess_with(extra=1)), ValueError),
+        (dict(guess=5 * u.DN), TypeError),
         (dict(lower=na.CartesianNdVectorArray(dict(sigma=3 * _unit_x))), ValueError),
         (dict(lower=3 * _unit_x), TypeError),
+        (dict(prior_mean=na.CartesianNdVectorArray(dict(center=0 * _unit_x))), ValueError),
+        (dict(prior_sigma=na.CartesianNdVectorArray(dict(center=1 * _unit_x))), ValueError),
         (dict(guess=_guess_with(center=_velocity)), ValueError),
         (dict(axis_model="wavelength"), ValueError),
         (dict(outputs=na.Cartesian2dVectorArray(_data, _data)), TypeError),
@@ -543,7 +627,7 @@ def test_fit_invalid(kwargs: dict[str, Any], error: type[Exception]) -> None:
 
 def test_evaluate_invalid() -> None:
     """Parameters which are not scalars cannot be evaluated."""
-    with pytest.raises(TypeError):
+    with pytest.raises(TypeError, match="must be a scalar array"):
         na.optimize._evaluate(
             model=ndoptimize.models.gaussian_linear,
             x=_velocity,
@@ -555,7 +639,7 @@ def test_evaluate_invalid() -> None:
         )
 
 
-@ndoptimize.model(parameters=("weight_lower", "weight_upper"))
+@ndoptimize.model(parameters=("weight_lower", "weight_upper"), cache=False)
 def _edges_weighted(
     x: np.ndarray,
     parameters: np.ndarray,
@@ -629,6 +713,10 @@ def test_vertex() -> None:
     assert result.inputs is edges
     assert result.outputs.shape == dict(y=2, velocity=20)
     assert np.allclose(result.outputs, _edges_data(edges, weight_lower, weight_upper))
+
+    # a single point is not the edges of a bin
+    with pytest.raises(ValueError, match="give the model the inputs"):
+        fit(5 * _unit_x)
 
 
 def test_vertex_components() -> None:

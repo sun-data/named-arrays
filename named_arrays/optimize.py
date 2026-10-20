@@ -7,6 +7,8 @@ Analogous to :mod:`scipy.optimize`.
 from __future__ import annotations
 from typing import TypeVar, Callable, Sequence, TYPE_CHECKING
 import dataclasses
+import math
+import numpy as np
 import astropy.units as u
 import named_arrays as na
 
@@ -346,6 +348,8 @@ def minimum_brent(
     )
 
 
+
+
 @dataclasses.dataclass(frozen=True, eq=False)
 class _LeastSquaresResult:
     """
@@ -373,13 +377,196 @@ class _LeastSquaresResult:
     """Whether each fit converged."""
 
 
+def _scalar(
+    a: float | u.Quantity | na.AbstractScalar,
+    name: str,
+) -> na.ScalarArray:
+    """
+    `a` as an explicit scalar array.
+
+    Parameters
+    ----------
+    a
+        An argument of :func:`_least_squares` or :func:`_evaluate`, or a
+        component of one.
+    name
+        How to refer to `a` in the :class:`TypeError` raised if it is not a
+        scalar array, which includes an uncertain array.
+    """
+    if not isinstance(a, na.AbstractArray):
+        return na.ScalarArray(a)
+    if not isinstance(a, na.AbstractScalarArray):
+        raise TypeError(f"{name} must be a scalar array, got {type(a).__qualname__}.")
+    return a.explicit
+
+
+def _inputs(
+    x: float | u.Quantity | na.AbstractScalar | na.AbstractVectorArray,
+) -> list[na.ScalarArray]:
+    """
+    The inputs of a model, the components of `x` if it is a vector, with
+    those of nested vectors in their place, or else `x` itself, each as the
+    value in its own unit.
+    """
+    if isinstance(x, na.AbstractVectorArray):
+        inputs = list(x.explicit.cartesian_nd.components.values())
+    else:
+        inputs = [x]
+    inputs = [_scalar(c, "An input of the model") for c in inputs]
+    return [c.to_value(na.unit_normalized(c)) for c in inputs]
+
+
+def _parameters(
+    vector: None | na.AbstractVectorArray,
+    names: tuple[str, ...],
+    name_argument: str,
+    complete: bool,
+) -> dict[str, na.ScalarArray]:
+    """
+    The components of a vector of values of the parameters of a model, by
+    name.
+
+    Parameters
+    ----------
+    vector
+        The vector, or :obj:`None` for no components.
+    names
+        The names of the parameters of the model.
+    name_argument
+        The name of the argument the vector was given as, for errors.
+    complete
+        Whether the vector must have a component for every parameter, rather
+        than for some of them.
+    """
+    if vector is None:
+        components = dict()
+    elif isinstance(vector, na.AbstractVectorArray):
+        components = vector.explicit.components
+    else:
+        raise TypeError(
+            f"`{name_argument}` must be a vector, got {type(vector).__qualname__}."
+        )
+
+    if complete and set(components) != set(names):
+        raise ValueError(
+            f"The components of `{name_argument}`, {tuple(components)}, must "
+            f"be the parameters of the model, {names}."
+        )
+    unknown = tuple(set(components) - set(names))
+    if unknown:
+        raise ValueError(
+            f"The components {unknown} of `{name_argument}` are not "
+            f"parameters of the model, {names}."
+        )
+
+    return {
+        name: _scalar(c, f"The component {name!r} of `{name_argument}`")
+        for name, c in components.items()
+    }
+
+
+def _axes(
+    arrays_points: list[na.ScalarArray],
+    arrays_parameters: dict[str, dict[str, na.ScalarArray]],
+    axis: str | Sequence[str],
+    required: bool,
+) -> tuple[tuple[str, ...], dict[str, int], dict[str, int]]:
+    """
+    Split the axes of the arguments of :func:`_least_squares` or
+    :func:`_evaluate` into the axes along which the points of each set vary
+    and the batch axes.
+
+    Parameters
+    ----------
+    arrays_points
+        The arrays which may vary along `axis`.
+    arrays_parameters
+        The values of the parameters by argument and parameter, which may not
+        vary along `axis`.
+    axis
+        The axis or axes along which the points of each set vary.
+    required
+        Whether every axis in `axis` must be an axis of the arguments.
+        If not, those which are not are left out.
+
+    Returns
+    -------
+    axis
+        The axes along which the points of each set vary, as a tuple.
+    shape_batch
+        The shape of the batch axes.
+    shape_points
+        The shape of the axes in `axis`.
+    """
+    arrays = arrays_points + [
+        p for vector in arrays_parameters.values() for p in vector.values()
+    ]
+    shape = na.shape_broadcasted(*arrays)
+
+    if isinstance(axis, str):
+        axis = (axis,)
+    missing = tuple(a for a in axis if a not in shape)
+    if missing and required:
+        raise ValueError(f"{missing=} are not axes of the arguments, {shape=}.")
+    axis = tuple(a for a in axis if a in shape)
+
+    for name_argument, vector in arrays_parameters.items():
+        for name, p in vector.items():
+            along = tuple(a for a in axis if a in p.shape)
+            if along:
+                raise ValueError(
+                    f"The parameters of a set are constant, but "
+                    f"`{name_argument}` varies along {along} for the parameter "
+                    f"{name!r}."
+                )
+
+    shape_batch = {a: shape[a] for a in shape if a not in axis}
+    shape_points = {a: shape[a] for a in axis}
+    return axis, shape_batch, shape_points
+
+
+def _points(
+    a: na.ScalarArray,
+    shape_batch: dict[str, int],
+    shape_points: dict[str, int],
+) -> np.ndarray:
+    """
+    `a` as an array whose batch axes are followed by one axis, along which
+    the points of each set vary.
+    """
+    ndarray = a.ndarray_aligned(tuple(shape_batch) + tuple(shape_points))
+    shape_ndarray_batch = ndarray.shape[:len(shape_batch)]
+    ndarray = np.broadcast_to(ndarray, shape_ndarray_batch + tuple(shape_points.values()))
+    return ndarray.reshape(shape_ndarray_batch + (math.prod(shape_points.values()),))
+
+
+def _stack(arrays: list[np.ndarray]) -> np.ndarray:
+    """Stack arrays with the same last axes along a new last axis."""
+    return np.stack(np.broadcast_arrays(*arrays), axis=~0)
+
+
+def _result(
+    ndarray: np.ndarray,
+    axes: tuple[str, ...],
+    *units: None | u.UnitBase,
+) -> na.ScalarArray:
+    """
+    A result along the given axes, with the product of the given units, or
+    without a unit if none of them is a unit.
+    """
+    units_result = [unit for unit in units if unit is not None]
+    if units_result:
+        ndarray = ndarray << math.prod(units_result[1:], start=units_result[0])
+    return na.ScalarArray(ndarray, axes)
+
+
 def _least_squares(
     model: ndoptimize.Model,
     x: float | u.Quantity | na.AbstractScalar | na.AbstractVectorArray,
     data: float | u.Quantity | na.AbstractScalar,
     variance: float | u.Quantity | na.AbstractScalar,
     guess: na.AbstractVectorArray,
-    axis: None | str | Sequence[str],
+    axis: str | Sequence[str],
     lower: None | na.AbstractVectorArray = None,
     upper: None | na.AbstractVectorArray = None,
     prior_mean: None | na.AbstractVectorArray = None,
@@ -396,26 +583,123 @@ def _least_squares(
     The arguments are the fields of :class:`named_arrays.ModelFitFunctionArray`
     of the same names, except that `x` is the inputs of the model (already
     selected with :attr:`~named_arrays.ModelFitFunctionArray.components_model`),
-    `data` is the outputs (NaN where they are masked), and `axis` is
-    :attr:`~named_arrays.ModelFitFunctionArray.axis_model`.
-    If `axis` is :obj:`None`, the points of the single fit vary along every
-    axis of `x`, `data` and `variance`.
+    `data` is the outputs (NaN where they are masked), and `axis` is the
+    axes of :attr:`~named_arrays.ModelFitFunctionArray.axis_model`, every one
+    of which must be an axis of the arguments.
+    None of them may be uncertain, so
+    :class:`named_arrays.ModelFitFunctionArray` fits the nominal values and
+    the samples of uncertain fields separately.
     """
-    return na._named_array_function(
-        func=_least_squares,
-        model=model,
-        x=x,
-        data=data,
-        variance=variance,
+    import ndoptimize
+
+    names = model.parameters
+
+    data = _scalar(data, "`data`")
+    variance = _scalar(variance, "`variance`")
+    inputs = _inputs(x)
+    vectors = dict(
         guess=guess,
-        axis=axis,
         lower=lower,
         upper=upper,
         prior_mean=prior_mean,
         prior_sigma=prior_sigma,
+    )
+    parameters = {
+        name_argument: _parameters(
+            vector=vector,
+            names=names,
+            name_argument=name_argument,
+            complete=name_argument == "guess",
+        )
+        for name_argument, vector in vectors.items()
+    }
+
+    if set(parameters["prior_mean"]) != set(parameters["prior_sigma"]):
+        raise ValueError(
+            f"A prior needs a mean and a standard deviation, but `prior_mean` "
+            f"has the components {tuple(parameters['prior_mean'])} and "
+            f"`prior_sigma` has {tuple(parameters['prior_sigma'])}."
+        )
+
+    # the model sees plain numbers: the data and the inputs in their own
+    # units, and each parameter in the unit of its guess
+    unit_data = na.unit_normalized(data)
+    data = data.to_value(unit_data)
+    variance = variance.to_value(unit_data ** 2)
+
+    units_guess = {name: na.unit_normalized(parameters["guess"][name]) for name in names}
+    default = dict(lower=-np.inf, upper=np.inf, prior_mean=0, prior_sigma=np.inf)
+    values = {
+        name_argument: {
+            name: components[name].to_value(units_guess[name])
+            if name in components else na.ScalarArray(default[name_argument])
+            for name in names
+        }
+        for name_argument, components in parameters.items()
+    }
+
+    axis, shape_batch, shape_points = _axes(
+        arrays_points=[data, variance, *inputs],
+        arrays_parameters=values,
+        axis=axis,
+        required=True,
+    )
+
+    if correlation is not None and len(axis) != 1:
+        raise ValueError(
+            f"`correlation` is given by separation along a single axis, but "
+            f"the points of a fit vary along {axis=}."
+        )
+
+    axes_batch = tuple(shape_batch)
+
+    result = ndoptimize.least_squares(
+        model=model,
+        x=_stack([_points(c, shape_batch, shape_points) for c in inputs]),
+        data=_points(data, shape_batch, shape_points),
+        variance=_points(variance, shape_batch, shape_points),
         correlation=correlation,
         max_iterations=max_iterations,
         tolerance=tolerance,
+        **{
+            name_argument: _stack([
+                vector[name].ndarray_aligned(axes_batch) for name in names
+            ])
+            for name_argument, vector in values.items()
+        },
+    )
+
+    # the results keep the components of the guess in its order, and a
+    # parameter whose guess has no unit has none
+    index = {name: k for k, name in enumerate(names)}
+    units_result = {name: na.unit(parameters["guess"][name]) for name in names}
+    order = tuple(parameters["guess"])
+
+    return _LeastSquaresResult(
+        parameters=guess.type_explicit.from_components({
+            name: _result(
+                result.parameters[..., index[name]],
+                axes_batch,
+                units_result[name],
+            )
+            for name in order
+        }),
+        covariance=na.CartesianNdMatrixArray({
+            row: na.CartesianNdVectorArray({
+                column: _result(
+                    result.covariance[..., index[row], index[column]],
+                    axes_batch,
+                    units_result[row],
+                    units_result[column],
+                )
+                for column in order
+            })
+            for row in order
+        }),
+        chi2=na.ScalarArray(result.chi2, axes_batch),
+        num_points=na.ScalarArray(result.num_points, axes_batch),
+        iterations=na.ScalarArray(result.iterations, axes_batch),
+        converged=na.ScalarArray(result.converged, axes_batch),
     )
 
 
@@ -423,13 +707,18 @@ def _evaluate(
     model: ndoptimize.Model,
     x: float | u.Quantity | na.AbstractScalar | na.AbstractVectorArray,
     parameters: na.AbstractVectorArray,
-    axis: None | str | Sequence[str],
+    axis: str | Sequence[str],
     unit: None | u.UnitBase,
-) -> na.AbstractScalar:
+) -> na.ScalarArray:
     """
     Evaluate a model for many sets of parameters at once with
     :func:`ndoptimize.evaluate`, for
     :meth:`named_arrays.AbstractModelFunctionArray.__call__`.
+
+    None of the arguments may be uncertain, so
+    :meth:`named_arrays.AbstractModelFunctionArray.__call__` evaluates the
+    model for the nominal values and the samples of uncertain arguments
+    separately.
 
     Parameters
     ----------
@@ -442,16 +731,42 @@ def _evaluate(
         The parameters of the model, which must not vary along `axis`.
     axis
         The axes along which the points of a single evaluation vary.
-        Those which `x` does not vary along are ignored, and if `axis` is
-        :obj:`None`, the points vary along every axis of `x`.
+        Those which `x` does not vary along are ignored.
     unit
         The unit of the values of the model, or :obj:`None` for none.
     """
-    return na._named_array_function(
-        func=_evaluate,
-        model=model,
-        x=x,
-        parameters=parameters,
-        axis=axis,
-        unit=unit,
+    import ndoptimize
+
+    names = model.parameters
+
+    inputs = _inputs(x)
+    components = _parameters(
+        vector=parameters,
+        names=names,
+        name_argument="parameters",
+        complete=True,
     )
+
+    # the model sees each parameter as the value in its own unit
+    values = {
+        name: components[name].to_value(na.unit_normalized(components[name]))
+        for name in names
+    }
+
+    axis, shape_batch, shape_points = _axes(
+        arrays_points=inputs,
+        arrays_parameters=dict(parameters=values),
+        axis=axis,
+        required=False,
+    )
+    axes_batch = tuple(shape_batch)
+
+    f = ndoptimize.evaluate(
+        model=model,
+        x=_stack([_points(c, shape_batch, shape_points) for c in inputs]),
+        parameters=_stack([values[name].ndarray_aligned(axes_batch) for name in names]),
+    )
+
+    f = f.reshape(f.shape[:~0] + tuple(shape_points.values()))
+
+    return _result(f, axes_batch + axis, unit)

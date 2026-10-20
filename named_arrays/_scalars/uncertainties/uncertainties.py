@@ -283,6 +283,119 @@ def nominal(
         return a
 
 
+def _distribution(a: Any) -> Any:
+    """
+    Isolate the samples of an uncertain array, the counterpart of
+    :func:`nominal`.
+
+    If `a` is a vector or a :class:`dict`, this function is applied to each
+    of its components or values, and anything else is returned unchanged, so
+    that it broadcasts against the samples.
+
+    Parameters
+    ----------
+    a
+        An array to isolate the samples of.
+    """
+    if isinstance(a, AbstractUncertainScalarArray):
+        return a.distribution
+    if isinstance(a, na.AbstractVectorArray):
+        components = a.components
+        return a.type_explicit.from_components({
+            c: _distribution(components[c]) for c in components
+        })
+    if isinstance(a, dict):
+        return {key: _distribution(a[key]) for key in a}
+    return a
+
+
+def _is_uncertain(a: Any) -> bool:
+    """
+    Whether `a` is an uncertain array, or has one among the components of a
+    vector or the values of a :class:`dict`.
+
+    Parameters
+    ----------
+    a
+        The object to check.
+    """
+    if isinstance(a, AbstractUncertainScalarArray):
+        return True
+    if isinstance(a, na.AbstractVectorArray):
+        return any(_is_uncertain(c) for c in a.components.values())
+    if isinstance(a, dict):
+        return any(_is_uncertain(v) for v in a.values())
+    return False
+
+
+def _uncertain(result_nominal: Any, result_distribution: Any) -> Any:
+    """
+    Combine the results of a calculation from the nominal values of its
+    arguments and from their samples, the inverse of :func:`nominal` and
+    :func:`_distribution`.
+
+    Parameters
+    ----------
+    result_nominal
+        The result for the nominal values: an array, a vector, or a
+        dataclass of them which is not an array.
+    result_distribution
+        The result for the samples, of the same kind.
+
+    Returns
+    -------
+    An uncertain array, or a vector or dataclass of uncertain arrays.
+    """
+    if isinstance(result_nominal, na.AbstractVectorArray):
+        components_nominal = result_nominal.components
+        components_distribution = result_distribution.components
+        return result_nominal.type_explicit.from_components({
+            c: _uncertain(components_nominal[c], components_distribution[c])
+            for c in components_nominal
+        })
+    if dataclasses.is_dataclass(result_nominal) and not isinstance(result_nominal, na.AbstractArray):
+        return dataclasses.replace(result_nominal, **{
+            field.name: _uncertain(
+                getattr(result_nominal, field.name),
+                getattr(result_distribution, field.name),
+            )
+            for field in dataclasses.fields(result_nominal)
+            if field.init
+        })
+    return UncertainScalarArray(result_nominal, result_distribution)
+
+
+_ResultT = TypeVar("_ResultT")
+
+
+def _propagate(
+    func: Callable[..., _ResultT],
+    arguments: dict[str, Any],
+    **kwargs: Any,
+) -> _ResultT:
+    """
+    Call a function which does not support uncertain arrays with arguments
+    which may be uncertain, even in a component of a vector: once with their
+    nominal values and, if any of them is uncertain, once with their samples,
+    combining the two results with :func:`_uncertain`.
+
+    Parameters
+    ----------
+    func
+        A function whose result for each sample depends only on its arguments
+        for that sample, which is the case if every axis it does not act
+        along is a batch axis.
+    arguments
+        The arguments of `func` which may be uncertain.
+    kwargs
+        The other arguments of `func`, the same in both calls.
+    """
+    result = func(**nominal(arguments), **kwargs)
+    if not _is_uncertain(arguments):
+        return result
+    return _uncertain(result, func(**_distribution(arguments), **kwargs))
+
+
 @functools.cache
 def _array_function_dispatch() -> tuple[dict[Callable, Callable], dict[Callable, Callable]]:
     """
