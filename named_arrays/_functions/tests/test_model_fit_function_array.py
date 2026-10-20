@@ -503,7 +503,11 @@ def test_uncertain_guess() -> None:
     assert np.array_equal(p.distribution, distribution.parameters.center)
 
 
-@ndoptimize.model(parameters=("amplitude", "x0", "y0", "width"), cache=False)
+@ndoptimize.model(
+    parameters=("amplitude", "x0", "y0", "width"),
+    inputs=("x", "y"),
+    cache=False,
+)
 def _gaussian_2d(
     x: np.ndarray,
     parameters: np.ndarray,
@@ -598,6 +602,9 @@ def test_vector() -> None:
         p.amplitude * np.exp(-r2 / (2 * np.square(p.width))),
     )
 
+    with pytest.raises(ValueError, match="give the model the inputs"):
+        result(na.CartesianNdVectorArray(dict(px=position.x, py=position.y)))
+
     with pytest.raises(ValueError, match="single axis"):
         na.ModelFitFunctionArray(correlation=_correlation, **kwargs).parameters
 
@@ -639,7 +646,11 @@ def test_evaluate_invalid() -> None:
         )
 
 
-@ndoptimize.model(parameters=("weight_lower", "weight_upper"), cache=False)
+@ndoptimize.model(
+    parameters=("weight_lower", "weight_upper"),
+    inputs=("lower", "upper"),
+    cache=False,
+)
 def _edges_weighted(
     x: np.ndarray,
     parameters: np.ndarray,
@@ -715,7 +726,7 @@ def test_vertex() -> None:
     assert np.allclose(result.outputs, _edges_data(edges, weight_lower, weight_upper))
 
     # a single point is not the edges of a bin
-    with pytest.raises(ValueError, match="give the model the inputs"):
+    with pytest.raises(ValueError, match="takes the inputs"):
         fit(5 * _unit_x)
 
 
@@ -752,11 +763,43 @@ def test_vertex_components() -> None:
     assert np.allclose(fit.parameters.weight_upper, weight_upper)
 
     # an input which varies along no axis of edges stays a single input,
-    # after the edges of the others
+    # after the edges of the others, which is one more than this model takes
     kwargs["inputs"] = na.Cartesian2dVectorArray(x=_edges, y=0 * u.arcsec)
     fit = na.ModelFitFunctionArray(**kwargs)
-    assert np.allclose(fit.parameters.weight_lower, weight_lower)
-    assert np.allclose(fit.parameters.weight_upper, weight_upper)
+    with pytest.raises(ValueError, match=r"gives it 3, \('x.lower', 'x.upper', 'y'\)"):
+        fit.parameters
+
+
+def test_vertex_binned() -> None:
+    """
+    A model of the average over each bin fits the averages of a line over
+    bins as wide as the line, and a model of a single input raises an error
+    which points to one.
+    """
+    truth = dict(amplitude=5 * u.DN, center=2 * _unit_x, width=10 * _unit_x)
+    edges = np.linspace(-60, 60, 13)
+    x = np.stack([edges[:-1], edges[1:]], axis=~0)
+    data = np.empty(len(x))
+    parameters = np.array([truth[name].value for name in truth])
+    ndoptimize.models.gaussian_binned(x, parameters, data, np.empty((len(x), 3)))
+
+    kwargs: dict[str, Any] = dict(
+        inputs=na.ScalarArray(edges, _axis) * _unit_x,
+        outputs=na.ScalarArray(data, _axis) * u.DN,
+        guess=na.CartesianNdVectorArray(
+            dict(amplitude=4 * u.DN, center=0 * _unit_x, width=8 * _unit_x)
+        ),
+        variance=1e-4 * u.DN**2,
+        axis_model=_axis,
+    )
+
+    fit = na.ModelFitFunctionArray(model=ndoptimize.models.gaussian_binned, **kwargs)
+    assert fit.converged
+    for name in truth:
+        assert np.allclose(fit.parameters.components[name], truth[name], rtol=1e-6)
+
+    with pytest.raises(ValueError, match="average over each bin"):
+        na.ModelFitFunctionArray(model=ndoptimize.models.gaussian, **kwargs).parameters
 
 
 def test_vertex_curvilinear() -> None:

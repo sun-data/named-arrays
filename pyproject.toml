@@ -30,7 +30,7 @@ dependencies = [
     "ndfilters~=1.0",
     "colorsynth~=1.0",
     "regridding~=3.5",
-    "ndoptimize~=0.1.0",
+    "ndoptimize~=0.2.0",
     "xarray",
 ]
 dynamic = ["version"]

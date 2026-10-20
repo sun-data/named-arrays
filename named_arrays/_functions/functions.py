@@ -1989,6 +1989,9 @@ class AbstractModelFunctionArray(
         inputs of this function are the edges of bins, replaced by the lower
         and upper edges of the bins.
 
+        Raises a :class:`ValueError` if the model takes another number of
+        inputs, as declared by :attr:`ndoptimize.Model.inputs`.
+
         Parameters
         ----------
         inputs
@@ -2028,9 +2031,46 @@ class AbstractModelFunctionArray(
             )
 
         axes_vertex = self.axes_vertex
-        if not axes_vertex:
-            return inputs
+        if axes_vertex:
+            inputs = self._edges(inputs, axes_vertex)
 
+        names = tuple(_components(inputs))
+        if len(names) != len(self.model.inputs):
+            message = (
+                f"The model takes the inputs {self.model.inputs}, but this "
+                f"function gives it {len(names)}"
+            )
+            if isinstance(inputs, na.AbstractVectorArray):
+                message += f", {names}"
+            message += "."
+            if axes_vertex:
+                message += (
+                    f" Along {axes_vertex}, the inputs of this function are "
+                    f"the edges of bins, so each input of the model which "
+                    f"varies along one becomes the lower and upper edges of "
+                    f"the bins, for a model of the average over each bin, "
+                    f"like `ndoptimize.models.gaussian_binned`."
+                )
+            raise ValueError(message)
+
+        return inputs
+
+    def _edges(
+        self,
+        inputs: float | u.Quantity | na.AbstractScalar | na.AbstractVectorArray,
+        axes_vertex: tuple[str, ...],
+    ) -> na.CartesianNdVectorArray:
+        """
+        The inputs of the model with each one which varies along a vertex
+        axis replaced by the lower and upper edges of the bins along it.
+
+        Parameters
+        ----------
+        inputs
+            The inputs of the model, selected with :attr:`components_model`.
+        axes_vertex
+            The vertex axes of this function.
+        """
         axis_model = self.axis_model
         if isinstance(axis_model, str):
             axis_model = (axis_model,)
@@ -2095,6 +2135,8 @@ class AbstractModelFunctionArray(
         """
         from named_arrays._scalars.uncertainties import uncertainties
 
+        parameters = self.parameters
+
         inputs = na.as_named_array(inputs)
 
         x = self._inputs_model(inputs)
@@ -2122,7 +2164,7 @@ class AbstractModelFunctionArray(
 
         outputs = uncertainties._propagate(
             na.optimize._evaluate,
-            arguments=dict(x=x, parameters=self.parameters),
+            arguments=dict(x=x, parameters=parameters),
             model=self.model,
             axis=axis,
             unit=na.unit(self.outputs),
@@ -2189,7 +2231,10 @@ class ModelFitFunctionArray(
         Along an axis of `axis_model` along which the inputs are the edges of
         bins, with one more element than the outputs, each input which varies
         along it becomes two inputs of the model, the lower and upper edges of
-        the bins, for a model of the average over each bin.
+        the bins, for a model of the average over each bin, like
+        :func:`ndoptimize.models.gaussian_binned`.
+        The model must take as many inputs as it gets, as declared by
+        :attr:`ndoptimize.Model.inputs`.
     outputs
         The set of dependent variables, which the model is fit to.
         Points which are NaN are left out of their fit.
