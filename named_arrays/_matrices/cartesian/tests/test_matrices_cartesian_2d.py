@@ -211,9 +211,6 @@ class AbstractTestAbstractCartesian2dMatrixArray(
         array: na.AbstractCartesian2dMatrixArray,
         exponent: int
     ):
-        if na.unit(array.length) is not None:
-            return
-
         if len(array.cartesian_nd.entries) != 4:
             return
 
@@ -260,3 +257,48 @@ class TestCartesian2dIdentityMatrixArray(
     AbstractTestAbstractCartesian2dMatrixArray,
 ):
     pass
+
+
+@pytest.mark.parametrize(
+    argnames="array",
+    argvalues=[
+        # a dimensionless unit with a scale, which has to be kept along
+        # with the value when the square root is taken
+        na.Cartesian2dMatrixArray(
+            x=na.Cartesian2dVectorArray(x=4, y=1),
+            y=na.Cartesian2dVectorArray(x=5., y=0),
+        ) * (u.mm / u.m),
+        # an uncertain entry whose distribution is in a different unit than
+        # its nominal value, so that both have to be converted to one unit
+        na.Cartesian2dMatrixArray(
+            x=na.Cartesian2dVectorArray(
+                x=na.UncertainScalarArray(
+                    nominal=4 * u.mm,
+                    distribution=na.ScalarArray(
+                        ndarray=np.array([0.004, 0.0041]) * u.m,
+                        axes=na.UncertainScalarArray.axis_distribution,
+                    ),
+                ),
+                y=1 * u.mm,
+            ),
+            y=na.Cartesian2dVectorArray(x=5 * u.mm, y=0 * u.mm),
+        ),
+    ],
+)
+@pytest.mark.parametrize("exponent", [2, 5])
+def test_power_units(
+    array: na.AbstractCartesian2dMatrixArray,
+    exponent: int,
+) -> None:
+    """
+    Matrices whose units the square root in ``power()`` has to convert.
+    """
+    result = array.power(exponent)
+
+    result_expected = na.Cartesian2dIdentityMatrixArray()
+    for i in range(exponent):
+        result_expected = result_expected @ array
+
+    # with no absolute tolerance, since an entry in meters to the fifth
+    # power is smaller than the default one
+    assert np.allclose(result, result_expected, atol=0)
