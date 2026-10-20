@@ -83,7 +83,15 @@ class AbstractCartesian2dMatrixArray(
         delta = a * d - b * c
 
         t1 = chi / 2
-        t2 = np.emath.sqrt(np.square(chi) / 4 - delta)
+        t2 = np.square(chi) / 4 - delta
+
+        # astropy does not implement numpy.emath, so given a Quantity it
+        # warns and then drops the units, which are applied here instead
+        unit = na.unit(t2)
+        if unit is not None:
+            t2 = np.emath.sqrt(na.value(t2)) * unit ** (1 / 2)
+        else:
+            t2 = np.emath.sqrt(t2)
 
         e1 = t1 + t2
         e2 = t1 - t2

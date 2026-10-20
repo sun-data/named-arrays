@@ -211,9 +211,6 @@ class AbstractTestAbstractCartesian2dMatrixArray(
         array: na.AbstractCartesian2dMatrixArray,
         exponent: int
     ):
-        if na.unit(array.length) is not None:
-            return
-
         if len(array.cartesian_nd.entries) != 4:
             return
 
@@ -260,3 +257,23 @@ class TestCartesian2dIdentityMatrixArray(
     AbstractTestAbstractCartesian2dMatrixArray,
 ):
     pass
+
+
+@pytest.mark.parametrize("exponent", [1, 2, 5])
+def test_power_dimensionless_scaled(exponent: int):
+    """
+    A matrix in a dimensionless unit with a scale, which has to be kept
+    along with the value when the square root is taken.
+    """
+    array = na.Cartesian2dMatrixArray(
+        x=na.Cartesian2dVectorArray(x=4, y=1),
+        y=na.Cartesian2dVectorArray(x=5., y=0),
+    ) * (u.mm / u.m)
+
+    result = array.power(exponent)
+
+    result_expected = na.Cartesian2dIdentityMatrixArray()
+    for i in range(exponent):
+        result_expected = result_expected @ array
+
+    assert np.allclose(result, result_expected)
