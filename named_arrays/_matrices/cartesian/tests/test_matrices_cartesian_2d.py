@@ -302,3 +302,50 @@ def test_power_units(
     # with no absolute tolerance, since an entry in meters to the fifth
     # power is smaller than the default one
     assert np.allclose(result, result_expected, atol=0)
+
+
+def _matrix(
+    xx: float | u.Quantity,
+    xy: float | u.Quantity,
+    yx: float | u.Quantity,
+    yy: float | u.Quantity,
+) -> na.Cartesian2dMatrixArray:
+    """A matrix given its entries row by row."""
+    return na.Cartesian2dMatrixArray(
+        x=na.Cartesian2dVectorArray(x=xx, y=xy),
+        y=na.Cartesian2dVectorArray(x=yx, y=yy),
+    )
+
+
+@pytest.mark.parametrize(
+    argnames="array",
+    argvalues=[
+        _matrix(2., 0., 0., 2.),
+        _matrix(1., 1., 0., 1.),
+        _matrix(1., 1., 0., 1.) * u.mm,
+        _matrix(0., 1., 0., 0.),
+        _matrix(0., 0., 0., 0.),
+        na.Cartesian2dRotationMatrixArray(0 * u.deg),
+        na.Cartesian2dRotationMatrixArray(180 * u.deg),
+        # eigenvalues so close that the difference of their powers cancels
+        _matrix(1., 1., 1e-8, 1.),
+        _matrix(1., 0., 0., 1. + 1e-8),
+        na.Cartesian2dRotationMatrixArray(1e-9 * u.rad),
+    ],
+)
+@pytest.mark.parametrize("exponent", [1, 2, 5])
+def test_power_eigenvalues_equal(
+    array: na.AbstractCartesian2dMatrixArray,
+    exponent: int,
+) -> None:
+    """
+    Matrices whose two eigenvalues are equal, or nearly so, where the power
+    is the limit of the formula for distinct eigenvalues.
+    """
+    result = array.power(exponent)
+
+    result_expected = na.Cartesian2dIdentityMatrixArray()
+    for i in range(exponent):
+        result_expected = result_expected @ array
+
+    assert np.allclose(result, result_expected, rtol=1e-12, atol=0)
