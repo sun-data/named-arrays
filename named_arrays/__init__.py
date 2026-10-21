@@ -413,6 +413,8 @@ from ._functions.functions import (
     FunctionArray,
     AbstractPolynomialFunctionArray,
     PolynomialFitFunctionArray,
+    AbstractModelFunctionArray,
+    ModelFitFunctionArray,
 )
 
 __all__ = [
@@ -742,4 +744,6 @@ __all__ = [
     "FunctionArray",
     "AbstractPolynomialFunctionArray",
     "PolynomialFitFunctionArray",
+    "AbstractModelFunctionArray",
+    "ModelFitFunctionArray",
 ]

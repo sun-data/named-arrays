@@ -463,6 +463,11 @@ def copyto(
     except TypeError:
         dst.outputs = src.outputs
 
+    # assigned again when written in place, as `__setitem__` assigns them,
+    # so that a subclass which caches a result of its fields drops it
+    dst.inputs = dst.inputs
+    dst.outputs = dst.outputs
+
     for write in writes:
         write()
 

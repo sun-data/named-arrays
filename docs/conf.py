@@ -124,6 +124,7 @@ intersphinx_mapping = {
     'ndfilters': ('https://ndfilters.readthedocs.io/en/stable', None),
     'colorsynth': ('https://colorsynth.readthedocs.io/en/stable', None),
     'regridding': ('https://regridding.readthedocs.io/en/stable', None),
+    'ndoptimize': ('https://ndoptimize.readthedocs.io/en/stable', None),
     'xarray': ('https://docs.xarray.dev/en/stable/', None),
 }
 

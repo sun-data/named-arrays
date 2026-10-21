@@ -4,6 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import astropy.units as u
 import named_arrays as na
+import ndoptimize
 import named_arrays.tests.test_core
 import named_arrays._vectors.cartesian.tests.test_vectors_cartesian_2d
 
@@ -1274,6 +1275,156 @@ def _polynomial_function_arrays():
 @pytest.mark.parametrize("array", _polynomial_function_arrays())
 class TestPolynomialFitFunctionArray(
     AbstractTestAbstractPolynomialFunctionArray,
+    named_arrays.tests.test_core.AbstractTestAbstractExplicitArray,
+):
+
+    @pytest.mark.parametrize(
+        argnames="item",
+        argvalues=[
+            dict(y=0),
+            dict(x=0, y=0),
+            dict(y=slice(None)),
+            dict(y=na.ScalarArrayRange(0, _num_y, axis='y')),
+            dict(x=na.ScalarArrayRange(0, _num_x, axis='x'), y=na.ScalarArrayRange(0, _num_y, axis='y')),
+            na.FunctionArray(
+                inputs=na.ScalarLinearSpace(0, 1, axis='y', num=_num_y),
+                outputs=na.ScalarArray.ones(shape=dict(y=_num_y), dtype=bool),
+            )
+        ]
+    )
+    @pytest.mark.parametrize(
+        argnames="value",
+        argvalues=[
+            0,
+            na.FunctionArray(
+                inputs=na.ScalarLinearSpace(0, 1, axis='y', num=_num_y),
+                outputs=na.ScalarUniformRandomSample(-5, 5, dict(y=_num_y)),
+            )
+        ]
+    )
+    def test__setitem__(
+            self,
+            array: na.AbstractArray,
+            item: dict[str, int | slice | na.ScalarArray] | na.AbstractFunctionArray,
+            value: float | u.Quantity | na.AbstractScalar | na.AbstractVectorArray,
+    ):
+        super().test__setitem__(array=array.explicit, item=item, value=value)
+
+    @pytest.mark.parametrize("array_2", _function_arrays_2())
+    class TestUfuncBinary(
+        AbstractTestAbstractFunctionArray.TestUfuncBinary
+    ):
+        pass
+
+    @pytest.mark.parametrize("array_2", _function_arrays_2())
+    class TestMatmul(
+        AbstractTestAbstractFunctionArray.TestMatmul
+    ):
+        pass
+
+
+class AbstractTestAbstractModelFunctionArray(
+    AbstractTestAbstractFunctionArray,
+):
+
+    # inherited test isn't applicable, and AbstractModelFunctionArray.__call__ is tested by test_predictions
+    @pytest.mark.skip
+    def test__call__(
+        self,
+        array: na.FunctionArray,
+        axis: None | str | tuple[str],
+        method: Literal['multilinear', 'conservative'],
+    ):
+        pass  # pragma: nocover
+
+    @pytest.mark.skip
+    def test__call__with_weights(
+            self,
+            array: na.FunctionArray,
+            axis: None | str | tuple[str],
+            method: Literal['multilinear', 'conservative'],
+    ):
+        pass  # pragma: nocover
+
+    def test_model(self, array: na.AbstractModelFunctionArray):
+        assert isinstance(array.model, ndoptimize.Model)
+
+    def test_parameters(self, array: na.AbstractModelFunctionArray):
+        result = array.parameters
+        assert isinstance(result, na.AbstractVectorArray)
+        assert set(result.components) == set(array.model.parameters)
+
+    def test_components_model(self, array: na.AbstractModelFunctionArray):
+        result = array.components_model
+        if result is not None:
+            if isinstance(result, str):
+                result = (result, )
+            for component in result:
+                assert isinstance(component, str)
+
+    def test_axis_model(self, array: na.AbstractModelFunctionArray):
+        result = array.axis_model
+        if result is not None:
+            if isinstance(result, str):
+                result = (result, )
+            for ax in result:
+                assert isinstance(ax, str)
+
+    def test_predictions(self, array: na.AbstractModelFunctionArray):
+        result = array.predictions
+        assert isinstance(result, array.outputs.type_explicit)
+        assert np.any(result != 0)
+
+
+def _model_function_arrays():
+    inputs = na.ScalarLinearSpace(0, 1, axis='y', num=_num_y)
+    outputs = 3 * np.exp(-np.square(inputs - 0.4) / (2 * 0.3 ** 2)) + na.random.uniform(
+        low=-0.1,
+        high=0.1,
+        shape_random=dict(x=_num_x, y=_num_y),
+        seed=0,
+    )
+    kwargs = dict(
+        model=ndoptimize.models.gaussian,
+        guess=na.CartesianNdVectorArray(dict(amplitude=2, center=0.5, width=0.4)),
+        variance=0.01,
+    )
+    return [
+        na.ModelFitFunctionArray(
+            inputs=inputs,
+            outputs=outputs,
+            axis_model="y",
+            **kwargs,
+        ),
+        # the model depends on one component of the inputs
+        na.ModelFitFunctionArray(
+            inputs=na.Cartesian2dVectorLinearSpace(
+                start=0,
+                stop=1,
+                axis=na.Cartesian2dVectorArray('x', 'y'),
+                num=na.Cartesian2dVectorArray(_num_x, _num_y)
+            ),
+            outputs=outputs,
+            components_model="y",
+            axis_model="y",
+            **kwargs,
+        ),
+        # a single fit to every element of uncertain outputs
+        na.ModelFitFunctionArray(
+            inputs=inputs,
+            outputs=na.UniformUncertainScalarArray(
+                nominal=outputs,
+                width=0.1,
+                num_distribution=_num_distribution,
+            ),
+            **kwargs,
+        ),
+    ]
+
+
+@pytest.mark.parametrize("array", _model_function_arrays())
+class TestModelFitFunctionArray(
+    AbstractTestAbstractModelFunctionArray,
     named_arrays.tests.test_core.AbstractTestAbstractExplicitArray,
 ):
 
