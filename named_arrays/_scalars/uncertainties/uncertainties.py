@@ -285,8 +285,8 @@ def nominal(
 
 def _distribution(a: Any) -> Any:
     """
-    Isolate the samples of an uncertain array, the counterpart of
-    :func:`nominal`.
+    Isolate the samples of an uncertain array, in the unit of its nominal
+    value, the counterpart of :func:`nominal`.
 
     If `a` is a vector or a :class:`dict`, this function is applied to each
     of its components or values, and anything else is returned unchanged, so
@@ -298,7 +298,13 @@ def _distribution(a: Any) -> Any:
         An array to isolate the samples of.
     """
     if isinstance(a, AbstractUncertainScalarArray):
-        return a.distribution
+        # a calculation from the nominal value and from the samples sees
+        # them in the same unit, which its result is labelled with
+        distribution = a.distribution
+        unit = na.unit_normalized(a.nominal)
+        if na.unit_normalized(distribution) != unit:
+            distribution = na.as_named_array(distribution).to(unit)
+        return distribution
     if isinstance(a, na.AbstractVectorArray):
         components = a.components
         return a.type_explicit.from_components({
@@ -386,7 +392,10 @@ def _propagate(
         for that sample, which is the case if every axis it does not act
         along is a batch axis.
     arguments
-        The arguments of `func` which may be uncertain.
+        The arguments of `func` which may be uncertain, each an array or a
+        vector whose components may be uncertain.
+        An uncertain array inside anything else, like a :class:`list`, is not
+        found, and only its nominal value is used.
     kwargs
         The other arguments of `func`, the same in both calls.
     """

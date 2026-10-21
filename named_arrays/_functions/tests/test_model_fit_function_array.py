@@ -302,8 +302,9 @@ def test_predictions() -> None:
 
 def test_assign() -> None:
     """
-    Assigning to a field, to elements of the array, or with in-place
-    arithmetic discards the fit, which is computed again from the new fields.
+    Assigning to a field, to elements of the array, with in-place arithmetic
+    or with :func:`numpy.copyto` discards the fit, which is computed again
+    from the new fields.
     """
     fit = _fit(outputs=_data.copy())
     fit.parameters
@@ -318,6 +319,11 @@ def test_assign() -> None:
     fit = _fit(outputs=_data.copy())
     amplitude = fit.parameters.amplitude
     fit *= 2
+    assert np.allclose(fit.parameters.amplitude, 2 * amplitude)
+
+    fit = _fit(outputs=_data.copy())
+    amplitude = fit.parameters.amplitude
+    np.copyto(fit, na.FunctionArray(fit.inputs, 2 * fit.outputs))
     assert np.allclose(fit.parameters.amplitude, 2 * amplitude)
 
 
@@ -349,6 +355,29 @@ def test_axis_model_none() -> None:
     _assert_parameters_equal(result, _fit(outputs=data))
     assert result.chi2.shape == dict()
     assert result.predictions.shape == data.shape
+
+
+def test_axis_model_none_where_model() -> None:
+    """
+    Without `axis_model`, an axis which only `where_model` varies along is a
+    batch axis, like one which only the guess varies along, so each of the
+    masks along it gets a fit of its own.
+    """
+    data = _data[dict(x=0, y=0)]
+    where = na.ScalarArray(np.array([True, False]), "trial") | (_velocity < 60 * _unit_x)
+
+    result = _fit(outputs=data, axis_model=None, where_model=where)
+
+    assert result.chi2.shape == dict(trial=2)
+    assert np.all(result.num_points == where.sum(axis=_axis))
+    for i in range(where.shape["trial"]):
+        index = dict(trial=i)
+        expected = _fit(outputs=data, where_model=where[index])
+        for name in _names:
+            assert np.array_equal(
+                result.parameters.components[name][index],
+                expected.parameters.components[name],
+            )
 
 
 def test_components_model() -> None:
@@ -391,6 +420,13 @@ def test_components_model() -> None:
         _fit(
             inputs=na.SpectralPositionalVectorArray(_velocity, position),
             components_model=("wavelength", "wavelength"),
+        ).parameters
+
+    # a set has no order to give the inputs of the model
+    with pytest.raises(TypeError, match="sequence of names"):
+        _fit(
+            inputs=na.SpectralPositionalVectorArray(_velocity, position),
+            components_model={"wavelength"},
         ).parameters
 
 
@@ -503,6 +539,30 @@ def test_uncertain_guess() -> None:
     assert np.array_equal(p.distribution, distribution.parameters.center)
 
 
+def test_uncertain_units() -> None:
+    """
+    The samples of an uncertain array are fit in the unit of its nominal
+    value, even if they are stored in another one.
+    """
+    index = dict(x=0, y=0)
+    samples = _samples[index]
+
+    data = na.UncertainScalarArray(_data[index], samples.to(u.Unit(1000 * u.DN)))
+    result = _fit(outputs=data)
+    expected = _fit(outputs=samples)
+    for name in _names:
+        assert np.allclose(
+            result.parameters.components[name].distribution,
+            expected.parameters.components[name],
+        )
+
+    shift = na.ScalarArray(np.array([-1.0, 0, 1]), "_distribution") * _unit_x
+    inputs = na.UncertainScalarArray(_velocity, (_velocity + shift).to(u.m / u.s))
+    result = _fit(inputs=inputs, outputs=_data[index])
+    expected = _fit(inputs=_velocity + shift, outputs=_data[index])
+    assert np.allclose(result.parameters.center.distribution, expected.parameters.center)
+
+
 @ndoptimize.model(
     parameters=("amplitude", "x0", "y0", "width"),
     inputs=("x", "y"),
@@ -604,6 +664,16 @@ def test_vector() -> None:
 
     with pytest.raises(ValueError, match="give the model the inputs"):
         result(na.CartesianNdVectorArray(dict(px=position.x, py=position.y)))
+
+    # the model takes its inputs in order, so components named after them in
+    # another order must be put in order with `components_model`
+    swapped = na.CartesianNdVectorArray(dict(y=position.y, x=position.x))
+    with pytest.raises(ValueError, match="in another order"):
+        na.ModelFitFunctionArray(**(kwargs | dict(inputs=swapped))).parameters
+    result_ordered = na.ModelFitFunctionArray(
+        **(kwargs | dict(inputs=swapped, components_model=("x", "y")))
+    )
+    _assert_parameters_equal(result_ordered, result)
 
     with pytest.raises(ValueError, match="single axis"):
         na.ModelFitFunctionArray(correlation=_correlation, **kwargs).parameters

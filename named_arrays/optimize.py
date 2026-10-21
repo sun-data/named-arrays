@@ -533,11 +533,16 @@ def _points(
     """
     `a` as an array whose batch axes are followed by one axis, along which
     the points of each set vary.
+
+    Only the axes of the points are broadcast, so that an array which is the
+    same for every set keeps length-1 batch axes.
     """
-    ndarray = a.ndarray_aligned(tuple(shape_batch) + tuple(shape_points))
-    shape_ndarray_batch = ndarray.shape[:len(shape_batch)]
-    ndarray = np.broadcast_to(ndarray, shape_ndarray_batch + tuple(shape_points.values()))
-    return ndarray.reshape(shape_ndarray_batch + (math.prod(shape_points.values()),))
+    # the axes of the points are combined into a private one, which exists
+    # even when there are none, for a single point
+    axis = "_points"
+    a = na.broadcast_to(a, a.shape | shape_points)
+    a = a.combine_axes(tuple(shape_points), axis_new=axis)
+    return a.ndarray_aligned(tuple(shape_batch) + (axis,))
 
 
 def _stack(arrays: list[np.ndarray]) -> np.ndarray:
@@ -594,7 +599,7 @@ def _least_squares(
 
     names = model.parameters
 
-    data = _scalar(data, "`data`")
+    data = _scalar(data, "The outputs")
     variance = _scalar(variance, "`variance`")
     inputs = _inputs(x)
     vectors = dict(

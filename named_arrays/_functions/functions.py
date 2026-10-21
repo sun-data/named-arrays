@@ -1990,7 +1990,9 @@ class AbstractModelFunctionArray(
         and upper edges of the bins.
 
         Raises a :class:`ValueError` if the model takes another number of
-        inputs, as declared by :attr:`ndoptimize.Model.inputs`.
+        inputs, as declared by :attr:`ndoptimize.Model.inputs`, or if,
+        without :attr:`components_model`, the components of the inputs are
+        the inputs of the model in another order.
 
         Parameters
         ----------
@@ -2002,6 +2004,13 @@ class AbstractModelFunctionArray(
 
             if isinstance(components, str):
                 components = (components,)
+
+            if not isinstance(components, Sequence):
+                raise TypeError(
+                    f"`components_model` must be a name or a sequence of "
+                    f"names, in the order of the inputs of the model, got "
+                    f"{components!r}."
+                )
 
             if len(set(components)) != len(components):
                 raise ValueError(
@@ -2052,6 +2061,21 @@ class AbstractModelFunctionArray(
                     f"like `ndoptimize.models.gaussian_binned`."
                 )
             raise ValueError(message)
+
+        # the model takes its inputs in order, whatever their names, so a
+        # vector whose components are its inputs in another order would
+        # swap them
+        if (
+            self.components_model is None
+            and names != self.model.inputs
+            and set(names) == set(self.model.inputs)
+        ):
+            raise ValueError(
+                f"The model takes the inputs {self.model.inputs} in this "
+                f"order, but the components of the inputs of this function "
+                f"are in another order, {names}. Select them in the order of "
+                f"the model with `components_model`."
+            )
 
         return inputs
 
@@ -2199,6 +2223,10 @@ class ModelFitFunctionArray(
     They are fit the first time they, or any other result of the fit, are
     used, and fit again after any field is assigned to, including by
     assigning to elements of this array.
+    Writing into the array of a field itself, like
+    ``fit.outputs[index] = value``, or into one which shares its memory,
+    like the outputs of an array indexed from this one, is not noticed, and
+    leaves the old fit.
 
     Each fit minimizes
 
@@ -2215,8 +2243,18 @@ class ModelFitFunctionArray(
     The model is a compiled function of plain numbers, so it sees the values
     of the inputs and outputs in their own units, and the value of each
     parameter in the unit of its initial guess.
+    The guess must therefore be in the units which the model expects for the
+    units of the inputs and outputs, like the unit of the outputs for the
+    amplitude of a Gaussian, and the unit of the inputs for its center and
+    width.
     The variance is converted to the unit of the outputs squared, and the
     bounds and priors of each parameter to the unit of its guess.
+    Like any field of a function array, the guess, variance, bounds and
+    priors are passed on unchanged by operations which change the inputs or
+    outputs, so after one which changes their units or their scale, like
+    :meth:`to` or multiplying this array by a quantity, replace them too,
+    for example with :func:`dataclasses.replace`, before using the fit of
+    the result.
 
     Any field may be uncertain, including a component of a vector.
     Then the nominal values and each of the samples are fit separately, and
@@ -2228,6 +2266,9 @@ class ModelFitFunctionArray(
         The set of independent variables.
         If it is a vector, its components, in order, are the inputs of the
         model, unless `components_model` selects some of them.
+        Components named after the inputs of the model, but in another order,
+        raise an error, since the model takes its inputs in order, whatever
+        their names, so select them in order with `components_model`.
         Along an axis of `axis_model` along which the inputs are the edges of
         bins, with one more element than the outputs, each input which varies
         along it becomes two inputs of the model, the lower and upper edges of
@@ -2245,15 +2286,14 @@ class ModelFitFunctionArray(
         the parameters named in :attr:`ndoptimize.Model.parameters`.
         It must not vary along `axis_model`, and neither may the bounds and
         priors.
+        A guess which varies along an axis which the inputs and outputs do
+        not, to start several fits from different points, adds that axis to
+        the results, but not to the shape of this array, so this array cannot
+        be indexed along it: index the guess or the results instead.
     variance
         The variance of the noise of each output.
         Points with a variance which is NaN or not positive are left out of
         their fit.
-        Like any field of a function array, it is passed on unchanged by
-        operations which change the outputs, so after one which changes
-        their unit, like multiplying this array by a quantity or taking its
-        :attr:`value`, replace the variance too, for example with
-        :func:`dataclasses.replace`, before using the fit of the result.
     components_model
         The components of the inputs, in order, which are the inputs of the
         model, with those of nested vectors named with dots, like
@@ -2409,10 +2449,12 @@ class ModelFitFunctionArray(
             outputs = np.where(self.where_model, outputs, np.nan)
 
         # the samples of uncertain fields are fit separately, and the shape
-        # of an uncertain array leaves out the axis of its samples
+        # of an uncertain array leaves out the axis of its samples, while an
+        # axis which only the mask varies along is a batch axis, like one
+        # which only the guess varies along
         axis = self.axis_model
         if axis is None:
-            axis = tuple(na.shape_broadcasted(x, outputs, self.variance))
+            axis = tuple(na.shape_broadcasted(x, self.outputs, self.variance))
 
         return uncertainties._propagate(
             na.optimize._least_squares,
