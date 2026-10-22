@@ -410,7 +410,10 @@ class Cartesian2dVectorStratifiedRandomSpace(
     Cartesian2dVectorLinearSpace,
     na.AbstractCartesianVectorStratifiedRandomSpace,
 ):
-    pass
+    # The linear space listed first is a dataclass whose ``centers`` field
+    # would otherwise take precedence over the default of
+    # :class:`~named_arrays.AbstractStratifiedRandomSpace`.
+    centers: bool = True
 
 
 @dataclasses.dataclass(eq=False, repr=False)
