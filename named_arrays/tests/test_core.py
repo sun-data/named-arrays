@@ -3591,3 +3591,67 @@ def test_cell_centers_axes_are_independent():
     offset_y = (centers.y - vertices.y[{"y": slice(None, -1)}]) * 8
 
     assert np.any(offset_x.ndarray != offset_y.ndarray)
+
+
+@pytest.mark.parametrize(
+    argnames="array",
+    argvalues=[
+        na.ScalarStratifiedRandomSpace(-1, 1, axis="x", num=4, seed=1),
+        na.Cartesian2dVectorStratifiedRandomSpace(
+            start=-1,
+            stop=1,
+            axis=na.Cartesian2dVectorArray("x", "y"),
+            num=4,
+            seed=1,
+        ),
+        na.Cartesian3dVectorStratifiedRandomSpace(
+            start=-1,
+            stop=1,
+            axis=na.Cartesian3dVectorArray("x", "y", "z"),
+            num=4,
+            seed=1,
+        ),
+    ],
+)
+def test_stratified_random_space_draws_inside_its_strata(
+    array: na.AbstractStratifiedRandomSpace,
+):
+    """
+    By default the strata are the cells which tile the range from `start` to
+    `stop`, and each sample is drawn from inside its own cell, so no sample
+    falls outside the range.
+    """
+    assert array.centers
+    explicit = na.as_named_array(array.explicit)
+    strata = na.as_named_array(array.strata)
+    for c in getattr(explicit, "components", {"": None}):
+        x = getattr(explicit, c) if c else explicit
+        s = getattr(strata, c) if c else strata
+        assert np.all((-1 <= x) & (x <= 1))
+        assert np.all(np.abs(x - s) <= 0.25)
+
+
+def test_stratified_random_space_components_are_independent():
+    """
+    Each component of a vector is drawn from its own stream, even when
+    `start`, `stop`, and `num` are all scalars.
+
+    Drawing the same numbers for two components would offset every point by
+    the same amount along both of them, which would put it on the diagonal of
+    its stratum rather than anywhere inside it.
+    """
+    a = na.Cartesian2dVectorStratifiedRandomSpace(
+        start=-1,
+        stop=1,
+        axis=na.Cartesian2dVectorArray("x", "y"),
+        num=9,
+        seed=8,
+    )
+
+    offset = a.explicit - a.strata
+
+    axes = ("x", "y")
+    assert not np.allclose(
+        offset.x.ndarray_aligned(axes),
+        offset.y.ndarray_aligned(axes),
+    )
