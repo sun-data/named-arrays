@@ -83,6 +83,7 @@ class AbstractTestAbstractFunctionArray(
         argnames="axis,method",
         argvalues=[
             ("y", "multilinear"),
+            (None, "multilinear"),
         ],
     )
     def test__call__(
