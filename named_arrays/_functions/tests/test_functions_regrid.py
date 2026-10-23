@@ -17,6 +17,7 @@ _x = na.linspace(-1, 1, axis="x", num=11)
 _y = na.linspace(-1, 1, axis="y", num=13)
 _z = na.linspace(-1, 1, axis="z", num=5)
 _channel = na.ScalarArray(np.array([1.0, 2.0, 3.0]), axes="channel")
+_wavelength = na.linspace(500, 600, axis="wavelength", num=4)
 
 
 def _affine(inputs: na.AbstractArray) -> na.AbstractScalar:
@@ -71,6 +72,8 @@ _curvilinear = na.Cartesian2dVectorArray(
     x=1.3 * (_x * np.cos(_angle) - _y * np.sin(_angle)) + 0.05 * _y * _y,
     y=1.3 * (_x * np.sin(_angle) + _y * np.cos(_angle)) + 0.05 * _x * _x,
 )
+
+_spectral = na.SpectralPositionalVectorArray(_wavelength, _rectilinear)
 
 
 @pytest.mark.parametrize(
@@ -172,6 +175,35 @@ def test_regrid_scattered_batch_grids(
     assert np.all(result.inputs == points)
     assert np.allclose(result.outputs, _affine(points))
     assert result.outputs.shape == dict(ray=7, channel=3)
+
+
+@pytest.mark.parametrize(
+    argnames="wavelength",
+    argvalues=[None, _wavelength],
+)
+def test_regrid_scattered_unresampled(
+    wavelength: None | na.AbstractScalar,
+) -> None:
+    """
+    A component which is not resampled can be left out using `None`, or
+    given as the same component of the inputs of the function, and the
+    result keeps it.
+    """
+    f = na.FunctionArray(
+        inputs=_spectral,
+        outputs=_affine(_spectral),
+    )
+    points = _points(dict(ray=7), components=2)
+
+    result = f(
+        na.SpectralPositionalVectorArray(wavelength, points),
+        axis=("x", "y"),
+    )
+
+    inputs_expected = na.SpectralPositionalVectorArray(_wavelength, points)
+    assert np.all(result.inputs == inputs_expected)
+    assert np.allclose(result.outputs, _affine(inputs_expected))
+    assert result.outputs.shape == dict(wavelength=4, ray=7)
 
 
 def test_regrid_scattered_units() -> None:
@@ -278,6 +310,44 @@ def test_regrid_scattered_bounds_raise() -> None:
             ),
             r"The component 'x' of the new inputs varies along \('ray',\)",
         ),
+        (
+            lambda: na.FunctionArray(_spectral, _affine(_spectral))(
+                na.SpectralPositionalVectorArray(
+                    _wavelength + 10,
+                    _points(dict(ray=7), components=2),
+                ),
+                axis=("x", "y"),
+            ),
+            "The component 'wavelength' of the new inputs is not resampled",
+        ),
+        (
+            lambda: na.FunctionArray(_spectral, _affine(_spectral))(
+                na.SpectralPositionalVectorArray(
+                    550,
+                    _points(dict(ray=7), components=2),
+                ),
+                axis=("x", "y"),
+            ),
+            "The component 'wavelength' of the new inputs is not resampled",
+        ),
+        (
+            lambda: na.FunctionArray(
+                inputs=na.Cartesian2dVectorArray(_channel * _x, _y),
+                outputs=_affine(na.Cartesian2dVectorArray(_channel * _x, _y)),
+            )(
+                _points(dict(ray=7), components=2),
+            ),
+            "which vary along `axis`, 2, should be equal to the number of "
+            "axes in `axis`",
+        ),
+        (
+            lambda: na.FunctionArray(_curvilinear, _affine(_curvilinear))(
+                _points(dict(ray=7), components=2),
+                axis="x",
+            ),
+            r"which vary along `axis`, 2, should be equal to the number of "
+            r"axes in `axis`, \('x',\)",
+        ),
     ],
 )
 def test_regrid_errors(
@@ -286,8 +356,10 @@ def test_regrid_errors(
 ) -> None:
     """
     An axis which the inputs don't vary along can't be resampled, a
-    component which is resampled can't be left out, and a component which
-    isn't resampled can't vary from one point to the next.
+    component which is resampled can't be left out, a component which isn't
+    resampled can't vary from one point to the next or differ from the
+    function's own, and there must be as many components to resample as
+    axes in `axis`.
     """
     with pytest.raises(ValueError, match=match):
         call()

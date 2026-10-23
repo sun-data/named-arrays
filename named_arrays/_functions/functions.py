@@ -399,14 +399,16 @@ class AbstractFunctionArray(
         ----------
         inputs
             The new input coordinates on which to resample the outputs.
-            A component of a vector which is not resampled can be
+            A component of a vector which is not resampled should be
             :obj:`None`, in which case the result keeps the component of
-            :attr:`inputs`.
+            :attr:`inputs`, or else equal to the component of :attr:`inputs`.
         axis
             The axes of :attr:`inputs` to resample.
             If :obj:`None`, every axis of :attr:`inputs` is resampled.
             Only the components of :attr:`inputs` which vary along at least
-            one of these axes are resampled.
+            one of these axes are resampled, and there should be as many of
+            them as there are axes, so an axis along which :attr:`inputs` is
+            a separate grid for each element should be left out.
         method
             The resampling method to use.
             The ``multilinear`` method interpolates at points, so the new
@@ -656,6 +658,15 @@ class AbstractFunctionArray(
                 coordinates_new[c] = component_new
                 coordinates_old[c] = component_old
 
+        if len(coordinates_old) != len(axis):
+            raise ValueError(
+                f"The number of components of the inputs of this function "
+                f"which vary along `axis`, {len(coordinates_old)}, should be "
+                f"equal to the number of axes in `axis`, {axis}. `axis` "
+                f"should name only the axes to interpolate along, and any "
+                f"other axis is broadcast against the new inputs."
+            )
+
         # The axes of this function which are not resampled are broadcast
         # against the new inputs by name, and every other axis of the new
         # inputs takes the place of the resampled axes.
@@ -676,6 +687,14 @@ class AbstractFunctionArray(
                         f"the inputs of this function it does not vary along "
                         f"`axis`, {axis}. To resample it too, add the axes it "
                         f"varies along in the inputs of this function to `axis`."
+                    )
+                if not np.all(component_new == old_input_components[c]):
+                    raise ValueError(
+                        f"The component {c!r} of the new inputs is not "
+                        f"resampled, since in the inputs of this function it "
+                        f"does not vary along `axis`, {axis}, so it should be "
+                        f"`None` or equal to the same component of the inputs "
+                        f"of this function."
                     )
 
         if isinstance(inputs_new, na.AbstractVectorArray):
