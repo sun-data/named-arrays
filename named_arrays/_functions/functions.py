@@ -136,6 +136,33 @@ def _item_vertex(
         return outputs, slice(start + 1, stop, -1)
 
 
+def _equal(
+    a: na.ArrayLike,
+    b: na.ArrayLike,
+) -> bool:
+    """
+    Whether two arrays are equal everywhere, after broadcasting them against
+    each other, counting NaN as equal to NaN.
+
+    Parameters
+    ----------
+    a
+        The first array.
+    b
+        The second array.
+    """
+    if a is b:
+        return True
+    equal = a == b
+    if np.all(equal):
+        return True
+    try:
+        equal = equal | (np.isnan(a) & np.isnan(b))
+    except TypeError:  # a type which has no NaN
+        return False
+    return bool(np.all(equal))
+
+
 @functools.cache
 def _array_function_dispatch() -> tuple[dict[Callable, Callable], dict[Callable, Callable]]:
     """
@@ -344,7 +371,7 @@ class AbstractFunctionArray(
 
     def __call__(
         self,
-        inputs: na.AbstractArray,
+        inputs: float | u.Quantity | na.AbstractArray,
         axis: None | str | Sequence[str] = None,
         method: Literal['multilinear', 'conservative'] = 'multilinear',
         bounds: Literal["extrapolate", "nan", "raise"] = "extrapolate",
@@ -376,7 +403,7 @@ class AbstractFunctionArray(
 
     def regrid(
         self,
-        inputs: na.AbstractArray,
+        inputs: float | u.Quantity | na.AbstractArray,
         axis: None | str | Sequence[str] = None,
         method: Literal['multilinear', 'conservative'] = 'multilinear',
         bounds: Literal["extrapolate", "nan", "raise"] = "extrapolate",
@@ -399,9 +426,12 @@ class AbstractFunctionArray(
         ----------
         inputs
             The new input coordinates on which to resample the outputs.
+            If :attr:`inputs` is a scalar, a single point can also be a
+            plain number or quantity.
             A component of a vector which is not resampled should be
-            :obj:`None`, in which case the result keeps the component of
-            :attr:`inputs`, or else equal to the component of :attr:`inputs`.
+            :obj:`None`, or else equal everywhere to the component of
+            :attr:`inputs`, counting NaN as equal to NaN, and the result
+            keeps the component of :attr:`inputs`.
         axis
             The axes of :attr:`inputs` to resample.
             If :obj:`None`, every axis of :attr:`inputs` is resampled.
@@ -489,7 +519,7 @@ class AbstractFunctionArray(
 
         _self = self.explicit
 
-        inputs_new, _, axis_input, _ = _self._normalize__regrid__args(
+        inputs_new, inputs_old, axis_input, axis_output = _self._normalize__regrid__args(
             inputs=inputs,
             axis=axis,
         )
@@ -505,9 +535,11 @@ class AbstractFunctionArray(
             _weights, shape_input, shape_output = weights
 
         else:
-            _weights, shape_input, shape_output = _self.weights(
-                inputs=inputs,
-                axis=axis,
+            _weights, shape_input, shape_output = na.regridding.weights(
+                coordinates_input=inputs_old,
+                coordinates_output=inputs_new,
+                axis_input=axis_input,
+                axis_output=axis_output,
                 method=method,
                 bounds=bounds,
             )
@@ -519,19 +551,15 @@ class AbstractFunctionArray(
             values_input=_self.outputs,
         )
 
-        final_coordinates_dict = {}
-
         if isinstance(inputs, na.AbstractVectorArray) and isinstance(_self.inputs, na.AbstractVectorArray):
 
-            for c in _self.inputs.cartesian_nd.components:
-                if inputs.cartesian_nd.components[c] is None:  # pragma: no cover
-                    final_coordinates_dict[c] = _self.inputs.cartesian_nd.components[c]
-                else:
-                    final_coordinates_dict[c] = inputs.cartesian_nd.components[c]
+            # A component which is not resampled is equal to the one of this
+            # function, so the result keeps the one of this function.
+            components = _self.inputs.cartesian_nd.components | inputs_new.components
 
             return _self.replace(
                 inputs=_self.inputs.type_explicit.from_cartesian_nd(
-                    array=na.CartesianNdVectorArray(final_coordinates_dict),
+                    array=na.CartesianNdVectorArray(components),
                     like=_self.inputs
                 ),
                 outputs=outputs_new,
@@ -544,7 +572,7 @@ class AbstractFunctionArray(
 
     def weights(
         self,
-        inputs: na.AbstractArray,
+        inputs: float | u.Quantity | na.AbstractArray,
         axis: None | str | Sequence[str] = None,
         method: Literal['multilinear', 'conservative'] = 'multilinear',
         bounds: Literal["extrapolate", "nan", "raise"] = "extrapolate",
@@ -587,7 +615,7 @@ class AbstractFunctionArray(
 
     def _normalize__regrid__args(
         self,
-        inputs: na.AbstractArray,
+        inputs: float | u.Quantity | na.AbstractArray,
         axis: None | str | Sequence[str],
     ) -> tuple[na.AbstractArray, na.AbstractArray, tuple[str, ...], tuple[str, ...]]:
         """
@@ -614,7 +642,7 @@ class AbstractFunctionArray(
         if isinstance(inputs_new, na.AbstractVectorArray):
             new_input_components = inputs_new.cartesian_nd.components
         else:
-            new_input_components = dict(_dummy=inputs_new.explicit)
+            new_input_components = dict(_dummy=na.as_named_array(inputs_new).explicit)
 
         if isinstance(inputs_old, na.AbstractVectorArray):
             old_input_components = inputs_old.cartesian_nd.components
@@ -676,9 +704,23 @@ class AbstractFunctionArray(
             if a not in axis_orthogonal
         )
 
+        # A component which is not resampled must be equal to the one of
+        # this function, since the outputs are not resampled along it.
         for c in new_input_components:
             component_new = new_input_components[c]
-            if c not in coordinates_new and component_new is not None:
+            if c in coordinates_new or component_new is None:
+                continue
+            message = (
+                f"The component {c!r} of the new inputs is not resampled, "
+                f"since in the inputs of this function it does not vary "
+                f"along `axis`, {axis}, so it should be `None` or equal to "
+                f"the same component of the inputs of this function."
+            )
+            try:
+                equal = _equal(component_new, old_input_components[c])
+            except ValueError as e:  # incompatible units or shapes
+                raise ValueError(message) from e
+            if not equal:
                 axes_varying = tuple(a for a in na.shape(component_new) if a in axis_new)
                 if axes_varying:
                     raise ValueError(
@@ -688,14 +730,7 @@ class AbstractFunctionArray(
                         f"`axis`, {axis}. To resample it too, add the axes it "
                         f"varies along in the inputs of this function to `axis`."
                     )
-                if not np.all(component_new == old_input_components[c]):
-                    raise ValueError(
-                        f"The component {c!r} of the new inputs is not "
-                        f"resampled, since in the inputs of this function it "
-                        f"does not vary along `axis`, {axis}, so it should be "
-                        f"`None` or equal to the same component of the inputs "
-                        f"of this function."
-                    )
+                raise ValueError(message)
 
         if isinstance(inputs_new, na.AbstractVectorArray):
             coordinates_new = na.CartesianNdVectorArray.from_components(coordinates_new)
