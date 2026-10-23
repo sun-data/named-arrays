@@ -345,55 +345,156 @@ class AbstractFunctionArray(
     def __call__(
         self,
         inputs: na.AbstractArray,
-        axis: None | str | tuple[str] = None,
+        axis: None | str | Sequence[str] = None,
         method: Literal['multilinear', 'conservative'] = 'multilinear',
+        bounds: Literal["extrapolate", "nan", "raise"] = "extrapolate",
         weights: None | tuple[na.AbstractScalar, dict[str, int], dict[str, int]] = None,
     ) -> Self:
+        """
+        Evaluate this function at a new set of inputs using :meth:`regrid`.
+
+        Parameters
+        ----------
+        inputs
+            The new inputs at which to evaluate this function.
+        axis
+            The axes of :attr:`inputs` to resample.
+        method
+            The resampling method to use.
+        bounds
+            How to treat new inputs outside of :attr:`inputs`.
+        weights
+            Optional weights computed in advance using :meth:`weights`.
+        """
         return self.regrid(
             inputs=inputs,
             axis=axis,
             method=method,
+            bounds=bounds,
             weights=weights,
         )
 
     def regrid(
         self,
         inputs: na.AbstractArray,
-        axis: None | str | tuple[str] = None,
+        axis: None | str | Sequence[str] = None,
         method: Literal['multilinear', 'conservative'] = 'multilinear',
+        bounds: Literal["extrapolate", "nan", "raise"] = "extrapolate",
         weights: None | tuple[na.AbstractScalar, dict[str, int], dict[str, int]] = None,
     ) -> Self:
         """
         Resample this function array onto a new set of input coordinates
         using :func:`named_arrays.regridding.regrid`.
 
+        The new inputs can be another grid, or scattered points.
+        The axes of this function which are not in `axis` are broadcast
+        against the new inputs by name, as in any other operation, so the new
+        inputs can share them, for example to give a separate set of points
+        for each of several channels.
+        Every other axis of the new inputs is an axis of the new grid, or an
+        axis along which the points are listed, and takes the place of the
+        axes in `axis` in the result.
+
         Parameters
         ----------
         inputs
             The new input coordinates on which to resample the outputs.
+            A component of a vector which is not resampled can be
+            :obj:`None`, in which case the result keeps the component of
+            :attr:`inputs`.
         axis
-            The logical axes of the input over which to resample.
+            The axes of :attr:`inputs` to resample.
+            If :obj:`None`, every axis of :attr:`inputs` is resampled.
+            Only the components of :attr:`inputs` which vary along at least
+            one of these axes are resampled.
         method
             The resampling method to use.
+            The ``multilinear`` method interpolates at points, so the new
+            inputs can be scattered points along any number of axes, or a
+            single point.
+            The ``conservative`` method resamples cells, so the new inputs
+            must be a grid with as many axes as `axis`.
+        bounds
+            How to treat new inputs outside of :attr:`inputs`.
+            Only applies when `method` is ``multilinear``.
+            ``extrapolate`` (the default) extrapolates linearly from the
+            nearest cell, ``nan`` sets the outputs there to :obj:`numpy.nan`,
+            and ``raise`` raises a :class:`ValueError`.
+            See :func:`regridding.weights` for the details.
         weights
             Optional weights which can be computed in advance using :meth:`weights`
             to greatly speed repeated resampling of the same `inputs`.
+            If given, `method` and `bounds` are ignored, since the weights
+            already encode them.
 
         See Also
         --------
         :meth:`weights`: If you need to resample the same coordinates more than once.
+
+        Examples
+        --------
+
+        Evaluate a function sampled on a grid at a set of scattered points.
+
+        .. jupyter-execute::
+
+            import numpy as np
+            import matplotlib.pyplot as plt
+            import named_arrays as na
+
+            # Sample a function on a grid
+            inputs = na.Cartesian2dVectorLinearSpace(
+                start=-1,
+                stop=1,
+                axis=na.Cartesian2dVectorArray("x", "y"),
+                num=21,
+            ).explicit
+            outputs = np.sin(3 * inputs.x) * np.cos(2 * inputs.y)
+            f = na.FunctionArray(inputs, outputs)
+
+            # Scatter some points along a single axis
+            points = na.Cartesian2dVectorArray(
+                x=na.random.uniform(-1, 1, shape_random=dict(point=50), seed=1),
+                y=na.random.uniform(-1, 1, shape_random=dict(point=50), seed=2),
+            )
+
+            # Evaluate the function at the points
+            g = f(points, axis=("x", "y"))
+
+            # Plot the samples of the function, and the points
+            fig, ax = plt.subplots(constrained_layout=True)
+            na.plt.scatter(
+                f.inputs.x,
+                f.inputs.y,
+                c=f.outputs,
+                s=10,
+                ax=ax,
+                vmin=-1,
+                vmax=1,
+            )
+            na.plt.scatter(
+                g.inputs.x,
+                g.inputs.y,
+                c=g.outputs,
+                s=60,
+                ax=ax,
+                vmin=-1,
+                vmax=1,
+                edgecolors="black",
+            )
+            ax.set_aspect("equal")
         """
 
         _self = self.explicit
 
-        inputs_new, _, axis_regrid = _self._normalize__regrid__args(
+        inputs_new, _, axis_input, _ = _self._normalize__regrid__args(
             inputs=inputs,
             axis=axis,
         )
 
         _fields.check_axes(
             _self,
-            axis_regrid,
+            axis_input,
             operation="regrid resamples",
             resamples=True,
         )
@@ -406,6 +507,7 @@ class AbstractFunctionArray(
                 inputs=inputs,
                 axis=axis,
                 method=method,
+                bounds=bounds,
             )
 
         outputs_new = na.regridding.regrid_from_weights(
@@ -441,8 +543,9 @@ class AbstractFunctionArray(
     def weights(
         self,
         inputs: na.AbstractArray,
-        axis: None | str | tuple[str] = None,
+        axis: None | str | Sequence[str] = None,
         method: Literal['multilinear', 'conservative'] = 'multilinear',
+        bounds: Literal["extrapolate", "nan", "raise"] = "extrapolate",
     ) -> tuple[na.AbstractScalar, dict[str, int], dict[str, int]]:
         """
         Compute the resampling weights of this array using
@@ -454,16 +557,19 @@ class AbstractFunctionArray(
         inputs
             The new input coordinates on which to resample the outputs.
         axis
-            The logical axes of the input over which to resample.
+            The axes of :attr:`inputs` to resample, as in :meth:`regrid`.
         method
             The resampling method to use.
+        bounds
+            How to treat new inputs outside of :attr:`inputs`,
+            as in :meth:`regrid`.
 
         See Also
         --------
         :meth:`regrid`: A method designed to use these weights.
         """
 
-        coordinates_new, coordinates_old, axis_input = self._normalize__regrid__args(
+        coordinates_new, coordinates_old, axis_input, axis_output = self._normalize__regrid__args(
             inputs=inputs,
             axis=axis,
         )
@@ -472,14 +578,33 @@ class AbstractFunctionArray(
             coordinates_input=coordinates_old,
             coordinates_output=coordinates_new,
             axis_input=axis_input,
-            method=method
+            axis_output=axis_output,
+            method=method,
+            bounds=bounds,
         )
 
     def _normalize__regrid__args(
         self,
         inputs: na.AbstractArray,
-        axis: None | str | tuple[str],
-    ):
+        axis: None | str | Sequence[str],
+    ) -> tuple[na.AbstractArray, na.AbstractArray, tuple[str, ...], tuple[str, ...]]:
+        """
+        Find the components of the inputs to resample, and the axes to
+        resample them along.
+
+        Parameters
+        ----------
+        inputs
+            The new inputs, as given to :meth:`regrid`.
+        axis
+            The axes of :attr:`inputs` to resample, as given to :meth:`regrid`.
+
+        Returns
+        -------
+        The components of the new inputs to resample, the same components of
+        :attr:`inputs`, the axes of :attr:`inputs` to resample, and the axes
+        of the new inputs which take their place.
+        """
 
         inputs_old = self.inputs
         inputs_new = inputs
@@ -494,36 +619,64 @@ class AbstractFunctionArray(
         else:
             old_input_components = dict(_dummy=inputs_old.explicit)
 
-        # broadcast new inputs against value to be interpolated
+        # check physical(vector) dimensions of each input match
+        if new_input_components.keys() != old_input_components.keys():
+            raise ValueError('Physical axes of new and old inputs must match.')  # pragma: no cover
+
+        shape_old = na.shape_broadcasted(*old_input_components.values())
+
         if axis is None:
-            axis = na.shape_broadcasted(
-                new_input_components[c] for c in new_input_components if new_input_components[c] is not None
-            )
+            axis = tuple(shape_old)
+        elif isinstance(axis, str):
+            axis = (axis,)
+        else:
             axis = tuple(axis)
 
-        # check physical(vector) dimensions of each input match
-        if new_input_components.keys() == old_input_components.keys():
+        if not set(axis).issubset(shape_old):
+            raise ValueError(
+                f"The inputs of this function do not vary along "
+                f"{tuple(a for a in axis if a not in shape_old)}, "
+                f"so they cannot be resampled along `axis`, {axis}."
+            )
 
-            coordinates_new = {}
-            coordinates_old = {}
-            for c in new_input_components:
-                component = new_input_components[c]
-                if component is not None:
-                    # if input components logical axes do not include interp axes, skip
-                    if not set(axis).isdisjoint(component.axes):
-                        coordinates_new[c] = component
-                        coordinates_old[c] = old_input_components[c]
+        coordinates_new = {}
+        coordinates_old = {}
+        for c in old_input_components:
+            component_new = new_input_components[c]
+            component_old = old_input_components[c]
+            # a component which does not vary along the resampled axes
+            # is not resampled
+            if not set(axis).isdisjoint(na.shape(component_old)):
+                if component_new is None:
+                    raise ValueError(
+                        f"If a component is marked separable using `None`, its shape, "
+                        f"{na.shape(component_old)}, should be disjoint from the "
+                        f"interpolated axes, {axis}.",
+                    )
+                coordinates_new[c] = component_new
+                coordinates_old[c] = component_old
 
-                else:
-                    # check if uninterpolated physical axes vary along interpolation axes
-                    if not set(axis).isdisjoint(old_input_components[c].axes):  # pragma: no cover
-                        raise ValueError(
-                            f"If a component is marked separable using `None`, its shape, {old_input_components[c].axes},"
-                            f"should be disjoint from the interpolated axes, {axis}.",
-                        )
+        # The axes of this function which are not resampled are broadcast
+        # against the new inputs by name, and every other axis of the new
+        # inputs takes the place of the resampled axes.
+        axis_orthogonal = set(self.axes) - set(axis)
+        axis_new = tuple(
+            a for a in na.shape_broadcasted(*coordinates_new.values())
+            if a not in axis_orthogonal
+        )
 
-        else:
-            raise ValueError('Physical axes of new and old inputs must match.')  # pragma: no cover
+        for c in new_input_components:
+            component_new = new_input_components[c]
+            if c not in coordinates_new and component_new is not None:
+                axes_varying = tuple(a for a in na.shape(component_new) if a in axis_new)
+                if axes_varying:
+                    raise ValueError(
+                        f"The component {c!r} of the new inputs varies along "
+                        f"{axes_varying}, but it is not resampled, since in "
+                        f"the inputs of this function it does not vary along "
+                        f"`axis`, {axis}. To resample it too, add the axes it "
+                        f"varies along in the inputs of this function to `axis`."
+                    )
 
         if isinstance(inputs_new, na.AbstractVectorArray):
             coordinates_new = na.CartesianNdVectorArray.from_components(coordinates_new)
@@ -535,7 +688,7 @@ class AbstractFunctionArray(
         else:
             coordinates_old = coordinates_old['_dummy']
 
-        return coordinates_new, coordinates_old, axis
+        return coordinates_new, coordinates_old, axis, axis_new
 
     def cell_centers(
         self,

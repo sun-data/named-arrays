@@ -33,6 +33,7 @@ def regrid(
     axis_input: None | Sequence[str] = None,
     axis_output: None | Sequence[str] = None,
     method: Literal['multilinear', 'conservative'] = 'multilinear',
+    bounds: Literal["extrapolate", "nan", "raise"] = "extrapolate",
     perturb: None | bool = None,
     seed: None | int | np.random.Generator = _seed_default,
 ) -> na.AbstractScalarArray:
@@ -59,10 +60,21 @@ def regrid(
         of the input grid.
         If :obj:`None`, all the axes of the output grid correspond to resampled
         axes in the input grid.
-        The number of axes should be equal to the number of
-        coordinates in the output grid.
+        For the ``conservative`` method, the number of axes should be equal
+        to the number of coordinates in the output grid.
+        The ``multilinear`` method interpolates at points rather than
+        resampling cells, so the points may be arranged along any number of
+        axes, or none at all for a single point.
     method
         The type of regridding to use.
+    bounds
+        How to treat output points that fall outside the input grid.
+        Only applies when `method` is ``multilinear``; the ``conservative``
+        method assigns no weight to regions outside the input grid.
+        ``extrapolate`` (the default) extrapolates linearly from the nearest
+        cell of the input grid, ``nan`` sets those points to
+        :obj:`numpy.nan`, and ``raise`` raises a :class:`ValueError`.
+        See :func:`regridding.weights` for the details.
     perturb
         Whether to perturb `coordinates_output` by a small value to avoid degenerate
         grids. This is helpful for some methods, like ``conservative``, which
@@ -144,6 +156,7 @@ def regrid(
         axis_input=axis_input,
         axis_output=axis_output,
         method=method,
+        bounds=bounds,
         perturb=perturb,
         seed=seed,
     )
@@ -165,6 +178,7 @@ def weights(
     axis_output: None | str | Sequence[str] = None,
     weights_input: None | na.AbstractScalar = None,
     method: Literal['multilinear', 'conservative'] = 'multilinear',
+    bounds: Literal["extrapolate", "nan", "raise"] = "extrapolate",
     perturb: None | bool = None,
     seed: None | int | np.random.Generator = _seed_default,
     device: None | str = None,
@@ -196,12 +210,23 @@ def weights(
         of the input grid.
         If :obj:`None`, all the axes of the output grid correspond to resampled
         axes in the input grid.
-        The number of axes should be equal to the number of
-        coordinates in the output grid.
+        For the ``conservative`` method, the number of axes should be equal
+        to the number of coordinates in the output grid.
+        The ``multilinear`` method interpolates at points rather than
+        resampling cells, so the points may be arranged along any number of
+        axes, or none at all for a single point.
     weights_input
         Weights applied to the values of the input grid before resampling.
     method
         The type of regridding to use.
+    bounds
+        How to treat output points that fall outside the input grid.
+        Only applies when `method` is ``multilinear``; the ``conservative``
+        method assigns no weight to regions outside the input grid.
+        ``extrapolate`` (the default) extrapolates linearly from the nearest
+        cell of the input grid, ``nan`` sets those points to
+        :obj:`numpy.nan`, and ``raise`` raises a :class:`ValueError`.
+        See :func:`regridding.weights` for the details.
     perturb
         Whether to perturb `coordinates_output` by a small value to avoid degenerate
         grids. This is helpful for some methods, like ``conservative``, which
@@ -240,6 +265,7 @@ def weights(
         axis_output=axis_output,
         weights_input=weights_input,
         method=method,
+        bounds=bounds,
         perturb=perturb,
         seed=seed,
         device=device,
