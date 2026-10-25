@@ -2317,6 +2317,13 @@ class AbstractStratifiedRandomSpace(
 
         step_size = self.step
 
+        # A scalar step would draw one random offset and add it to every
+        # component of a vector, putting each sample on the diagonal of its
+        # stratum.  As a vector, each component is drawn with its own seed.
+        if isinstance(result, na.AbstractVectorArray):
+            if not isinstance(step_size, na.AbstractVectorArray):
+                step_size = result.type_explicit.from_scalar(step_size, like=result)
+
         delta = na.random.uniform(
             low=-step_size / 2,
             high=step_size / 2,
