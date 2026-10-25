@@ -82,6 +82,66 @@ def test_regrid_multilinear_1d(
     assert np.allclose(result, result_expected)
 
 
+def test_regrid_multilinear_scattered() -> None:
+    """
+    The multilinear method interpolates a 2D grid at points listed along a
+    single axis of their own, without naming it in `axis_output`.
+    """
+    points = na.Cartesian2dVectorArray(
+        x=na.random.uniform(-1, 1, shape_random=dict(point=7), seed=0),
+        y=na.random.uniform(-1, 1, shape_random=dict(point=7), seed=1),
+    )
+    result = na.regridding.regrid(
+        coordinates_input=na.Cartesian2dVectorArray(x, y),
+        coordinates_output=points,
+        values_input=2 * x + 3 * y,
+        method="multilinear",
+    )
+    assert np.allclose(result, 2 * points.x + 3 * points.y)
+    assert result.shape == dict(point=7)
+
+
+_x_outside = na.ScalarArray(np.array([0.0, 1.5, -2.0]), axes="x_new")
+
+
+@pytest.mark.parametrize(
+    argnames="bounds,result_expected",
+    argvalues=[
+        ("extrapolate", 2 * _x_outside + 0.5),
+        ("nan", na.ScalarArray(np.array([0.5, np.nan, np.nan]), axes="x_new")),
+    ],
+)
+def test_regrid_multilinear_bounds(
+    bounds: str,
+    result_expected: na.ScalarArray,
+) -> None:
+    """
+    Points outside of the input grid are extrapolated or set to NaN.
+    """
+    result = na.regridding.regrid(
+        coordinates_input=x,
+        coordinates_output=_x_outside,
+        values_input=2 * x + 0.5,
+        method="multilinear",
+        bounds=bounds,
+    )
+    assert np.allclose(result, result_expected, equal_nan=True)
+
+
+def test_regrid_multilinear_bounds_raise() -> None:
+    """
+    Points outside of the input grid raise an error if asked to.
+    """
+    with pytest.raises(ValueError, match="2 of the output points fall outside"):
+        na.regridding.regrid(
+            coordinates_input=x,
+            coordinates_output=_x_outside,
+            values_input=2 * x + 0.5,
+            method="multilinear",
+            bounds="raise",
+        )
+
+
 @pytest.mark.parametrize(
     argnames="coordinates_input, values_input, axis_input, "
     "coordinates_output, axis_output, weights_input",
