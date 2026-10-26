@@ -102,11 +102,6 @@ class AbstractTestAbstractFunctionArray(
             method=method,
         )
 
-        if isinstance(array.outputs, na.AbstractUncertainScalarArray):
-            with pytest.raises(TypeError):
-                array(**kwargs)
-            return
-
         result = array(**kwargs)
 
         assert np.allclose(array, result)
@@ -139,11 +134,6 @@ class AbstractTestAbstractFunctionArray(
             method=method,
             weights=weights,
         )
-
-        if isinstance(array.outputs, na.AbstractUncertainScalarArray):
-            with pytest.raises(TypeError):
-                array(**kwargs)
-            return
 
         result = array(**kwargs)
 

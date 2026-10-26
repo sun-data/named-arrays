@@ -88,6 +88,13 @@ _outside = na.Cartesian2dVectorArray(
     y=na.ScalarArray(np.array([0.25, 0.0, 0.5]), axes="ray"),
 )
 
+# An uncertain offset with hand-picked samples, and a shift along x by it.
+_uncertain = na.UncertainScalarArray(
+    nominal=na.ScalarArray(0.0),
+    distribution=na.ScalarArray(np.array([-0.1, 0.0, 0.2]), axes="_distribution"),
+)
+_shift = na.Cartesian2dVectorArray(_uncertain, 0)
+
 
 @pytest.mark.parametrize(
     argnames="inputs,points,axis",
@@ -294,6 +301,187 @@ def test_regrid_scattered_units() -> None:
 
 
 @pytest.mark.parametrize(
+    argnames="inputs,outputs,points,axis,result_expected",
+    argvalues=[
+        (
+            _x,
+            _affine(_x),
+            _points(dict(ray=7), components=0) + _uncertain,
+            "x",
+            _affine(_points(dict(ray=7), components=0) + _uncertain),
+        ),
+        (
+            _curvilinear,
+            _affine(_curvilinear),
+            _points(dict(ray=7), components=2) + _shift,
+            ("x", "y"),
+            _affine(_points(dict(ray=7), components=2) + _shift),
+        ),
+        (
+            _rectilinear + _shift,
+            _affine(_rectilinear),
+            _points(dict(ray=7), components=2),
+            ("x", "y"),
+            _affine(_points(dict(ray=7), components=2) - _shift),
+        ),
+        (
+            _rectilinear,
+            _affine(_rectilinear) + _uncertain,
+            _points(dict(ray=7), components=2),
+            ("x", "y"),
+            _affine(_points(dict(ray=7), components=2)) + _uncertain,
+        ),
+        (
+            _rectilinear + _shift,
+            _affine(_rectilinear) + _uncertain,
+            _points(dict(ray=7), components=2) + _shift,
+            ("x", "y"),
+            _affine(_points(dict(ray=7), components=2)) + _uncertain,
+        ),
+    ],
+)
+def test_regrid_uncertain(
+    inputs: na.AbstractArray,
+    outputs: na.AbstractScalar,
+    points: na.AbstractArray,
+    axis: str | tuple[str, ...],
+    result_expected: na.AbstractScalar,
+) -> None:
+    """
+    If the new inputs, the inputs of the function, or its outputs are
+    uncertain, each sample is resampled with the samples of the others which
+    go with it.
+    A grid which is shifted by an uncertain offset, with outputs which are
+    not, is the function shifted by the same offset.
+    """
+    f = na.FunctionArray(
+        inputs=inputs,
+        outputs=outputs,
+    )
+
+    result = f(points, axis=axis)
+
+    assert np.all(result.inputs == points)
+    assert isinstance(result.outputs, na.UncertainScalarArray)
+    assert np.allclose(result.outputs, result_expected)
+
+
+def test_regrid_uncertain_bounds() -> None:
+    """
+    Each sample of uncertain points outside of the grid is set to NaN if
+    asked to.
+    """
+    f = na.FunctionArray(
+        inputs=_rectilinear,
+        outputs=_affine(_rectilinear),
+    )
+    points = _outside + _shift
+
+    result = f(points, axis=("x", "y"), bounds="nan")
+
+    nan = na.ScalarArray(np.array([1, np.nan, np.nan]), axes="ray")
+    result_expected = _affine(points) * nan
+    assert isinstance(result.outputs, na.UncertainScalarArray)
+    assert np.allclose(result.outputs, result_expected, equal_nan=True)
+
+
+def test_regrid_uncertain_conservative() -> None:
+    """
+    The conservative method resamples each sample of uncertain vertices on
+    its own.
+    """
+    vertices = na.Cartesian2dVectorArray(
+        x=na.linspace(-1, 1, axis="x", num=12),
+        y=na.linspace(-1, 1, axis="y", num=14),
+    )
+    outputs = _affine(vertices).cell_centers()
+    f = na.FunctionArray(
+        inputs=vertices + _shift,
+        outputs=outputs,
+    )
+    vertices_new = 0.5 * vertices
+
+    result = f(vertices_new, axis=("x", "y"), method="conservative")
+
+    def resample(shift: float | na.AbstractScalar) -> na.AbstractScalar:
+        f_shifted = na.FunctionArray(vertices + na.Cartesian2dVectorArray(shift, 0), outputs)
+        return f_shifted(vertices_new, axis=("x", "y"), method="conservative").outputs
+
+    samples = _uncertain.distribution
+    result_expected = na.UncertainScalarArray(
+        nominal=resample(0),
+        distribution=na.stack(
+            [resample(samples[dict(_distribution=i)]) for i in range(samples.shape["_distribution"])],
+            axis="_distribution",
+        ),
+    )
+    assert np.allclose(result.outputs, result_expected)
+    assert not np.allclose(result_expected.distribution, result_expected.nominal)
+
+
+@pytest.mark.parametrize(
+    argnames="wavelength",
+    argvalues=[
+        None,
+        _wavelength + _uncertain,
+    ],
+)
+def test_regrid_uncertain_unresampled(
+    wavelength: None | na.AbstractScalar,
+) -> None:
+    """
+    An uncertain component which is not resampled is kept, and the outputs
+    which depend on it are uncertain.
+    """
+    inputs = na.SpectralPositionalVectorArray(_wavelength + _uncertain, _rectilinear)
+    f = na.FunctionArray(
+        inputs=inputs,
+        outputs=_affine(inputs),
+    )
+    points = _points(dict(ray=7), components=2)
+
+    result = f(
+        na.SpectralPositionalVectorArray(wavelength, points),
+        axis=("x", "y"),
+    )
+
+    inputs_expected = na.SpectralPositionalVectorArray(_wavelength + _uncertain, points)
+    assert np.all(result.inputs == inputs_expected)
+    assert np.allclose(result.outputs, _affine(inputs_expected))
+    assert result.outputs.shape == dict(wavelength=4, ray=7)
+
+
+@pytest.mark.parametrize(
+    argnames="inputs,points",
+    argvalues=[
+        (_rectilinear + _shift, _points(dict(ray=7), components=2)),
+        (_rectilinear, _points(dict(ray=7), components=2) + _shift),
+    ],
+)
+def test_regrid_uncertain_weights_raise(
+    inputs: na.AbstractVectorArray,
+    points: na.AbstractVectorArray,
+) -> None:
+    """
+    Weights can't be computed in advance for uncertain inputs, or used to
+    resample them, since each of their samples has weights of its own.
+    """
+    f = na.FunctionArray(
+        inputs=inputs,
+        outputs=_affine(_rectilinear),
+    )
+    weights = na.FunctionArray(_rectilinear, f.outputs).weights(
+        _points(dict(ray=7), components=2),
+        axis=("x", "y"),
+    )
+
+    with pytest.raises(ValueError, match="cannot be computed in advance for uncertain"):
+        f.weights(points, axis=("x", "y"))
+    with pytest.raises(ValueError, match="cannot be used to resample uncertain"):
+        f(points, axis=("x", "y"), weights=weights)
+
+
+@pytest.mark.parametrize(
     argnames="inputs,outputs,points,bounds,result_expected",
     argvalues=[
         (
@@ -316,6 +504,13 @@ def test_regrid_scattered_units() -> None:
             _outside,
             "nan",
             np.where(np.abs(_outside.x) <= 1, _affine(_outside), np.nan),
+        ),
+        (
+            _rectilinear,
+            _affine(_rectilinear) + _uncertain,
+            _points(dict(ray=7), components=2),
+            "extrapolate",
+            _affine(_points(dict(ray=7), components=2)) + _uncertain,
         ),
     ],
 )
