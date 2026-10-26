@@ -29,6 +29,7 @@ RANDOM_FUNCTIONS = (
 )
 PLT_PLOT_LIKE_FUNCTIONS = named_arrays._scalars.scalar_named_array_functions.PLT_PLOT_LIKE_FUNCTIONS
 NDFILTER_FUNCTIONS = named_arrays._scalars.scalar_named_array_functions.NDFILTER_FUNCTIONS
+DESPIKE_FUNCTIONS = named_arrays._scalars.scalar_named_array_functions.DESPIKE_FUNCTIONS
 HANDLED_FUNCTIONS = dict()
 
 
@@ -1320,7 +1321,7 @@ def ndfilter(
     )
 
 
-def _despike(
+def despike(
     func: Callable,
     array: na.AbstractScalar,
     where: None | bool | na.AbstractScalar,
@@ -1333,135 +1334,23 @@ def _despike(
     Apply :func:`named_arrays.despike` or :func:`named_arrays.despike_mask`
     to the nominal value and to the distribution separately.
     """
+    arguments = dict(
+        array=array,
+        where=where,
+        inbkg=inbkg,
+        invar=invar,
+        psfk=psfk,
+    )
 
     try:
-        array = uncertainties._normalize(array)
-        where = uncertainties._normalize(where)
-        inbkg = uncertainties._normalize(inbkg)
-        invar = uncertainties._normalize(invar)
-        psfk = uncertainties._normalize(psfk)
+        arguments = {
+            name: uncertainties._normalize(a) if a is not None else a
+            for name, a in arguments.items()
+        }
     except uncertainties.UncertainScalarTypeError:  # pragma: nocover
         return NotImplemented
 
-    result = array.copy_shallow()
-    result.nominal = func(
-        array=array.nominal,
-        where=where.nominal,
-        inbkg=inbkg.nominal,
-        invar=invar.nominal,
-        psfk=psfk.nominal,
-        **kwargs,
-    )
-    result.distribution = func(
-        array=array.distribution,
-        where=where.distribution,
-        inbkg=inbkg.distribution,
-        invar=invar.distribution,
-        psfk=psfk.distribution,
-        **kwargs,
-    )
-
-    return result
-
-
-@_implements(na.despike)
-def despike(
-    array: na.AbstractScalar,
-    axis: tuple[str, str],
-    where: None | bool | na.AbstractScalar,
-    inbkg: None | na.AbstractScalar,
-    invar: None | float | na.AbstractScalar,
-    sigclip: float,
-    sigfrac: float,
-    objlim: float,
-    gain: float,
-    readnoise: float,
-    satlevel: float,
-    niter: int,
-    sepmed: bool,
-    cleantype: Literal["median", "medmask", "meanmask", "idw"],
-    fsmode: Literal["median", "convolve"],
-    psfmodel: Literal["gauss", "gaussx", "gaussy", "moffat"],
-    psffwhm: float,
-    psfsize: int,
-    psfk: None | na.AbstractScalar,
-    psfbeta: float,
-    verbose: bool,
-) -> na.UncertainScalarArray:
-    return _despike(
-        func=na.despike,
-        array=array,
-        axis=axis,
-        where=where,
-        inbkg=inbkg,
-        invar=invar,
-        sigclip=sigclip,
-        sigfrac=sigfrac,
-        objlim=objlim,
-        gain=gain,
-        readnoise=readnoise,
-        satlevel=satlevel,
-        niter=niter,
-        sepmed=sepmed,
-        cleantype=cleantype,
-        fsmode=fsmode,
-        psfmodel=psfmodel,
-        psffwhm=psffwhm,
-        psfsize=psfsize,
-        psfk=psfk,
-        psfbeta=psfbeta,
-        verbose=verbose,
-    )
-
-
-@_implements(na.despike_mask)
-def despike_mask(
-    array: na.AbstractScalar,
-    axis: tuple[str, str],
-    where: None | bool | na.AbstractScalar,
-    inbkg: None | na.AbstractScalar,
-    invar: None | float | na.AbstractScalar,
-    sigclip: float,
-    sigfrac: float,
-    objlim: float,
-    gain: float,
-    readnoise: float,
-    satlevel: float,
-    niter: int,
-    sepmed: bool,
-    cleantype: Literal["median", "medmask", "meanmask", "idw"],
-    fsmode: Literal["median", "convolve"],
-    psfmodel: Literal["gauss", "gaussx", "gaussy", "moffat"],
-    psffwhm: float,
-    psfsize: int,
-    psfk: None | na.AbstractScalar,
-    psfbeta: float,
-    verbose: bool,
-) -> na.UncertainScalarArray:
-    return _despike(
-        func=na.despike_mask,
-        array=array,
-        axis=axis,
-        where=where,
-        inbkg=inbkg,
-        invar=invar,
-        sigclip=sigclip,
-        sigfrac=sigfrac,
-        objlim=objlim,
-        gain=gain,
-        readnoise=readnoise,
-        satlevel=satlevel,
-        niter=niter,
-        sepmed=sepmed,
-        cleantype=cleantype,
-        fsmode=fsmode,
-        psfmodel=psfmodel,
-        psffwhm=psffwhm,
-        psfsize=psfsize,
-        psfk=psfk,
-        psfbeta=psfbeta,
-        verbose=verbose,
-    )
+    return uncertainties._propagate(func, arguments, **kwargs)
 
 
 @_implements(na.numexpr.evaluate)

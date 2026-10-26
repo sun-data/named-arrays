@@ -769,6 +769,9 @@ class AbstractScalarArray(
         if func in scalar_named_array_functions.NDFILTER_FUNCTIONS:
             return scalar_named_array_functions.ndfilter(func, *args, **kwargs)
 
+        if func in scalar_named_array_functions.DESPIKE_FUNCTIONS:
+            return scalar_named_array_functions.despike(func, *args, **kwargs)
+
         if func in scalar_named_array_functions.HANDLED_FUNCTIONS:
             return scalar_named_array_functions.HANDLED_FUNCTIONS[func](*args, **kwargs)
 

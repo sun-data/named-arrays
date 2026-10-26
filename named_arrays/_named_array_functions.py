@@ -1871,10 +1871,11 @@ def despike(
         process. The inverse of `inmask` used in
         :func:`astroscrappy.detect_cosmics`.
         Pixels where `array`, `inbkg` or `invar` is not finite are ignored
-        too. The ignored pixels are set to zero before calling astroscrappy,
-        whose median filters and Laplacian include them, and are never
-        changed. astroscrappy never flags a pixel next to an ignored one
-        either.
+        too. astroscrappy's median filters and Laplacian still include the
+        ignored pixels, so each non-finite value is first replaced with the
+        median of the pixels of its image which are not ignored. The ignored
+        pixels are never changed, and astroscrappy never flags a pixel next
+        to one either.
     inbkg
         A pre-determined background image, to be subtracted from `array`
         before running the main detection algorithm.
@@ -1883,6 +1884,7 @@ def despike(
         iteration, "protecting" them from spurious rejection (see the above
         paper). This background is not removed from the final, cleaned output
         (`cleanarr`). This should be in units of "counts", the same units of `array`.
+        If both have units, `inbkg` is converted to the unit of `array`.
         This inbkg should be free from cosmic rays. When estimating the cosmic-ray
         free noise of the image, we will treat ``inbkg`` as a constant Poisson
         contribution to the variance.
@@ -1893,6 +1895,8 @@ def despike(
         ``gain`` and ``readnoise``. This still gets median filtered and cleaned
         internally, to estimate what the noise in each pixel *would* be in the
         absence of cosmic rays. This should be in units of "counts" squared.
+        If both have units, `invar` is converted to the square of the unit of
+        `array`.
     sigclip
         Laplacian-to-noise limit for cosmic ray detection. Lower values will
         flag more pixels as cosmic rays. Default: 4.5.
@@ -1950,6 +1954,8 @@ def despike(
         PSF kernel array to use for the fine structure image if
         fsmode == 'convolve'. If None and fsmode == 'convolve', we calculate
         the psf kernel using 'psfmodel'. Default: None.
+        The kernel is along the two axes in `axis`, and it may vary along the
+        other axes of `array`.
     psfbeta
         Moffat beta parameter. Only used if fsmode=='convolve' and
         psfmodel=='moffat'. Default: 4.765.
@@ -2027,10 +2033,10 @@ def despike_mask(
         process. The inverse of `inmask` used in
         :func:`astroscrappy.detect_cosmics`.
         Pixels where `array`, `inbkg` or `invar` is not finite are ignored
-        too. The ignored pixels are set to zero before calling astroscrappy,
-        whose median filters and Laplacian include them, and are never
-        flagged. astroscrappy never flags a pixel next to an ignored one
-        either.
+        too. astroscrappy's median filters and Laplacian still include the
+        ignored pixels, so each non-finite value is first replaced with the
+        median of the pixels of its image which are not ignored. The ignored
+        pixels are never flagged, and neither are the pixels next to them.
     inbkg
         A pre-determined background image, to be subtracted from `array`
         before running the main detection algorithm.
@@ -2038,6 +2044,7 @@ def despike_mask(
         sky lines and the cross-section of an object continuum during
         iteration, "protecting" them from spurious rejection (see the above
         paper). This should be in units of "counts", the same units of `array`.
+        If both have units, `inbkg` is converted to the unit of `array`.
         This inbkg should be free from cosmic rays. When estimating the cosmic-ray
         free noise of the image, we will treat ``inbkg`` as a constant Poisson
         contribution to the variance.
@@ -2048,6 +2055,8 @@ def despike_mask(
         ``gain`` and ``readnoise``. This still gets median filtered and cleaned
         internally, to estimate what the noise in each pixel *would* be in the
         absence of cosmic rays. This should be in units of "counts" squared.
+        If both have units, `invar` is converted to the square of the unit of
+        `array`.
     sigclip
         Laplacian-to-noise limit for cosmic ray detection. Lower values will
         flag more pixels as cosmic rays. Default: 4.5.
@@ -2105,6 +2114,8 @@ def despike_mask(
         PSF kernel array to use for the fine structure image if
         fsmode == 'convolve'. If None and fsmode == 'convolve', we calculate
         the psf kernel using 'psfmodel'. Default: None.
+        The kernel is along the two axes in `axis`, and it may vary along the
+        other axes of `array`.
     psfbeta
         Moffat beta parameter. Only used if fsmode=='convolve' and
         psfmodel=='moffat'. Default: 4.765.

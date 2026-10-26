@@ -961,6 +961,9 @@ class AbstractUncertainScalarArray(
         if func in uncertainties_named_array_functions.NDFILTER_FUNCTIONS:
             return uncertainties_named_array_functions.ndfilter(func, *args, **kwargs)
 
+        if func in uncertainties_named_array_functions.DESPIKE_FUNCTIONS:
+            return uncertainties_named_array_functions.despike(func, *args, **kwargs)
+
         if func in uncertainties_named_array_functions.HANDLED_FUNCTIONS:
             return uncertainties_named_array_functions.HANDLED_FUNCTIONS[func](*args, **kwargs)
 
