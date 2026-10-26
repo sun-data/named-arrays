@@ -1,4 +1,4 @@
-from typing import Callable, Literal, Sequence, TYPE_CHECKING
+from typing import Any, Callable, Literal, Sequence, TYPE_CHECKING
 import numpy as np
 import astropy.units as u
 import named_arrays as na
@@ -357,6 +357,41 @@ def colorsynth_colorbar(
     )
 
 
+def _despike(
+    func: Callable,
+    array: na.AbstractScalar | na.AbstractFunctionArray,
+    where: None | bool | na.AbstractScalar | na.AbstractFunctionArray,
+    inbkg: None | na.AbstractScalar | na.AbstractFunctionArray,
+    invar: None | float | na.AbstractScalar | na.AbstractFunctionArray,
+    **kwargs: Any,
+) -> na.AbstractFunctionArray:
+    """
+    Apply :func:`named_arrays.despike` or :func:`named_arrays.despike_mask`
+    to the outputs of each function.
+    """
+
+    result = array.copy_shallow()
+
+    if isinstance(array, na.AbstractFunctionArray):
+        array = array.outputs
+    if isinstance(where, na.AbstractFunctionArray):
+        where = where.outputs
+    if isinstance(inbkg, na.AbstractFunctionArray):
+        inbkg = inbkg.outputs
+    if isinstance(invar, na.AbstractFunctionArray):
+        invar = invar.outputs
+
+    result.outputs = func(
+        array=array,
+        where=where,
+        inbkg=inbkg,
+        invar=invar,
+        **kwargs,
+    )
+
+    return result
+
+
 @_implements(na.despike)
 def despike(
     array: na.AbstractScalar | na.AbstractFunctionArray,
@@ -380,20 +415,9 @@ def despike(
     psfk: None | na.AbstractScalar,
     psfbeta: float,
     verbose: bool,
-) -> na.ScalarArray:
-
-    result = array.copy_shallow()
-
-    if isinstance(array, na.AbstractFunctionArray):
-        array = array.outputs
-    if isinstance(where, na.AbstractFunctionArray):
-        where = where.outputs
-    if isinstance(inbkg, na.AbstractFunctionArray):
-        inbkg = inbkg.outputs
-    if isinstance(invar, na.AbstractFunctionArray):
-        invar = invar.outputs
-
-    result.outputs = na.despike(
+) -> na.AbstractFunctionArray:
+    return _despike(
+        func=na.despike,
         array=array,
         axis=axis,
         where=where,
@@ -417,4 +441,52 @@ def despike(
         verbose=verbose,
     )
 
-    return result
+
+@_implements(na.despike_mask)
+def despike_mask(
+    array: na.AbstractScalar | na.AbstractFunctionArray,
+    axis: tuple[str, str],
+    where: None | bool | na.AbstractScalar | na.AbstractFunctionArray,
+    inbkg: None | na.AbstractScalar | na.AbstractFunctionArray,
+    invar: None | float | na.AbstractScalar | na.AbstractFunctionArray,
+    sigclip: float,
+    sigfrac: float,
+    objlim: float,
+    gain: float,
+    readnoise: float,
+    satlevel: float,
+    niter: int,
+    sepmed: bool,
+    cleantype: Literal["median", "medmask", "meanmask", "idw"],
+    fsmode: Literal["median", "convolve"],
+    psfmodel: Literal["gauss", "gaussx", "gaussy", "moffat"],
+    psffwhm: float,
+    psfsize: int,
+    psfk: None | na.AbstractScalar,
+    psfbeta: float,
+    verbose: bool,
+) -> na.AbstractFunctionArray:
+    return _despike(
+        func=na.despike_mask,
+        array=array,
+        axis=axis,
+        where=where,
+        inbkg=inbkg,
+        invar=invar,
+        sigclip=sigclip,
+        sigfrac=sigfrac,
+        objlim=objlim,
+        gain=gain,
+        readnoise=readnoise,
+        satlevel=satlevel,
+        niter=niter,
+        sepmed=sepmed,
+        cleantype=cleantype,
+        fsmode=fsmode,
+        psfmodel=psfmodel,
+        psffwhm=psffwhm,
+        psfsize=psfsize,
+        psfk=psfk,
+        psfbeta=psfbeta,
+        verbose=verbose,
+    )
