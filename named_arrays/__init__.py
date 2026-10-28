@@ -31,6 +31,7 @@ from ._named_array_functions import (
     convolve,
     jacobian,
     despike,
+    despike_mask,
 )
 from . import random
 from . import plt
@@ -448,6 +449,7 @@ __all__ = [
     "convolve",
     "jacobian",
     "despike",
+    "despike_mask",
     "random",
     "plt",
     "stats",

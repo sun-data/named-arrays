@@ -1,4 +1,4 @@
-from typing import Callable, Literal, Sequence, TYPE_CHECKING
+from typing import Any, Callable, Sequence, TYPE_CHECKING
 import numpy as np
 import astropy.units as u
 import named_arrays as na
@@ -15,6 +15,7 @@ __all__ = [
 
 ASARRAY_LIKE_FUNCTIONS = named_arrays._scalars.scalar_named_array_functions.ASARRAY_LIKE_FUNCTIONS
 NDFILTER_FUNCTIONS = named_arrays._scalars.scalar_named_array_functions.NDFILTER_FUNCTIONS
+DESPIKE_FUNCTIONS = named_arrays._scalars.scalar_named_array_functions.DESPIKE_FUNCTIONS
 HANDLED_FUNCTIONS = dict()
 
 def _implements(function: Callable):
@@ -357,64 +358,41 @@ def colorsynth_colorbar(
     )
 
 
-@_implements(na.despike)
 def despike(
-    array: na.AbstractScalar | na.AbstractFunctionArray,
-    axis: tuple[str, str],
+    func: Callable,
+    array: na.AbstractFunctionArray,
     where: None | bool | na.AbstractScalar | na.AbstractFunctionArray,
     inbkg: None | na.AbstractScalar | na.AbstractFunctionArray,
     invar: None | float | na.AbstractScalar | na.AbstractFunctionArray,
-    sigclip: float,
-    sigfrac: float,
-    objlim: float,
-    gain: float,
-    readnoise: float,
-    satlevel: float,
-    niter: int,
-    sepmed: bool,
-    cleantype: Literal["median", "medmask", "meanmask", "idw"],
-    fsmode: Literal["median", "convolve"],
-    psfmodel: Literal["gauss", "gaussx", "gaussy", "moffat"],
-    psffwhm: float,
-    psfsize: int,
-    psfk: None | na.AbstractScalar,
-    psfbeta: float,
-    verbose: bool,
-) -> na.ScalarArray:
+    **kwargs: Any,
+) -> na.AbstractFunctionArray:
+    """
+    Apply :func:`named_arrays.despike` or :func:`named_arrays.despike_mask`
+    to the outputs of a function array.
+    """
+    if not isinstance(array, na.AbstractFunctionArray):
+        return NotImplemented
 
-    result = array.copy_shallow()
-
-    if isinstance(array, na.AbstractFunctionArray):
-        array = array.outputs
-    if isinstance(where, na.AbstractFunctionArray):
-        where = where.outputs
-    if isinstance(inbkg, na.AbstractFunctionArray):
-        inbkg = inbkg.outputs
-    if isinstance(invar, na.AbstractFunctionArray):
-        invar = invar.outputs
-
-    result.outputs = na.despike(
-        array=array,
-        axis=axis,
+    arguments = dict(
         where=where,
         inbkg=inbkg,
         invar=invar,
-        sigclip=sigclip,
-        sigfrac=sigfrac,
-        objlim=objlim,
-        gain=gain,
-        readnoise=readnoise,
-        satlevel=satlevel,
-        niter=niter,
-        sepmed=sepmed,
-        cleantype=cleantype,
-        fsmode=fsmode,
-        psfmodel=psfmodel,
-        psffwhm=psffwhm,
-        psfsize=psfsize,
-        psfk=psfk,
-        psfbeta=psfbeta,
-        verbose=verbose,
+    )
+
+    for name, a in arguments.items():
+        if isinstance(a, na.AbstractFunctionArray):
+            if not np.all(a.inputs == array.inputs):
+                raise ValueError(
+                    f"if `{name}` is an instance of `na.AbstractFunctionArray`, "
+                    "its inputs must match `array`."
+                )
+            a = a.outputs
+        kwargs[name] = a
+
+    result = array.copy_shallow()
+    result.outputs = func(
+        array=array.outputs,
+        **kwargs,
     )
 
     return result

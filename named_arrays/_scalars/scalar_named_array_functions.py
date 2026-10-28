@@ -82,6 +82,10 @@ NDFILTER_FUNCTIONS = (
     na.ndfilters.trimmed_mean_filter,
     na.ndfilters.variance_filter,
 )
+DESPIKE_FUNCTIONS = (
+    na.despike,
+    na.despike_mask,
+)
 HANDLED_FUNCTIONS = dict()
 
 
@@ -2791,31 +2795,53 @@ def regridding_convolve_weights(
     return result, shape_input, shape_output
 
 
-@_implements(na.despike)
+def _image(
+    a: na.AbstractScalarArray,
+    shape: dict[str, int],
+) -> np.ndarray:
+    """
+    The values of `a` for :func:`astroscrappy.detect_cosmics`: without units,
+    and broadcast to `shape` with the axes in its order.
+    """
+    return a.value.broadcast_to(shape).ndarray
+
+
+def _fill_nonfinite(
+    image: np.ndarray,
+    where: np.ndarray,
+) -> np.ndarray:
+    """
+    Replace the non-finite values of an image with the median of its values
+    where `where` is true.
+
+    astroscrappy's median filters and Laplacian run over the pixels it
+    ignores too, so a non-finite value there would spoil every pixel near it,
+    and so would a value far from the rest of the image, like zero on an image
+    with a background.
+    """
+    finite = np.isfinite(image)
+    if np.all(finite):
+        return image
+    return np.where(finite, image, np.median(image[where]))
+
+
 def despike(
+    func: Callable,
     array: na.AbstractScalarArray,
     axis: tuple[str, str],
     where: None | bool | na.AbstractScalarArray,
     inbkg: None | na.AbstractScalarArray,
     invar: None | float | na.AbstractScalarArray,
-    sigclip: float,
-    sigfrac: float,
-    objlim: float,
-    gain: float,
-    readnoise: float,
-    satlevel: float,
-    niter: int,
-    sepmed: bool,
-    cleantype: Literal["median", "medmask", "meanmask", "idw"],
-    fsmode: Literal["median", "convolve"],
-    psfmodel: Literal["gauss", "gaussx", "gaussy", "moffat"],
-    psffwhm: float,
-    psfsize: int,
     psfk: None | na.AbstractScalarArray,
-    psfbeta: float,
-    verbose: bool,
+    **kwargs: Any,
 ) -> na.ScalarArray:
+    """
+    Call :func:`astroscrappy.detect_cosmics` on each image of `array`.
 
+    For :func:`named_arrays.despike`, return a copy of `array` with only the
+    cosmic-ray pixels replaced, and for :func:`named_arrays.despike_mask`,
+    return the mask of cosmic-ray pixels.
+    """
     try:
         array = scalars._normalize(array)
         where = scalars._normalize(where) if where is not None else where
@@ -2825,51 +2851,62 @@ def despike(
     except scalars.ScalarTypeError:  # pragma: nocover
         return NotImplemented
 
+    unit = na.unit(array)
+    if unit is not None:
+        if na.unit(inbkg) is not None:
+            inbkg = inbkg.to(unit)
+        if na.unit(invar) is not None:
+            invar = invar.to(unit ** 2)
+
     shape = na.shape_broadcasted(
         array,
         where,
         inbkg,
         invar,
     )
+    shape_image = {ax: shape[ax] for ax in shape if ax in axis}
 
     array = array.broadcast_to(shape)
-    where = where.broadcast_to(shape) if where is not None else where
-    inbkg = inbkg.broadcast_to(shape) if inbkg is not None else inbkg
-    invar = invar.broadcast_to(shape) if invar is not None else invar
 
-    if psfk is not None:
-        shape_orthogonal = {ax: shape[ax] for ax in shape if ax not in axis}
-        shape_psfk = na.broadcast_shapes(shape_orthogonal, psfk.shape)
-        psfk = na.broadcast_to(psfk, shape_psfk)
+    if func is na.despike:
+        result = array.copy()
+    else:
+        result = na.ScalarArray.zeros(shape, dtype=bool)
 
-    result = array.copy()
-    inmask = ~where if where is not None else where
+    arguments = dict(indat=array, inbkg=inbkg, invar=invar)
+    arguments = {name: a for name, a in arguments.items() if a is not None}
 
     for index in na.ndindex(shape, axis_ignored=axis):
-        result_ndarray = astroscrappy.detect_cosmics(
-            indat=array[index].ndarray,
-            inmask=inmask[index].ndarray if inmask is not None else inmask,
-            inbkg=inbkg[index].ndarray if inbkg is not None else inbkg,
-            invar=invar[index].ndarray if invar is not None else invar,
-            sigclip=sigclip,
-            sigfrac=sigfrac,
-            objlim=objlim,
-            gain=gain,
-            readnoise=readnoise,
-            satlevel=satlevel,
-            niter=niter,
-            sepmed=sepmed,
-            cleantype=cleantype,
-            fsmode=fsmode,
-            psfmodel=psfmodel,
-            psffwhm=psffwhm,
-            psfsize=psfsize,
-            psfk=psfk[index].ndarray if psfk is not None else psfk,
-            psfbeta=psfbeta,
-            verbose=verbose,
+
+        images = {name: _image(a[index], shape_image) for name, a in arguments.items()}
+
+        where_valid = np.logical_and.reduce([np.isfinite(i) for i in images.values()])
+        if where is not None:
+            where_valid = np.logical_and(where_valid, _image(where[index], shape_image))
+
+        if not np.any(where_valid):
+            continue
+
+        images = {name: _fill_nonfinite(images[name], where_valid) for name in images}
+
+        # astroscrappy filters the variance and convolves with the kernel
+        # as they are given, which needs C-ordered single precision.
+        if invar is not None:
+            images["invar"] = np.ascontiguousarray(images["invar"], dtype=np.float32)
+        if psfk is not None:
+            psfk_index = psfk[index].value.ndarray_aligned(tuple(shape_image))
+            images["psfk"] = np.ascontiguousarray(psfk_index, dtype=np.float32)
+
+        crmask, cleanarr = astroscrappy.detect_cosmics(
+            inmask=~where_valid,
+            **images,
+            **kwargs,
         )
 
-        result[index].value.ndarray[:] = result_ndarray[1]
+        if func is na.despike:
+            result[index].value.ndarray[crmask] = cleanarr[crmask]
+        else:
+            result[index].ndarray[:] = crmask
 
     return result
 

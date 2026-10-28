@@ -1343,6 +1343,9 @@ class AbstractFunctionArray(
         if func in function_named_array_functions.NDFILTER_FUNCTIONS:
             return function_named_array_functions.ndfilter(func, *args, **kwargs)
 
+        if func in function_named_array_functions.DESPIKE_FUNCTIONS:
+            return function_named_array_functions.despike(func, *args, **kwargs)
+
         if func in function_named_array_functions.HANDLED_FUNCTIONS:
             return function_named_array_functions.HANDLED_FUNCTIONS[func](*args, **kwargs)
 
