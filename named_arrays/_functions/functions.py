@@ -163,6 +163,60 @@ def _equal(
     return bool(np.all(equal))
 
 
+def _regrid(
+    coordinates_input: na.AbstractScalar | na.AbstractVectorArray,
+    coordinates_output: na.AbstractScalar | na.AbstractVectorArray,
+    values_input: na.AbstractScalar | na.AbstractVectorArray,
+    axis_input: tuple[str, ...],
+    axis_output: tuple[str, ...],
+    method: Literal['multilinear', 'conservative'],
+    bounds: Literal["extrapolate", "nan", "raise"],
+) -> na.AbstractArray:
+    """
+    Resample values from coordinates which are not uncertain to new ones
+    using :func:`named_arrays.regridding.regrid`, as :meth:`FunctionArray.regrid`
+    does, which calls this function once for the nominal values of uncertain
+    coordinates and once for their samples.
+
+    The ``multilinear`` method interpolates at points, so an axis which only
+    `coordinates_output` varies along, like the one of the samples of
+    uncertain points on a grid which is not uncertain, lists more points,
+    rather than a batch of them which the values would be copied along.
+
+    Parameters
+    ----------
+    coordinates_input
+        The coordinates of the values.
+    coordinates_output
+        The new coordinates.
+    values_input
+        The values to resample.
+    axis_input
+        The axes of `coordinates_input` to resample.
+    axis_output
+        The axes of `coordinates_output` which take their place.
+    method
+        The resampling method to use.
+    bounds
+        How to treat new coordinates outside of `coordinates_input`.
+    """
+    if method == "multilinear":
+        shape_input = na.shape_broadcasted(coordinates_input, values_input)
+        axis_output = axis_output + tuple(
+            a for a in na.shape(coordinates_output)
+            if a not in axis_output and a not in shape_input
+        )
+    return na.regridding.regrid(
+        coordinates_input=coordinates_input,
+        coordinates_output=coordinates_output,
+        values_input=values_input,
+        axis_input=axis_input,
+        axis_output=axis_output,
+        method=method,
+        bounds=bounds,
+    )
+
+
 @functools.cache
 def _array_function_dispatch() -> tuple[dict[Callable, Callable], dict[Callable, Callable]]:
     """
@@ -422,6 +476,11 @@ class AbstractFunctionArray(
         axis along which the points are listed, and takes the place of the
         axes in `axis` in the result.
 
+        If the outputs of this function are uncertain, or if the components
+        which are resampled are uncertain, either in its inputs or in the new
+        inputs, the nominal values and the samples are resampled separately,
+        and the outputs of the result are uncertain.
+
         Parameters
         ----------
         inputs
@@ -452,12 +511,19 @@ class AbstractFunctionArray(
             ``extrapolate`` (the default) extrapolates linearly from the
             nearest cell, ``nan`` sets the outputs there to :obj:`numpy.nan`,
             and ``raise`` raises a :class:`ValueError`.
+            If the components which are resampled are uncertain, each of
+            their samples is treated on its own, so ``nan`` sets only the
+            samples outside to :obj:`numpy.nan`, and ``raise`` raises if any
+            sample is outside.
             See :func:`regridding.weights` for the details.
         weights
             Optional weights which can be computed in advance using :meth:`weights`
             to greatly speed repeated resampling of the same `inputs`.
             If given, `method` and `bounds` are ignored, since the weights
             already encode them.
+            They cannot be used if the inputs which are resampled are
+            uncertain, since each of their samples has weights of its own,
+            but they can be used if only the outputs are uncertain.
 
         See Also
         --------
@@ -517,6 +583,8 @@ class AbstractFunctionArray(
             ax.set_aspect("equal")
         """
 
+        from named_arrays._scalars.uncertainties import uncertainties
+
         _self = self.explicit
 
         inputs_new, inputs_old, axis_input, axis_output = _self._normalize__regrid__args(
@@ -531,25 +599,55 @@ class AbstractFunctionArray(
             resamples=True,
         )
 
-        if weights is not None:
-            _weights, shape_input, shape_output = weights
+        uncertain = uncertainties._is_uncertain(inputs_old) or uncertainties._is_uncertain(inputs_new)
 
-        else:
-            _weights, shape_input, shape_output = na.regridding.weights(
-                coordinates_input=inputs_old,
-                coordinates_output=inputs_new,
+        if uncertain:
+            if weights is not None:
+                raise ValueError(
+                    "Weights computed in advance cannot be used to resample "
+                    "uncertain inputs, since each of their samples has weights "
+                    "of its own."
+                )
+
+            # The nominal values and the samples of the inputs have weights
+            # of their own, so they are resampled separately, and each of
+            # them should vary along every axis of the new inputs, even one
+            # which only the other varies along.
+            outputs_new = uncertainties._propagate(
+                _regrid,
+                arguments=dict(
+                    coordinates_input=inputs_old,
+                    coordinates_output=na.broadcast_to(inputs_new, na.shape(inputs_new)),
+                    values_input=_self.outputs,
+                ),
                 axis_input=axis_input,
                 axis_output=axis_output,
                 method=method,
                 bounds=bounds,
             )
 
-        outputs_new = na.regridding.regrid_from_weights(
-            weights=_weights,
-            shape_input=shape_input,
-            shape_output=shape_output,
-            values_input=_self.outputs,
-        )
+        else:
+            if weights is None:
+                weights = na.regridding.weights(
+                    coordinates_input=inputs_old,
+                    coordinates_output=inputs_new,
+                    axis_input=axis_input,
+                    axis_output=axis_output,
+                    method=method,
+                    bounds=bounds,
+                )
+
+            _weights, shape_input, shape_output = weights
+
+            # The weights do not depend on the outputs, so the nominal values
+            # and the samples of uncertain outputs share them.
+            outputs_new = uncertainties._propagate(
+                na.regridding.regrid_from_weights,
+                arguments=dict(values_input=_self.outputs),
+                weights=_weights,
+                shape_input=shape_input,
+                shape_output=shape_output,
+            )
 
         if isinstance(inputs, na.AbstractVectorArray) and isinstance(_self.inputs, na.AbstractVectorArray):
 
@@ -582,6 +680,9 @@ class AbstractFunctionArray(
         :func:`named_arrays.regridding.weights`.
         The output of this method is designed to be used by :meth:`regrid`.
 
+        The inputs which are resampled cannot be uncertain, since each of
+        their samples has weights of its own, but the outputs can be.
+
         Parameters
         ----------
         inputs
@@ -598,11 +699,19 @@ class AbstractFunctionArray(
         --------
         :meth:`regrid`: A method designed to use these weights.
         """
+        from named_arrays._scalars.uncertainties import uncertainties
 
         coordinates_new, coordinates_old, axis_input, axis_output = self._normalize__regrid__args(
             inputs=inputs,
             axis=axis,
         )
+
+        if uncertainties._is_uncertain(coordinates_old) or uncertainties._is_uncertain(coordinates_new):
+            raise ValueError(
+                "The weights cannot be computed in advance for uncertain "
+                "inputs, since each of their samples has weights of its own. "
+                "`regrid()` resamples them without weights computed in advance."
+            )
 
         return na.regridding.weights(
             coordinates_input=coordinates_old,
