@@ -565,6 +565,38 @@ def convolve(
     )
 
 
+@_implements(na.vecdot)
+def vecdot(
+    x1: float | u.Quantity | na.AbstractScalar,
+    x2: float | u.Quantity | na.AbstractScalar,
+    axis: tuple[str, ...],
+) -> na.UncertainScalarArray:
+
+    try:
+        x1 = uncertainties._normalize(x1).explicit
+        x2 = uncertainties._normalize(x2).explicit
+    except uncertainties.ScalarTypeError:  # pragma: nocover
+        return NotImplemented
+
+    # The nominal value may lack an axis which the distribution has, being
+    # the same all along it, but it is summed over as many times.
+    shape1 = {a: n for a, n in x1.shape.items() if a in axis}
+    shape2 = {a: n for a, n in x2.shape.items() if a in axis}
+
+    return x1.replace(
+        nominal=na.vecdot(
+            na.broadcast_to(x1.nominal, shape1, append=True),
+            na.broadcast_to(x2.nominal, shape2, append=True),
+            axis=axis,
+        ),
+        distribution=na.vecdot(
+            na.broadcast_to(x1.distribution, shape1, append=True),
+            na.broadcast_to(x2.distribution, shape2, append=True),
+            axis=axis,
+        ),
+    )
+
+
 def random(
         func: Callable,
         *args: float | u.Quantity | na.AbstractScalar,

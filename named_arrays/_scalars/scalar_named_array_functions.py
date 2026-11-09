@@ -1,5 +1,6 @@
 from typing import Callable, Sequence, Any, Literal, TYPE_CHECKING
 import collections
+import math
 import numpy as np
 import numpy.typing as npt
 import numexpr
@@ -939,6 +940,74 @@ def convolve(
     )
 
     return result
+
+
+@_implements(na.vecdot)
+def vecdot(
+    x1: float | u.Quantity | na.AbstractScalarArray,
+    x2: float | u.Quantity | na.AbstractScalarArray,
+    axis: tuple[str, ...],
+) -> na.ScalarArray:
+
+    try:
+        x1 = scalars._normalize(x1).explicit
+        x2 = scalars._normalize(x2).explicit
+    except scalars.ScalarTypeError:  # pragma: nocover
+        return NotImplemented
+
+    shape1 = x1.shape
+    shape2 = x2.shape
+
+    # An axis of one element broadcasts against the other array, so it is
+    # an axis of the other array alone.
+    x1 = x1[{a: 0 for a, n in shape1.items() if n == 1 and shape2.get(a, 1) != 1}]
+    x2 = x2[{a: 0 for a, n in shape2.items() if n == 1 and shape1.get(a, 1) != 1}]
+
+    # An axis of only one array is summed over in that array alone.
+    axis1 = tuple(a for a in axis if a in x1.shape and a not in x2.shape)
+    axis2 = tuple(a for a in axis if a in x2.shape and a not in x1.shape)
+    if axis1:
+        x1 = x1.sum(axis1)
+    if axis2:
+        x2 = x2.sum(axis2)
+
+    # Conjugation commutes with the sums, so it is applied to what is left.
+    if np.iscomplexobj(x1.ndarray):
+        x1 = np.conj(x1)
+
+    shape1 = x1.shape
+    shape2 = x2.shape
+    axis = [a for a in axis if a in shape1 and a in shape2]
+    batch = [a for a in shape1 if a in shape2 and a not in axis]
+    outer1 = [a for a in shape1 if a not in shape2]
+    outer2 = [a for a in shape2 if a not in shape1]
+
+    # BLAS multiplies only floating-point and complex matrices. The integer
+    # matrix product of numpy is many times slower than the product and sum,
+    # and it would accumulate in the type of the arrays, where the sum
+    # promotes small integers and counts booleans.
+    dtype = np.result_type(x1.ndarray, x2.ndarray)
+    if not axis or not np.issubdtype(dtype, np.inexact):
+        return (x1 * x2).sum(tuple(axis))
+
+    # Otherwise it is a stack of matrix products, one for each element along
+    # the axes the arrays share but do not sum over.
+    num_batch = [shape1[a] for a in batch]
+    num_outer1 = [shape1[a] for a in outer1]
+    num_outer2 = [shape2[a] for a in outer2]
+    num_axis = math.prod(shape1[a] for a in axis)
+
+    a1 = x1.ndarray_aligned(batch + outer1 + axis)
+    a2 = x2.ndarray_aligned(batch + axis + outer2)
+    a1 = a1.reshape(math.prod(num_batch), math.prod(num_outer1), num_axis)
+    a2 = a2.reshape(math.prod(num_batch), num_axis, math.prod(num_outer2))
+
+    result = np.matmul(a1, a2)
+
+    return na.ScalarArray(
+        ndarray=result.reshape(num_batch + num_outer1 + num_outer2),
+        axes=tuple(batch + outer1 + outer2),
+    )
 
 
 def random(
