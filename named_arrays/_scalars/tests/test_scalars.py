@@ -294,7 +294,7 @@ class AbstractTestAbstractScalar(
                     return
 
                 result = na.vecdot(array, x2, axis=axis)
-                expected = (array * x2).sum(axis)
+                expected = (np.conj(array) * x2).sum(axis)
 
                 assert type(result) is type(expected.explicit)
                 assert na.shape(result) == na.shape(expected)
@@ -2341,6 +2341,57 @@ _rng_vecdot = np.random.default_rng(271828)
             na.ScalarArray(_rng_vecdot.random((4, 6)) > 0.3, ("y", "b")),
             "y",
         ),
+        # booleans take the type of the other array
+        (
+            na.ScalarArray(_rng_vecdot.random((5, 4)) > 0.3, ("a", "y")),
+            na.ScalarArray(_rng_vecdot.random((4, 6)).astype(np.float32), ("y", "b")),
+            "y",
+        ),
+        # small integers are summed in the default integer, as by np.sum()
+        (
+            na.ScalarArray(np.full((2, 3), 40000, dtype=np.int32), ("a", "y")),
+            na.ScalarArray(np.full((3, 2), 40000, dtype=np.int32), ("y", "b")),
+            "y",
+        ),
+        (
+            na.ScalarArray(np.full((2, 300), 10, dtype=np.uint8), ("a", "y")),
+            na.ScalarArray(np.full((300, 2), 10, dtype=np.uint8), ("y", "b")),
+            "y",
+        ),
+        # only one array has axes the other lacks
+        (
+            na.ScalarArray(_rng_vecdot.normal(size=(4,)), ("y",)),
+            na.ScalarArray(_rng_vecdot.normal(size=(4, 6, 3)), ("y", "b", "c")),
+            "y",
+        ),
+        (
+            na.ScalarArray(_rng_vecdot.normal(size=(2, 4, 6)), ("x", "y", "a")),
+            na.ScalarArray(_rng_vecdot.normal(size=(4, 2)), ("y", "x")),
+            "y",
+        ),
+        # neither array has axes the other lacks
+        (
+            na.ScalarArray(_rng_vecdot.normal(size=(3, 4)), ("x", "y")),
+            na.ScalarArray(_rng_vecdot.normal(size=(4, 3)), ("y", "x")),
+            "y",
+        ),
+        # an axis of one element broadcasts against one of none
+        (
+            na.ScalarArray(np.ones((0, 2)), ("a", "p")),
+            na.ScalarArray(np.ones((1, 3)), ("a", "q")),
+            "a",
+        ),
+        (
+            na.ScalarArray(np.ones((1, 4, 2)), ("a", "y", "p")),
+            na.ScalarArray(np.ones((0, 4, 3)), ("a", "y", "q")),
+            "y",
+        ),
+        # no axes at all
+        (
+            na.ScalarArray(_rng_vecdot.random((5, 4)) > 0.3, ("a", "y")),
+            na.ScalarArray(_rng_vecdot.random((4, 6)) > 0.3, ("y", "b")),
+            (),
+        ),
     ],
 )
 class TestVecdot:
@@ -2363,6 +2414,56 @@ class TestVecdot:
         assert result.dtype == expected.dtype
         assert na.unit(result) == na.unit(expected)
         assert np.allclose(result, expected)
+
+
+def test_vecdot_uncertain_complex() -> None:
+    """The nominal value and the distribution are both conjugated."""
+    x1 = na.UncertainScalarArray(
+        nominal=na.ScalarArray(np.array([1 + 2j, 3 - 1j, -2 + 1j]), "y"),
+        distribution=na.ScalarArray(
+            ndarray=np.array([[1 + 1j, 3, -2j], [1 + 3j, 2 - 1j, -2 + 2j]]),
+            axes=("_distribution", "y"),
+        ),
+    )
+    x2 = na.ScalarArray(np.array([[2, 1j], [-1, 1], [1 - 1j, 3]]), ("y", "b"))
+    result = na.vecdot(x1, x2, axis="y")
+    expected = (np.conj(x1) * x2).sum("y")
+    assert type(result) is na.UncertainScalarArray
+    assert np.allclose(result.nominal, expected.nominal)
+    assert np.allclose(result.distribution, expected.distribution)
+
+
+_x1_vecdot = na.ScalarArray(_rng_vecdot.normal(size=(2, 3)), ("a", "y"))
+_x2_vecdot = na.ScalarArray(_rng_vecdot.normal(size=(3, 4)), ("y", "b"))
+
+
+def test_vecdot_axis_iterable() -> None:
+    """`axis` may be any iterable of names, read only once."""
+    result = na.vecdot(_x1_vecdot, _x2_vecdot, axis=(a for a in ["y"]))
+    expected = (_x1_vecdot * _x2_vecdot).sum("y")
+    assert na.shape(result) == na.shape(expected)
+    assert np.allclose(result, expected)
+
+
+def test_vecdot_axis_none() -> None:
+    """If `axis` is :obj:`None`, the sum is over every axis of both arrays."""
+    result = na.vecdot(_x1_vecdot, _x2_vecdot, axis=None)
+    expected = (_x1_vecdot * _x2_vecdot).sum()
+    assert na.shape(result) == dict()
+    assert np.allclose(result, expected)
+
+
+def test_vecdot_axis_repeated() -> None:
+    """An axis named twice in `axis` is an error, as for :func:`numpy.sum`."""
+    with pytest.raises(ValueError, match="must not repeat an axis"):
+        na.vecdot(_x1_vecdot, _x2_vecdot, axis=("y", "y"))
+
+
+def test_vecdot_scalars() -> None:
+    """Two numbers which aren't named arrays are multiplied."""
+    result = na.vecdot(2.0, 3.0)
+    assert isinstance(result, na.ScalarArray)
+    assert result.ndarray == 6.0
 
 
 def test_vecdot_vectors_unsupported() -> None:

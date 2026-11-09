@@ -1795,17 +1795,19 @@ def convolve(
 def vecdot(
     x1: na.ArrayLike,
     x2: na.ArrayLike,
-    axis: str | Sequence[str],
+    axis: None | str | Sequence[str] = None,
 ) -> na.AbstractExplicitArray:
     """
     Sum the product of two arrays along the given axes, without forming the
     product.
 
-    This is :func:`numpy.vecdot` with named axes, and the same as
+    This is like :func:`numpy.vecdot`, with named axes, and the same as
     ``(np.conj(x1) * x2).sum(axis)``. When each array has axes the other
     lacks, that product is larger than either of them, and building it is
-    most of the work, so the sum is taken instead as a matrix product, which
-    needs no memory beyond the result and is many times faster.
+    most of the work. For floating-point and complex arrays, the sum is
+    taken instead as a stack of matrix products, which uses BLAS and is many
+    times faster. Other arrays, such as integers and booleans, which BLAS
+    does not multiply, are multiplied and summed.
 
     Parameters
     ----------
@@ -1815,7 +1817,8 @@ def vecdot(
         The second array.
     axis
         The axis or axes to sum over. Each must be an axis of `x1` or of
-        `x2`; an axis of only one of them is summed over in that one.
+        `x2`; an axis of only one of them is summed over in that one. If
+        :obj:`None`, the sum is over every axis of `x1` and `x2`.
 
     Returns
     -------
@@ -1825,7 +1828,10 @@ def vecdot(
     Raises
     ------
     ValueError
-        If an axis in `axis` is an axis of neither `x1` nor `x2`.
+        If an axis in `axis` is an axis of neither `x1` nor `x2`, or if
+        `axis` repeats an axis.
+    TypeError
+        If `x1` or `x2` is neither a scalar nor an uncertain scalar array.
 
     See Also
     --------
@@ -1851,16 +1857,28 @@ def vecdot(
     """
     shape1 = na.shape(x1)
     shape2 = na.shape(x2)
-    na.broadcast_shapes(shape1, shape2)
+    shape = na.broadcast_shapes(shape1, shape2)
 
-    axes = (axis,) if isinstance(axis, str) else tuple(axis)
-    missing = [a for a in axes if a not in shape1 and a not in shape2]
+    if axis is None:
+        axis = tuple(shape)
+    elif isinstance(axis, str):
+        axis = (axis,)
+    else:
+        axis = tuple(axis)
+
+    if len(set(axis)) != len(axis):
+        raise ValueError(f"`axis` must not repeat an axis, but it is {axis}.")
+
+    missing = [a for a in axis if a not in shape]
     if missing:
         raise ValueError(
             f"every axis in `axis` must be an axis of `x1` or of `x2`, "
             f"but {missing} is not an axis of either, "
             f"whose shapes are {shape1} and {shape2}."
         )
+
+    if not isinstance(x1, na.AbstractArray) and not isinstance(x2, na.AbstractArray):
+        x1 = na.ScalarArray(x1)
 
     return _named_array_function(
         vecdot,

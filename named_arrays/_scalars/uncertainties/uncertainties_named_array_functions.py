@@ -569,7 +569,7 @@ def convolve(
 def vecdot(
     x1: float | u.Quantity | na.AbstractScalar,
     x2: float | u.Quantity | na.AbstractScalar,
-    axis: str | Sequence[str],
+    axis: tuple[str, ...],
 ) -> na.UncertainScalarArray:
 
     try:
@@ -578,12 +578,10 @@ def vecdot(
     except uncertainties.ScalarTypeError:  # pragma: nocover
         return NotImplemented
 
-    axes = (axis,) if isinstance(axis, str) else tuple(axis)
-
     # The nominal value may lack an axis which the distribution has, being
     # the same all along it, but it is summed over as many times.
-    shape1 = {a: n for a, n in x1.shape.items() if a in axes}
-    shape2 = {a: n for a, n in x2.shape.items() if a in axes}
+    shape1 = {a: n for a, n in x1.shape.items() if a in axis}
+    shape2 = {a: n for a, n in x2.shape.items() if a in axis}
 
     return x1.replace(
         nominal=na.vecdot(
