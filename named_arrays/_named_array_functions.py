@@ -35,6 +35,7 @@ __all__ = [
     "histogram2d",
     "histogramdd",
     "convolve",
+    "vecdot",
     "jacobian",
     "despike",
     "despike_mask",
@@ -1788,6 +1789,84 @@ def convolve(
         axis=axis,
         where=where,
         mode=mode,
+    )
+
+
+def vecdot(
+    x1: na.ArrayLike,
+    x2: na.ArrayLike,
+    axis: str | Sequence[str],
+) -> na.AbstractExplicitArray:
+    """
+    Sum the product of two arrays along the given axes, without forming the
+    product.
+
+    This is :func:`numpy.vecdot` with named axes, and the same as
+    ``(np.conj(x1) * x2).sum(axis)``. When each array has axes the other
+    lacks, that product is larger than either of them, and building it is
+    most of the work, so the sum is taken instead as a matrix product, which
+    needs no memory beyond the result and is many times faster.
+
+    Parameters
+    ----------
+    x1
+        The first array, conjugated if it is complex.
+    x2
+        The second array.
+    axis
+        The axis or axes to sum over. Each must be an axis of `x1` or of
+        `x2`; an axis of only one of them is summed over in that one.
+
+    Returns
+    -------
+    :
+        The sum, along every axis of `x1` and `x2` but `axis`.
+
+    Raises
+    ------
+    ValueError
+        If an axis in `axis` is an axis of neither `x1` nor `x2`.
+
+    See Also
+    --------
+    :func:`numpy.vecdot`: The :mod:`numpy` equivalent, along one axis.
+
+    Examples
+    --------
+    The images seen through three filters, from a cube of spectral radiance
+    and the response of each filter at each wavelength.
+
+    .. jupyter-execute::
+
+        import numpy as np
+        import named_arrays as na
+
+        response = na.random.uniform(0, 1, shape_random=dict(filter=3, wavelength=100))
+        cube = na.random.uniform(0, 1, shape_random=dict(wavelength=100, x=256, y=256))
+
+        images = na.vecdot(response, cube, axis="wavelength")
+
+        print(images.shape)
+        print(np.allclose(images, (response * cube).sum("wavelength")))
+    """
+    shape1 = na.shape(x1)
+    shape2 = na.shape(x2)
+    na.broadcast_shapes(shape1, shape2)
+
+    axes = (axis,) if isinstance(axis, str) else tuple(axis)
+    missing = [a for a in axes if a not in shape1 and a not in shape2]
+    if missing:
+        raise ValueError(
+            f"every axis in `axis` must be an axis of `x1` or of `x2`, "
+            f"but {missing} is not an axis of either, "
+            f"whose shapes are {shape1} and {shape2}."
+        )
+
+    return _named_array_function(
+        vecdot,
+        x1=x1,
+        x2=x2,
+        axis=axis,
     )
 
 

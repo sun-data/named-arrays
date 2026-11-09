@@ -251,6 +251,57 @@ class AbstractTestAbstractScalar(
     ):
 
         @pytest.mark.parametrize(
+            argnames="x2",
+            argvalues=[
+                na.ScalarArray(
+                    ndarray=np.linspace(-3, 3, 2 * _num_y).reshape(_num_y, 2) * u.s,
+                    axes=("y", "z"),
+                ),
+                na.ScalarArray(np.linspace(-1, 1, _num_y), axes="y"),
+                na.ScalarArray(np.array([[2.0, -1.0]]), axes=("y", "z")),
+                na.UncertainScalarArray(
+                    nominal=na.ScalarArray(
+                        ndarray=np.linspace(-1, 1, 2 * _num_y).reshape(_num_y, 2),
+                        axes=("y", "z"),
+                    ),
+                    distribution=na.ScalarArray(
+                        ndarray=np.linspace(-2, 2, _num_distribution * _num_y * 2).reshape(
+                            _num_distribution, _num_y, 2
+                        ),
+                        axes=("_distribution", "y", "z"),
+                    ),
+                ),
+            ],
+        )
+        @pytest.mark.parametrize(
+            argnames="axis",
+            argvalues=[
+                "y",
+                ("x", "y"),
+            ],
+        )
+        class TestVecdot:
+            def test_vecdot(
+                self,
+                array: na.AbstractScalar,
+                x2: na.AbstractScalar,
+                axis: str | tuple[str, ...],
+            ) -> None:
+                axes = (axis,) if isinstance(axis, str) else axis
+                if not set(axes).issubset(na.shape_broadcasted(array, x2)):
+                    with pytest.raises(ValueError, match="is not an axis of either"):
+                        na.vecdot(array, x2, axis=axis)
+                    return
+
+                result = na.vecdot(array, x2, axis=axis)
+                expected = (array * x2).sum(axis)
+
+                assert type(result) is type(expected.explicit)
+                assert na.shape(result) == na.shape(expected)
+                assert na.unit(result) == na.unit(expected)
+                assert np.allclose(result, expected)
+
+        @pytest.mark.parametrize(
             argnames="bins",
             argvalues=[
                 dict(hist_x=11),
@@ -2252,3 +2303,70 @@ def test_setitem_invalid_item():
     a = na.ScalarArray(np.zeros((_num_x, _num_y)), axes=("x", "y"))
     with pytest.raises(TypeError, match="`item` must be an instance of"):
         a[(0, 1)] = 1
+
+
+_rng_vecdot = np.random.default_rng(271828)
+
+
+@pytest.mark.parametrize(
+    argnames="x1,x2,axis",
+    argvalues=[
+        # a stack of matrix products, one for each element along `x`
+        (
+            na.ScalarArray(_rng_vecdot.normal(size=(3, 4, 5)) * u.mm, ("x", "y", "a")),
+            na.ScalarArray(_rng_vecdot.normal(size=(4, 3, 6)), ("y", "x", "b")),
+            "y",
+        ),
+        # several axes at once
+        (
+            na.ScalarArray(_rng_vecdot.normal(size=(5, 4, 2)), ("a", "y", "z")),
+            na.ScalarArray(_rng_vecdot.normal(size=(2, 4, 6)) * u.s, ("z", "y", "b")),
+            ("y", "z"),
+        ),
+        # an axis of one element in both arrays is kept
+        (
+            na.ScalarArray(_rng_vecdot.normal(size=(5, 4, 1)), ("a", "y", "w")),
+            na.ScalarArray(_rng_vecdot.normal(size=(1, 4, 6)), ("w", "y", "b")),
+            "y",
+        ),
+        # the first array is conjugated
+        (
+            na.ScalarArray(_rng_vecdot.normal(size=(5, 4)) * (1 + 2j), ("a", "y")),
+            na.ScalarArray(_rng_vecdot.normal(size=(4, 6)) * (3 - 1j), ("y", "b")),
+            "y",
+        ),
+        # booleans are counted, not combined logically
+        (
+            na.ScalarArray(_rng_vecdot.random((5, 4)) > 0.3, ("a", "y")),
+            na.ScalarArray(_rng_vecdot.random((4, 6)) > 0.3, ("y", "b")),
+            "y",
+        ),
+    ],
+)
+class TestVecdot:
+    """
+    :func:`named_arrays.vecdot` along the paths which the fixtures of
+    :class:`AbstractTestAbstractScalar` do not reach.
+    """
+
+    def test_vecdot(
+        self,
+        x1: na.ScalarArray,
+        x2: na.ScalarArray,
+        axis: str | tuple[str, ...],
+    ) -> None:
+        result = na.vecdot(x1, x2, axis=axis)
+        expected = (np.conj(x1) if np.iscomplexobj(x1.ndarray) else x1) * x2
+        expected = expected.sum(axis)
+
+        assert na.shape(result) == na.shape(expected)
+        assert result.dtype == expected.dtype
+        assert na.unit(result) == na.unit(expected)
+        assert np.allclose(result, expected)
+
+
+def test_vecdot_vectors_unsupported() -> None:
+    """Vectors are not supported, rather than contracted in some sense."""
+    x = na.ScalarArray(np.ones((3, 4)), ("y", "b"))
+    with pytest.raises(TypeError, match="returned `NotImplemented` for function `vecdot`"):
+        na.vecdot(na.Cartesian2dVectorArray(x, x), x, axis="y")
