@@ -1218,6 +1218,18 @@ class AbstractTestAbstractPolynomialFunctionArray(
         assert isinstance(result, array.outputs.type_explicit)
         assert np.any(result != 0)
 
+    def test__call__design_matrix(
+        self,
+        array: na.AbstractPolynomialFunctionArray,
+    ) -> None:
+        inputs = array.inputs
+        result = array(inputs)
+        expected = array.design_matrix(inputs) @ array.coefficients
+        assert isinstance(result, na.FunctionArray)
+        assert result.inputs is inputs
+        assert isinstance(result.outputs, expected.type_explicit)
+        assert np.allclose(result.outputs, expected)
+
 
 def _polynomial_function_arrays():
     return [
@@ -1312,6 +1324,146 @@ class TestPolynomialFitFunctionArray(
         AbstractTestAbstractFunctionArray.TestMatmul
     ):
         pass
+
+
+def _polynomial_spectral_positional() -> na.PolynomialFitFunctionArray:
+    """
+    A polynomial fit with units, like a distortion model, to the
+    position on a detector of a spectral and positional input, with a
+    different center, and so different coefficients, for each channel.
+    """
+    # at least degree + 1 samples along each axis
+    shape = dict(x=5, y=6, w=5)
+    inputs = na.SpectralPositionalVectorArray(
+        wavelength=na.linspace(600, 630, "w", shape["w"]) * u.AA,
+        position=na.Cartesian2dVectorArray(
+            x=na.linspace(-1, 1, "x", shape["x"]) * u.arcsec,
+            y=na.linspace(-2, 2, "y", shape["y"]) * u.arcsec,
+        ),
+    )
+    x = inputs.position.x / u.arcsec
+    y = inputs.position.y / u.arcsec
+    w = inputs.wavelength / u.AA
+    outputs = na.Cartesian2dVectorArray(
+        x=(3 * x + w + na.random.normal(0, 0.1, shape, seed=0)) * u.pix,
+        y=(2 * x * y + na.random.normal(0, 0.1, shape, seed=1)) * u.mm,
+    )
+    center = na.SpectralPositionalVectorArray(
+        wavelength=615 * u.AA,
+        position=na.Cartesian2dVectorArray(
+            x=na.linspace(0, 1, "channel", 3) * u.arcsec,
+            y=0 * u.deg,
+        ),
+    )
+    return na.PolynomialFitFunctionArray.from_degree(
+        inputs=inputs,
+        outputs=outputs,
+        degree=3,
+        center=center,
+        axis_polynomial=tuple(shape),
+    )
+
+
+@pytest.mark.parametrize(
+    argnames="array,inputs",
+    argvalues=[
+        # inputs on new axes in different but compatible units,
+        # broadcast against the axis of the coefficients
+        (
+            _polynomial_spectral_positional(),
+            na.SpectralPositionalVectorArray(
+                wavelength=na.linspace(0.06, 0.062, "v", 3) * u.um,
+                position=na.Cartesian2dVectorArray(
+                    x=na.linspace(-1, 1, "a", 5) * u.arcmin / 60,
+                    y=na.linspace(-1, 1, "b", 6) * u.arcsec,
+                ),
+            ),
+        ),
+        # inputs which have the axis of the coefficients themselves
+        (
+            _polynomial_spectral_positional(),
+            na.SpectralPositionalVectorArray(
+                wavelength=620 * u.AA,
+                position=na.Cartesian2dVectorArray(
+                    x=na.linspace(-1, 1, "channel", 3) * u.arcsec,
+                    y=na.linspace(-1, 1, "b", 6) * u.arcsec,
+                ),
+            ),
+        ),
+        # a scalar polynomial at a number
+        (_polynomial_function_arrays()[0], 0.5),
+        # a scalar polynomial at integers
+        (_polynomial_function_arrays()[0], na.arange(0, 4, axis="t")),
+        # coefficients along an axis the inputs do not have
+        (
+            _polynomial_function_arrays()[-2],
+            na.Cartesian2dVectorArray(0, na.linspace(0, 1, "t", 5)),
+        ),
+    ],
+)
+class TestPolynomialFitFunctionArrayCall:
+
+    def test__call__(
+        self,
+        array: na.PolynomialFitFunctionArray,
+        inputs: float | na.AbstractScalar | na.AbstractVectorArray,
+    ) -> None:
+        assert array._call_numba(inputs) is not None
+        result = array(inputs)
+        expected = array.design_matrix(inputs) @ array.coefficients
+        assert result.inputs is inputs
+        assert isinstance(result.outputs, expected.type_explicit)
+        assert result.outputs.shape == na.shape(expected)
+        if isinstance(expected, na.AbstractVectorArray):
+            pairs = zip(result.outputs.components.values(), expected.components.values())
+        else:
+            pairs = [(result.outputs, expected)]
+        for r, e in pairs:
+            assert na.unit(r) == na.unit(e)
+            assert np.allclose(na.value(r), na.value(e), rtol=1e-10, atol=1e-10)
+
+
+@pytest.mark.parametrize(
+    argnames="inputs",
+    argvalues=[
+        # uncertain inputs
+        na.UncertainScalarArray(
+            nominal=na.linspace(0, 1, "y", _num_y),
+            distribution=na.linspace(0, 1, "y", _num_y)
+            + na.linspace(-0.1, 0.1, na.UncertainScalarArray.axis_distribution, 3),
+        ),
+        # complex inputs
+        na.linspace(0, 1, "y", _num_y) + 1j,
+    ],
+)
+def test_polynomial_call_design_matrix(
+    inputs: na.AbstractScalar,
+) -> None:
+    array = _polynomial_function_arrays()[0]
+    assert array._call_numba(inputs) is None
+    result = array(inputs).outputs
+    expected = array.design_matrix(inputs) @ array.coefficients
+    assert np.all(result == expected)
+
+
+@pytest.mark.parametrize(
+    argnames="coefficient_names,match",
+    argvalues=[
+        (None, "`coefficient_names` is required"),
+        (["", "z"], "not one of the available components"),
+    ],
+)
+def test_polynomial_call_coefficient_names(
+    coefficient_names: None | list[str],
+    match: str,
+) -> None:
+    array = na.PolynomialFitFunctionArray(
+        inputs=na.linspace(0, 1, "y", _num_y),
+        outputs=na.linspace(0, 1, "y", _num_y),
+        coefficient_names=coefficient_names,
+    )
+    with pytest.raises(ValueError, match=match):
+        array(array.inputs)
 
 
 class AbstractTestAbstractModelFunctionArray(

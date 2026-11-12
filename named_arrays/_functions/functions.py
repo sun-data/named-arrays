@@ -1,5 +1,6 @@
 from __future__ import annotations
 import functools
+import math
 from typing import Mapping, TYPE_CHECKING, TypeVar, Generic, Type, ClassVar, Sequence, Callable, Collection, Any, Literal
 from typing import Self
 import abc
@@ -2128,13 +2129,7 @@ class PolynomialFitFunctionArray(
                 "`PolynomialFitFunctionArray.from_degree` to generate it."
             )
 
-        if self.center is not None:
-            inputs = inputs - self.center
-
-        inputs = na.as_named_array(inputs)
-        if isinstance(inputs, na.AbstractScalar):
-            inputs = na.CartesianNdVectorArray({"dummy": inputs})
-        inputs = inputs.cartesian_nd.broadcasted.components
+        inputs = self._inputs_centered(inputs).broadcasted.components
 
         design_matrix = {}
         for name in self.coefficient_names:
@@ -2153,6 +2148,172 @@ class PolynomialFitFunctionArray(
         design_matrix = na.CartesianNdVectorArray(design_matrix)
 
         return design_matrix
+
+    def _inputs_centered(
+        self,
+        inputs: float | u.Quantity | na.AbstractScalar | na.AbstractVectorArray,
+    ) -> na.AbstractCartesianNdVectorArray:
+        """
+        The inputs less :attr:`center`, as a vector whose components are
+        named like the factors of :attr:`coefficient_names`.
+        """
+        if self.center is not None:
+            inputs = inputs - self.center
+
+        inputs = na.as_named_array(inputs)
+        if isinstance(inputs, na.AbstractScalar):
+            inputs = na.CartesianNdVectorArray({"dummy": inputs})
+
+        return inputs.cartesian_nd
+
+    def __call__(
+        self,
+        inputs: float | u.Quantity | na.ScalarArray | na.AbstractVectorArray,
+    ) -> na.AbstractFunctionArray:
+        """
+        Evaluate the polynomial at the given inputs.
+
+        If the components of the inputs and of the coefficients are real
+        scalars without uncertainties, which combine into 32- or 64-bit floats,
+        a compiled kernel forms each term at one point at a time, in parallel.
+        It takes memory in proportion to the size of the outputs, instead of
+        to the size of the design matrix, which is that times the number of
+        terms.
+        Otherwise, this is the product of :meth:`design_matrix` and
+        :attr:`coefficients`.
+
+        Parameters
+        ----------
+        inputs
+            The independent variables at which to evaluate the polynomial.
+        """
+        outputs = self._call_numba(inputs)
+        if outputs is None:
+            return super().__call__(inputs)
+        return na.FunctionArray(inputs, outputs)
+
+    def _call_numba(
+        self,
+        inputs: float | u.Quantity | na.ScalarArray | na.AbstractVectorArray,
+    ) -> None | na.ScalarArray | na.AbstractExplicitVectorArray:
+        """
+        The outputs of :meth:`__call__` computed with a compiled kernel,
+        or :obj:`None` if the inputs or the coefficients are not supported,
+        in which case they are left to the design matrix.
+        """
+        names = self.coefficient_names
+        if not names:
+            return None
+
+        components = self._inputs_centered(inputs).components
+        components = {k: _scalar_explicit(v) for k, v in components.items()}
+        if any(v is None for v in components.values()):
+            return None
+        keys = tuple(components)
+
+        exponents = np.zeros((len(names), len(keys)), dtype=np.int64)
+        for t, name in enumerate(names):
+            if name:  # the empty string is the constant term
+                for k in name.split("*"):
+                    if k not in components:
+                        return None
+                    exponents[t, keys.index(k)] += 1
+
+        # Each row of the coefficients is the coefficient of one term for
+        # every component of the outputs, or a scalar if the outputs are.
+        rows = self.coefficients.components
+        row = rows[names[0]]
+        if isinstance(row, na.AbstractVectorArray):
+            type_outputs = row.type_explicit
+            keys_outputs = tuple(row.components)
+        else:
+            type_outputs = None
+            keys_outputs = ("",)
+        coefficients = {}
+        for name in names:
+            row = rows[name]
+            row = {"": row} if type_outputs is None else row.components
+            for k in keys_outputs:
+                coefficients[name, k] = _scalar_explicit(row[k])
+                if coefficients[name, k] is None:
+                    return None
+
+        arrays = list(components.values()) + list(coefficients.values())
+        dtype = np.result_type(*(a.ndarray for a in arrays))
+        if dtype not in (np.float32, np.float64):
+            return None
+
+        # The unit of each term, and the unit of each component of the
+        # outputs, which is that of the first term.
+        units_inputs = {k: na.unit_normalized(components[k]) for k in keys}
+        units_term = []
+        for t in range(len(names)):
+            unit = u.dimensionless_unscaled
+            for k, e in zip(keys, exponents[t]):
+                unit = unit * units_inputs[k] ** int(e)
+            units_term.append(unit)
+        units_outputs = {
+            k: na.unit_normalized(coefficients[names[0], k]) * units_term[0]
+            for k in keys_outputs
+        }
+        has_unit = any(na.unit(a) is not None for a in arrays)
+
+        # The points are ordered so that the axes of the coefficients lead,
+        # and the points which share a set of coefficients are consecutive.
+        shape_coefficients = na.shape_broadcasted(*coefficients.values())
+        shape_inputs = na.shape_broadcasted(*components.values())
+        shape = na.broadcast_shapes(shape_coefficients, shape_inputs)
+        shape_coefficients = {a: shape[a] for a in shape_coefficients}
+        shape = shape_coefficients | shape
+        sizes = tuple(shape.values())
+        sizes_coefficients = tuple(shape_coefficients.values())
+        num_point = math.prod(sizes)
+        num_coefficient = math.prod(sizes_coefficients)
+        num_point_coefficient = num_point // num_coefficient if num_coefficient else 0
+
+        values_inputs = np.empty((len(keys), *sizes), dtype=dtype)
+        for c, k in enumerate(keys):
+            values_inputs[c] = na.value(components[k]).ndarray_aligned(shape)
+        values_inputs = values_inputs.reshape(len(keys), num_point)
+
+        values_coefficients = np.empty(
+            shape=(len(names), len(keys_outputs), *sizes_coefficients),
+            dtype=dtype,
+        )
+        for t, name in enumerate(names):
+            for o, k in enumerate(keys_outputs):
+                a = coefficients[name, k]
+                scale = na.unit_normalized(a).to(units_outputs[k] / units_term[t])
+                value = na.value(a).ndarray_aligned(shape_coefficients)
+                values_coefficients[t, o] = scale * value
+        values_coefficients = values_coefficients.reshape(
+            len(names),
+            len(keys_outputs),
+            num_coefficient,
+        )
+        values_coefficients = np.ascontiguousarray(
+            values_coefficients.transpose(2, 0, 1)
+        )
+
+        from . import _polynomial_numba
+
+        values = _polynomial_numba.polynomial_numba(
+            inputs=values_inputs,
+            exponents=exponents,
+            coefficients=values_coefficients,
+            num_point_coefficient=num_point_coefficient,
+        )
+
+        outputs = {}
+        for o, k in enumerate(keys_outputs):
+            value = values[o].reshape(sizes)
+            if has_unit:
+                value = value << units_outputs[k]
+            outputs[k] = na.ScalarArray(value, axes=tuple(shape))
+
+        if type_outputs is None:
+            return outputs[""]
+        return type_outputs.from_components(outputs)
 
     @classmethod
     def from_degree(
@@ -2244,6 +2405,21 @@ class PolynomialFitFunctionArray(
             raise NotImplementedError
 
         return v1_T_v2
+
+
+def _scalar_explicit(
+    a: Any,
+) -> None | na.ScalarArray:
+    """
+    The given scalar as an instance of :class:`named_arrays.ScalarArray`,
+    or :obj:`None` if it is not a scalar without uncertainties.
+    """
+    a = na.as_named_array(a)
+    if isinstance(a, na.AbstractScalar):
+        a = a.explicit
+    if isinstance(a, na.ScalarArray):
+        return a
+    return None
 
 
 def _components(
