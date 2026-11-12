@@ -2008,6 +2008,75 @@ def test_getitem_plain_agreeing_indices():
     assert np.all(array == expected)
 
 
+def _arrays_single_element() -> list[na.UncertainScalarArray]:
+    """
+    Uncertain arrays whose nominal value or distribution has a single element
+    along an axis where the other has many.
+    """
+    axis_distribution = na.UncertainScalarArray.axis_distribution
+    single = na.ScalarArray(np.array([2.0]), axes="x")
+    many = na.arange(0, 10, axis="x")
+    samples = na.arange(0, 3, axis=axis_distribution) / 4
+    return [
+        na.UncertainScalarArray(nominal=single, distribution=many + samples),
+        na.UncertainScalarArray(nominal=many, distribution=single + samples),
+    ]
+
+
+@pytest.mark.parametrize("array", _arrays_single_element())
+@pytest.mark.parametrize(
+    argnames="item",
+    argvalues=[
+        dict(x=slice(2, 5)),
+        dict(x=5),
+        dict(x=-1),
+        dict(x=slice(None, None, -3)),
+        dict(x=na.ScalarArray(np.array([7, 2]), axes="z")),
+    ],
+)
+def test_getitem_single_element(
+    array: na.UncertainScalarArray,
+    item: dict[str, int | slice | na.AbstractArray],
+) -> None:
+    """
+    A nominal value or a distribution with a single element along an indexed
+    axis, where the other has more, is indexed as if it were broadcast
+    against the other.
+    """
+    result = array[item]
+    expected = array.broadcasted[item]
+    assert result.shape_distribution == expected.shape_distribution
+    assert np.all(result == expected)
+
+
+@pytest.mark.parametrize(
+    argnames="item,writeable",
+    argvalues=[
+        (dict(x=slice(None)), True),
+        (dict(x=slice(2, 5)), False),
+        (dict(x=5), False),
+    ],
+)
+def test_getitem_single_element_view(
+    item: dict[str, int | slice],
+    writeable: bool,
+) -> None:
+    """
+    A nominal value with a single element along an indexed axis keeps it as
+    a view, which can only be written to if the selection includes every
+    element along the axis, since writing to it changes all of them.
+    """
+    nominal = na.ScalarArray(np.array([[2.0, 3.0]]), axes=("x", "z"))
+    samples = na.arange(0, 3, axis=na.UncertainScalarArray.axis_distribution) / 4
+    array = na.UncertainScalarArray(
+        nominal=nominal,
+        distribution=na.arange(0, 10, axis="x") + samples,
+    )
+    result = array[item]
+    assert np.shares_memory(result.nominal.ndarray, nominal.ndarray)
+    assert result.nominal.ndarray.flags.writeable == writeable
+
+
 def test_vector_setitem_shared_component():
     # Components which are the same plain array are replaced by separate
     # uncertain copies, and the plain array itself is never written to

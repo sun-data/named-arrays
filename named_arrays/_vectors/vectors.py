@@ -7,6 +7,7 @@ import functools
 import numpy as np
 import astropy.units as u
 import named_arrays as na
+from named_arrays._core import _item_single
 
 __all__ = [
     "VectorPrototypeT",
@@ -317,8 +318,12 @@ class AbstractVectorArray(
     ) -> Self:
 
         array = self.explicit
-        shape_array = array.shape
         components = array.components
+        shapes = {
+            c: components[c].shape if isinstance(components[c], na.AbstractArray) else dict()
+            for c in components
+        }
+        shape_array = na.broadcast_shapes(*shapes.values())
 
         if isinstance(item, na.AbstractArray):
             item = item.explicit
@@ -368,7 +373,16 @@ class AbstractVectorArray(
             component = components[c]
             if isinstance(item, dict):
                 if na.named_array_like(component):
-                    components_result[c] = na.as_named_array(components[c])[{ax: item[ax].components[c] for ax in item}]
+                    # a component may have a single element along an indexed
+                    # axis where the others have more, which stands for every
+                    # element along it
+                    component, item_c = _item_single(
+                        a=na.as_named_array(component),
+                        item={ax: item[ax].components[c] for ax in item},
+                        shape=shape_array,
+                        shape_a=shapes[c],
+                    )
+                    components_result[c] = component[item_c]
                 elif not na.shape(component):
                     components_result[c] = component
                 else:
@@ -1022,9 +1036,9 @@ class AbstractWcsVector(
             elif not isinstance(item_ax, slice) and not np.issubdtype(type(item_ax), np.integer):
                 return super()._getitem(item)
 
-        # A WCS parameter with a sliced WCS axis may have only one element
-        # along it, broadcast against the pixel indices, which slicing it
-        # would not account for, so it is left to the explicit vector.
+        # A vector with a WCS parameter along a sliced WCS axis finds its
+        # shape from its explicit coordinates (see :attr:`shape`), and so would
+        # the result, so it is left to the explicit vector.
         for p in parameters_wcs.values():
             if not item_wcs.keys().isdisjoint(na.shape(p)):
                 return super()._getitem(item)
@@ -1037,18 +1051,23 @@ class AbstractWcsVector(
         if any(len(pixels[ax]) < 2 for ax in pixels):
             return super()._getitem(item)
 
-        crpix = na.getitem(parameters_wcs["crpix"], item)
+        # An explicit component or a WCS parameter may have a single element
+        # along an indexed axis where the others, or the pixels, have more,
+        # which stands for every element along it.
+        values = self._components_explicit | parameters_wcs
+        shapes = {name: na.shape(values[name]) for name in values}
+        shape = na.broadcast_shapes(*shapes.values(), shape_wcs)
+        for name in values:
+            value, item_value = _item_single(values[name], item, shape, shapes[name])
+            values[name] = na.getitem(value, item_value)
+
+        crpix = values.pop("crpix")
         components_crpix = dict(crpix.components)
         for ax in pixels:
             components_crpix[ax] = components_crpix[ax] - pixels[ax].start
 
-        components_explicit = self._components_explicit
-
         return self.replace(
-            **na.getitem(components_explicit, item),
-            crval=na.getitem(parameters_wcs["crval"], item),
+            **values,
             crpix=crpix.type_explicit.from_components(components_crpix),
-            cdelt=na.getitem(parameters_wcs["cdelt"], item),
-            pc=na.getitem(parameters_wcs["pc"], item),
             shape_wcs=shape_wcs | {ax: len(pixels[ax]) for ax in pixels},
         )
