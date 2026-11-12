@@ -17,7 +17,6 @@ def polynomial_numba(
     inputs: np.ndarray,
     exponents: np.ndarray,
     coefficients: np.ndarray,
-    num_point_coefficient: int,
 ) -> np.ndarray:  # pragma: nocover
     """
     Evaluate a polynomial at every point, forming each term at one point at
@@ -26,40 +25,40 @@ def polynomial_numba(
     Parameters
     ----------
     inputs
-        The independent variables, of shape ``(component, point)``.
-        The points are flattened in C order from a grid whose leading axes
-        are those of `coefficients`.
+        The independent variables, of shape ``(component, set, point)``,
+        where ``set`` indexes the sets of coefficients, or has a length of
+        one if every set of coefficients is evaluated at the same points.
     exponents
         The power of each component in each term of the polynomial,
         of shape ``(term, component)``.
     coefficients
         The coefficient of each term for each output component,
-        of shape ``(coefficient set, term, output)``.
-    num_point_coefficient
-        The number of consecutive points which share a set of coefficients,
-        the number of points in the axes of the grid which `coefficients`
-        does not have.
+        of shape ``(set, term, output)``.
 
     Returns
     -------
-        The dependent variables, of shape ``(output, point)``.
+        The dependent variables, of shape ``(output, set, point)``.
     """
 
-    num_component, num_point = inputs.shape
-    _, num_term, num_output = coefficients.shape
+    num_component, num_set_inputs, num_point = inputs.shape
+    num_set, num_term, num_output = coefficients.shape
 
-    result = np.empty((num_output, num_point), dtype=inputs.dtype)
+    result = np.empty((num_output, num_set, num_point), dtype=inputs.dtype)
 
-    for i in numba.prange(num_point):
-        s = i // num_point_coefficient
+    for i in numba.prange(num_set * num_point):
+        s = i // num_point
+        p = i % num_point
+        s_inputs = s if num_set_inputs > 1 else 0
+
         for o in range(num_output):
-            total = 0.0
-            for t in range(num_term):
-                term = coefficients[s, t, o]
-                for c in range(num_component):
-                    for _ in range(exponents[t, c]):
-                        term *= inputs[c, i]
-                total += term
-            result[o, i] = total
+            result[o, s, p] = 0
+
+        for t in range(num_term):
+            term = 1.0
+            for c in range(num_component):
+                for _ in range(exponents[t, c]):
+                    term *= inputs[c, s_inputs, p]
+            for o in range(num_output):
+                result[o, s, p] += coefficients[s, t, o] * term
 
     return result

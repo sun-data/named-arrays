@@ -3,6 +3,7 @@ import pytest
 import numpy as np
 import matplotlib.pyplot as plt
 import astropy.units as u
+import astropy.time
 import named_arrays as na
 import ndoptimize
 import named_arrays.tests.test_core
@@ -1364,6 +1365,86 @@ def _polynomial_spectral_positional() -> na.PolynomialFitFunctionArray:
     )
 
 
+def _polynomial_mixed_units() -> na.PolynomialFitFunctionArray:
+    """
+    A polynomial fit whose outputs have a unit in one component and none
+    in the other.
+    """
+    x = na.linspace(-1, 1, "x", 7)
+    outputs = na.Cartesian2dVectorArray(
+        x=(2 * x + 1) * u.pix,
+        y=3 * x**2,
+    )
+    return na.PolynomialFitFunctionArray.from_degree(
+        inputs=x,
+        outputs=outputs,
+        degree=2,
+        axis_polynomial="x",
+    )
+
+
+def _polynomial_nested_outputs() -> na.PolynomialFitFunctionArray:
+    """A polynomial fit whose outputs are a nested vector."""
+    inputs = na.Cartesian2dVectorArray(
+        x=na.linspace(-1, 1, "a", 5),
+        y=na.linspace(-1, 1, "b", 6),
+    )
+    outputs = na.SpectralPositionalVectorArray(
+        wavelength=(inputs.x + inputs.y) * u.AA,
+        position=na.Cartesian2dVectorArray(
+            x=inputs.x * inputs.y * u.arcsec,
+            y=inputs.y,
+        ),
+    )
+    return na.PolynomialFitFunctionArray.from_degree(
+        inputs=inputs,
+        outputs=outputs,
+        degree=2,
+        axis_polynomial=("a", "b"),
+    )
+
+
+def _polynomial_unused_components() -> na.PolynomialFitFunctionArray:
+    """
+    A polynomial fit to inputs with components which none of the terms use:
+    times, durations, and a quantity.
+    """
+    x = na.linspace(-1, 1, "x", 7)
+    inputs = na.CartesianNdVectorArray(
+        dict(
+            x=x,
+            time=na.ScalarArray(
+                ndarray=astropy.time.Time(["2020-01-01", "2020-01-02", "2020-01-03"]),
+                axes="t",
+            ),
+            duration=na.ScalarArray(
+                ndarray=np.array([0, 1, 2], dtype="timedelta64[s]"),
+                axes="t",
+            ),
+            z=na.linspace(0, 1, "t", 3) * u.s,
+        )
+    )
+    return na.PolynomialFitFunctionArray(
+        inputs=inputs,
+        outputs=2 * x + 1 + x**2,
+        coefficient_names=["", "x", "x*x"],
+        axis_polynomial="x",
+    )
+
+
+def _polynomial_duplicate_names() -> na.PolynomialFitFunctionArray:
+    """A polynomial fit with a term which is named twice."""
+    array = _polynomial_function_arrays()[-1]
+    return array.replace(coefficient_names=["", "x", "y", "x", "x*y"])
+
+
+def _polynomial_float32() -> na.PolynomialFitFunctionArray:
+    """A scalar polynomial fit with 32-bit coefficients."""
+    array = _polynomial_function_arrays()[0]
+    array.coefficients = array.coefficients.astype(np.float32)
+    return array
+
+
 @pytest.mark.parametrize(
     argnames="array,inputs",
     argvalues=[
@@ -1399,6 +1480,14 @@ def _polynomial_spectral_positional() -> na.PolynomialFitFunctionArray:
             _polynomial_function_arrays()[-2],
             na.Cartesian2dVectorArray(0, na.linspace(0, 1, "t", 5)),
         ),
+        # outputs with a unit in only one component
+        (_polynomial_mixed_units(), na.linspace(-2, 2, "t", 5)),
+        # nested outputs
+        (_polynomial_nested_outputs(), _polynomial_nested_outputs().inputs),
+        # inputs with components which the terms do not use
+        (_polynomial_unused_components(), _polynomial_unused_components().inputs),
+        # a term named twice
+        (_polynomial_duplicate_names(), _polynomial_duplicate_names().inputs),
     ],
 )
 class TestPolynomialFitFunctionArrayCall:
@@ -1408,19 +1497,34 @@ class TestPolynomialFitFunctionArrayCall:
         array: na.PolynomialFitFunctionArray,
         inputs: float | na.AbstractScalar | na.AbstractVectorArray,
     ) -> None:
-        assert array._call_numba(inputs) is not None
+        assert array._call_numba(array._inputs_centered(inputs)) is not None
         result = array(inputs)
         expected = array.design_matrix(inputs) @ array.coefficients
         assert result.inputs is inputs
         assert isinstance(result.outputs, expected.type_explicit)
         assert result.outputs.shape == na.shape(expected)
         if isinstance(expected, na.AbstractVectorArray):
-            pairs = zip(result.outputs.components.values(), expected.components.values())
+            pairs = zip(
+                result.outputs.cartesian_nd.components.values(),
+                expected.cartesian_nd.components.values(),
+            )
         else:
             pairs = [(result.outputs, expected)]
         for r, e in pairs:
             assert na.unit(r) == na.unit(e)
+            assert r.dtype == e.dtype
             assert np.allclose(na.value(r), na.value(e), rtol=1e-10, atol=1e-10)
+
+
+def test_polynomial_call_float32() -> None:
+    array = _polynomial_float32()
+    inputs = na.linspace(0, 1, "t", 5).astype(np.float32)
+    assert array._call_numba(array._inputs_centered(inputs)) is not None
+    result = array(inputs).outputs
+    expected = array.design_matrix(inputs) @ array.coefficients
+    # unlike the design matrix, whose constant term is an integer
+    assert result.dtype == np.float32
+    assert np.allclose(result, expected, rtol=1e-5, atol=1e-5)
 
 
 @pytest.mark.parametrize(
@@ -1440,10 +1544,56 @@ def test_polynomial_call_design_matrix(
     inputs: na.AbstractScalar,
 ) -> None:
     array = _polynomial_function_arrays()[0]
-    assert array._call_numba(inputs) is None
+    assert array._call_numba(array._inputs_centered(inputs)) is None
     result = array(inputs).outputs
     expected = array.design_matrix(inputs) @ array.coefficients
     assert np.all(result == expected)
+
+
+@pytest.mark.parametrize(
+    argnames="coefficient_names",
+    argvalues=[
+        # no terms
+        [],
+        # a term with a duration, which has no common type with floats
+        ["", "x", "duration"],
+    ],
+)
+def test_polynomial_call_numba_unsupported(
+    coefficient_names: list[str],
+) -> None:
+    array = _polynomial_unused_components()
+    array = array.replace(coefficient_names=coefficient_names)
+    array.coefficients = na.CartesianNdVectorArray(
+        {name: 1.0 for name in coefficient_names}
+    )
+    assert array._call_numba(array._inputs_centered(array.inputs)) is None
+
+
+class _PolynomialScaledFunctionArray(
+    na.PolynomialFitFunctionArray,
+):
+    """A polynomial fit whose terms are scaled, as by a different basis."""
+
+    def design_matrix(
+        self,
+        inputs: float | u.Quantity | na.AbstractScalar | na.AbstractVectorArray,
+    ) -> na.AbstractVectorArray:
+        return 2 * super().design_matrix(inputs)
+
+
+def test_polynomial_call_design_matrix_override() -> None:
+    array = _polynomial_function_arrays()[0]
+    array = _PolynomialScaledFunctionArray(
+        inputs=array.inputs,
+        outputs=array.outputs,
+        coefficient_names=array.coefficient_names,
+        axis_polynomial=array.axis_polynomial,
+    )
+    inputs = na.linspace(0, 1, "t", 5)
+    result = array(inputs).outputs
+    expected = array.design_matrix(inputs) @ array.coefficients
+    assert np.allclose(result, expected, rtol=1e-10, atol=1e-10)
 
 
 @pytest.mark.parametrize(
